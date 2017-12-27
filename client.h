@@ -60,13 +60,13 @@ class Client {
 	pthread_mutex_t submitMutex;
 	std::vector<std::pair<GetWorkData, uint8_t>> pendingSubmissions;
 	
-	std::string getUserPass() {
+	std::string getUserPass() const {
 		std::ostringstream oss;
 		oss << user << ":" << pass;
 		return oss.str();
 	}
 	
-	std::string getHostPort() {
+	std::string getHostPort() const {
 		std::ostringstream oss;
 		oss << "http://" << host << ":" << port << "/";
 		return oss.str();
@@ -78,7 +78,7 @@ class Client {
 	Client();
 	bool connect(const std::string&, const std::string&, const std::string&, uint16_t);
 	bool getWork();
-	void sendWork(const std::pair<GetWorkData, uint8_t>&);
+	void sendWork(const std::pair<GetWorkData, uint8_t>&) const;
 	void addSubmission(const GetWorkData& gwdToSubmit, uint8_t difficulty) {
 		pthread_mutex_lock(&submitMutex);
 		pendingSubmissions.push_back(std::make_pair(gwdToSubmit, difficulty));

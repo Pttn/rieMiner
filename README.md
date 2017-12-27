@@ -1,4 +1,4 @@
-# rieMiner 0.1
+# rieMiner 0.11
 
 rieMiner is a Riecoin miner using the Getwork protocol and the latest mining algorithm, so it can be used to solo mine efficiently using the official wallet. It is adapted from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie):
 
@@ -86,11 +86,12 @@ Then, just be patient... Happy mining :D ! It is always nice to wake up to see t
 Every 10 seconds or so, rieMiner will print some stats. Example:
 
 ```bash
-[0003:22:17] (2/3t/s) = (3.41 0.113) ; (4-6t) = (54 3 0) ; Diff = 1691
+[0053:23:13] (2/3t/s) = (3.52 0.120) ; (4-6t) = (677095 23024 798 24 1) ; Diff = 1687
 ```
-This means: "3 h 22 min and 17 s passed since the start of mining. The miner found on average 3.41 2-tuples and 0.113 3-tuple each second. It also found a total of 54 4-tuples and 3 5-tuples, but unfortunately no block. Currently, the Riecoin difficulty is 1691."
 
-These results were obtained with an Intel 6700K so you can tell if something is wrong if a 8700K has lower values for example... But, you should wait at least a few hours before comparing values. With a 6700K and at ~1700 difficulty, you can expect to get 1-2 block(s) every week on average.
+This means: "53 h 23 min and 13 s passed since the start of mining. The miner found on average 3.52 2-tuples and 0.12 3-tuple each second. The next numbers are the number of total tuples found (example, 798 4-tuples, and 1 block). Currently, the Riecoin difficulty is 1687."
+
+These results were obtained with an Intel 6700K so you can tell if something is wrong if a 8700K has lower values for example... But, you should wait at least a few hours before comparing values. With a 6700K and at ~1700 difficulty, you can expect to get 1-2 block(s) every week on average. Note too than the higher is the difficulty, the lower is the tuples find rates.
 
 Note that these values are not comparable at all with those given by fastrie! It seems that somewhere in the past, the definition of a valid share (for pooled mining) changed, so they adapted the stats formulas to match with the old system, but now their numbers do not really mean anything (but can be used to compare different computers, as long as they use the same miner). Moreover, a share for pooled mining is valid if 4 numbers from any in the sextuplet is prime (4ch), but in rieMiner a 4-tuple is a sextuplet in which the 4 first numbers are prime, so it is harder to find.
 

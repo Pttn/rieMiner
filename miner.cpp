@@ -2,10 +2,10 @@
 (c) 2014-2017 dave-andersen (http://www.cs.cmu.edu/~dga/)
 (c) 2017 Pttn (https://github.com/Pttn/rieMiner) */
 
-#include "global.h"
 #include <assert.h>
-#include "tsqueue.hpp"
 #include <math.h>
+#include "global.h"
+#include "tsqueue.hpp"
 
 struct MinerParameters {
 	uint32_t primorialNumber;
@@ -88,8 +88,8 @@ WorkInfo verify_block;
 
 void miningInit(uint64_t sieveMax, int16_t threads) {
 	miner.parameters.threads = threads;
-	miner.parameters.sieveWorkers = std::min(1, threads/4);
-	miner.parameters.sieveWorkers = std::max(miner.parameters.sieveWorkers, 8);
+	miner.parameters.sieveWorkers = std::max(1, threads/4);
+	miner.parameters.sieveWorkers = std::min(miner.parameters.sieveWorkers, 8);
 	pthread_mutex_init(&master_lock, NULL);
 	pthread_mutex_init(&bucket_lock, NULL);
 	mpz_init(z_verify_target);
@@ -175,16 +175,16 @@ inline void silly_sort_indexes(uint32_t indexes[6]) {
 #define PENDING_SIZE 16
 
 inline void init_pending(uint32_t pending[PENDING_SIZE]) {
-	for (int i = 0; i < PENDING_SIZE; i++)
+	for (int i(0) ; i < PENDING_SIZE; i++)
 		pending[i] = 0;
 }
 
 inline void add_to_pending(uint8_t *sieve, uint32_t pending[PENDING_SIZE], uint32_t &pos, uint32_t ent) {
-	__builtin_prefetch(&(sieve[ent>>3]));
+	__builtin_prefetch(&(sieve[ent >> 3]));
 	uint32_t old = pending[pos];
 	if (old != 0) {
 		assert(old < riecoin_sieveSize);
-		sieve[old>>3] |= (1<<(old&7));
+		sieve[old >> 3] |= (1 << (old & 7));
 	}
 	pending[pos] = ent;
 	pos++;
@@ -197,8 +197,9 @@ void put_offsets_in_segments(uint32_t *offsets, int n_offsets) {
 		uint32_t index = offsets[i];
 		uint32_t segment = index>>riecoin_sieveBits;
 		uint32_t sc = segment_counts[segment];
-		if (sc >= entriesPerSegment) { 
-			printf("EEEEK segment %u	%u with index %u is > %u\n", segment, sc, index, entriesPerSegment); exit(-1);
+		if (sc >= entriesPerSegment) {
+			printf("EEEEK segment %u	%u with index %u is > %u\n", segment, sc, index, entriesPerSegment);
+			exit(-1);
 		}
 		segment_hits[segment][sc] = index - (riecoin_sieveSize*segment);
 		segment_counts[segment]++;
@@ -215,9 +216,8 @@ void update_remainders(uint32_t start_i, uint32_t end_i) {
 	mpz_add(tar, tar, z_verify_remainderPrimorial);
 	int n_offsets(0);
 	static const int OFFSET_STACK_SIZE(16384);
-	if (offset_stack == NULL) {
-		offset_stack = (uint32_t*) malloc(sizeof(uint32_t)*OFFSET_STACK_SIZE);
-	}
+	if (offset_stack == NULL)
+		offset_stack = new uint32_t[OFFSET_STACK_SIZE];
 
 	for (uint32_t i(start_i) ; i < end_i ; i++) {
 		uint32_t p = miner.parameters.primes[i];
@@ -225,9 +225,8 @@ void update_remainders(uint32_t start_i, uint32_t end_i) {
 		bool is_once_only = false;
 
 		/* Also update the offsets unless once only */
-		if (p >= max_increments) {
+		if (p >= max_increments)
 			is_once_only = true;
-		}
 		 
 		uint32_t invert(miner.parameters.inverts[i]);
 		for (uint32_t f(0) ; f < 6 ; f++) {
@@ -312,7 +311,7 @@ void verify_thread() {
 			miner.workerDoneQueue.push_back(1);
 			continue;
 		}
-		/* fallthrough:	job.type == TYPE_CHECK */
+		// fallthrough:	job.type == TYPE_CHECK
 		if (job.type == TYPE_CHECK) {
 			for (uint32_t idx(0) ; idx < job.testWork.n_indexes ; idx++) {
 				uint8_t nPrimes(0);
@@ -333,27 +332,26 @@ void verify_thread() {
 					continue;
 				
 				nPrimes++;
-				/* Note start at 1 - we've already tested bias 0 */
+				// Note start at 1 - we've already tested bias 0
 				for (int i(1) ; i < 6 ; i++) {
 					mpz_add_ui(z_temp, z_temp, primeTupleOffset[i]);
 					mpz_sub_ui(z_ft_n, z_temp, 1);
 					mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_temp);
-					if (mpz_cmp_ui(z_ft_r, 1) == 0)
+					if (mpz_cmp_ui(z_ft_r, 1) == 0) {
 						nPrimes++;
+						stats.foundTuples[nPrimes]++;
+					}
 					else break;
 				}
-				
-				if (nPrimes >= 2) stats.found2tuples++;
-				if (nPrimes >= 3) stats.found3tuples++;
 				
 				if (nPrimes < arguments.tuples) continue;
 	
 				// Generate nOffset and submit
 				uint8_t nOffset[32];
 				memset(nOffset, 0x00, 32);
-				for(uint32_t d(0) ; d < (uint32_t) std::min(32/8, z_temp2->_mp_size) ; d++) {
+				for(uint32_t d(0) ; d < (uint32_t) std::min(32/8, z_temp2->_mp_size) ; d++)
 					*(uint64_t*) (nOffset + d*8) = z_temp2->_mp_d[d];
-				}
+				
 				submitWork(verify_block.gwd, (uint32_t*) nOffset, nPrimes);
 			}
 			
@@ -405,37 +403,20 @@ void miningProcess(const WorkInfo& block) {
 		return;
 	}
 	
-	if (!riecoin_sieve) {
-		riecoin_sieve = (uint8_t*) malloc(riecoin_sieveSize/8);
-		miner.sieves = (uint8_t**)malloc(sizeof(uint8_t*)*miner.parameters.sieveWorkers);
+	if (riecoin_sieve == NULL) {
+		riecoin_sieve = new uint8_t[riecoin_sieveSize/8];
+		miner.sieves = new uint8_t*[miner.parameters.sieveWorkers];
 		//std::cout << "Allocating sieves for " << miner.parameters.sieveWorkers << " workers" << std::endl;
-		for (int i(0) ; i < miner.parameters.sieveWorkers; i++) {
-			miner.sieves[i] = (uint8_t*) malloc(riecoin_sieveSize/8);
-			if (miner.sieves[i] == NULL) {
-				std::cerr << "Could not allocate sieve " << i << std::endl;
-				exit(-1);
-			}
-		}
-		size_t offsize = sizeof(sixoff) * (primeTestStoreOffsetsSize + 1024);
-		offsets = (sixoff*) malloc(offsize);
-		if (offsets == NULL) {
-			std::cerr << "Could not allocate " << offsize << "bytes for offsets" << std::endl;
-			exit(-1);
-		}
-		memset(offsets, 0, offsize);
-		for (uint32_t i = 0; i < maxiter; i++) {
-			segment_hits[i] = (uint32_t *)malloc(sizeof(uint32_t) * entriesPerSegment);
-			if (segment_hits[i] == NULL) {
-				printf("Could not allocate %lu bytes for segment hits %d\n", sizeof(uint32_t) * entriesPerSegment, i);
-				exit(-1);
-			}
-		}
+		for (int i(0) ; i < miner.parameters.sieveWorkers; i++)
+			miner.sieves[i] = new uint8_t[riecoin_sieveSize/8];
+		offsets = new sixoff[primeTestStoreOffsetsSize + 1024];
+		memset(offsets, 0, sizeof(sixoff)*(primeTestStoreOffsetsSize + 1024));
+		for (uint32_t i(0); i < maxiter; i++)
+			segment_hits[i] = new uint32_t[entriesPerSegment];
 	}
 	uint8_t* sieve = riecoin_sieve;
 	
-	mpz_t z_target;
-	mpz_t z_temp;
-	mpz_t z_remainderPrimorial;
+	mpz_t z_target, z_temp, z_remainderPrimorial;
 	
 	mpz_init(z_temp);
 	mpz_init(z_remainderPrimorial);
@@ -456,9 +437,8 @@ void miningProcess(const WorkInfo& block) {
 	mpz_set(z_verify_remainderPrimorial, z_remainderPrimorial);
 	verify_block = block;
 	
-	for (uint32_t i(0) ; i < maxiter; i++) {
+	for (uint32_t i(0) ; i < maxiter; i++)
 		segment_counts[i] = 0;
-	}
 	
 	uint32_t incr(nPrimes/128);
 	riecoinPrimeTestWork wi;
@@ -484,14 +464,13 @@ void miningProcess(const WorkInfo& block) {
 	uint32 countCandidates = 0;
 	uint32_t outstandingTests = 0;
 	for (uint32_t loop(0); loop < maxiter; loop++) {
-		__sync_synchronize(); /* gcc specific - memory barrier for checking height */
+		__sync_synchronize(); // gcc specific - memory barrier for checking height
 		
 		if (block.height != monitorCurrentBlockHeight)
 			break;
 		
-		for (int i(0) ; i < miner.parameters.sieveWorkers ; i++) {
+		for (int i(0) ; i < miner.parameters.sieveWorkers ; i++)
 			memset(miner.sieves[i], 0, riecoin_sieveSize/8);
-		}
 		
 		wi.type = TYPE_SIEVE;
 		n_workers = 0;
@@ -505,7 +484,7 @@ void miningProcess(const WorkInfo& block) {
 			wi.sieveWork.start = base;
 			wi.sieveWork.end = lim;
 			wi.sieveWork.sieveId = which_sieve;
-			/* Need to do something for thread to sieve affinity */
+			// Need to do something for thread to sieve affinity
 			miner.verifyWorkQueue.push_front(wi);
 			which_sieve++;
 			which_sieve %= miner.parameters.sieveWorkers;
@@ -542,9 +521,8 @@ void miningProcess(const WorkInfo& block) {
 		uint32_t pending[PENDING_SIZE];
 		init_pending(pending);
 		uint32_t pending_pos = 0;
-		for (uint32_t i(0) ; i < segment_counts[loop] ; i++) {
+		for (uint32_t i(0) ; i < segment_counts[loop] ; i++)
 			add_to_pending(sieve, pending, pending_pos, segment_hits[loop][i]);
-		}
 
 		for (uint32_t i = 0; i < PENDING_SIZE; i++) {
 			uint32_t old = pending[i];
@@ -589,7 +567,7 @@ void miningProcess(const WorkInfo& block) {
 				}
 				outstandingTests -= miner.testDoneQueue.clear();
 	
-				/* Low overhead but still often enough */
+				// Low overhead but still often enough
 				if (block.height != monitorCurrentBlockHeight) {
 					outstandingTests -= miner.verifyWorkQueue.clear();
 					do_reset = true;

@@ -45,7 +45,7 @@ bool hex2bin(unsigned char *p, const char *hexstr, size_t len) {
 static bool jobj_binary(const json_t *obj, const char *key, void *buf, size_t buflen) {
 	const char *hexstr;
 	json_t *tmp;
-
+	
 	tmp = json_object_get(obj, key);
 	if (tmp == NULL) {
 		std::cerr << "JSON key '" << key << "' not found" << std::endl;
@@ -58,7 +58,7 @@ static bool jobj_binary(const json_t *obj, const char *key, void *buf, size_t bu
 	}
 	if (!hex2bin((unsigned char*) buf, hexstr, buflen))
 		return false;
-
+	
 	return true;
 }
 
@@ -76,16 +76,6 @@ struct upload_buffer {
 	const void	*buf;
 	size_t		len;
 	size_t		pos;
-};
-
-struct header_info {
-	char		*lp_path;
-	char		*reason;
-	
-	header_info() {
-		lp_path = NULL;
-		reason = NULL;
-	}
 };
 
 static void databuf_free(struct data_buffer *db) {
@@ -106,8 +96,7 @@ static size_t all_data_cb(const void *ptr, size_t size, size_t nmemb, void *user
 	newlen = oldlen + len;
 
 	newmem = realloc(db->buf, newlen + 1);
-	if (!newmem)
-		return 0;
+	if (!newmem) return 0;
 
 	db->buf = newmem;
 	db->len = newlen;
@@ -154,61 +143,10 @@ static int seek_data_cb(void *user_data, curl_off_t offset, int origin) {
 }
 #endif
 
-static size_t resp_hdr_cb(void *ptr, size_t size, size_t nmemb, void *user_data) {
-	struct header_info *hi = (struct header_info*) user_data;
-	size_t remlen, slen, ptrlen = size * nmemb;
-	char *rem, *val = NULL, *key = NULL;
-	void *tmp;
-
-	val = (char*) calloc(1, ptrlen);
-	key = (char*) calloc(1, ptrlen);
-	if (!key || !val)
-		goto out;
-
-	tmp = memchr(ptr, ':', ptrlen);
-	if (!tmp || (tmp == ptr))	/* skip empty keys / blanks */
-		goto out;
-	slen = (unsigned long long) tmp - (unsigned long long) ptr;
-	if ((slen + 1) == ptrlen)	/* skip key w/ no value */
-		goto out;
-	memcpy(key, ptr, slen);		/* store & nul term key */
-	key[slen] = 0;
-
-	rem = (char*) ptr + slen + 1;		/* trim value's leading whitespace */
-	remlen = ptrlen - slen - 1;
-	while ((remlen > 0) && (isspace(*rem))) {
-		remlen--;
-		rem++;
-	}
-	
-	memcpy(val, rem, remlen);	/* store value, trim trailing ws */
-	val[remlen] = 0;
-	while ((*val) && (isspace(val[strlen(val) - 1]))) {
-		val[strlen(val) - 1] = 0;
-	}
-	if (!*val)			/* skip blank value */
-		goto out;
-
-	if (!strcasecmp("X-Long-Polling", key)) {
-		hi->lp_path = val;	/* steal memory reference */
-		val = NULL;
-	}
-
-	if (!strcasecmp("X-Reject-Reason", key)) {
-		hi->reason = val;	/* steal memory reference */
-		val = NULL;
-	}
-
-out:
-	free(key);
-	free(val);
-	return ptrlen;
-}
-
 #define JSON_LOADS(str, err_ptr) json_loads((str), 0, (err_ptr))
 
-json_t *json_rpc_call(CURL *curl, const char *url, const char *userpass, const char *rpc_req, int *curl_err) {
-	json_t *val, *err_val, *res_val;
+json_t *json_rpc_call(CURL *curl, const std::string& url, const std::string& userpass, const std::string& rpc_req, int *curl_err) {
+	json_t *val = NULL, *err_val = NULL, *res_val = NULL;
 	int rc;
 	struct data_buffer all_data;
 	struct upload_buffer upload_data;
@@ -217,10 +155,11 @@ json_t *json_rpc_call(CURL *curl, const char *url, const char *userpass, const c
 	char len_hdr[64];
 	char curl_err_str[CURL_ERROR_SIZE];
 	long timeout = 15;
-	struct header_info hi;
-
-	/* it is assumed that 'curl' is freshly [re]initialized at this pt */
-	curl_easy_setopt(curl, CURLOPT_URL, url);
+	
+	// it is assumed that 'curl' is freshly [re]initialized at this pt
+	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	curl_easy_setopt(curl, CURLOPT_USERPWD, userpass.c_str());
+	curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
 	curl_easy_setopt(curl, CURLOPT_ENCODING, "");
 	curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
 	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
@@ -234,27 +173,20 @@ json_t *json_rpc_call(CURL *curl, const char *url, const char *userpass, const c
 	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, curl_err_str);
 	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
 	curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
-	curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, resp_hdr_cb);
-	curl_easy_setopt(curl, CURLOPT_HEADERDATA, &hi);
-	if (userpass) {
-		curl_easy_setopt(curl, CURLOPT_USERPWD, userpass);
-		curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-	}
 	curl_easy_setopt(curl, CURLOPT_POST, 1);
-
-	upload_data.buf = rpc_req;
-	upload_data.len = strlen(rpc_req);
+	
+	upload_data.buf = rpc_req.c_str();
+	upload_data.len = rpc_req.size();
 	upload_data.pos = 0;
 	sprintf(len_hdr, "Content-Length: %lu", (unsigned long) upload_data.len);
-
 	headers = curl_slist_append(headers, "Content-Type: application/json");
 	headers = curl_slist_append(headers, len_hdr);
-	headers = curl_slist_append(headers, "Accept:"); /* disable Accept hdr*/
-	headers = curl_slist_append(headers, "Expect:"); /* disable Expect hdr*/
-
+	headers = curl_slist_append(headers, "Accept:"); //disable Accept hdr
+	headers = curl_slist_append(headers, "Expect:"); //disable Expect hdr
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
 	rc = curl_easy_perform(curl);
+	
 	if (curl_err != NULL)
 		*curl_err = rc;
 	if (rc) {
@@ -274,8 +206,7 @@ json_t *json_rpc_call(CURL *curl, const char *url, const char *userpass, const c
 		goto err_out;
 	}
 
-	/* JSON-RPC valid response returns a non-null 'result',
-	 * and a null 'error'. */
+	// JSON-RPC valid response returns a non-null 'result', and a null 'error'.
 	res_val = json_object_get(val, "result");
 	err_val = json_object_get(val, "error");
 
@@ -292,18 +223,12 @@ json_t *json_rpc_call(CURL *curl, const char *url, const char *userpass, const c
 		free(s);
 		goto err_out;
 	}
-
-	if (hi.reason)
-		json_object_set_new(val, "reject-reason", json_string(hi.reason));
 	
 	databuf_free(&all_data);
 	curl_slist_free_all(headers);
 	curl_easy_reset(curl);
 	return val;
-
 err_out:
-	free(hi.lp_path);
-	free(hi.reason);
 	databuf_free(&all_data);
 	curl_slist_free_all(headers);
 	curl_easy_reset(curl);
@@ -318,7 +243,6 @@ Client::Client() {
 	_connected = false;
 	pendingSubmissions = std::vector<std::pair<GetWorkData, uint8_t>>();
 	curl = curl_easy_init();
-
 	pthread_mutex_init(&submitMutex, NULL);
 }
 
@@ -337,7 +261,7 @@ bool Client::connect(const std::string& user0, const std::string& pass0, const s
 
 bool Client::getWork() {
 	std::string s = "{\"method\": \"getwork\", \"params\": [], \"id\": 0}\n";
-	const json_t *val = json_rpc_call(curl, getHostPort().c_str(), getUserPass().c_str(), s.c_str(), NULL);
+	json_t *val = json_rpc_call(curl, getHostPort(), getUserPass(), s, NULL);
 	if (!val) return false;
 	
 	json_t *tmp = json_object_get(val, "result");
@@ -356,12 +280,14 @@ bool Client::getWork() {
 	}
 	else stats.difficulty = json_integer_value(diff);*/
 	
+	if (tmp != NULL) json_decref(tmp);
+	if (val != NULL) json_decref(val);
 	workInfo.gwd = gwd;
 	return true;
 }
 
 
-void Client::sendWork(const std::pair<GetWorkData, uint8_t>& share) {
+void Client::sendWork(const std::pair<GetWorkData, uint8_t>& share) const {
 	GetWorkData gwdToSend;
 	memcpy((uint8_t*) &gwdToSend, ((uint8_t*) &share.first), GWDSIZE/8);
 	
@@ -375,30 +301,27 @@ void Client::sendWork(const std::pair<GetWorkData, uint8_t>& share) {
 	gwdToSend.nBits = swab32(gwdToSend.nBits);
 	gwdToSend.nTime = swab32(gwdToSend.nTime);
 	
-	std::string str;
-	json_t *val, *res, *reason;
-	char s[345];
 	
-	str = bin2hex(&gwdToSend, GWDSIZE/8);
-	sprintf(s, "{\"method\": \"getwork\", \"params\": [\"%s\"], \"id\": 1}\n", str.c_str());
-	val = json_rpc_call(curl, getHostPort().c_str(), getUserPass().c_str(), s, NULL);
+	json_t *val, *res, *reason;
+	
+	std::ostringstream oss;
+	std::string str;
+	oss << "{\"method\": \"getwork\", \"params\": [\"" << bin2hex(&gwdToSend, GWDSIZE/8) << "\"], \"id\": 1}\n";
+	str = oss.str();
+	val = json_rpc_call(curl, getHostPort(), getUserPass(), str, NULL);
 	
 	uint8_t k = share.second;
 	if (k >= 4) {
 		std::cout << "4-tuple found";
-		stats.found4tuples++;
 		if (k == 4) std::cout << std::endl;
 	}
 	if (k >= 5) {
 		std::cout << "... Actually it was a 5-tuple";
-		stats.found5tuples++;
 		if (k == 5) std::cout << std::endl;
 	}
 	if (k >= 6) {
 		std::cout << "... No, no... A 6-tuple = BLOCK!!!!!!" << std::endl;
-		stats.found6tuples++;
-		
-		std::cout << "Sent: " << s << std::endl;
+		std::cout << "Sent: " << str << std::endl;
 		if (val == NULL)
 			std::cerr << "Failure submiting block :|" << std::endl;
 		else {
@@ -410,9 +333,10 @@ void Client::sendWork(const std::pair<GetWorkData, uint8_t>& share) {
 				else std::cout << "Reason: " << reason << std::endl;
 			}
 			else std::cout << "Submission accepted :D !" << std::endl;
-			json_decref(val);
 		}
 	}
+	
+	if (val != NULL) json_decref(val);
 }
 
 uint32_t getCompact(uint32_t nCompact) {

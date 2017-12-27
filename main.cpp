@@ -7,14 +7,12 @@
 #include <iomanip>
 #include <stdio.h>
 #include <cstring>
-#include <sys/time.h>
 
-std::string minerVersionString("rieMiner 0.1");
+std::string minerVersionString("rieMiner 0.11");
 
 Client client;
 pthread_mutex_t clientMutex;
 volatile uint32 monitorCurrentBlockHeight; // used to notify worker threads of new block data
-volatile uint32 monitorCurrentBlockTime;   // keeps track of current block time, used to detect if current work data is outdated
 
 Stats stats = Stats();
 
@@ -30,11 +28,6 @@ struct WorkDataSource {
 };
 
 WorkDataSource workDataSource;
-
-uint32_t miningStartTime = 0;
-
-#define leading0s(x) std::setw(x) << std::setfill('0')
-#define FIXED(x) std::fixed << std::setprecision(x)
 
 void submitWork(GetWorkData gwd, uint32_t* nOffset, uint8_t length) {
 	pthread_mutex_lock(&clientMutex);
@@ -80,7 +73,6 @@ void getWorkFromClient(Client& client) {
 	memcpy(workDataSource.wi.target, client.workInfo.target, 32);
 	workDataSource.wi.targetCompact = client.workInfo.targetCompact;
 	if (workDataSource.wi.height == 0 && client.workInfo.height != 0) {
-		miningStartTime = (uint32_t) time(NULL);
 		stats.startMining = std::chrono::system_clock::now();
 		std::cout << "[0000:00:00] Started mining" << std::endl;
 	}
@@ -97,13 +89,9 @@ void workManagement() {
 	while (true) {
 		if (client.connected()) {
 			std::chrono::time_point<std::chrono::system_clock> t(std::chrono::system_clock::now());
-			std::chrono::duration<double> dt(t - timer), dt2(t - stats.startMining);
+			std::chrono::duration<double> dt(t - timer);
 			if (dt.count() > 10 && algorithmInited) {
-				uint32_t elapsedSecs(dt2.count());
-				std::cout << "[" << leading0s(4) << (elapsedSecs/3600) % 10000 << ":" << leading0s(2) << (elapsedSecs/60) % 60 << ":" << leading0s(2) << elapsedSecs % 60 << "] "
-					      << "(2/3t/s) = (" << FIXED(2) << stats.found2tuples/dt2.count() << " " << FIXED(3) << stats.found3tuples/dt2.count() << ") ; "
-					      << "(4-6t) = (" << stats.found4tuples << " " << stats.found5tuples << " " << stats.found6tuples << ") ; "
-					      << "Diff = " << stats.difficulty << std::endl;
+				stats.printStats();
 				timer = std::chrono::system_clock::now();
 			}
 			
@@ -128,9 +116,6 @@ void workManagement() {
 				}
 				else
 					pthread_mutex_unlock(&clientMutex);
-				// update time monitor
-				if (workDataSource.wi.height > 0)
-					monitorCurrentBlockTime = (uint32) time(NULL);
 				usleep(10000);
 			}
 		}
@@ -204,7 +189,7 @@ void getArguments(int argc, char **argv) {
 				printf("Missing username after -u option\n");
 				exit(0);
 			}
-			arguments.user = strdup(argv[cIdx]);
+			arguments.user = argv[cIdx];
 			cIdx++;
 		}
 		else if (memcmp(argument, "-p", 3) == 0) {
@@ -212,7 +197,7 @@ void getArguments(int argc, char **argv) {
 				printf("Missing password after -p option\n");
 				exit(0);
 			}
-			arguments.pass = strdup(argv[cIdx]);
+			arguments.pass = argv[cIdx];
 			cIdx++;
 		}
 		else if (memcmp(argument, "-t", 3) == 0) {
@@ -251,6 +236,7 @@ void getArguments(int argc, char **argv) {
 }
 
 int main(int argc, char** argv) {
+	//curl_global_init(CURL_GLOBAL_DEFAULT);
 	std::cout << "Starting Riecoin miner: " << minerVersionString << ", by Pttn (https://github.com/Pttn/rieMiner)" << std::endl;
 	getArguments(argc, argv);
 	std::cout << "Host = " << arguments.host << std::endl;

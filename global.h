@@ -28,26 +28,31 @@ void miningInit(uint64_t sieveMax, int16_t threads);
 void miningProcess(const WorkInfo& block);
 void submitWork(GetWorkData block, uint32_t* nOffset, uint8_t difficulty);
 
-// stats
+#define leading0s(x) std::setw(x) << std::setfill('0')
+#define FIXED(x) std::fixed << std::setprecision(x)
+
 struct Stats {
-	uint32_t found2tuples;
-	uint32_t found3tuples;
-	uint32_t found4tuples;
-	uint32_t found5tuples;
-	uint32_t found6tuples;
-	
+	uint32_t foundTuples[7];
 	uint32_t difficulty;
 	std::chrono::time_point<std::chrono::system_clock> start, startMining;
 	
 	Stats() {
-		found2tuples = 0;
-		found3tuples = 0;
-		found4tuples = 0;
-		found5tuples = 0;
-		found6tuples = 0;
+		for (uint8_t i(0) ; i < 7 ; i++)
+			foundTuples[i] = 0;
 		difficulty = 1;
-		
 		start = std::chrono::system_clock::now();
+	}
+	
+	void printStats() {
+		std::chrono::time_point<std::chrono::system_clock> t(std::chrono::system_clock::now());
+		std::chrono::duration<double> dt(t - startMining);
+		uint32_t elapsedSecs(dt.count());
+		if (elapsedSecs > 1) {
+			std::cout << "[" << leading0s(4) << (elapsedSecs/3600) % 10000 << ":" << leading0s(2) << (elapsedSecs/60) % 60 << ":" << leading0s(2) << elapsedSecs % 60 << "] "
+					  << "(2/3t/s) = (" << FIXED(2) << foundTuples[2]/dt.count() << " " << FIXED(3) << foundTuples[3]/dt.count() << ") ; "
+					  << "(2-6t) = (" << foundTuples[2] << " " << foundTuples[3] << " " << foundTuples[4] << " " << foundTuples[5] << " " << foundTuples[6] << ") ; "
+					  << "Diff: " << difficulty << std::endl;
+		}
 	}
 };
 
