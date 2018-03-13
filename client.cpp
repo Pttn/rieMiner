@@ -246,7 +246,7 @@ Client::Client() {
 	pthread_mutex_init(&submitMutex, NULL);
 }
 
-//Returns false on error or if already connected
+// Returns false on error or if already connected
 bool Client::connect(const std::string& user0, const std::string& pass0, const std::string& host0, uint16_t port0) {
 	if (_connected) return false;
 	user = user0;
@@ -301,7 +301,6 @@ void Client::sendWork(const std::pair<GetWorkData, uint8_t>& share) const {
 	gwdToSend.nBits = swab32(gwdToSend.nBits);
 	gwdToSend.nTime = swab32(gwdToSend.nTime);
 	
-	
 	json_t *val, *res, *reason;
 	
 	std::ostringstream oss;
@@ -312,7 +311,8 @@ void Client::sendWork(const std::pair<GetWorkData, uint8_t>& share) const {
 	
 	uint8_t k = share.second;
 	if (k >= 4) {
-		std::cout << "4-tuple found";
+		stats.printTime();
+		std::cout << " 4-tuple found";
 		if (k == 4) std::cout << std::endl;
 	}
 	if (k >= 5) {
@@ -321,7 +321,7 @@ void Client::sendWork(const std::pair<GetWorkData, uint8_t>& share) const {
 	}
 	if (k >= 6) {
 		std::cout << "... No, no... A 6-tuple = BLOCK!!!!!!" << std::endl;
-		std::cout << "Sent: " << str << std::endl;
+		std::cout << "Sent: " << str;
 		if (val == NULL)
 			std::cerr << "Failure submiting block :|" << std::endl;
 		else {
@@ -371,8 +371,10 @@ bool Client::process() {
 	memcpy(prevBlockHashOld, gwd.prevBlockHash, 32);
 	if (getWork()) {
 		if (memcmp(gwd.prevBlockHash, prevBlockHashOld, 32) != 0) {
-			if (workInfo.height != 0)
-				std::cout << "New block found by the network (" << workInfo.height << " found since start)" << std::endl;
+			if (workInfo.height != 0) {
+				std::cout << "New block found by the network (" << workInfo.height << " since start), average "
+				          << timeSince(stats.lastDifficultyChange)/(workInfo.height + 1 - stats.blockHeightAtDifficultyChange) << " s" << std::endl;
+			}
 			workInfo.height++;
 		}
 		

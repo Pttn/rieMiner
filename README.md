@@ -1,4 +1,4 @@
-# rieMiner 0.11
+# rieMiner 0.111
 
 rieMiner is a Riecoin miner using the Getwork protocol and the latest mining algorithm, so it can be used to solo mine efficiently using the official wallet. It is adapted from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie):
 
@@ -71,7 +71,8 @@ The available options are:
 * -p : password;
 * -t : number of threads. Default: 1;
 * -s : size of the sieve table used for mining. Use a bigger number (but less than 2^32) if you have more RAM as you will obtain better results. Default: 2^30;
-* -k : submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6.
+* -k : submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6;
+* -r : refresh rate of the stats in seconds. Default: 10. 0 to disable them; will only notify when a k-tuple (k greater than argument provided via -k) is found or when the network finds a block.
 
 Example:
 
@@ -83,13 +84,15 @@ Then, just be patient... Happy mining :D ! It is always nice to wake up to see t
 
 ## Statistics
 
-Every 10 seconds or so, rieMiner will print some stats. Example:
+rieMiner will regularly print some stats, and the frequency of this can be changed with the -r argument. Example:
 
 ```bash
-[0053:23:13] (2/3t/s) = (3.52 0.120) ; (4-6t) = (677095 23024 798 24 1) ; Diff = 1687
+[0053:23:13] (2/3t/s) = (3.52 0.120) ; (4-6t) = (677095 23024 798 24 1) ; Diff: 1687
 ```
 
-This means: "53 h 23 min and 13 s passed since the start of mining. The miner found on average 3.52 2-tuples and 0.12 3-tuple each second. The next numbers are the number of total tuples found (example, 798 4-tuples, and 1 block). Currently, the Riecoin difficulty is 1687."
+This means: "53 h 23 min and 13 s passed since the start of mining. The miner found on average 3.52 2-tuples and 0.12 3-tuple each second, since the last difficulty change. The next numbers are the number of total tuples found (example, 798 4-tuples, and 1 block) since the start of the mining. Currently, the Riecoin difficulty is 1687."
+
+After finding at least three 4-tuples after a difficulty change, rieMiner will also estimate the average time to find a block by extrapolating from how many 2, 3 and 4-tuples were found, but of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week.
 
 These results were obtained with an Intel 6700K so you can tell if something is wrong if a 8700K has lower values for example... But, you should wait at least a few hours before comparing values. With a 6700K and at ~1700 difficulty, you can expect to get 1-2 block(s) every week on average. Note too than the higher is the difficulty, the lower is the tuples find rates.
 
@@ -97,7 +100,7 @@ Note that these values are not comparable at all with those given by fastrie! It
 
 But the performance is guaranteed to match the fastrie's, as it uses the same algorithm.
 
-rieMiner will also notify if it found a k-tuple (k > 3) or if the network found a new block. If it finds a block, it will show the full Getwork submission and tell if it was accepted or not. If the block was accepted, the reward will be generated and sent to a new random address which is included in your wallet, and you can spend it after 100 confirmations. Don't forget to backup regularly your wallet or move your rewards as these addresses don't appear in Receiving Addresses. To keep the same address for mining with the original wallet, I think that you need to modify it.
+rieMiner will also notify if it found a k-tuple (k > 3) or if the network found a new block. If it finds a block, it will show the full Getwork submission and tell if it was accepted or not. If the block was accepted, the reward will be generated and sent to a new random address which is included in your wallet, and you can spend it after 100 confirmations. Don't forget to backup regularly your wallet or move your rewards as these addresses don't appear in Receiving Addresses. To set an address for mining, the GetBlockTemplate protocol would have to be added in the miner, which I could do if I had time.
 
 ## Work control
 

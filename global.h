@@ -31,27 +31,50 @@ void submitWork(GetWorkData block, uint32_t* nOffset, uint8_t difficulty);
 #define leading0s(x) std::setw(x) << std::setfill('0')
 #define FIXED(x) std::fixed << std::setprecision(x)
 
+inline double timeSince(std::chrono::time_point<std::chrono::system_clock> t0) {
+	std::chrono::time_point<std::chrono::system_clock> t(std::chrono::system_clock::now());
+	std::chrono::duration<double> dt(t - t0);
+	return dt.count();
+}
+
 struct Stats {
-	uint32_t foundTuples[7];
-	uint32_t difficulty;
-	std::chrono::time_point<std::chrono::system_clock> start, startMining;
+	uint32_t foundTuples[7], foundTuplesSinceLastDifficulty[7];
+	uint32_t difficulty, blockHeightAtDifficultyChange;
+	std::chrono::time_point<std::chrono::system_clock> start, startMining, lastDifficultyChange;
 	
 	Stats() {
-		for (uint8_t i(0) ; i < 7 ; i++)
+		for (uint8_t i(0) ; i < 7 ; i++) {
 			foundTuples[i] = 0;
+			foundTuplesSinceLastDifficulty[i] = 0;
+		}
 		difficulty = 1;
+		blockHeightAtDifficultyChange = 0;
 		start = std::chrono::system_clock::now();
 	}
 	
+	void printTime() {
+		double elapsedSecs(timeSince(startMining));
+		uint32_t elapsedSecsInt(elapsedSecs);
+		std::cout << "[" << leading0s(4) << (elapsedSecsInt/3600) % 10000 << ":" << leading0s(2) << (elapsedSecsInt/60) % 60 << ":" << leading0s(2) << elapsedSecsInt % 60 << "]";
+	}
+	
 	void printStats() {
-		std::chrono::time_point<std::chrono::system_clock> t(std::chrono::system_clock::now());
-		std::chrono::duration<double> dt(t - startMining);
-		uint32_t elapsedSecs(dt.count());
+		double elapsedSecs(timeSince(lastDifficultyChange));
 		if (elapsedSecs > 1) {
-			std::cout << "[" << leading0s(4) << (elapsedSecs/3600) % 10000 << ":" << leading0s(2) << (elapsedSecs/60) % 60 << ":" << leading0s(2) << elapsedSecs % 60 << "] "
-					  << "(2/3t/s) = (" << FIXED(2) << foundTuples[2]/dt.count() << " " << FIXED(3) << foundTuples[3]/dt.count() << ") ; "
-					  << "(2-6t) = (" << foundTuples[2] << " " << foundTuples[3] << " " << foundTuples[4] << " " << foundTuples[5] << " " << foundTuples[6] << ") ; "
-					  << "Diff: " << difficulty << std::endl;
+			printTime();
+			std::cout << " (2/3t/s) = (" << FIXED(2) << foundTuplesSinceLastDifficulty[2]/elapsedSecs << " " << FIXED(3) << foundTuplesSinceLastDifficulty[3]/elapsedSecs << ") ; "
+			          << "(2-6t) = (" << foundTuples[2] << " " << foundTuples[3] << " " << foundTuples[4] << " " << foundTuples[5] << " " << foundTuples[6] << ") ; "
+			          << "Diff: " << difficulty << std::endl;
+		}
+	}
+	
+	void printEstimatedTimeToBlock() {
+		double elapsedSecs(timeSince(lastDifficultyChange));
+		if (elapsedSecs > 1. && foundTuplesSinceLastDifficulty[4] > 2) {
+			double x(((double) foundTuplesSinceLastDifficulty[2])/((double) foundTuplesSinceLastDifficulty[3])),
+			       y(((double) foundTuplesSinceLastDifficulty[3])/((double) foundTuplesSinceLastDifficulty[4])),
+			       w(((double) foundTuplesSinceLastDifficulty[3])/elapsedSecs);
+			std::cout << "             Estimated average time to block: " << x*y*y/(86400.*w) << " days" << std::endl;
 		}
 	}
 };
@@ -66,6 +89,7 @@ struct Arguments {
 	uint16_t threads;
 	uint32_t sieveMax;
 	uint8_t tuples;
+	uint32_t refreshRate;
 	
 	Arguments() {
 		user = "";
@@ -75,6 +99,7 @@ struct Arguments {
 		threads = 1;
 		sieveMax = 1073741824;
 		tuples = 6;
+		refreshRate = 10;
 	}
 };
 

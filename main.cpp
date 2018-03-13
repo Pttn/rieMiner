@@ -8,11 +8,11 @@
 #include <stdio.h>
 #include <cstring>
 
-std::string minerVersionString("rieMiner 0.11");
+std::string minerVersionString("rieMiner 0.111");
 
 Client client;
 pthread_mutex_t clientMutex;
-volatile uint32 monitorCurrentBlockHeight; // used to notify worker threads of new block data
+volatile uint32_t monitorCurrentBlockHeight; // used to notify worker threads of new block data
 
 Stats stats = Stats();
 
@@ -88,11 +88,13 @@ void workManagement() {
 	std::chrono::time_point<std::chrono::system_clock> timer;
 	while (true) {
 		if (client.connected()) {
-			std::chrono::time_point<std::chrono::system_clock> t(std::chrono::system_clock::now());
-			std::chrono::duration<double> dt(t - timer);
-			if (dt.count() > 10 && algorithmInited) {
-				stats.printStats();
-				timer = std::chrono::system_clock::now();
+			if (arguments.refreshRate != 0 && stats.difficulty != 1) {
+				double dt(timeSince(timer));
+				if (dt > arguments.refreshRate && algorithmInited) {
+					stats.printStats();
+					stats.printEstimatedTimeToBlock();
+					timer = std::chrono::system_clock::now();
+				}
 			}
 			
 			pthread_mutex_lock(&clientMutex);
@@ -128,8 +130,10 @@ void workManagement() {
 				std::cout << "Failure :| ! Retry in 5 seconds..." << std::endl;
 				usleep(5000000);
 			}
-			else
+			else {
 				std::cout << "Connected!" << std::endl;
+				stats = Stats();
+			}
 			usleep(10000);
 		}
 	}
@@ -144,6 +148,7 @@ void printUsage() {
 	std::cout << "  -t : Number of threads for mining (default 1)" << std::endl;
 	std::cout << "  -s : Prime sieve max (default: 1073741824)" << std::endl;
 	std::cout << "  -k : k-tuples of at least this length will be submitted" << std::endl;
+	std::cout << "  -r : seconds between each stats refresh (default 10, integer). 0 for showing only when a tuple of enough length is found." << std::endl;
 	std::cout << "Example: ./rieMiner -o example.com:12345 -u user.worker1 -p password -t 4" << std::endl;
 }
 
@@ -220,6 +225,14 @@ void getArguments(int argc, char **argv) {
 				arguments.tuples = 6;
 			cIdx++;
 		}
+		else if (memcmp(argument, "-r", 3) == 0) {
+			if (cIdx >= argc) {
+				printf("Missing duration after -r option\n");
+				exit(0);
+			}
+			arguments.refreshRate = atoi(argv[cIdx]);
+			cIdx++;
+		}
 		else if (memcmp(argument, "-help", 6) == 0 || memcmp(argument, "--help", 7) == 0) {
 			printUsage();
 			exit(0);
@@ -246,6 +259,7 @@ int main(int argc, char** argv) {
 	std::cout << "Threads = " << arguments.threads << std::endl;
 	std::cout << "Sieve max = " << arguments.sieveMax << std::endl;
 	std::cout << "Will submit tuples of at least length = " << (uint16_t) arguments.tuples << std::endl;
+	std::cout << "Stats refresh rate = " << arguments.refreshRate << " s" << std::endl;
 	std::cout << "----------------------------------------" << std::endl;
 	arguments.threads += 1;
 	// Init work source
