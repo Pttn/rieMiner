@@ -1,4 +1,4 @@
-/* (c) 2017 Pttn (https://github.com/Pttn/rieMiner) */
+/* (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner) */
 
 #ifndef HEADER_CLIENT_H
 #define HEADER_CLIENT_H
@@ -77,6 +77,7 @@ class Client {
 	
 	Client();
 	bool connect(const std::string&, const std::string&, const std::string&, uint16_t);
+	json_t* sendRPCCall(CURL*, const std::string&) const; 
 	bool getWork();
 	void sendWork(const std::pair<GetWorkData, uint8_t>&) const;
 	void addSubmission(const GetWorkData& gwdToSubmit, uint8_t difficulty) {

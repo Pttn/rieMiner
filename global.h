@@ -1,15 +1,13 @@
-/* (c) 2017 Pttn (https://github.com/Pttn/rieMiner) */
+/* (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner) */
 
 #ifndef HEADER_GLOBAL_H
 #define HEADER_GLOBAL_H
 
 #include <unistd.h>
 #include <pthread.h>
-#include <gmp.h>
 #include <gmpxx.h>
 #include <stdio.h>
 #include <iostream>
-#include <cstdlib>
 #include <cstdint>
 #include <string>
 #include <sstream>
@@ -107,10 +105,6 @@ extern Arguments arguments;
 
 extern volatile uint32_t monitorCurrentBlockHeight;
 extern volatile uint32_t monitorCurrentBlockTime;
-
-uint64_t getTimeMilliseconds();
-uint64_t getTimeHighRes();
-uint64_t getTimerRes();
 
 #define bswap_32(x) ((((x) << 24) & 0xff000000u) | (((x) << 8) & 0x00ff0000u) | (((x) >> 8) & 0x0000ff00u) | (((x) >> 24) & 0x000000ffu))
 

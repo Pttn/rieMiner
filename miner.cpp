@@ -1,6 +1,6 @@
 /* Adapted from latest known optimized Riecoin miner, fastrie from dave-andersen (https://github.com/dave-andersen/fastrie).
 (c) 2014-2017 dave-andersen (http://www.cs.cmu.edu/~dga/)
-(c) 2017 Pttn (https://github.com/Pttn/rieMiner) */
+(c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner) */
 
 #include <assert.h>
 #include <math.h>
@@ -149,7 +149,7 @@ void miningInit(uint64_t sieveMax, int16_t threads) {
 	
 	segment_counts.resize(maxiter);
 	for (uint32_t i(miner.parameters.primorialNumber) ; i < nPrimes ; i++) {
-		uint32 p = miner.parameters.primes[i];
+		uint32_t p = miner.parameters.primes[i];
 		if (p < denseLimit)
 			n_dense++;
 		else if (p < max_increments)
@@ -264,7 +264,7 @@ void process_sieve(uint8_t *sieve, uint32_t start_i, uint32_t end_i) {
 	for (uint32_t i(start_i) ; i < end_i ; i++) {
 		uint32_t pno(i + startingPrimeIndex);
 		uint32_t p(miner.parameters.primes[pno]);
-		for (uint32 f(0) ; f < 6; f++) {
+		for (uint32_t f(0) ; f < 6; f++) {
 			while (offsets[pno][f] < riecoin_sieveSize) {
 				add_to_pending(sieve, pending, pending_pos, offsets[pno][f]);
 				offsets[pno][f] += p;
@@ -469,7 +469,7 @@ void miningProcess(const WorkInfo& block) {
 	 * 4)	Scan sieve for candidates, test, report
 	 */
 
-	uint32 countCandidates = 0;
+	uint32_t countCandidates = 0;
 	uint32_t outstandingTests = 0;
 	for (uint32_t loop(0); loop < maxiter; loop++) {
 		__sync_synchronize(); // gcc specific - memory barrier for checking height
@@ -502,11 +502,12 @@ void miningProcess(const WorkInfo& block) {
 		}
 
 		memset(sieve, 0, riecoin_sieveSize/8);
+		
 		for (uint32_t i(0) ; i < n_dense ; i++) {
 			uint32_t pno(i + startingPrimeIndex);
 			silly_sort_indexes(offsets[pno]);
 			uint32_t p(miner.parameters.primes[pno]);
-			for (uint32 f(0) ; f < 6 ; f++) {
+			for (uint32_t f(0) ; f < 6 ; f++) {
 				while (offsets[pno][f] < riecoin_sieveSize) {
 					assert(offsets[pno][f] < riecoin_sieveSize);
 					sieve[offsets[pno][f]>>3] |= (1 << ((offsets[pno][f] & 7)));
@@ -517,7 +518,7 @@ void miningProcess(const WorkInfo& block) {
 		}
 		
 		outstandingTests -= miner.testDoneQueue.clear();
-		for (int i(0) ; i < n_workers; i++)
+		for (int32_t i(0) ; i < n_workers; i++)
 			miner.workerDoneQueue.pop_front();
 		
 		for (uint32_t i(0) ; i < riecoin_sieveWords ; i++) {
@@ -536,7 +537,7 @@ void miningProcess(const WorkInfo& block) {
 			uint32_t old = pending[i];
 			if (old != 0) {
 				assert(old < riecoin_sieveSize);
-				sieve[old>>3] |= (1<<(old&7));
+				sieve[old >> 3] |= (1 << (old & 7));
 			}
 		}
 		
@@ -547,7 +548,7 @@ void miningProcess(const WorkInfo& block) {
 
 		bool do_reset(false);
 		uint64_t *sieve64 = (uint64_t*) sieve;
-		for(uint32 b(0) ; !do_reset && b < riecoin_sieveWords ; b++) {
+		for(uint32_t b(0) ; !do_reset && b < riecoin_sieveWords ; b++) {
 			uint64_t sb(~sieve64[b]);
 			
 			int sb_process_count(0);

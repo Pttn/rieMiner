@@ -1,14 +1,12 @@
 /* Parts taken from dave-andersen's fastrie (https://github.com/dave-andersen/fastrie) (based on xptMiner). jh00 is the original author of xptMiner.
 (c) 2014 jh00 (https://github.com/jh000/xptMiner)
 (c) 2014-2017 dave-andersen (http://www.cs.cmu.edu/~dga/)
-(c) 2017 Pttn (https://github.com/Pttn/rieMiner) */
+(c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner) */
 
 #include "global.h"
 #include <iomanip>
-#include <stdio.h>
-#include <cstring>
 
-std::string minerVersionString("rieMiner 0.111");
+std::string minerVersionString("rieMiner 0.112");
 
 Client client;
 pthread_mutex_t clientMutex;

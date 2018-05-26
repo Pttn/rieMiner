@@ -1,4 +1,4 @@
-# rieMiner 0.111
+# rieMiner 0.112
 
 rieMiner is a Riecoin miner using the Getwork protocol and the latest mining algorithm, so it can be used to solo mine efficiently using the official wallet. It is adapted from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie):
 
@@ -87,26 +87,26 @@ Then, just be patient... Happy mining :D ! It is always nice to wake up to see t
 rieMiner will regularly print some stats, and the frequency of this can be changed with the -r argument. Example:
 
 ```bash
-[0053:23:13] (2/3t/s) = (3.52 0.120) ; (4-6t) = (677095 23024 798 24 1) ; Diff: 1687
+[0024:46:09] (2/3t/s) = (7.36 0.255) ; (2-6t) = (654259 22261 793 38 2) ; Diff: 1557
 ```
 
-This means: "53 h 23 min and 13 s passed since the start of mining. The miner found on average 3.52 2-tuples and 0.12 3-tuple each second, since the last difficulty change. The next numbers are the number of total tuples found (example, 798 4-tuples, and 1 block) since the start of the mining. Currently, the Riecoin difficulty is 1687."
+This means: "24 h 46 min and 9 s passed since the start of mining. The miner found on average 7.36 2-tuples and 0.255 3-tuples each second since the last difficulty change. Then the total of tuples found (example, 793 4-tuples, and 2 blocks) since the start of the mining. Currently, the Riecoin difficulty is 1557."
 
 After finding at least three 4-tuples after a difficulty change, rieMiner will also estimate the average time to find a block by extrapolating from how many 2, 3 and 4-tuples were found, but of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week.
 
-These results were obtained with an Intel 6700K so you can tell if something is wrong if a 8700K has lower values for example... But, you should wait at least a few hours before comparing values. With a 6700K and at ~1700 difficulty, you can expect to get 1-2 block(s) every week on average. Note too than the higher is the difficulty, the lower is the tuples find rates.
+These results were obtained with a Ryzen R7 2700X at 3.7 GHz, and you can use this reference to ensure that your miner is mining as fast as it should. Keep in mind that you should wait at least a few hours before comparing values, and the higher is the difficulty, the lower are the tuples find rates (I will add a benchmark mode in a future version). With a 2700X and at ~1600 difficulty, you can expect to get 2-3 blocks every week on average.
 
 Note that these values are not comparable at all with those given by fastrie! It seems that somewhere in the past, the definition of a valid share (for pooled mining) changed, so they adapted the stats formulas to match with the old system, but now their numbers do not really mean anything (but can be used to compare different computers, as long as they use the same miner). Moreover, a share for pooled mining is valid if 4 numbers from any in the sextuplet is prime (4ch), but in rieMiner a 4-tuple is a sextuplet in which the 4 first numbers are prime, so it is harder to find.
 
-But the performance is guaranteed to match the fastrie's, as it uses the same algorithm.
+But the performance should match the fastrie's, as it uses the same algorithm.
 
-rieMiner will also notify if it found a k-tuple (k > 3) or if the network found a new block. If it finds a block, it will show the full Getwork submission and tell if it was accepted or not. If the block was accepted, the reward will be generated and sent to a new random address which is included in your wallet, and you can spend it after 100 confirmations. Don't forget to backup regularly your wallet or move your rewards as these addresses don't appear in Receiving Addresses. To set an address for mining, the GetBlockTemplate protocol would have to be added in the miner, which I could do if I had time.
+rieMiner will also notify if it found a k-tuple (k > 3) or if the network found a new block. If it finds a block, it will show the full Getwork submission and tell if it was accepted or not. If the block was accepted, the reward will be generated and sent to a new random address which is included in your wallet, and you can spend it after 100 confirmations. Don't forget to backup regularly your wallet or move your rewards as these addresses don't appear in Receiving Addresses. To set an address for mining, the GetBlockTemplate protocol would have to be added in the miner, which I could do if I had enough time.
 
 ## Work control
 
-Unless you have a bunch of powerful processors, you have to wait some consequent time before finding a block. What if something is actually wrong and then the time the miner finally found a block, the submission fails?
+You might have to wait some consequent time before finding a block. What if something is actually wrong and then the time the miner finally found a block, the submission fails?
 
-First, if for some reason rieMiner disconnects from the wallet (you killed it or its computer crashed), it will detect that it has not received the Getwork data so it will just stop mining: so if it is currently mining, everything is fine.
+First, if for some reason rieMiner disconnects from the wallet (you killed it or its computer crashed), it will detect that it has not received the Getwork data and then just stop mining: so if it is currently mining, everything is fine.
 
 If you are worried about the fact that the block will be incorrectly submitted, here comes the -k option. Indeed, you can send invalid blocks to the wallet (after all, it is yours), and check if the wallet actually received them and if these submissions are properly processed. When such invalid block is submitted, you can check the debug.log file in the same location as riecoin.conf, and then, you should see something like
 
@@ -125,29 +125,40 @@ Then something is wrong (possible example would be an unstable overclock)...
 Also watch regularly if the wallet is correctly synching, especially if the message "New block found by the network" did not appear since a very long time (except if the Diff is very high, in this case, it means that the network is now mining the superblock). In Riecoin-Qt, this can be done by hovering the green check at the lower right corner, and comparing the number with the latest block found in an Riecoin explorer. If something is wrong, try to change the nodes in riecoin.conf, the following always worked fine for me:
 
 ```
-connect=5.9.39.9
+﻿connect=5.9.39.9
 connect=37.59.143.10
 connect=46.105.29.136
-connect=51.255.207.142
+connect=144.217.15.39
+connect=149.14.200.26
+connect=178.251.25.240
+connect=193.70.33.8
+connect=195.138.71.80
+connect=198.251.84.221
+connect=199.126.33.5
 connect=217.182.76.201
 ```
 
+## Miscellaneous
+
+Unless the weather is very cold, I do not recommend to overclock a CPU for mining, unless you can do that without increasing noticeably the power consumption. My 2700X computer would draw much, much more power at 4 GHz/1.2875 V instead of 3.7 GHz/1.08125 V, which is certainly absurd for a mere 8% increase. You might want to find the frequency with the best performance/power consumption ratio.
+
+If you can, try to undervolt the CPU to reduce power consumption, heat and noise. Note that the Riecoin miner is not really a good stress test, as I was able to mine for weeks with rieMiner, but launching Prime 95 crashed the system within seconds! I wonder if the miner code is somewhat unoptimized, as it is not stressing as much as Prime 95.
+
 ## Author and license
 
-* [Pttn](https://github.com/Pttn), contact: dev at PttNguyen dot net
+* [Pttn](https://github.com/Pttn), contact: dev at Pttn dot me
 
-Parts coming from other projects are subject to their respective licenses. Else, this work is released under the MIT license.
-See the [LICENSE](LICENSE) or top of source files for details.
+Parts coming from other projects are subject to their respective licenses. Else, this work is released under the MIT license. See the [LICENSE](LICENSE) or top of source files for details.
 
 ## Contributing
 
-Feel free to do a pull request and I will review it. I am open for but not so interested in adding new features, as I wish to keep this project minimalist. But then contributions cleaning the code will be appreciated. Making the code more C++ish is welcome too (example: replace pthread by std::thread), and obviously if you find a bug.
+Feel free to do a pull request and I will review it. I am open for adding new features, but I also wish to keep this project minimalist. Any contribution fixing any bug, cleaning the code, or making the code more C++ish (example: replace pthread by std::thread) will be welcome.
 
 Donations welcome:
 
-* Bitcoin: 1EZ3g68314WFcxFVttgeqQpLe1z2Z8GL8g
+* Bitcoin: 1PttnMeD9X6imTsRojmhHa1rjudW8Bjok5
+* Riecoin: RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB
 * Ethereum: 0x32de6b854b6a05448b4f25d4496990bece8a2862
-* Riecoin: RC2zUmBQbL4XQKsjp23LARn99qZq9a9uHC
 
 ## Resources
 
