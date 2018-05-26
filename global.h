@@ -47,6 +47,7 @@ struct Stats {
 		}
 		difficulty = 1;
 		blockHeightAtDifficultyChange = 0;
+		lastDifficultyChange = std::chrono::system_clock::now();
 		start = std::chrono::system_clock::now();
 	}
 	
@@ -58,21 +59,23 @@ struct Stats {
 	
 	void printStats() {
 		double elapsedSecs(timeSince(lastDifficultyChange));
-		if (elapsedSecs > 1) {
+		if (elapsedSecs > 1 && timeSince(startMining) > 1) {
 			printTime();
 			std::cout << " (2/3t/s) = (" << FIXED(2) << foundTuplesSinceLastDifficulty[2]/elapsedSecs << " " << FIXED(3) << foundTuplesSinceLastDifficulty[3]/elapsedSecs << ") ; "
-			          << "(2-6t) = (" << foundTuples[2] << " " << foundTuples[3] << " " << foundTuples[4] << " " << foundTuples[5] << " " << foundTuples[6] << ") ; "
-			          << "Diff: " << difficulty << std::endl;
+			          << "(2-6t) = (" << foundTuples[2] << " " << foundTuples[3] << " " << foundTuples[4] << " " << foundTuples[5] << " " << foundTuples[6] << ")";
 		}
 	}
 	
 	void printEstimatedTimeToBlock() {
 		double elapsedSecs(timeSince(lastDifficultyChange));
-		if (elapsedSecs > 1. && foundTuplesSinceLastDifficulty[4] > 2) {
-			double x(((double) foundTuplesSinceLastDifficulty[2])/((double) foundTuplesSinceLastDifficulty[3])),
-			       y(((double) foundTuplesSinceLastDifficulty[3])/((double) foundTuplesSinceLastDifficulty[4])),
-			       w(((double) foundTuplesSinceLastDifficulty[3])/elapsedSecs);
-			std::cout << "             Estimated average time to block: " << x*y*y/(86400.*w) << " days" << std::endl;
+		if (elapsedSecs > 1 && timeSince(startMining) > 1) {
+			if (foundTuplesSinceLastDifficulty[4] > 0) {
+				double x(((double) foundTuplesSinceLastDifficulty[2])/((double) foundTuplesSinceLastDifficulty[3])),
+				       y(((double) foundTuplesSinceLastDifficulty[3])/((double) foundTuplesSinceLastDifficulty[4])),
+				       w(((double) foundTuplesSinceLastDifficulty[3])/elapsedSecs);
+				std::cout << FIXED(2) << " | " << x*x*y/(86400.*w) << " d";
+			}
+			std::cout << std::endl;
 		}
 	}
 };

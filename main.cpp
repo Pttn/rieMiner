@@ -6,7 +6,7 @@
 #include "global.h"
 #include <iomanip>
 
-std::string minerVersionString("rieMiner 0.112");
+std::string minerVersionString("rieMiner 0.1121");
 
 Client client;
 pthread_mutex_t clientMutex;
@@ -72,7 +72,8 @@ void getWorkFromClient(Client& client) {
 	workDataSource.wi.targetCompact = client.workInfo.targetCompact;
 	if (workDataSource.wi.height == 0 && client.workInfo.height != 0) {
 		stats.startMining = std::chrono::system_clock::now();
-		std::cout << "[0000:00:00] Started mining" << std::endl;
+		stats.lastDifficultyChange = std::chrono::system_clock::now();
+		std::cout << "[0000:00:00] Started mining at block " << client.getBlockheight() << std::endl;
 	}
 	
 	workDataSource.wi.height = client.workInfo.height;
@@ -86,7 +87,7 @@ void workManagement() {
 	std::chrono::time_point<std::chrono::system_clock> timer;
 	while (true) {
 		if (client.connected()) {
-			if (arguments.refreshRate != 0 && stats.difficulty != 1) {
+			if (arguments.refreshRate != 0) {
 				double dt(timeSince(timer));
 				if (dt > arguments.refreshRate && algorithmInited) {
 					stats.printStats();
@@ -120,7 +121,7 @@ void workManagement() {
 			}
 		}
 		else {
-			std::cout << "Connecting to Riecoin wallet using JSON-RPC..." << std::endl;
+			std::cout << "Connecting to Riecoin server using JSON-RPC..." << std::endl;
 			pthread_mutex_lock(&clientMutex);
 			client = Client();
 			pthread_mutex_unlock(&clientMutex);

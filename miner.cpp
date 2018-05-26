@@ -386,15 +386,6 @@ void getTargetFromBlock(mpz_t z_target, const WorkInfo& block) {
 	
 	uint32_t trailingZeros(searchBits - 1 - zeroesBeforeHashInPrime - 256);
 	mpz_mul_2exp(z_target, z_target, trailingZeros);
-	
-	uint32_t difficulty = mpz_sizeinbase(z_target, 2);
-	if (stats.difficulty != difficulty) {
-		stats.lastDifficultyChange = std::chrono::system_clock::now();
-		stats.blockHeightAtDifficultyChange = block.height;
-		for (uint8_t i(0) ; i < 7 ; i++)
-			stats.foundTuplesSinceLastDifficulty[i] = 0;
-	}
-	stats.difficulty = difficulty;
 }
 
 void miningProcess(const WorkInfo& block) {

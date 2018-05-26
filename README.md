@@ -87,12 +87,12 @@ Then, just be patient... Happy mining :D ! It is always nice to wake up to see t
 rieMiner will regularly print some stats, and the frequency of this can be changed with the -r argument. Example:
 
 ```bash
-[0024:46:09] (2/3t/s) = (7.36 0.255) ; (2-6t) = (654259 22261 793 38 2) ; Diff: 1557
+[0024:46:09] (2/3t/s) = (7.36 0.255) ; (2-6t) = (654259 22261 793 38 2) | 1.14 d
 ```
 
-This means: "24 h 46 min and 9 s passed since the start of mining. The miner found on average 7.36 2-tuples and 0.255 3-tuples each second since the last difficulty change. Then the total of tuples found (example, 793 4-tuples, and 2 blocks) since the start of the mining. Currently, the Riecoin difficulty is 1557."
+This means: "24 h 46 min and 9 s passed since the start of mining. The miner found on average 7.36 2-tuples and 0.255 3-tuples each second since the last difficulty change. Then the total of tuples found (example, 793 4-tuples, and 2 blocks) since the start of the mining.
 
-After finding at least three 4-tuples after a difficulty change, rieMiner will also estimate the average time to find a block by extrapolating from how many 2, 3 and 4-tuples were found, but of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week.
+After finding at least a 4-tuples after a difficulty change, rieMiner will also estimate the average time to find a block (here, 1.14 days) by extrapolating from how many 2, 3 and 4-tuples were found, but of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week.
 
 These results were obtained with a Ryzen R7 2700X at 3.7 GHz, and you can use this reference to ensure that your miner is mining as fast as it should. Keep in mind that you should wait at least a few hours before comparing values, and the higher is the difficulty, the lower are the tuples find rates (I will add a benchmark mode in a future version). With a 2700X and at ~1600 difficulty, you can expect to get 2-3 blocks every week on average.
 
@@ -122,7 +122,7 @@ ERROR: CheckProofOfWork() : not a pow
 
 Then something is wrong (possible example would be an unstable overclock)...
 
-Also watch regularly if the wallet is correctly synching, especially if the message "New block found by the network" did not appear since a very long time (except if the Diff is very high, in this case, it means that the network is now mining the superblock). In Riecoin-Qt, this can be done by hovering the green check at the lower right corner, and comparing the number with the latest block found in an Riecoin explorer. If something is wrong, try to change the nodes in riecoin.conf, the following always worked fine for me:
+Also watch regularly if the wallet is correctly synching, especially if the message "Blockheight = ..." did not appear since a very long time (except if the Diff is very high, in this case, it means that the network is now mining the superblock). In Riecoin-Qt, this can be done by hovering the green check at the lower right corner, and comparing the number with the latest block found in an Riecoin explorer. If something is wrong, try to change the nodes in riecoin.conf, the following always worked fine for me:
 
 ```
 ﻿connect=5.9.39.9

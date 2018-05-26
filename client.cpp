@@ -89,15 +89,34 @@ json_t* Client::sendRPCCall(CURL *curl, const std::string& req) const {
 }
 
 bool Client::getWork() {
-	std::string req("{\"method\": \"getwork\", \"params\": [], \"id\": 0}\n");
-	json_t *jsonObj = NULL;
+	std::string reqGw("{\"method\": \"getwork\", \"params\": [], \"id\": 0}\n"),
+	            reqGmi("{\"method\": \"getmininginfo\", \"params\": [], \"id\": 0}\n");
+	json_t *jsonGw(NULL), *jsonGmi(NULL);
+ 	
+	jsonGw  = sendRPCCall(curl, reqGw);
+	jsonGmi = sendRPCCall(curl, reqGmi);
+	// Failure to GetWork or GetMiningInfo
+	if (jsonGw == NULL || jsonGmi == NULL) return false;
 	
-	jsonObj = sendRPCCall(curl, req);
-	if (jsonObj == NULL) return false; // Failure to GetWork
-	hexStrToBin(json_string_value(json_object_get(json_object_get(jsonObj, "result"), "data")), (unsigned char*) &gwd);
+	// Extract GetWork data
+	hexStrToBin(json_string_value(json_object_get(json_object_get(jsonGw, "result"), "data")), (unsigned char*) &gwd);
+ 	workInfo.gwd = gwd;
+ 	
+ 	// Get current block number and difficulty
+	uint32_t height(json_integer_value(json_object_get(json_object_get(jsonGmi, "result"), "blocks"))),
+	         difficulty(json_number_value(json_object_get(json_object_get(jsonGmi, "result"), "difficulty")));
+	blockheight = height;
+	if (stats.difficulty != difficulty) {
+		stats.lastDifficultyChange = std::chrono::system_clock::now();
+		stats.blockHeightAtDifficultyChange = workInfo.height;
+		for (uint8_t i(0) ; i < 7 ; i++)
+			stats.foundTuplesSinceLastDifficulty[i] = 0;
+	}
+	stats.difficulty = difficulty;
 	
-	if (jsonObj != NULL) json_decref(jsonObj);
-	workInfo.gwd = gwd;
+	json_decref(jsonGw);
+	json_decref(jsonGmi);
+	
 	return true;
 }
 
@@ -187,11 +206,18 @@ bool Client::process() {
 	if (getWork()) {
 		if (memcmp(gwd.prevBlockHash, prevBlockHashOld, 32) != 0) {
 			if (workInfo.height != 0) {
-				std::cout << "New block found by the network (" << workInfo.height << " since start), average "
-				          << timeSince(stats.lastDifficultyChange)/(workInfo.height + 1 - stats.blockHeightAtDifficultyChange) << " s" << std::endl;
+				stats.printTime();
+				if (workInfo.height - stats.blockHeightAtDifficultyChange != 0) {
+					std::cout << " Blockheight = " << blockheight << ", average "
+					          << FIXED(1) << timeSince(stats.lastDifficultyChange)/(workInfo.height - stats.blockHeightAtDifficultyChange)
+					          << " s, difficulty = " << stats.difficulty << std::endl;
+				}
+				else
+					std::cout << " Blockheight = " << blockheight << ", new difficulty = " << stats.difficulty << std::endl;
 			}
 			workInfo.height++;
 		}
+		
 		// Change endianness for mining (will revert back when submit share)
 		workInfo.gwd.version = swab32(workInfo.gwd.version);
 		for (uint8_t i(0) ; i < 8; i++) {

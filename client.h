@@ -55,6 +55,7 @@ class Client {
 	std::string pass;
 	std::string host;
 	uint16_t port;
+	uint32_t blockheight;
 	GetWorkData gwd;
 	CURL *curl;
 	pthread_mutex_t submitMutex;
@@ -87,6 +88,7 @@ class Client {
 	}
 	bool process();
 	bool connected() {return _connected;}
+	uint32_t getBlockheight() {return blockheight;}
 };
 
 extern std::string minerVersionString;
