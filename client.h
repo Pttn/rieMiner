@@ -43,9 +43,8 @@ struct WorkInfo {
 		gwd = GetWorkData();
 		height = 0;
 		targetCompact = 0;
-		for (uint8_t i(0) ; i < 8 ; i++) {
+		for (uint8_t i(0) ; i < 8 ; i++)
 			target[i] = 0;
-		}
 	}
 };
 
@@ -58,7 +57,7 @@ class Client {
 	uint32_t blockheight;
 	GetWorkData gwd;
 	CURL *curl;
-	pthread_mutex_t submitMutex;
+	std::mutex submitMutex;
 	std::vector<std::pair<GetWorkData, uint8_t>> pendingSubmissions;
 	
 	std::string getUserPass() const {
@@ -77,18 +76,18 @@ class Client {
 	WorkInfo workInfo;
 	
 	Client();
-	bool connect(const std::string&, const std::string&, const std::string&, uint16_t);
+	bool connect(const Arguments&);
 	json_t* sendRPCCall(CURL*, const std::string&) const; 
 	bool getWork();
 	void sendWork(const std::pair<GetWorkData, uint8_t>&) const;
 	void addSubmission(const GetWorkData& gwdToSubmit, uint8_t difficulty) {
-		pthread_mutex_lock(&submitMutex);
+		submitMutex.lock();
 		pendingSubmissions.push_back(std::make_pair(gwdToSubmit, difficulty));
-		pthread_mutex_unlock(&submitMutex);
+		submitMutex.unlock();
 	}
 	bool process();
 	bool connected() {return _connected;}
-	uint32_t getBlockheight() {return blockheight;}
+	uint32_t getBlockheight() const {return blockheight;}
 };
 
 extern std::string minerVersionString;

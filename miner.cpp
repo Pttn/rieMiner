@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <math.h>
 #include "global.h"
+#include "client.h"
 #include "tsqueue.hpp"
 
 struct MinerParameters {
@@ -80,8 +81,8 @@ uint32_t nPrimes,
 
 thread_local bool isMaster(false);
 bool there_is_a_master = false;
-pthread_mutex_t master_lock;
-pthread_mutex_t bucket_lock; /* careful */
+std::mutex master_lock;
+std::mutex bucket_lock; /* careful */
 
 mpz_t z_verify_target, z_verify_remainderPrimorial;
 WorkInfo verify_block;
@@ -90,8 +91,7 @@ void miningInit(uint64_t sieveMax, int16_t threads) {
 	miner.parameters.threads = threads;
 	miner.parameters.sieveWorkers = std::max(1, threads/4);
 	miner.parameters.sieveWorkers = std::min(miner.parameters.sieveWorkers, 8);
-	pthread_mutex_init(&master_lock, NULL);
-	pthread_mutex_init(&bucket_lock, NULL);
+	
 	mpz_init(z_verify_target);
 	mpz_init(z_verify_remainderPrimorial);
 	
@@ -192,7 +192,7 @@ inline void add_to_pending(uint8_t *sieve, uint32_t pending[PENDING_SIZE], uint3
 }
 
 void put_offsets_in_segments(uint32_t *offsets, int n_offsets) {
-	pthread_mutex_lock(&bucket_lock);
+	bucket_lock.lock();
 	for (int i = 0; i < n_offsets; i++) {
 		uint32_t index = offsets[i];
 		uint32_t segment = index>>riecoin_sieveBits;
@@ -204,7 +204,7 @@ void put_offsets_in_segments(uint32_t *offsets, int n_offsets) {
 		segment_hits[segment][sc] = index - (riecoin_sieveSize*segment);
 		segment_counts[segment]++;
 	}
-	pthread_mutex_unlock(&bucket_lock);
+	bucket_lock.unlock();
 }
 
 thread_local uint32_t *offset_stack = NULL;
@@ -345,7 +345,7 @@ void verify_thread() {
 					else break;
 				}
 				
-				if (nPrimes < arguments.tuples) continue;
+				if (nPrimes < arguments.tuples()) continue;
 	
 				// Generate nOffset and submit
 				uint8_t nOffset[32];
@@ -390,12 +390,12 @@ void getTargetFromBlock(mpz_t z_target, const WorkInfo& block) {
 
 void miningProcess(const WorkInfo& block) {
 	if (!there_is_a_master) {
-		pthread_mutex_lock(&master_lock);
+		master_lock.lock();
 		if (!there_is_a_master) {
 			there_is_a_master = true;
 			isMaster = true;
 		}
-		pthread_mutex_unlock(&master_lock);
+		master_lock.unlock();
 	}
 	
 	if (!isMaster) {

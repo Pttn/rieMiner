@@ -1,6 +1,7 @@
 // (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
 
 #include "global.h"
+#include "client.h"
 
 std::string binToHexStr(const void* p, uint32_t len) {
 	std::ostringstream oss;
@@ -37,16 +38,15 @@ Client::Client() {
 	_connected = false;
 	pendingSubmissions = std::vector<std::pair<GetWorkData, uint8_t>>();
 	curl = curl_easy_init();
-	pthread_mutex_init(&submitMutex, NULL);
 }
 
 // Returns false on error or if already connected
-bool Client::connect(const std::string& user0, const std::string& pass0, const std::string& host0, uint16_t port0) {
+bool Client::connect(const Arguments& arguments) {
 	if (_connected) return false;
-	user = user0;
-	pass = pass0;
-	host = host0;
-	port = port0;
+	user = arguments.user();
+	pass = arguments.pass();
+	host = arguments.host();
+	port = arguments.port();
 	if (!getWork()) return false;
 	gwd = GetWorkData();
 	_connected = true;
@@ -191,7 +191,7 @@ uint32_t getCompact(uint32_t nCompact) {
 
 bool Client::process() {
 	// Are there shares to submit?
-	pthread_mutex_lock(&submitMutex);
+	submitMutex.lock();
 	if (pendingSubmissions.size() > 0) {
 		for (uint32_t i(0) ; i < pendingSubmissions.size() ; i++) {
 			std::pair<GetWorkData, uint8_t> share(pendingSubmissions[i]);
@@ -199,7 +199,7 @@ bool Client::process() {
 		}
 		pendingSubmissions.clear();
 	}
-	pthread_mutex_unlock(&submitMutex);
+	submitMutex.unlock();
 	
 	uint32_t prevBlockHashOld[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 	memcpy(prevBlockHashOld, gwd.prevBlockHash, 32);

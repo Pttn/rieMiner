@@ -1,8 +1,8 @@
-# rieMiner 0.112
+# rieMiner 0.113
 
 rieMiner is a Riecoin miner using the Getwork protocol and the latest mining algorithm, so it can be used to solo mine efficiently using the official wallet. It is adapted from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie):
 
-* rminerd can be used to mine with the wallet but its algorithm is outdated and slow;
+* rminerd can be used to mine with the wallet, but its algorithm is outdated and slow;
 * fastrie (also known as xptMiner) mines efficiently but only supports the Stratum and the outdated and undocumented XPT protocols. Yes, you can also use solo mining pools, but then you depend on them, and they might charge a fee or get the transactions fees for themselves. Moreover, it is more gratifying to get directly the reward in your wallet :D ;
 * By combining both, rieMiner can be used to mine efficiently and easily with the wallet!
 
@@ -36,7 +36,11 @@ The (nodeip) after connect are nodes' IP, you can find a list of the nodes conne
 
 ## Compile this program
 
-You can compile this C++ (with many C parts, though) program with g++ and make, install them if needed. Then, get if needed the following dependencies:
+Note that I never tested this program in 32 bits x86 systems, but this should not be an issue, since every 32 bits only processors are too slow for mining anyway, and very few people are going to install 32 bits OSes in a 64 bits machine.
+
+### In Debian/Ubuntu x64
+
+You can compile this C++ program with g++ and make, install them if needed. Then, get if needed the following dependencies:
 
 * Jansson
 * cURL
@@ -45,7 +49,7 @@ You can compile this C++ (with many C parts, though) program with g++ and make, 
 On a recent enough Debian or Ubuntu, you can easily install these by doing as root:
 
 ```bash
-apt install g++ make libjansson-dev libcurl4-openssl-dev libgmp-dev
+apt install g++ make git libjansson-dev libcurl4-openssl-dev libgmp-dev
 ```
 
 Then, just download the source files, go/cd to the directory, and do a simple make:
@@ -56,28 +60,47 @@ cd rieMiner
 make
 ```
 
-## Run this program
+For other Linux, executing equivalent commands should work.
 
-You can then run the newly created rieMiner executable using the following syntax:
+### In Windows x64
+
+Currently, it is possible to compile rieMiner with MSYS2, but for unknown reasons, the executable fails by throwing a bad alloc at the start of mining. This seems to be solved by decreasing the max_increments, but for now, the Windows support is very limited. Here are the compilation instructions anyway, if you are interested in.
+
+First, you have to install [MSYS2](http://www.msys2.org/) (follow the instructions on the website), then enter in the MSYS MinGW-w64 console, and install the tools and dependencies:
 
 ```bash
-./rieMiner <Options>
+pacman -S make
+pacman -S git
+pacman -S mingw64/mingw-w64-x86_64-gcc
+pacman -S mingw64/mingw-w64-x86_64-curl
+pacman -S mingw64/mingw-w64-x86_64-jansson
 ```
 
-The available options are:
+And finally compile with make.
 
-* -o : IP and port. Default: 127.0.0.1:28332;
-* -u : username;
-* -p : password;
-* -t : number of threads. Default: 1;
-* -s : size of the sieve table used for mining. Use a bigger number (but less than 2^32) if you have more RAM as you will obtain better results. Default: 2^30;
-* -k : submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6;
-* -r : refresh rate of the stats in seconds. Default: 10. 0 to disable them; will only notify when a k-tuple (k greater than argument provided via -k) is found or when the network finds a block.
+## Run this program
 
-Example:
+First of all, open or create a file named "rieMiner.conf" next to the executable, in order to provide options to the miner. The rieMiner.conf syntax is very simple: each option is given by a line such
+
+```
+Option type = Option value
+```
+
+It is case sensitive, but spaces and invalid lines are ignored. If an option or the file is missing, the default value(s) will be used. If there are duplicate lines, the last one will be used. The available options are:
+
+* Host : IP of the Riecoin wallet/server. Default: 127.0.0.1 (your computer);
+* Port : port of the Riecoin wallet/server. Default: 28332 (default port for Riecoin-Qt);
+* User : username used to connect in the server (rpcuser). Default: nothing;
+* Pass : password used to connect in the server (rpcpassword). Default: nothing;
+* Threads : number of threads used for mining. Default: 8;
+* Sieve : size of the sieve table used for mining. Use a bigger number (but less than 2^32) if you have more RAM as you will obtain better results. Default: 2^30;
+* Tuples : submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6;
+* Refresh : refresh rate of the stats in seconds. 0 to disable them; will only notify when a k-tuple (k > 4) is found, or when the network finds a block. Default: 10.
+
+You can finally run the newly created rieMiner executable using
 
 ```bash
-./rieMiner -o 127.0.0.1:28332 -u username -p password -t 8 -s 2000000000
+./rieMiner
 ```
 
 Then, just be patient... Happy mining :D ! It is always nice to wake up to see that your miner found a block during the night :p, and you will be a direct contributor for the robustness of the Riecoin network.
@@ -140,7 +163,7 @@ connect=217.182.76.201
 
 ## Miscellaneous
 
-Unless the weather is very cold, I do not recommend to overclock a CPU for mining, unless you can do that without increasing noticeably the power consumption. My 2700X computer would draw much, much more power at 4 GHz/1.2875 V instead of 3.7 GHz/1.08125 V, which is certainly absurd for a mere 8% increase. You might want to find the frequency with the best performance/power consumption ratio.
+Unless the weather is very cold, I do not recommend to overclock a CPU for mining, unless you can do that without increasing noticeably the power consumption. My 2700X computer would draw much, much more power at 4 GHz/1.2875 V instead of 3.7 GHz/1.08125 V, which is certainly absurd for a mere 8% increase. To get maximum efficiency, you might want to find the frequency with the best performance/power consumption ratio (which could also be obtained by underclocking the processor).
 
 If you can, try to undervolt the CPU to reduce power consumption, heat and noise. Note that the Riecoin miner is not really a good stress test, as I was able to mine for weeks with rieMiner, but launching Prime 95 crashed the system within seconds! I wonder if the miner code is somewhat unoptimized, as it is not stressing as much as Prime 95.
 
@@ -152,7 +175,7 @@ Parts coming from other projects are subject to their respective licenses. Else,
 
 ## Contributing
 
-Feel free to do a pull request and I will review it. I am open for adding new features, but I also wish to keep this project minimalist. Any contribution fixing any bug, cleaning the code, or making the code more C++ish (example: replace pthread by std::thread) will be welcome.
+Feel free to do a pull request and I will review it. I am open for adding new features, but I also wish to keep this project minimalist. Any useful contribution will be welcomed.
 
 Donations welcome:
 

@@ -4,7 +4,6 @@
 #define HEADER_GLOBAL_H
 
 #include <unistd.h>
-#include <pthread.h>
 #include <gmpxx.h>
 #include <stdio.h>
 #include <iostream>
@@ -15,8 +14,9 @@
 #include <vector>
 #include <iomanip>
 #include <chrono>
+#include <thread>
+#include <mutex>
 
-#include "client.h"
 #include "External/sha2.h"
 
 struct GetWorkData;
@@ -82,26 +82,41 @@ struct Stats {
 
 extern Stats stats;
 
-struct Arguments {
-	std::string host;
-	uint16_t port;
-	std::string user;
-	std::string pass;
-	uint16_t threads;
-	uint32_t sieveMax;
-	uint8_t tuples;
-	uint32_t refreshRate;
+class Arguments {
+	std::string _host;
+	uint16_t _port;
+	std::string _user;
+	std::string _pass;
+	uint16_t _threads;
+	uint32_t _sieve;
+	uint8_t _tuples;
+	uint32_t _refresh;
+	
+	void parseLine(std::string, std::string&, std::string&) const;
+	
+	public:
 	
 	Arguments() {
-		user = "";
-		pass = "";
-		host = "127.0.0.1";
-		port = 28332;
-		threads = 1;
-		sieveMax = 1073741824;
-		tuples = 6;
-		refreshRate = 10;
+		_user    = "";
+		_pass    = "";
+		_host    = "127.0.0.1";
+		_port    = 28332;
+		_threads = 8;
+		_sieve   = 1073741824;
+		_tuples  = 6;
+		_refresh = 10;
 	}
+	
+	void loadConf();
+	
+	std::string host() const {return _host;}
+	uint16_t port() const {return _port;}
+	std::string user() const {return _user;}
+	std::string pass() const {return _pass;}
+	uint16_t threads() const {return _threads;}
+	uint32_t sieve() const {return _sieve;}
+	uint8_t tuples() const {return _tuples;}
+	uint32_t refresh() const {return _refresh;}
 };
 
 extern Arguments arguments;
