@@ -1,4 +1,4 @@
-# rieMiner 0.113
+# rieMiner 0.114
 
 rieMiner is a Riecoin miner using the Getwork protocol and the latest mining algorithm, so it can be used to solo mine efficiently using the official wallet. It is adapted from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie):
 
@@ -6,9 +6,7 @@ rieMiner is a Riecoin miner using the Getwork protocol and the latest mining alg
 * fastrie (also known as xptMiner) mines efficiently but only supports the Stratum and the outdated and undocumented XPT protocols. Yes, you can also use solo mining pools, but then you depend on them, and they might charge a fee or get the transactions fees for themselves. Moreover, it is more gratifying to get directly the reward in your wallet :D ;
 * By combining both, rieMiner can be used to mine efficiently and easily with the wallet!
 
-Code was also much simplified. As trade-off, I only tested it on Linux x64 and it might not compile on other systems. If you want to get this miner working in other systems or architectures, feel free to adapt yourself this project.
-
-It does not support Stratum, but if you want to use it, just use or adapt fastrie. Though, if I receive enough interest in supporting Stratum (so this miner can do both pooled and solo mining), I will add this protocol.
+Code was also much simplified. It does not implement Stratum, but I plan to add this soon to support both solo and pool mining.
 
 This README also serves as manual for rieMiner, and assumes that you use Riecoin-Qt as wallet/server. I hope that this program will be useful for you!
 
@@ -36,8 +34,6 @@ The (nodeip) after connect are nodes' IP, you can find a list of the nodes conne
 
 ## Compile this program
 
-Note that I never tested this program in 32 bits x86 systems, but this should not be an issue, since every 32 bits only processors are too slow for mining anyway, and very few people are going to install 32 bits OSes in a 64 bits machine.
-
 ### In Debian/Ubuntu x64
 
 You can compile this C++ program with g++ and make, install them if needed. Then, get if needed the following dependencies:
@@ -64,19 +60,32 @@ For other Linux, executing equivalent commands should work.
 
 ### In Windows x64
 
-Currently, it is possible to compile rieMiner with MSYS2, but for unknown reasons, the executable fails by throwing a bad alloc at the start of mining. This seems to be solved by decreasing the max_increments, but for now, the Windows support is very limited. Here are the compilation instructions anyway, if you are interested in.
-
-First, you have to install [MSYS2](http://www.msys2.org/) (follow the instructions on the website), then enter in the MSYS MinGW-w64 console, and install the tools and dependencies:
+You can compile rieMiner in Windows. Here is one way to do this. First, you have to install [MSYS2](http://www.msys2.org/) (follow the instructions on the website), then enter in the MSYS **MinGW-w64** console, and install the tools and dependencies:
 
 ```bash
 pacman -S make
 pacman -S git
 pacman -S mingw64/mingw-w64-x86_64-gcc
 pacman -S mingw64/mingw-w64-x86_64-curl
-pacman -S mingw64/mingw-w64-x86_64-jansson
 ```
 
 And finally compile with make.
+
+### For 32 bits computers
+
+First, go to the file global.h and change
+
+```
+#define BITS	64
+```
+
+to
+
+```
+#define BITS	32
+```
+
+Then, follow the instructions for 64 bits systems. If you do not do this, the compilation will work, but the blocks produced will be invalid.
 
 ## Run this program
 
@@ -105,6 +114,10 @@ You can finally run the newly created rieMiner executable using
 
 Then, just be patient... Happy mining :D ! It is always nice to wake up to see that your miner found a block during the night :p, and you will be a direct contributor for the robustness of the Riecoin network.
 
+### Unable to allocate memory for the segment_hits
+
+If you get this message, try to lower the max_increments variable in the miner.cpp file, for exemple from 2^29 to 2^25.
+
 ## Statistics
 
 rieMiner will regularly print some stats, and the frequency of this can be changed with the -r argument. Example:
@@ -123,7 +136,7 @@ Note that these values are not comparable at all with those given by fastrie! It
 
 But the performance should match the fastrie's, as it uses the same algorithm.
 
-rieMiner will also notify if it found a k-tuple (k > 3) or if the network found a new block. If it finds a block, it will show the full Getwork submission and tell if it was accepted or not. If the block was accepted, the reward will be generated and sent to a new random address which is included in your wallet, and you can spend it after 100 confirmations. Don't forget to backup regularly your wallet or move your rewards as these addresses don't appear in Receiving Addresses. To set an address for mining, the GetBlockTemplate protocol would have to be added in the miner, which I could do if I had enough time.
+rieMiner will also notify if it found a k-tuple (k > 3) or if the network found a new block. If it finds a block, it will show the full Getwork submission and tell if it was accepted or not. If the block was accepted, the reward will be generated and sent to a new random address which is included in your wallet, and you can spend it after 100 confirmations. Don't forget to backup regularly your wallet or move your rewards as these addresses don't appear in Receiving Addresses. To set an address for mining, the GetBlockTemplate protocol would have to be added in the miner, which I plan to do soon.
 
 ## Work control
 

@@ -3,6 +3,8 @@
 #ifndef HEADER_GLOBAL_H
 #define HEADER_GLOBAL_H
 
+#define BITS	64
+
 #include <unistd.h>
 #include <gmpxx.h>
 #include <stdio.h>

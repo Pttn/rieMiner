@@ -8,7 +8,7 @@
 #include <iomanip>
 #include <fstream>
 
-std::string minerVersionString("rieMiner 0.113");
+std::string minerVersionString("rieMiner 0.114");
 
 Client client;
 std::mutex clientMutex;

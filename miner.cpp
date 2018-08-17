@@ -350,8 +350,13 @@ void verify_thread() {
 				// Generate nOffset and submit
 				uint8_t nOffset[32];
 				memset(nOffset, 0x00, 32);
+#if BITS == 32
+				for(uint32_t d(0) ; d < (uint32_t) std::min(32/4, z_temp2->_mp_size) ; d++)
+					*(uint32_t*) (nOffset + d*4) = z_temp2->_mp_d[d];
+#else
 				for(uint32_t d(0) ; d < (uint32_t) std::min(32/8, z_temp2->_mp_size) ; d++)
 					*(uint64_t*) (nOffset + d*8) = z_temp2->_mp_d[d];
+#endif
 				
 				submitWork(verify_block.gwd, (uint32_t*) nOffset, nPrimes);
 			}
@@ -404,14 +409,54 @@ void miningProcess(const WorkInfo& block) {
 	}
 	
 	if (riecoin_sieve == NULL) {
-		riecoin_sieve = new uint8_t[riecoin_sieveSize/8];
-		miner.sieves = new uint8_t*[miner.parameters.sieveWorkers];
-		for (int i(0) ; i < miner.parameters.sieveWorkers; i++)
-			miner.sieves[i] = new uint8_t[riecoin_sieveSize/8];
-		offsets = new sixoff[primeTestStoreOffsetsSize + 1024];
+		try {
+			// std::cout << "Allocating " << riecoin_sieveSize/8 << " bytes for riecoin_sieve..." << std::endl;
+			riecoin_sieve = new uint8_t[riecoin_sieveSize/8];
+		}
+		catch (std::bad_alloc& ba) {
+			std::cout << "Unable to allocate memory for riecoin_sieve :|..." << std::endl;
+			exit(-1);
+		}
+		
+		try {
+			// std::cout << "Allocating " << miner.parameters.sieveWorkers << " bytes for the miner.sieves..." << std::endl;
+			miner.sieves = new uint8_t*[miner.parameters.sieveWorkers];
+		}
+		catch (std::bad_alloc& ba) {
+			std::cout << "Unable to allocate memory for the miner.sieves :|..." << std::endl;
+			exit(-1);
+		}
+		
+		try {
+			// std::cout << "Allocating " << riecoin_sieveSize/8*miner.parameters.sieveWorkers << " bytes for the miner.sieves..." << std::endl;
+			for (int i(0) ; i < miner.parameters.sieveWorkers; i++)
+				miner.sieves[i] = new uint8_t[riecoin_sieveSize/8];
+		}
+		catch (std::bad_alloc& ba) {
+			std::cout << "Unable to allocate memory for the miner.sieves :|..." << std::endl;
+			exit(-1);
+		}
+		
+		try {
+			// std::cout << "Allocating " << 6*4*(primeTestStoreOffsetsSize + 1024) << " bytes for the offsets..." << std::endl;
+			offsets = new sixoff[primeTestStoreOffsetsSize + 1024];
+		}
+		catch (std::bad_alloc& ba) {
+			std::cout << "Unable to allocate memory for the offsets :|..." << std::endl;
+			exit(-1);
+		}
+		
 		memset(offsets, 0, sizeof(sixoff)*(primeTestStoreOffsetsSize + 1024));
-		for (uint32_t i(0); i < maxiter; i++)
-			segment_hits[i] = new uint32_t[entriesPerSegment];
+		
+		try {
+			// std::cout << "Allocating " << 4*maxiter*entriesPerSegment<< " bytes for the segment_hits..." << std::endl;
+			for (uint32_t i(0); i < maxiter; i++)
+				segment_hits[i] = new uint32_t[entriesPerSegment];
+		}
+		catch (std::bad_alloc& ba) {
+			std::cout << "Unable to allocate memory for the segment_hits :|... Try to lower the max_increments variable." << std::endl;
+			exit(-1);
+		}
 	}
 	uint8_t* sieve = riecoin_sieve;
 	
