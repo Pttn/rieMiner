@@ -116,7 +116,7 @@ Then, just be patient... Happy mining :D ! It is always nice to wake up to see t
 
 ### Unable to allocate memory for the segment_hits
 
-If you get this message, try to lower the max_increments variable in the miner.cpp file, for exemple from 2^29 to 2^25.
+If you get this message, try to lower the Sieve value, or the max_increments variable in the miner.cpp file, for exemple from 2^29 to 2^25.
 
 ## Statistics
 

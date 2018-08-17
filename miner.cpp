@@ -414,7 +414,7 @@ void miningProcess(const WorkInfo& block) {
 			riecoin_sieve = new uint8_t[riecoin_sieveSize/8];
 		}
 		catch (std::bad_alloc& ba) {
-			std::cout << "Unable to allocate memory for riecoin_sieve :|..." << std::endl;
+			std::cerr << "Unable to allocate memory for riecoin_sieve :|..." << std::endl;
 			exit(-1);
 		}
 		
@@ -423,7 +423,7 @@ void miningProcess(const WorkInfo& block) {
 			miner.sieves = new uint8_t*[miner.parameters.sieveWorkers];
 		}
 		catch (std::bad_alloc& ba) {
-			std::cout << "Unable to allocate memory for the miner.sieves :|..." << std::endl;
+			std::cerr << "Unable to allocate memory for the miner.sieves :|..." << std::endl;
 			exit(-1);
 		}
 		
@@ -433,7 +433,7 @@ void miningProcess(const WorkInfo& block) {
 				miner.sieves[i] = new uint8_t[riecoin_sieveSize/8];
 		}
 		catch (std::bad_alloc& ba) {
-			std::cout << "Unable to allocate memory for the miner.sieves :|..." << std::endl;
+			std::cerr << "Unable to allocate memory for the miner.sieves :|..." << std::endl;
 			exit(-1);
 		}
 		
@@ -442,7 +442,7 @@ void miningProcess(const WorkInfo& block) {
 			offsets = new sixoff[primeTestStoreOffsetsSize + 1024];
 		}
 		catch (std::bad_alloc& ba) {
-			std::cout << "Unable to allocate memory for the offsets :|..." << std::endl;
+			std::cerr << "Unable to allocate memory for the offsets :|..." << std::endl;
 			exit(-1);
 		}
 		
@@ -454,7 +454,8 @@ void miningProcess(const WorkInfo& block) {
 				segment_hits[i] = new uint32_t[entriesPerSegment];
 		}
 		catch (std::bad_alloc& ba) {
-			std::cout << "Unable to allocate memory for the segment_hits :|... Try to lower the max_increments variable." << std::endl;
+			std::cerr << "Unable to allocate memory for the segment_hits :|..." << std::endl;
+			std::cout << "Try to lower the Sieve value or the max_increments variable in miner.cpp." << std::endl;
 			exit(-1);
 		}
 	}
