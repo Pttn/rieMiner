@@ -1,10 +1,10 @@
 CXX    = g++
 CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native
-LIBS   = -pthread -ljansson -lcurl -lgmp -lgmpxx
+LIBS   = -pthread -ljansson -lcurl -lgmp -lgmpxx -lcrypto
 
 all: rieMiner
 
-rieMiner: main.o miner.o client.o sha2.o
+rieMiner: main.o miner.o client.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
 main.o: main.cpp
@@ -15,9 +15,6 @@ miner.o: miner.cpp
 
 client.o: client.cpp
 	$(CXX) $(CFLAGS) -c -o client.o client.cpp $(LIBS)
-
-sha2.o: External/sha2.cpp
-	$(CXX) $(CFLAGS) -c -o sha2.o External/sha2.cpp $(LIBS)
 
 clean:
 	rm -rf rieMiner *.o

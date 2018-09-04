@@ -18,8 +18,7 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
-
-#include "External/sha2.h"
+#include <openssl/sha.h>
 
 struct GetWorkData;
 struct WorkInfo;
@@ -38,7 +37,7 @@ inline double timeSince(std::chrono::time_point<std::chrono::system_clock> t0) {
 }
 
 struct Stats {
-	uint32_t foundTuples[7], foundTuplesSinceLastDifficulty[7];
+	std::array<uint32_t, 7> foundTuples, foundTuplesSinceLastDifficulty;
 	uint32_t difficulty, blockHeightAtDifficultyChange;
 	std::chrono::time_point<std::chrono::system_clock> start, startMining, lastDifficultyChange;
 	
@@ -125,6 +124,13 @@ extern Arguments arguments;
 
 extern volatile uint32_t monitorCurrentBlockHeight;
 extern volatile uint32_t monitorCurrentBlockTime;
+
+inline void sha256(const uint8_t *data, uint8_t hash[32], uint32_t len) {
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, data, len);
+    SHA256_Final(hash, &sha256);
+}
 
 #define bswap_32(x) ((((x) << 24) & 0xff000000u) | (((x) << 8) & 0x00ff0000u) | (((x) >> 8) & 0x0000ff00u) | (((x) >> 24) & 0x000000ffu))
 

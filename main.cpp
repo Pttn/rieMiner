@@ -8,7 +8,7 @@
 #include <iomanip>
 #include <fstream>
 
-std::string minerVersionString("rieMiner 0.114");
+std::string minerVersionString("rieMiner 0.9-alpha1");
 
 Client client;
 std::mutex clientMutex;
@@ -200,7 +200,7 @@ void Arguments::loadConf() {
 }
 
 int main() {
-	std::cout << minerVersionString << ", Riecoin solo miner by Pttn" << std::endl;
+	std::cout << minerVersionString << ", Riecoin miner by Pttn" << std::endl;
 	std::cout << "Project page: https://github.com/Pttn/rieMiner" << std::endl;
 	std::cout << "Go to project page or open README.md for usage information." << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
@@ -208,7 +208,7 @@ int main() {
 	std::cout << "Host = " << arguments.host() << std::endl;
 	std::cout << "Port = " << arguments.port() << std::endl;
 	std::cout << "User = " << arguments.user() << std::endl;
-	std::cout << "Pass = " << arguments.pass() << std::endl;
+	std::cout << "Pass = ..." << std::endl;
 	std::cout << "Threads = " << arguments.threads() << std::endl;
 	std::cout << "Sieve max = " << arguments.sieve() << std::endl;
 	std::cout << "Will submit tuples of at least length = " << (uint16_t) arguments.tuples() << std::endl;

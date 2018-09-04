@@ -106,7 +106,11 @@ bool Client::getWork() {
 	uint32_t height(json_integer_value(json_object_get(json_object_get(jsonGmi, "result"), "blocks"))),
 	         difficulty(json_number_value(json_object_get(json_object_get(jsonGmi, "result"), "difficulty")));
 	blockheight = height;
-	if (stats.difficulty != difficulty) {
+	if (stats.difficulty != difficulty && stats.difficulty != 1) {
+		std::array<uint32_t, 7> t(stats.foundTuplesSinceLastDifficulty);
+		double elapsedSecs(timeSince(stats.lastDifficultyChange));
+		std::cout << "Tuples found for diff = " << stats.difficulty <<  ": (" << t[2] << " " << t[3] << " " << t[4] << " " << t[5] << " " << t[6] << ") during " << FIXED(2) << elapsedSecs << " s" << std::endl;
+		std::cout << "Tuples/s: (" << FIXED(6) << t[2]/elapsedSecs << " " << t[3]/elapsedSecs << " " << FIXED(6) << t[4]/elapsedSecs << " " << t[5]/elapsedSecs << " " << t[6]/elapsedSecs << ")" << std::endl;
 		stats.lastDifficultyChange = std::chrono::system_clock::now();
 		stats.blockHeightAtDifficultyChange = workInfo.height;
 		for (uint8_t i(0) ; i < 7 ; i++)

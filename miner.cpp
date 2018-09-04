@@ -373,13 +373,8 @@ void getTargetFromBlock(mpz_t z_target, const WorkInfo& block) {
 	std::ostringstream oss, oss2;
 	
 	uint8_t powHash[32];
-	sha256_ctx ctx;
-	sha256_init(&ctx);
-	sha256_update(&ctx, (uint8_t*) &block, 80);
-	sha256_final(&ctx, powHash);
-	sha256_init(&ctx);
-	sha256_update(&ctx, powHash, 32);
-	sha256_final(&ctx, powHash);
+	sha256((uint8_t*) &block, powHash, 80);
+	sha256(powHash, powHash, 32);
 	
 	mpz_init_set_ui(z_target, 1);
 	mpz_mul_2exp(z_target, z_target, zeroesBeforeHashInPrime);

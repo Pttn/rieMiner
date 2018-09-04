@@ -40,12 +40,13 @@ You can compile this C++ program with g++ and make, install them if needed. Then
 
 * Jansson
 * cURL
+* libSSL
 * GMP
 
 On a recent enough Debian or Ubuntu, you can easily install these by doing as root:
 
 ```bash
-apt install g++ make git libjansson-dev libcurl4-openssl-dev libgmp-dev
+apt install g++ make git libjansson-dev libcurl4-openssl-dev libssl-dev libgmp-dev
 ```
 
 Then, just download the source files, go/cd to the directory, and do a simple make:
@@ -57,6 +58,8 @@ make
 ```
 
 For other Linux, executing equivalent commands should work.
+
+If you get a warning after the compilation that there may be a conflict between libcrypto.so files, install libssl1.0-dev instead of libssl-dev.
 
 ### In Windows x64
 
