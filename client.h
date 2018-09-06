@@ -1,4 +1,4 @@
-/* (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner) */
+// (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_CLIENT_H
 #define HEADER_CLIENT_H
@@ -8,24 +8,21 @@
 #include <curl/curl.h>
 #include "global.h"
 
-#define GWDSIZE	1024
-
-// Total 1024 bits/128 bytes (256 hex chars)
-struct GetWorkData {
+struct BlockHeader { // Total 1024 bits/128 bytes (256 hex chars)
 	uint32_t version;
-	uint32_t prevBlockHash[8]; // 256 bits
-	uint32_t merkleRoot[8];    // 256 bits
-	uint32_t nBits;
-	uint64_t nTime;            // Riecoin has 64bit timestamps
-	uint32_t nOffset[8];       // 256 bits
-	uint32_t remaining[4];     // 128 bits
+	uint32_t previousblockhash[8]; // 256 bits
+	uint32_t merkleRoot[8];        // 256 bits
+	uint32_t bits;
+	uint64_t curtime;              // Riecoin has 64 bits timestamps
+	uint32_t nOffset[8];           // 256 bits
+	uint32_t remaining[4];         // 128 bits
 	
-	GetWorkData() {
+	BlockHeader() {
 		version = 0;
-		nBits = 0;
-		nTime = 0;
+		bits = 0;
+		curtime = 0;
 		for (uint8_t i(0) ; i < 8 ; i++) {
-			prevBlockHash[i] = 0;
+			previousblockhash[i] = 0;
 			merkleRoot[i] = 0;
 			nOffset[i] = 0;
 			if (i < 4) remaining[i] = 0;
@@ -33,61 +30,69 @@ struct GetWorkData {
 	}
 };
 
-struct WorkInfo {
-	GetWorkData gwd;
+// Store the protocol independent information needed for the miner and submissions
+struct WorkData {
+	BlockHeader bh;
 	uint32_t height;
 	uint32_t targetCompact;
 	uint32_t target[8];
 	
-	WorkInfo() {
-		gwd = GetWorkData();
+	// For GetBlockTemplate
+	std::string transactions; // Store the concatenation in hex format
+	uint16_t txCount;
+	
+	WorkData() {
+		bh = BlockHeader();
 		height = 0;
 		targetCompact = 0;
 		for (uint8_t i(0) ; i < 8 ; i++)
 			target[i] = 0;
+		transactions = std::string();
+		txCount = 0;
 	}
 };
 
+// Communicates with the server to get, parse, and submit mining work
+// Absctract class with protocol independent member variables and functions
+// Child concrete classes: GWClient, GBTClient
 class Client {
+	protected:
 	bool _connected;
-	std::string user;
-	std::string pass;
-	std::string host;
-	uint16_t port;
-	uint32_t blockheight;
-	GetWorkData gwd;
-	CURL *curl;
-	std::mutex submitMutex;
-	std::vector<std::pair<GetWorkData, uint8_t>> pendingSubmissions;
+	std::string _user;
+	std::string _pass;
+	std::string _host;
+	uint16_t _port;
+	WorkData _wd;
+	CURL *_curl;
+	std::mutex _submitMutex;
+	std::vector<std::pair<WorkData, uint8_t>> _pendingSubmissions;
 	
 	std::string getUserPass() const {
 		std::ostringstream oss;
-		oss << user << ":" << pass;
+		oss << _user << ":" << _pass;
 		return oss.str();
 	}
 	
 	std::string getHostPort() const {
 		std::ostringstream oss;
-		oss << "http://" << host << ":" << port << "/";
+		oss << "http://" << _host << ":" << _port << "/";
 		return oss.str();
 	}
 	
 	public:
-	WorkInfo workInfo;
-	
 	Client();
-	bool connect(const Arguments&);
-	json_t* sendRPCCall(CURL*, const std::string&) const; 
-	bool getWork();
-	void sendWork(const std::pair<GetWorkData, uint8_t>&) const;
-	void addSubmission(const GetWorkData& gwdToSubmit, uint8_t difficulty) {
-		submitMutex.lock();
-		pendingSubmissions.push_back(std::make_pair(gwdToSubmit, difficulty));
-		submitMutex.unlock();
+	virtual bool connect(const Arguments&); // Returns false on error or if already connected
+	json_t* sendRPCCall(CURL*, const std::string&) const; // Send a RPC call to the server
+	virtual bool getWork() = 0; // Get work (block data,...) from the sever, depending on the chosen protocol
+	virtual void sendWork(const std::pair<WorkData, uint8_t>&) const = 0;  // Send work (share or block) to the sever, depending on the chosen protocol
+	void addSubmission(const WorkData& bhToSubmit, uint8_t difficulty) {
+		_submitMutex.lock();
+		_pendingSubmissions.push_back(std::make_pair(bhToSubmit, difficulty));
+		_submitMutex.unlock();
 	}
-	bool process();
+	bool process(); // Processes submissions and updates work
 	bool connected() {return _connected;}
-	uint32_t getBlockheight() const {return blockheight;}
+	WorkData workData() const {return _wd;}
 };
 
 extern std::string minerVersionString;

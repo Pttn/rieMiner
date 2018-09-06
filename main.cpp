@@ -1,91 +1,81 @@
-/* Parts taken from dave-andersen's fastrie (https://github.com/dave-andersen/fastrie) (based on xptMiner). jh00 is the original author of xptMiner.
-(c) 2014 jh00 (https://github.com/jh000/xptMiner)
-(c) 2014-2017 dave-andersen (http://www.cs.cmu.edu/~dga/)
-(c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner) */
+// (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
 
 #include "global.h"
 #include "client.h"
+#include "gwclient.h"
+#include "gbtclient.h"
+#include "tools.h"
 #include <iomanip>
 #include <fstream>
 
-std::string minerVersionString("rieMiner 0.9-alpha1");
+std::string minerVersionString("rieMiner 0.9-alpha2");
 
-Client client;
+Client *client;
 std::mutex clientMutex;
-volatile uint32_t monitorCurrentBlockHeight; // used to notify worker threads of new block data
+volatile uint32_t currentBlockHeight; // used to notify worker threads of new block data
 
 Stats stats = Stats();
 
 Arguments arguments;
 
-struct WorkDataSource {
-	// block data
-	WorkInfo wi;
-	std::mutex mutex;
-	WorkDataSource() {
-		wi = WorkInfo();
-	}
-};
-
-WorkDataSource workDataSource;
-
-void submitWork(GetWorkData gwd, uint32_t* nOffset, uint8_t length) {
+void submitWork(WorkData wd, uint32_t* nOffset, uint8_t length) {
 	clientMutex.lock();
 	// Fill the nOffset and submit
-	memcpy(gwd.nOffset, nOffset, 32); 
-	client.addSubmission(gwd, length);
+	memcpy(wd.bh.nOffset, nOffset, 32); 
+	
+	client->addSubmission(wd, length);
 	clientMutex.unlock();
 }
 
 bool algorithmInited(false);
 
 void minerThread() {
-	WorkInfo wi;
+	WorkData wd;
 	while (true) {
 		bool hasValidWork(false);
-		workDataSource.mutex.lock();
-		if (workDataSource.wi.height > 0) {
+		clientMutex.lock();
+		if (client->workData().height > 0) {
 			// Get RieCoin work data
-			memset(&wi, 0x00, sizeof(wi));
-			wi.gwd = workDataSource.wi.gwd;
-			wi.targetCompact = workDataSource.wi.targetCompact;
-			wi.height = workDataSource.wi.height;
+			wd = WorkData();
+			wd.bh = client->workData().bh;
+			wd.targetCompact = client->workData().targetCompact;
+			wd.height = client->workData().height;
+			if (arguments.protocol() == "GetBlockTemplate") {
+				wd.transactions = client->workData().transactions;
+				wd.txCount = client->workData().txCount;
+			}
 			hasValidWork = true;
 		}
-		
-		workDataSource.mutex.unlock();
+		clientMutex.unlock();
 		if (!hasValidWork) usleep(10000);
-		else miningProcess(wi);
+		else miningProcess(wd);
 	}
 }
 
-void getWorkFromClient(Client& client) {
-	workDataSource.mutex.lock();
+bool miningStarted(false);
+
+void getWorkFromClient(Client *client) {
 	if (!algorithmInited) {
 		miningInit(arguments.sieve(), arguments.threads() + 1);
 		algorithmInited = true;
 	}
 	
-	workDataSource.wi.gwd = client.workInfo.gwd;
-	
-	memcpy(workDataSource.wi.target, client.workInfo.target, 32);
-	workDataSource.wi.targetCompact = client.workInfo.targetCompact;
-	if (workDataSource.wi.height == 0 && client.workInfo.height != 0) {
+	if (!miningStarted && client->workData().height != 0) {
 		stats.startMining = std::chrono::system_clock::now();
 		stats.lastDifficultyChange = std::chrono::system_clock::now();
-		std::cout << "[0000:00:00] Started mining at block " << client.getBlockheight() << std::endl;
+		stats.blockHeightAtDifficultyChange = client->workData().height - 1;
+		std::cout << "[0000:00:00] Started mining at block " << client->workData().height << std::endl;
+		miningStarted = true;
 	}
 	
-	workDataSource.wi.height = client.workInfo.height;
-	workDataSource.mutex.unlock();
-	monitorCurrentBlockHeight = workDataSource.wi.height;
-	__sync_synchronize(); /* memory barrier needed if this isn't done in crit */
+	currentBlockHeight = client->workData().height;
+	__sync_synchronize(); // memory barrier needed if this isn't done in crit
 }
 
 void workManagement() {
 	std::chrono::time_point<std::chrono::system_clock> timer;
 	while (true) {
-		if (client.connected()) {
+		if (client->connected()) {
 			if (arguments.refresh() != 0) {
 				double dt(timeSince(timer));
 				if (dt > arguments.refresh() && algorithmInited) {
@@ -96,32 +86,26 @@ void workManagement() {
 			}
 			
 			clientMutex.lock();
-			client.process();
-			if (!client.connected()) {
+			client->process();
+			if (!client->connected()) {
 				// Mark work as invalid
-				workDataSource.mutex.lock();
-				workDataSource.wi.height = 0;
-				monitorCurrentBlockHeight = 0;
-				workDataSource.mutex.unlock();
-				printf("Connection lost :|, reconnecting in 5 seconds...\n");
+				currentBlockHeight = 0;
+				printf("Connection lost :|, reconnecting in 10 seconds...\n");
+				stats.printTuplesStats();
+				miningStarted = false;
 				clientMutex.unlock();
-				usleep(5000000);
+				usleep(10000000);
 			}
 			else {
 				// Update work
-				if (client.workInfo.height != workDataSource.wi.height
-				 || memcmp(client.workInfo.gwd.merkleRoot, workDataSource.wi.gwd.merkleRoot, 32) != 0) {
-					getWorkFromClient(client);
-					clientMutex.unlock();
-				}
-				else
-					clientMutex.unlock();
-				usleep(10000);
+				getWorkFromClient(client);
+				clientMutex.unlock();
+				usleep(100000);
 			}
 		}
 		else {
 			std::cout << "Connecting to Riecoin server using JSON-RPC..." << std::endl;
-			if (!client.connect(arguments)) {
+			if (!client->connect(arguments)) {
 				std::cout << "Failure :| ! Retry in 5 seconds..." << std::endl;
 				usleep(5000000);
 			}
@@ -174,7 +158,7 @@ void Arguments::loadConf() {
 					catch (...) {_threads = 8;}
 				}
 				else if (key == "Sieve") {
-					try {_sieve = std::stoi(value);}
+					try {_sieve = std::stoll(value);}
 					catch (...) {_sieve = 1073741824;}
 					if (_sieve < 100000) _sieve = 100000;
 				}
@@ -187,6 +171,15 @@ void Arguments::loadConf() {
 				else if (key == "Refresh") {
 					try {_refresh = std::stoi(value);}
 					catch (...) {_refresh = 10;}
+				}
+				else if (key == "Protocol") {
+					if (value == "GetWork" || value == "GetBlockTemplate") {
+						_protocol = value;
+					}
+					else std::cout << "Invalid Protocol" << std::endl;
+				}
+				else if (key == "Address") {
+					_address = value;
 				}
 				else if (key == "Error")
 					std::cout << "Ignoring invalid line" << std::endl;
@@ -209,11 +202,17 @@ int main() {
 	std::cout << "Port = " << arguments.port() << std::endl;
 	std::cout << "User = " << arguments.user() << std::endl;
 	std::cout << "Pass = ..." << std::endl;
+	std::cout << "Protocol = " << arguments.protocol() << std::endl;
+	if (arguments.protocol() == "GetBlockTemplate")
+		std::cout << "Payout address = " << arguments.address() << std::endl;
 	std::cout << "Threads = " << arguments.threads() << std::endl;
 	std::cout << "Sieve max = " << arguments.sieve() << std::endl;
 	std::cout << "Will submit tuples of at least length = " << (uint16_t) arguments.tuples() << std::endl;
 	std::cout << "Stats refresh rate = " << arguments.refresh() << " s" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
+	
+	if (arguments.protocol() == "GetWork") client = new GWClient();
+	else client = new GBTClient();
 	
 	std::thread threads[arguments.threads() + 1];
 	std::cout << "Starting " << arguments.threads() << " + 1 threads" << std::endl;

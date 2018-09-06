@@ -1,4 +1,4 @@
-/* (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner) */
+// (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_GLOBAL_H
 #define HEADER_GLOBAL_H
@@ -18,14 +18,14 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
-#include <openssl/sha.h>
 
 struct GetWorkData;
-struct WorkInfo;
+struct BlockHeader;
+struct WorkData;
 
-void miningInit(uint64_t sieveMax, int16_t threads);
-void miningProcess(const WorkInfo& block);
-void submitWork(GetWorkData block, uint32_t* nOffset, uint8_t difficulty);
+void miningInit(uint64_t, int16_t);
+void miningProcess(WorkData);
+void submitWork(WorkData, uint32_t*, uint8_t);
 
 #define leading0s(x) std::setw(x) << std::setfill('0')
 #define FIXED(x) std::fixed << std::setprecision(x)
@@ -67,6 +67,13 @@ struct Stats {
 		}
 	}
 	
+	void printTuplesStats() {
+		std::array<uint32_t, 7> t(foundTuplesSinceLastDifficulty);
+		double elapsedSecs(timeSince(lastDifficultyChange));
+		std::cout << "Tuples found for diff " << difficulty <<  ": (" << t[2] << " " << t[3] << " " << t[4] << " " << t[5] << " " << t[6] << ") during " << FIXED(2) << elapsedSecs << " s" << std::endl;
+		std::cout << "Tuples/s: (" << FIXED(6) << t[2]/elapsedSecs << " " << t[3]/elapsedSecs << " " << FIXED(6) << t[4]/elapsedSecs << " " << t[5]/elapsedSecs << " " << t[6]/elapsedSecs << ")" << std::endl;
+	}
+	
 	void printEstimatedTimeToBlock() {
 		double elapsedSecs(timeSince(lastDifficultyChange));
 		if (elapsedSecs > 1 && timeSince(startMining) > 1) {
@@ -88,8 +95,10 @@ class Arguments {
 	uint16_t _port;
 	std::string _user;
 	std::string _pass;
+	std::string _protocol;
+	std::string _address;
 	uint16_t _threads;
-	uint32_t _sieve;
+	uint64_t _sieve;
 	uint8_t _tuples;
 	uint32_t _refresh;
 	
@@ -98,14 +107,16 @@ class Arguments {
 	public:
 	
 	Arguments() {
-		_user    = "";
-		_pass    = "";
-		_host    = "127.0.0.1";
-		_port    = 28332;
-		_threads = 8;
-		_sieve   = 1073741824;
-		_tuples  = 6;
-		_refresh = 10;
+		_user     = "";
+		_pass     = "";
+		_host     = "127.0.0.1";
+		_protocol = "GetBlockTemplate";
+		_address  = "RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB";
+		_port     = 28332;
+		_threads  = 8;
+		_sieve    = 1073741824;
+		_tuples   = 6;
+		_refresh  = 10;
 	}
 	
 	void loadConf();
@@ -114,54 +125,16 @@ class Arguments {
 	uint16_t port() const {return _port;}
 	std::string user() const {return _user;}
 	std::string pass() const {return _pass;}
+	std::string protocol() const {return _protocol;}
+	std::string address() const {return _address;}
 	uint16_t threads() const {return _threads;}
-	uint32_t sieve() const {return _sieve;}
+	uint64_t sieve() const {return _sieve;}
 	uint8_t tuples() const {return _tuples;}
 	uint32_t refresh() const {return _refresh;}
 };
 
 extern Arguments arguments;
 
-extern volatile uint32_t monitorCurrentBlockHeight;
-extern volatile uint32_t monitorCurrentBlockTime;
-
-inline void sha256(const uint8_t *data, uint8_t hash[32], uint32_t len) {
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, data, len);
-    SHA256_Final(hash, &sha256);
-}
-
-#define bswap_32(x) ((((x) << 24) & 0xff000000u) | (((x) << 8) & 0x00ff0000u) | (((x) >> 8) & 0x0000ff00u) | (((x) >> 24) & 0x000000ffu))
-
-inline uint32_t swab32(uint32_t v) {
-	return bswap_32(v);
-}
-
-#if !HAVE_DECL_BE32DEC
-inline uint32_t be32dec(const void *pp) {
-	const uint8_t *p = (uint8_t const *)pp;
-	return ((uint32_t)(p[3]) + ((uint32_t)(p[2]) << 8) +
-	    ((uint32_t)(p[1]) << 16) + ((uint32_t)(p[0]) << 24));
-}
-#endif
-
-#if !HAVE_DECL_LE32DEC
-inline uint32_t le32dec(const void *pp) {
-	const uint8_t *p = (uint8_t const *)pp;
-	return ((uint32_t)(p[0]) + ((uint32_t)(p[1]) << 8) +
-	    ((uint32_t)(p[2]) << 16) + ((uint32_t)(p[3]) << 24));
-}
-#endif
-
-#if !HAVE_DECL_LE32ENC
-inline void le32enc(void *pp, uint32_t x) {
-	uint8_t *p = (uint8_t *)pp;
-	p[0] = x & 0xff;
-	p[1] = (x >> 8) & 0xff;
-	p[2] = (x >> 16) & 0xff;
-	p[3] = (x >> 24) & 0xff;
-}
-#endif
+extern volatile uint32_t currentBlockHeight;
 
 #endif

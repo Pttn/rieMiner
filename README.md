@@ -1,12 +1,8 @@
-# rieMiner 0.114
+# rieMiner 0.9α2
 
-rieMiner is a Riecoin miner using the Getwork protocol and the latest mining algorithm, so it can be used to solo mine efficiently using the official wallet. It is adapted from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie):
+rieMiner is a Riecoin miner supporting the Getwork and the GetBlockTemplate protocols, and using the latest known mining algorithm, so it can be used to solo mine efficiently using the official wallet. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie).
 
-* rminerd can be used to mine with the wallet, but its algorithm is outdated and slow;
-* fastrie (also known as xptMiner) mines efficiently but only supports the Stratum and the outdated and undocumented XPT protocols. Yes, you can also use solo mining pools, but then you depend on them, and they might charge a fee or get the transactions fees for themselves. Moreover, it is more gratifying to get directly the reward in your wallet :D ;
-* By combining both, rieMiner can be used to mine efficiently and easily with the wallet!
-
-Code was also much simplified. It does not implement Stratum, but I plan to add this soon to support both solo and pool mining.
+The Stratum protocol is planned to be added soon, so rieMiner will support both solo and pooled mining.
 
 This README also serves as manual for rieMiner, and assumes that you use Riecoin-Qt as wallet/server. I hope that this program will be useful for you!
 
@@ -104,8 +100,10 @@ It is case sensitive, but spaces and invalid lines are ignored. If an option or 
 * Port : port of the Riecoin wallet/server. Default: 28332 (default port for Riecoin-Qt);
 * User : username used to connect in the server (rpcuser). Default: nothing;
 * Pass : password used to connect in the server (rpcpassword). Default: nothing;
+* Protocol : protocol to use: GetBlockTemplate or GetWork. Default: GetBlockTemplate;
+* Address : set a custom payout address for solo mining (GetBlockTemplate only). Default: a donation address;
 * Threads : number of threads used for mining. Default: 8;
-* Sieve : size of the sieve table used for mining. Use a bigger number (but less than 2^32) if you have more RAM as you will obtain better results. Default: 2^30;
+* Sieve : size of the sieve table used for mining. Use a bigger number if you have more RAM, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^30;
 * Tuples : submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6;
 * Refresh : refresh rate of the stats in seconds. 0 to disable them; will only notify when a k-tuple (k > 4) is found, or when the network finds a block. Default: 10.
 
@@ -123,7 +121,7 @@ If you get this message, try to lower the Sieve value, or the max_increments var
 
 ## Statistics
 
-rieMiner will regularly print some stats, and the frequency of this can be changed with the -r argument. Example:
+rieMiner will regularly print some stats, and the frequency of this can be changed with the Refresh parameter as said earlier. Example:
 
 ```bash
 [0024:46:09] (2/3t/s) = (7.36 0.255) ; (2-6t) = (654259 22261 793 38 2) | 1.14 d
@@ -139,13 +137,13 @@ Note that these values are not comparable at all with those given by fastrie! It
 
 But the performance should match the fastrie's, as it uses the same algorithm.
 
-rieMiner will also notify if it found a k-tuple (k > 3) or if the network found a new block. If it finds a block, it will show the full Getwork submission and tell if it was accepted or not. If the block was accepted, the reward will be generated and sent to a new random address which is included in your wallet, and you can spend it after 100 confirmations. Don't forget to backup regularly your wallet or move your rewards as these addresses don't appear in Receiving Addresses. To set an address for mining, the GetBlockTemplate protocol would have to be added in the miner, which I plan to do soon.
+rieMiner will also notify if it found a k-tuple (k > 3) or if the network found a new block. If it finds a block, it will show the full submission and tell if it was accepted or not. If the block was accepted, the reward will be generated and sent to a new random address which is included in your wallet (when using GetWork), or the one specified (for GetBlockTemplate). You can then spend it after 100 confirmations.
 
 ## Work control
 
 You might have to wait some consequent time before finding a block. What if something is actually wrong and then the time the miner finally found a block, the submission fails?
 
-First, if for some reason rieMiner disconnects from the wallet (you killed it or its computer crashed), it will detect that it has not received the Getwork data and then just stop mining: so if it is currently mining, everything is fine.
+First, if for some reason rieMiner disconnects from the wallet (you killed it or its computer crashed), it will detect that it has not received the mining data and then just stop mining: so if it is currently mining, everything should be fine.
 
 If you are worried about the fact that the block will be incorrectly submitted, here comes the -k option. Indeed, you can send invalid blocks to the wallet (after all, it is yours), and check if the wallet actually received them and if these submissions are properly processed. When such invalid block is submitted, you can check the debug.log file in the same location as riecoin.conf, and then, you should see something like
 
@@ -161,12 +159,11 @@ ERROR: CheckProofOfWork() : not a pow
 
 Then something is wrong (possible example would be an unstable overclock)...
 
-Also watch regularly if the wallet is correctly synching, especially if the message "Blockheight = ..." did not appear since a very long time (except if the Diff is very high, in this case, it means that the network is now mining the superblock). In Riecoin-Qt, this can be done by hovering the green check at the lower right corner, and comparing the number with the latest block found in an Riecoin explorer. If something is wrong, try to change the nodes in riecoin.conf, the following always worked fine for me:
+Also watch regularly if the wallet is correctly syncing, especially if the message "Blockheight = ..." did not appear since a very long time (except if the Diff is very high, in this case, it means that the network is now mining the superblock). In Riecoin-Qt, this can be done by hovering the green check at the lower right corner, and comparing the number with the latest block found in an Riecoin explorer. If something is wrong, try to change the nodes in riecoin.conf, the following always worked fine for me:
 
 ```
 ﻿connect=5.9.39.9
 connect=37.59.143.10
-connect=46.105.29.136
 connect=144.217.15.39
 connect=149.14.200.26
 connect=178.251.25.240
@@ -191,7 +188,7 @@ Parts coming from other projects are subject to their respective licenses. Else,
 
 ## Contributing
 
-Feel free to do a pull request and I will review it. I am open for adding new features, but I also wish to keep this project minimalist. Any useful contribution will be welcomed.
+Feel free to do a pull request or open an issue, and I will review it. I am open for adding new features, but I also wish to keep this project minimalist. Any useful contribution will be welcomed.
 
 Donations welcome:
 
@@ -201,7 +198,9 @@ Donations welcome:
 
 ## Resources
 
+* [rieMiner thread on Riecoin-Community.com forum](https://forum.riecoin-community.com/viewtopic.php?f=16&t=15)
 * [Get the Riecoin wallet](http://riecoin.org/download.html)
 * [Fast prime cluster search - or building a fast Riecoin miner (part 1)](https://da-data.blogspot.ch/2014/03/fast-prime-cluster-search-or-building.html), nice article by dave-andersen explaining how Riecoin works and how to build an efficient miner and the algorithms. Unfortunately, he never published part 2...
 * [Riecoin FAQ](http://riecoin.org/faq.html) and [technical aspects](http://riecoin.org/about.html#tech)
 * [Bitcoin Wiki - Getwork](https://en.bitcoin.it/wiki/Getwork)
+* [Bitcoin Wiki - Getblocktemplate](https://en.bitcoin.it/wiki/Getblocktemplate)
