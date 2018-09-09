@@ -4,7 +4,7 @@ LIBS   = -pthread -ljansson -lcurl -lgmp -lgmpxx -lcrypto
 
 all: rieMiner
 
-rieMiner: main.o miner.o gbtclient.o gwclient.o client.o tools.o
+rieMiner: main.o miner.o stratumclient.o gbtclient.o gwclient.o client.o tools.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
 main.o: main.cpp
@@ -12,6 +12,9 @@ main.o: main.cpp
 
 miner.o: miner.cpp
 	$(CXX) $(CFLAGS) -c -o miner.o miner.cpp $(LIBS)
+
+stratumclient.o: stratumclient.cpp
+	$(CXX) $(CFLAGS) -c -o stratumclient.o stratumclient.cpp $(LIBS)
 
 gbtclient.o: gbtclient.cpp
 	$(CXX) $(CFLAGS) -c -o gbtclient.o gbtclient.cpp $(LIBS)

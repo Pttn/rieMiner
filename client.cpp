@@ -53,11 +53,11 @@ json_t* Client::sendRPCCall(CURL *curl, const std::string& req) const {
 		CURLcode cc;
 		cc = curl_easy_perform(_curl);
 		if (cc != CURLE_OK)
-			std::cerr << "Curl_easy_perform() failed :| : " << curl_easy_strerror(cc) << std::endl;
+			std::cerr << "SendRPCCall: curl_easy_perform() failed :| - " << curl_easy_strerror(cc) << std::endl;
 		else {
 			jsonObj = json_loads(s.c_str(), 0, &err);
 			if (jsonObj == NULL)
-				std::cerr << "JSON decoding failed :|" << std::endl;
+				std::cerr << "SendRPCCall: JSON decoding failed :| - " << err.text << std::endl;
 		}
 	}
 	

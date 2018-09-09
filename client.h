@@ -30,7 +30,7 @@ struct BlockHeader { // Total 1024 bits/128 bytes (256 hex chars)
 	}
 };
 
-// Store the protocol independent information needed for the miner and submissions
+// Store all the information needed for the miner and submissions
 struct WorkData {
 	BlockHeader bh;
 	uint32_t height;
@@ -41,6 +41,9 @@ struct WorkData {
 	std::string transactions; // Store the concatenation in hex format
 	uint16_t txCount;
 	
+	// For Stratum
+	std::vector<uint8_t> extraNonce1, extraNonce2, jobId;
+	
 	WorkData() {
 		bh = BlockHeader();
 		height = 0;
@@ -49,6 +52,10 @@ struct WorkData {
 			target[i] = 0;
 		transactions = std::string();
 		txCount = 0;
+		
+		extraNonce1 = std::vector<uint8_t>();
+		extraNonce2 = std::vector<uint8_t>();
+		jobId = std::vector<uint8_t>();
 	}
 };
 
@@ -90,7 +97,7 @@ class Client {
 		_pendingSubmissions.push_back(std::make_pair(bhToSubmit, difficulty));
 		_submitMutex.unlock();
 	}
-	bool process(); // Processes submissions and updates work
+	virtual bool process(); // Processes submissions and updates work
 	bool connected() {return _connected;}
 	WorkData workData() const {return _wd;}
 };

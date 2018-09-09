@@ -23,7 +23,7 @@ struct GetWorkData;
 struct BlockHeader;
 struct WorkData;
 
-void miningInit(uint64_t, int16_t);
+void miningInit(uint64_t, int16_t, bool);
 void miningProcess(WorkData);
 void submitWork(WorkData, uint32_t*, uint8_t);
 
@@ -40,6 +40,7 @@ struct Stats {
 	std::array<uint32_t, 7> foundTuples, foundTuplesSinceLastDifficulty;
 	uint32_t difficulty, blockHeightAtDifficultyChange;
 	std::chrono::time_point<std::chrono::system_clock> start, startMining, lastDifficultyChange;
+	bool solo;
 	
 	Stats() {
 		for (uint8_t i(0) ; i < 7 ; i++) {
@@ -50,6 +51,7 @@ struct Stats {
 		blockHeightAtDifficultyChange = 0;
 		lastDifficultyChange = std::chrono::system_clock::now();
 		start = std::chrono::system_clock::now();
+		solo = true;
 	}
 	
 	void printTime() {
@@ -78,10 +80,18 @@ struct Stats {
 		double elapsedSecs(timeSince(lastDifficultyChange));
 		if (elapsedSecs > 1 && timeSince(startMining) > 1) {
 			if (foundTuplesSinceLastDifficulty[4] > 0) {
-				double x(((double) foundTuplesSinceLastDifficulty[2])/((double) foundTuplesSinceLastDifficulty[3])),
-				       y(((double) foundTuplesSinceLastDifficulty[3])/((double) foundTuplesSinceLastDifficulty[4])),
-				       w(((double) foundTuplesSinceLastDifficulty[3])/elapsedSecs);
-				std::cout << FIXED(2) << " | " << x*x*y/(86400.*w) << " d";
+				if (solo) {
+					double x(((double) foundTuplesSinceLastDifficulty[2])/((double) foundTuplesSinceLastDifficulty[3])),
+						   y(((double) foundTuplesSinceLastDifficulty[3])/((double) foundTuplesSinceLastDifficulty[4])),
+						   w(((double) foundTuplesSinceLastDifficulty[3])/elapsedSecs);
+					std::cout << FIXED(2) << " | " << x*x*y/(86400.*w) << " d";
+				}
+				else { // Hint: it is 15x easier to find a 2 or 4-share, and 20x for 3 shares, than true k-tuples: (6 2) = (6 4) = 15, (6 3) = 20
+					double x(((double) foundTuplesSinceLastDifficulty[2]/15.)/((double) foundTuplesSinceLastDifficulty[3]/20.)),
+						   y(((double) foundTuplesSinceLastDifficulty[3]/20.)/((double) foundTuplesSinceLastDifficulty[4]/15.)),
+						   w(((double) foundTuplesSinceLastDifficulty[3]/20.)/elapsedSecs);
+					std::cout << FIXED(2) << " | " << (25.*86400.*w)/(x*x*y) << " RIC/d";
+				}
 			}
 			std::cout << std::endl;
 		}

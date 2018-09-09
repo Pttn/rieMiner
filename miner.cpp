@@ -15,11 +15,13 @@ struct MinerParameters {
 	int16_t threads;
 	int sieveWorkers;
 	std::vector<uint64_t> primes, inverts;
+	bool solo;
 	
 	MinerParameters() {
 		primorialNumber = 40;
 		threads      = 4;
 		sieveWorkers = 2;
+		solo = true;
 	}
 };
 
@@ -68,34 +70,34 @@ static const uint64_t riecoin_sieveWords = riecoin_sieveSize/64;
 
 uint64_t entriesPerSegment(0);
 
-static const uint64_t max_increments = (1ULL << 29),
-                      maxiter = (max_increments/riecoin_sieveSize);
+static const uint64_t maxIncrements = (1ULL << 29),
+                      maxiter = (maxIncrements/riecoin_sieveSize);
 
-static const uint64_t primorial_offset = 16057;
+static const uint64_t primorialOffset = 16057;
 static const std::array<uint64_t, 6> primeTupleOffset = {0, 4, 2, 4, 2, 4};
 
 static const uint64_t denseLimit(16384);
-std::vector<uint64_t> segment_counts;
+std::vector<uint64_t> segmentCounts;
 uint64_t nPrimes,
          primeTestStoreOffsetsSize,
          startingPrimeIndex,
          n_dense(0), n_sparse(0);
 
 thread_local bool isMaster(false);
-bool there_is_a_master = false;
-std::mutex master_lock;
-std::mutex bucket_lock; /* careful */
+bool masterExists = false;
+std::mutex masterLock, bucketLock;
 
-mpz_t z_verify_target, z_verify_remainderPrimorial;
-WorkData verify_block;
+mpz_t z_verifyTarget, z_verifyRemainderPrimorial;
+WorkData verifyBlock;
 
-void miningInit(uint64_t sieveMax, int16_t threads) {
+void miningInit(uint64_t sieveMax, int16_t threads, bool solo) {
 	miner.parameters.threads = threads;
 	miner.parameters.sieveWorkers = std::max(1, threads/4);
 	miner.parameters.sieveWorkers = std::min(miner.parameters.sieveWorkers, 8);
+	miner.parameters.solo = solo;
 	
-	mpz_init(z_verify_target);
-	mpz_init(z_verify_remainderPrimorial);
+	mpz_init(z_verifyTarget);
+	mpz_init(z_verifyRemainderPrimorial);
 	
 	std::cout << "Generating prime table using sieve of Eratosthenes...";
 	std::vector<uint8_t> vfComposite;
@@ -135,26 +137,25 @@ void miningInit(uint64_t sieveMax, int16_t threads) {
 	primeTestStoreOffsetsSize = 0;
 	for (uint64_t i(5) ; i < nPrimes ; i++) {
 		uint64_t p(miner.parameters.primes[i]);
-		if (p < max_increments)
+		if (p < maxIncrements)
 			primeTestStoreOffsetsSize++;
-		high_floats += ((6.*max_increments)/(double) p);
+		else high_floats += ((6.*maxIncrements)/(double) p);
 	}
 	
 	high_segment_entries = ceil(high_floats);
 	if (high_segment_entries == 0)
 		entriesPerSegment = 1;
 	else {
-		/* rounding up a bit */
-		entriesPerSegment = high_segment_entries/maxiter + 4;
+		entriesPerSegment = high_segment_entries/maxiter + 4; // Rounding up a bit
 		entriesPerSegment = (entriesPerSegment + (entriesPerSegment >> 3));
 	}
 	
-	segment_counts.resize(maxiter);
+	segmentCounts.resize(maxiter);
 	for (uint64_t i(miner.parameters.primorialNumber) ; i < nPrimes ; i++) {
 		uint64_t p = miner.parameters.primes[i];
 		if (p < denseLimit)
 			n_dense++;
-		else if (p < max_increments)
+		else if (p < maxIncrements)
 			n_sparse++;
 	}
 }
@@ -181,7 +182,7 @@ inline void init_pending(uint64_t pending[PENDING_SIZE]) {
 		pending[i] = 0;
 }
 
-inline void add_to_pending(uint8_t *sieve, uint64_t pending[PENDING_SIZE], uint64_t &pos, uint64_t ent) {
+inline void addToPending(uint8_t *sieve, uint64_t pending[PENDING_SIZE], uint64_t &pos, uint64_t ent) {
 	__builtin_prefetch(&(sieve[ent >> 3]));
 	uint64_t old = pending[pos];
 	if (old != 0) {
@@ -193,20 +194,20 @@ inline void add_to_pending(uint8_t *sieve, uint64_t pending[PENDING_SIZE], uint6
 	pos &= 0xf;
 }
 
-void put_offsets_in_segments(uint64_t *offsets, int n_offsets) {
-	bucket_lock.lock();
+void putOffsetsInSegments(uint64_t *offsets, int n_offsets) {
+	bucketLock.lock();
 	for (int i = 0; i < n_offsets; i++) {
 		uint64_t index = offsets[i];
 		uint64_t segment = index>>riecoin_sieveBits;
-		uint64_t sc = segment_counts[segment];
+		uint64_t sc = segmentCounts[segment];
 		if (sc >= entriesPerSegment) {
 			std::cerr << "Segment " << segment << " " << sc << " with index " << index << " is > " << entriesPerSegment << std::endl;
 			exit(-1);
 		}
 		segment_hits[segment][sc] = index - (riecoin_sieveSize*segment);
-		segment_counts[segment]++;
+		segmentCounts[segment]++;
 	}
-	bucket_lock.unlock();
+	bucketLock.unlock();
 }
 
 thread_local uint64_t *offset_stack = NULL;
@@ -214,8 +215,8 @@ thread_local uint64_t *offset_stack = NULL;
 void update_remainders(uint64_t start_i, uint64_t end_i) {
 	mpz_t tar;
 	mpz_init(tar);
-	mpz_set(tar, z_verify_target);
-	mpz_add(tar, tar, z_verify_remainderPrimorial);
+	mpz_set(tar, z_verifyTarget);
+	mpz_add(tar, tar, z_verifyRemainderPrimorial);
 	int n_offsets(0);
 	static const int OFFSET_STACK_SIZE(16384);
 	if (offset_stack == NULL)
@@ -227,7 +228,7 @@ void update_remainders(uint64_t start_i, uint64_t end_i) {
 		bool is_once_only = false;
 
 		/* Also update the offsets unless once only */
-		if (p >= max_increments)
+		if (p >= maxIncrements)
 			is_once_only = true;
 		 
 		uint64_t invert(miner.parameters.inverts[i]);
@@ -241,10 +242,10 @@ void update_remainders(uint64_t start_i, uint64_t end_i) {
 			if (!is_once_only)
 				offsets[i][f] = index;
 			else {
-				if (index < max_increments) {
+				if (index < maxIncrements) {
 					offset_stack[n_offsets++] = index;
 					if (n_offsets >= OFFSET_STACK_SIZE) {
-						put_offsets_in_segments(offset_stack, n_offsets);
+						putOffsetsInSegments(offset_stack, n_offsets);
 						n_offsets = 0;
 					}
 				}
@@ -252,7 +253,7 @@ void update_remainders(uint64_t start_i, uint64_t end_i) {
 		}
 	}
 	if (n_offsets > 0) {
-		put_offsets_in_segments(offset_stack, n_offsets);
+		putOffsetsInSegments(offset_stack, n_offsets);
 		n_offsets = 0;
 	}
 	mpz_clear(tar);
@@ -268,7 +269,7 @@ void process_sieve(uint8_t *sieve, uint64_t start_i, uint64_t end_i) {
 		uint64_t p(miner.parameters.primes[pno]);
 		for (uint64_t f(0) ; f < 6; f++) {
 			while (offsets[pno][f] < riecoin_sieveSize) {
-				add_to_pending(sieve, pending, pending_pos, offsets[pno][f]);
+				addToPending(sieve, pending, pending_pos, offsets[pno][f]);
 				offsets[pno][f] += p;
 			}
 			offsets[pno][f] -= riecoin_sieveSize;
@@ -284,7 +285,7 @@ void process_sieve(uint8_t *sieve, uint64_t start_i, uint64_t end_i) {
 	}
 }
 
-void verify_thread() {
+void verifyThread() {
 	/* Check for a prime cluster.
 	 * Uses the fermat test - jh's code noted that it is slightly faster.
 	 * Could do an MR test as a follow-up, but the server can do this too
@@ -322,10 +323,10 @@ void verify_thread() {
 				mpz_set(z_temp2, miner.primorial);
 				mpz_mul_ui(z_temp2, z_temp2, job.testWork.indexes[idx]);
 				mpz_add(z_temp, z_temp, z_temp2);
-				mpz_add(z_temp, z_temp, z_verify_remainderPrimorial);
-				mpz_add(z_temp, z_temp, z_verify_target);
+				mpz_add(z_temp, z_temp, z_verifyRemainderPrimorial);
+				mpz_add(z_temp, z_temp, z_verifyTarget);
 				
-				mpz_sub(z_temp2, z_temp, z_verify_target); // offset = tested - target
+				mpz_sub(z_temp2, z_temp, z_verifyTarget); // offset = tested - target
 				
 				mpz_sub_ui(z_ft_n, z_temp, 1);
 				mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_temp);
@@ -344,10 +345,17 @@ void verify_thread() {
 						stats.foundTuples[nPrimes]++;
 						stats.foundTuplesSinceLastDifficulty[nPrimes]++;
 					}
+					else if (!miner.parameters.solo) {
+						int candidatesRemaining(5 - i);
+						if ((nPrimes + candidatesRemaining) < 4) continue;
+					}
 					else break;
 				}
 				
-				if (nPrimes < arguments.tuples()) continue;
+				if (miner.parameters.solo) {
+					if (nPrimes < arguments.tuples()) continue;
+				}
+				else if (nPrimes < 4) continue;
 	
 				// Generate nOffset and submit
 				uint8_t nOffset[32];
@@ -360,7 +368,7 @@ void verify_thread() {
 					*(uint64_t*) (nOffset + d*8) = z_temp2->_mp_d[d];
 #endif
 				
-				submitWork(verify_block, (uint32_t*) nOffset, nPrimes);
+				submitWork(verifyBlock, (uint32_t*) nOffset, nPrimes);
 			}
 			
 			miner.testDoneQueue.push_back(1);
@@ -401,17 +409,17 @@ void getTargetFromBlock(mpz_t z_target, const WorkData& block) {
 }
 
 void miningProcess(WorkData block) {
-	if (!there_is_a_master) {
-		master_lock.lock();
-		if (!there_is_a_master) {
-			there_is_a_master = true;
+	if (!masterExists) {
+		masterLock.lock();
+		if (!masterExists) {
+			masterExists = true;
 			isMaster = true;
 		}
-		master_lock.unlock();
+		masterLock.unlock();
 	}
 	
 	if (!isMaster) {
-		verify_thread(); // Runs forever
+		verifyThread(); // Runs forever
 		return;
 	}
 	
@@ -462,11 +470,10 @@ void miningProcess(WorkData block) {
 		}
 		catch (std::bad_alloc& ba) {
 			std::cerr << "Unable to allocate memory for the segment_hits :|..." << std::endl;
-			std::cout << "Try to lower the Sieve value or the max_increments variable in miner.cpp." << std::endl;
 			exit(-1);
 		}
 	}
-	uint8_t* sieve = riecoin_sieve;
+	uint8_t* sieve(riecoin_sieve);
 	
 	mpz_t z_target, z_temp, z_remainderPrimorial;
 	
@@ -474,23 +481,23 @@ void miningProcess(WorkData block) {
 	mpz_init(z_remainderPrimorial);
 	
 	getTargetFromBlock(z_target, block);
-	// find first offset where target%primorial = primorial_offset
+	// find first offset where target%primorial = primorialOffset
 	mpz_tdiv_r(z_remainderPrimorial, z_target, miner.primorial);
 	mpz_abs(z_remainderPrimorial, z_remainderPrimorial);
 	mpz_sub(z_remainderPrimorial, miner.primorial, z_remainderPrimorial);
 	mpz_tdiv_r(z_remainderPrimorial, z_remainderPrimorial, miner.primorial);
 	mpz_abs(z_remainderPrimorial, z_remainderPrimorial);
-	mpz_add_ui(z_remainderPrimorial, z_remainderPrimorial, primorial_offset);
+	mpz_add_ui(z_remainderPrimorial, z_remainderPrimorial, primorialOffset);
 	mpz_add(z_temp, z_target, z_remainderPrimorial);
 	const uint64_t primeIndex = miner.parameters.primorialNumber;
 	
 	startingPrimeIndex = primeIndex;
-	mpz_set(z_verify_target, z_target);
-	mpz_set(z_verify_remainderPrimorial, z_remainderPrimorial);
-	verify_block = block;
+	mpz_set(z_verifyTarget, z_target);
+	mpz_set(z_verifyRemainderPrimorial, z_remainderPrimorial);
+	verifyBlock = block;
 	
 	for (uint64_t i(0) ; i < maxiter; i++)
-		segment_counts[i] = 0;
+		segmentCounts[i] = 0;
 	
 	uint64_t incr(nPrimes/128);
 	riecoinPrimeTestWork wi;
@@ -573,8 +580,8 @@ void miningProcess(WorkData block) {
 		uint64_t pending[PENDING_SIZE];
 		init_pending(pending);
 		uint64_t pending_pos = 0;
-		for (uint64_t i(0) ; i < segment_counts[loop] ; i++)
-			add_to_pending(sieve, pending, pending_pos, segment_hits[loop][i]);
+		for (uint64_t i(0) ; i < segmentCounts[loop] ; i++)
+			addToPending(sieve, pending, pending_pos, segment_hits[loop][i]);
 
 		for (uint64_t i = 0; i < PENDING_SIZE; i++) {
 			uint64_t old = pending[i];
@@ -598,8 +605,7 @@ void miningProcess(WorkData block) {
 			while (sb != 0) {
 				sb_process_count++;
 				if (sb_process_count > 65) {
-					std::cerr << "Impossible: process count too high. Bug bug" << std::endl;
-					fflush(stdout);
+					std::cerr << "Impossible: process count too high :|" << std::endl;
 					exit(-1);
 				}
 				uint64_t highsb(__builtin_clzll(sb));

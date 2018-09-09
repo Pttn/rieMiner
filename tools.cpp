@@ -4,6 +4,14 @@
 
 #include "tools.h"
 
+uint8_t rand(uint8_t min, uint8_t max) {
+	if (min > max) std::swap(min, max);
+	std::default_random_engine eng((std::random_device())());
+	std::uniform_int_distribution<uint8_t> urd(min, max);
+	uint8_t n(urd(eng));
+	return n;
+}
+
 std::string binToHexStr(const void* p, uint32_t len) {
 	std::ostringstream oss;
 	for (uint32_t i(0) ; i < len ; i++)
@@ -11,8 +19,9 @@ std::string binToHexStr(const void* p, uint32_t len) {
 	return oss.str();
 }
 
-void hexStrToBin(std::string str, uint8_t* data) {
+std::vector<uint8_t> hexStrToV8(std::string str) {
 	if (str.size() % 2 != 0) str = "0" + str;
+	std::vector<uint8_t> v;
 	
 	for (uint16_t i(0) ; i < str.size() ; i += 2) {
 		uint8_t byte(0);
@@ -27,8 +36,9 @@ void hexStrToBin(std::string str, uint8_t* data) {
 				byte += m*(str[i + j] - 'a' + 10);
 			else byte += 0;
 		}
-		data[i/2] = byte;
+		v.push_back(byte);
 	}
+	return v;
 }
 
 uint32_t getCompact(uint32_t nCompact) {

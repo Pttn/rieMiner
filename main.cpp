@@ -4,11 +4,12 @@
 #include "client.h"
 #include "gwclient.h"
 #include "gbtclient.h"
+#include "stratumclient.h"
 #include "tools.h"
 #include <iomanip>
 #include <fstream>
 
-std::string minerVersionString("rieMiner 0.9-alpha2");
+std::string minerVersionString("rieMiner 0.9-alpha3");
 
 Client *client;
 std::mutex clientMutex;
@@ -22,7 +23,6 @@ void submitWork(WorkData wd, uint32_t* nOffset, uint8_t length) {
 	clientMutex.lock();
 	// Fill the nOffset and submit
 	memcpy(wd.bh.nOffset, nOffset, 32); 
-	
 	client->addSubmission(wd, length);
 	clientMutex.unlock();
 }
@@ -44,6 +44,10 @@ void minerThread() {
 				wd.transactions = client->workData().transactions;
 				wd.txCount = client->workData().txCount;
 			}
+			else if (arguments.protocol() == "Stratum") {
+				wd.extraNonce2 = client->workData().extraNonce2;
+				wd.jobId = client->workData().jobId;
+			}
 			hasValidWork = true;
 		}
 		clientMutex.unlock();
@@ -56,7 +60,7 @@ bool miningStarted(false);
 
 void getWorkFromClient(Client *client) {
 	if (!algorithmInited) {
-		miningInit(arguments.sieve(), arguments.threads() + 1);
+		miningInit(arguments.sieve(), arguments.threads() + 1, !(arguments.protocol() == "Stratum"));
 		algorithmInited = true;
 	}
 	
@@ -78,7 +82,7 @@ void workManagement() {
 		if (client->connected()) {
 			if (arguments.refresh() != 0) {
 				double dt(timeSince(timer));
-				if (dt > arguments.refresh() && algorithmInited) {
+				if (dt > arguments.refresh() && algorithmInited && miningStarted) {
 					stats.printStats();
 					stats.printEstimatedTimeToBlock();
 					timer = std::chrono::system_clock::now();
@@ -104,14 +108,15 @@ void workManagement() {
 			}
 		}
 		else {
-			std::cout << "Connecting to Riecoin server using JSON-RPC..." << std::endl;
+			std::cout << "Connecting to Riecoin server..." << std::endl;
 			if (!client->connect(arguments)) {
-				std::cout << "Failure :| ! Retry in 5 seconds..." << std::endl;
-				usleep(5000000);
+				std::cout << "Failure :| ! Retry in 10 seconds..." << std::endl;
+				usleep(10000000);
 			}
 			else {
 				std::cout << "Connected!" << std::endl;
 				stats = Stats();
+				stats.solo = !(arguments.protocol() == "Stratum");
 			}
 			usleep(10000);
 		}
@@ -173,7 +178,7 @@ void Arguments::loadConf() {
 					catch (...) {_refresh = 10;}
 				}
 				else if (key == "Protocol") {
-					if (value == "GetWork" || value == "GetBlockTemplate") {
+					if (value == "GetWork" || value == "GetBlockTemplate" || value == "Stratum") {
 						_protocol = value;
 					}
 					else std::cout << "Invalid Protocol" << std::endl;
@@ -200,18 +205,24 @@ int main() {
 	arguments.loadConf();
 	std::cout << "Host = " << arguments.host() << std::endl;
 	std::cout << "Port = " << arguments.port() << std::endl;
-	std::cout << "User = " << arguments.user() << std::endl;
+	if (arguments.protocol() != "Stratum")
+		std::cout << "User = " << arguments.user() << std::endl;
+	else std::cout << "User.worker = " << arguments.user() << std::endl;
 	std::cout << "Pass = ..." << std::endl;
 	std::cout << "Protocol = " << arguments.protocol() << std::endl;
 	if (arguments.protocol() == "GetBlockTemplate")
 		std::cout << "Payout address = " << arguments.address() << std::endl;
 	std::cout << "Threads = " << arguments.threads() << std::endl;
 	std::cout << "Sieve max = " << arguments.sieve() << std::endl;
-	std::cout << "Will submit tuples of at least length = " << (uint16_t) arguments.tuples() << std::endl;
+	if (arguments.protocol() != "Stratum")
+		std::cout << "Will submit tuples of at least length = " << (uint16_t) arguments.tuples() << std::endl;
+	else std::cout << "Will submit 4-shares" << std::endl;
 	std::cout << "Stats refresh rate = " << arguments.refresh() << " s" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
 	
 	if (arguments.protocol() == "GetWork") client = new GWClient();
+	else if (arguments.protocol() == "Stratum")
+		client = new StratumClient();
 	else client = new GBTClient();
 	
 	std::thread threads[arguments.threads() + 1];

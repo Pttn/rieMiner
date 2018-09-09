@@ -23,9 +23,14 @@ bool GBTClient::connect(const Arguments& arguments) {
 
 void GetBlockTemplateData::coinBaseGen() {
 	coinbase = std::vector<uint8_t>();
-	uint8_t scriptSig[64], scriptSigLen(26);
+	uint8_t scriptSig[64], scriptSigLen(26 + 4);
 	// rieMiner's signature
 	hexStrToBin("4d696e65642077697468205074746e2773207269654d696e6572", scriptSig);
+	// Randomize this so 2 instances will not work on the same problem
+	scriptSig[26] = rand(0x00, 0xFF);
+	scriptSig[27] = rand(0x00, 0xFF);
+	scriptSig[28] = rand(0x00, 0xFF);
+	scriptSig[29] = rand(0x00, 0xFF);
 	
 	// Version [0 -> 3] (01000000)
 	coinbase.push_back(1);
@@ -48,7 +53,7 @@ void GetBlockTemplateData::coinBaseGen() {
 	coinbase.push_back(height % 256);
 	coinbase.push_back((height/256) % 256);
 	coinbase.push_back((height/65536) % 256);
-	// ScriptSig [46 -> 46 + scriptSigLen = s] s = 72
+	// ScriptSig [46 -> 46 + scriptSigLen = s]
 	for (uint32_t i(0) ; i < scriptSigLen ; i++) coinbase.push_back(scriptSig[i]);
 	// Input Sequence [s -> s + 3] (FFFFFFFF)
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0xFF);
@@ -117,9 +122,11 @@ bool GBTClient::getWork() {
 		if (oldHeight != 0) {
 			stats.printTime();
 			if (_wd.height - stats.blockHeightAtDifficultyChange != 0) {
-				std::cout << " Blockheight = " << _gbtd.height - 1 << ", average "
-				          << FIXED(1) << timeSince(stats.lastDifficultyChange)/(_wd.height - stats.blockHeightAtDifficultyChange)
-				          << " s, difficulty = " << stats.difficulty << std::endl;
+				if (stats.difficulty != 1) {
+					std::cout << " Blockheight = " << _gbtd.height - 1 << ", average "
+						      << FIXED(1) << timeSince(stats.lastDifficultyChange)/(_wd.height - stats.blockHeightAtDifficultyChange)
+						      << " s, difficulty = " << stats.difficulty << std::endl;
+				}
 			}
 			else
 				std::cout << " Blockheight = " << _gbtd.height - 1 << ", new difficulty = " << stats.difficulty << std::endl;
@@ -148,7 +155,7 @@ void GBTClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 	json_t *jsonObj = NULL, *res = NULL, *reason = NULL;
 	
 	std::ostringstream oss;
-	std::string req;// GWDSIZE
+	std::string req;
 	oss << "{\"method\": \"submitblock\", \"params\": [\"" << binToHexStr(&wdToSend.bh, (32 + 256 + 256 + 32 + 64 + 256)/8);
 	// Using the Variable Length Integer format
 	if (wdToSend.txCount < 0xFD)

@@ -3,7 +3,6 @@ Some parts were adapted from other projects:
 - dave-andersen's fastrie (https://github.com/dave-andersen/fastrie)
 	- Based on jh00's xptMiner
 - gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) (GPL-2.0)
-	- It also uses the sha2 code from Olivier Gay (olivier.gay@a3.epfl.ch)
 
 These parts are subject to their respective licenses.
 GPL-2.0: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
