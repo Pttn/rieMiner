@@ -9,7 +9,7 @@
 #include <iomanip>
 #include <fstream>
 
-std::string minerVersionString("rieMiner 0.9-alpha3");
+std::string minerVersionString("rieMiner 0.9-alpha3.1");
 
 Client *client;
 std::mutex clientMutex;
@@ -46,7 +46,13 @@ void minerThread() {
 			}
 			else if (arguments.protocol() == "Stratum") {
 				wd.extraNonce2 = client->workData().extraNonce2;
+				wd.txHashes = client->workData().txHashes;
+				wd.coinbase1 = client->workData().coinbase1;
+				wd.coinbase2 = client->workData().coinbase2;
+				wd.extraNonce1 = client->workData().extraNonce1;
+				wd.extraNonce2Len = client->workData().extraNonce2Len;
 				wd.jobId = client->workData().jobId;
+				wd.merkleRootGenStratum();
 			}
 			hasValidWork = true;
 		}
@@ -104,7 +110,7 @@ void workManagement() {
 				// Update work
 				getWorkFromClient(client);
 				clientMutex.unlock();
-				usleep(100000);
+				usleep(200000);
 			}
 		}
 		else {

@@ -7,18 +7,30 @@
 #include <openssl/sha.h>
 #include <random>
 
-std::string binToHexStr(const void*, uint32_t);
+inline std::string v8ToHexStr(std::vector<uint8_t> v) {
+	std::ostringstream oss;
+	for (uint32_t i(0) ; i < v.size() ; i++)
+		oss << std::setfill('0') << std::setw(2) << std::hex << (uint32_t) v[i];
+	return oss.str();
+}
+
+inline std::string binToHexStr(const void* p, uint32_t len) {
+	std::vector<uint8_t> v;
+	for (uint32_t i(0) ; i < len ; i++) v.push_back(((uint8_t*) p)[i]);
+	return v8ToHexStr(v);
+}
+
 std::vector<uint8_t> hexStrToV8(std::string);
 inline void hexStrToBin(std::string str, uint8_t* data) {
 	std::vector<uint8_t> v(hexStrToV8(str));
-	for (uint16_t i(0) ; i < v.size() ; i++)
-		data[i] = v[i];
+	for (uint16_t i(0) ; i < v.size() ; i++) data[i] = v[i];
 }
 uint32_t getCompact(uint32_t);
 // Convert address to ScriptPubKey used for building the Coinbase Transaction
 bool addrToScriptPubKey(std::string, uint8_t*);
 // Calculate Merkle Root from a list of transactions
 std::array<uint32_t, 8> calculateMerkleRoot(std::vector<std::array<uint32_t, 8>>);
+std::array<uint32_t, 8> calculateMerkleRootStratum(std::vector<std::array<uint32_t, 8>>);
 uint8_t rand(uint8_t, uint8_t);
 
 inline void sha256(const uint8_t *data, uint8_t hash[32], uint32_t len) {

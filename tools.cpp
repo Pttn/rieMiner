@@ -4,19 +4,13 @@
 
 #include "tools.h"
 
+std::default_random_engine eng((std::random_device())());
+
 uint8_t rand(uint8_t min, uint8_t max) {
 	if (min > max) std::swap(min, max);
-	std::default_random_engine eng((std::random_device())());
 	std::uniform_int_distribution<uint8_t> urd(min, max);
 	uint8_t n(urd(eng));
 	return n;
-}
-
-std::string binToHexStr(const void* p, uint32_t len) {
-	std::ostringstream oss;
-	for (uint32_t i(0) ; i < len ; i++)
-		oss << std::setfill('0') << std::setw(2) << std::hex << (uint32_t) ((uint8_t*) p)[i];
-	return oss.str();
 }
 
 std::vector<uint8_t> hexStrToV8(std::string str) {
@@ -215,6 +209,25 @@ std::array<uint32_t, 8> calculateMerkleRoot(std::vector<std::array<uint32_t, 8>>
 		}
 		// Process the next step
 		merkleRoot = calculateMerkleRoot(txHashes2);
+	}
+	return merkleRoot;
+}
+
+std::array<uint32_t, 8> calculateMerkleRootStratum(std::vector<std::array<uint32_t, 8>> txHashes) {
+	std::array<uint32_t, 8> merkleRoot = {0, 0, 0, 0, 0, 0, 0, 0};
+	if (txHashes.size() == 0)
+		std::cerr << "calculateMerkleRootStratum: no transaction to hash!";
+	else if (txHashes.size() == 1)
+		return txHashes[0];
+	else {
+		uint8_t hashData[64], hashOut[32];
+		memcpy(hashData, txHashes[0].data(), 32);
+		for (uint32_t i(1) ; i < txHashes.size() ; i++) {
+			memcpy(&hashData[32], txHashes[i].data(), 32);
+			sha256(hashData, hashOut, 64);
+			sha256(hashOut, hashData, 32);
+		}
+		for (uint32_t i(0) ; i < 8 ; i++) merkleRoot[i] = ((uint32_t*) hashData)[i];
 	}
 	return merkleRoot;
 }

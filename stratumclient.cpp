@@ -13,6 +13,8 @@ bool StratumClient::connect(const Arguments& arguments) {
 	_port = arguments.port();
 	_sd = StratumData();
 	_wd = WorkData();
+	_buffer = std::array<char, RBUFSIZE>();
+	_noDataCount = 0;
 	_state = INIT;
 	_result = std::string();
 	
@@ -56,18 +58,6 @@ bool StratumClient::connect(const Arguments& arguments) {
 	_state = SUBSCRIBE_SENT;
 	_connected = true;
 	return true;
-}
-
-void StratumData::coinBaseGen() {
-	coinbase = std::vector<uint8_t>();
-	extraNonce2 = std::vector<uint8_t>();
-	for (uint32_t i(0) ; i < coinbase1.size() ; i++)   coinbase.push_back(coinbase1[i]);
-	for (uint32_t i(0) ; i < extraNonce1.size() ; i++) coinbase.push_back(extraNonce1[i]);
-	for (uint32_t i(0) ; i < extraNonce2Len ; i++) {
-		extraNonce2.push_back(rand(0x00, 0xFF));
-		coinbase.push_back(extraNonce2[i]);
-	}
-	for (uint32_t i(0) ; i < coinbase2.size() ; i++) coinbase.push_back(coinbase2[i]);
 }
 
 void StratumClient::getSubscribeInfo() {
@@ -135,9 +125,9 @@ void StratumClient::getSubscribeInfo() {
 			else {
 				std::cout << std::endl;
 				for (uint16_t i(0) ; i < _sd.sids.size() ; i++)
-					std::cout << " " << i << " - " << _sd.sids[i].first << ": " << binToHexStr(_sd.sids[i].second.data(), _sd.sids[i].second.size()) << std::endl;
+					std::cout << " " << i << " - " << _sd.sids[i].first << ": " << v8ToHexStr(_sd.sids[i].second) << std::endl;
 			}
-			std::cout << "ExtraNonce1    = " << binToHexStr(_sd.extraNonce1.data(), _sd.extraNonce1.size()) << std::endl;
+			std::cout << "ExtraNonce1    = " << v8ToHexStr(_sd.extraNonce1) << std::endl;
 			std::cout << "extraNonce1Len = " << _sd.extraNonce1Len << std::endl;
 			std::cout << "extraNonce2Len = " << _sd.extraNonce2Len << std::endl;
 			
@@ -146,6 +136,7 @@ void StratumClient::getSubscribeInfo() {
 			send(_socket, oss.str().c_str(), oss.str().size(), 0);
 			
 			_state = AUTHORIZE_SENT;
+			std::cout << "Waiting for server data..." << std::endl;
 		}
 	}
 	
@@ -160,7 +151,7 @@ void StratumClient::handleOther() {
 
 	jsonObj = json_loads(_result.c_str(), 0, &err);
 	if (jsonObj == NULL)
-		std::cerr << "handleOther: JSON decode failed :| - " << err.text << std::endl;
+		/*std::cerr << "handleOther: JSON decode failed :| - " << err.text << std::endl*/; // This happens sometimes but without harm
 	else {
 		const char *method(NULL);
 		method = json_string_value(json_object_get(jsonObj, "method"));
@@ -237,9 +228,8 @@ bool StratumClient::getWork() {
 	_sd.coinbase1 = hexStrToV8(coinb1);
 	_sd.coinbase2 = hexStrToV8(coinb2);
 	_sd.jobId = hexStrToV8(job_id);
-	
-	_sd.coinBaseGen();
-	_sd.txHashes.push_back(_sd.coinBaseHash());
+	memcpy(&_wd.bh, &_sd.bh, 128);
+	// Get Transactions Hashes
 	for (uint32_t i(0) ; i < json_array_size(jsonTxs) ; i++) {
 		std::array<uint32_t, 8> txHash;
 		uint8_t txHashTmp[32];
@@ -247,33 +237,34 @@ bool StratumClient::getWork() {
 		for (uint32_t j(0) ; j < 8 ; j++) txHash[j] = ((uint32_t*) txHashTmp)[j];
 		_sd.txHashes.push_back(txHash);
 	}
-	_sd.merkleRootGen();
-	memcpy(&_wd.bh, &_sd.bh, 128);
 	
 	// Extract BlockHeight from Coinbase
-	uint32_t oldHeight(_wd.height), height(_sd.coinbase[43] + 256*_sd.coinbase[44] + 65536*_sd.coinbase[45]);
+	uint32_t oldHeight(_wd.height), height(_sd.coinbase1[43] + 256*_sd.coinbase1[44] + 65536*_sd.coinbase1[45] - 1);
 	// Notify when the network found a block
 	if (oldHeight != height) {
 		if (oldHeight != 0) {
 			stats.printTime();
 			if (_wd.height - stats.blockHeightAtDifficultyChange != 0) {
-				std::cout << " Blockheight = " << height - 1 << ", average "
+				std::cout << " Blockheight = " << height << ", average "
 				          << FIXED(1) << timeSince(stats.lastDifficultyChange)/(_wd.height - stats.blockHeightAtDifficultyChange)
 				          << " s, difficulty = " << stats.difficulty << std::endl;
 			}
 			else
-				std::cout << " Blockheight = " << height - 1 << ", new difficulty = " << stats.difficulty << std::endl;
+				std::cout << " Blockheight = " << height << ", new difficulty = " << stats.difficulty << std::endl;
 		}
 		else stats.blockHeightAtDifficultyChange = height;
 	}
-	
-	_wd.height = height - 1;
-	_wd.bh.bits = swab32(_wd.bh.bits);
-	_wd.targetCompact = getCompact(_wd.bh.bits);
-	_wd.txCount       = _sd.txHashes.size();
-	_wd.extraNonce1 = _sd.extraNonce1;
-	_wd.extraNonce2 = _sd.extraNonce2;
-	_wd.jobId = _sd.jobId;
+	// Fill the work data for the workers
+	_wd.height         = height;
+	_wd.bh.bits        = swab32(_wd.bh.bits);
+	_wd.targetCompact  = getCompact(_wd.bh.bits);
+	_wd.txHashes       = _sd.txHashes;
+	_wd.txCount        = _sd.txHashes.size();
+	_wd.coinbase1      = _sd.coinbase1;
+	_wd.coinbase2      = _sd.coinbase2;
+	_wd.extraNonce1    = _sd.extraNonce1;
+	_wd.extraNonce2Len = _sd.extraNonce2Len;
+	_wd.jobId          = _sd.jobId;
 	// Change endianness for mining (will revert back when submit share)
 	for (uint8_t i(0) ; i < 8; i++)
 		_wd.bh.previousblockhash[i] = be32dec(&_wd.bh.previousblockhash[i]);
@@ -320,13 +311,12 @@ void StratumClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 	
 	oss << "{\"method\": \"mining.submit\", \"params\": [\""
 	    << _user << "\", \""
-	    << binToHexStr(wdToSend.jobId.data(), wdToSend.jobId.size()) << "\", \""
-	    << binToHexStr(wdToSend.extraNonce2.data(), wdToSend.extraNonce2.size()) << "\", \""
+	    << v8ToHexStr(wdToSend.jobId) << "\", \""
+	    << v8ToHexStr(wdToSend.extraNonce2) << "\", \""
 	    << binToHexStr((const uint8_t*) &wdToSend.bh.curtime, 8) << "\", \""
 	    << binToHexStr(nonce, 32) << "\"], \"id\":0}\n";
 	
 	send(_socket, oss.str().c_str(), oss.str().size(), 0);
-	std::cout << "Sent: " << oss.str();
 }
 
 bool StratumClient::process() {
@@ -346,12 +336,16 @@ bool StratumClient::process() {
 	_result = std::string();
 	
 	if (n <= 0) { // No data received. Usually, this is normal, because of the non-blocking socket...
+		_noDataCount++;
 #ifdef _WIN32
-		if (WSAGetLastError() != WSAEWOULDBLOCK || n == 0) { // ...but else, this is an error!
+		if (WSAGetLastError() != WSAEWOULDBLOCK || n == 0 || _noDataCount > MAXNDC) { // ...but else, this is an error!
 #else
-		if (errno != EWOULDBLOCK || n == 0) { // ...but else, this is an error!
+		if (errno != EWOULDBLOCK || n == 0 || _noDataCount > MAXNDC) { // ...but else, this is an error!
 #endif
-			std::cerr << "process: error receiving work data :| - " << std::strerror(errno) << std::endl;
+			if (_noDataCount > MAXNDC)
+				std::cerr << "process: no server response since a very long time, disconnection assumed." << std::endl;
+			else
+				std::cerr << "process: error receiving work data :| - " << std::strerror(errno) << std::endl;
 			_socket = -1;
 			_connected = false;
 			return false;
@@ -359,6 +353,7 @@ bool StratumClient::process() {
 		return true;
 	}
 	
+	_noDataCount = 0;
 	_result.append(_buffer.cbegin(), _buffer.cbegin() + n);
 	// std::cout << "Result = " << _result << std::endl; // Main line for Stratum debugging
 	

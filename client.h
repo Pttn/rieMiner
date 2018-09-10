@@ -7,6 +7,7 @@
 #include <jansson.h>
 #include <curl/curl.h>
 #include "global.h"
+#include "tools.h"
 
 struct BlockHeader { // Total 1024 bits/128 bytes (256 hex chars)
 	uint32_t version;
@@ -42,6 +43,9 @@ struct WorkData {
 	uint16_t txCount;
 	
 	// For Stratum
+	std::vector<std::array<uint32_t, 8>> txHashes;
+	std::vector<uint8_t> coinbase1, coinbase2;
+	uint16_t extraNonce2Len;
 	std::vector<uint8_t> extraNonce1, extraNonce2, jobId;
 	
 	WorkData() {
@@ -53,9 +57,33 @@ struct WorkData {
 		transactions = std::string();
 		txCount = 0;
 		
+		txHashes = std::vector<std::array<uint32_t, 8>>();
+		coinbase1 = std::vector<uint8_t>();
+		coinbase2 = std::vector<uint8_t>();
+		extraNonce2Len = 0;
 		extraNonce1 = std::vector<uint8_t>();
 		extraNonce2 = std::vector<uint8_t>();
 		jobId = std::vector<uint8_t>();
+	}
+	
+	void merkleRootGenStratum() {
+		std::vector<uint8_t> coinbase;
+		extraNonce2 = std::vector<uint8_t>();
+		for (uint32_t i(0) ; i < coinbase1.size() ; i++)   coinbase.push_back(coinbase1[i]);
+		for (uint32_t i(0) ; i < extraNonce1.size() ; i++) coinbase.push_back(extraNonce1[i]);
+		for (uint32_t i(0) ; i < extraNonce2Len ; i++) {
+			extraNonce2.push_back(rand(0x00, 0xFF));
+			coinbase.push_back(extraNonce2[i]);
+		}
+		for (uint32_t i(0) ; i < coinbase2.size() ; i++) coinbase.push_back(coinbase2[i]);
+		
+		uint8_t cbHashTmp[32];
+		sha256(coinbase.data(), cbHashTmp, coinbase.size());
+		sha256(cbHashTmp, cbHashTmp, 32);
+		std::array<uint32_t, 8> cbHash;
+		for (uint32_t i(0) ; i < 8 ; i++) cbHash[i] = ((uint32_t*) cbHashTmp)[i];
+		txHashes.insert(txHashes.begin(), cbHash);
+		memcpy(bh.merkleRoot, calculateMerkleRootStratum(txHashes).data(), 32);
 	}
 };
 
