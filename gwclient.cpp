@@ -1,21 +1,23 @@
 // (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#include "global.h"
+#include "main.h"
 #include "gwclient.h"
 #include "tools.h"
 
-bool GWClient::connect(const Arguments& arguments) {
+bool GWClient::connect() {
 	if (_connected) return false;
-	_user = arguments.user();
-	_pass = arguments.pass();
-	_host = arguments.host();
-	_port = arguments.port();
-	if (!getWork()) return false;
-	_gwd = GetWorkData();
-	_wd = WorkData();
-	_pendingSubmissions = std::vector<std::pair<WorkData, uint8_t>>();
-	_connected = true;
-	return true;
+	if (_inited) {
+		if (!getWork()) return false;
+		_gwd = GetWorkData();
+		_pendingSubmissions = std::vector<std::pair<WorkData, uint8_t>>();
+		_connected = true;
+		_height = 0;
+		return true;
+	}
+	else {
+		std::cout << "Cannot connect because the client was not inited!" << std::endl;
+		return false;
+	}
 }
 
 bool GWClient::getWork() {
@@ -26,50 +28,23 @@ bool GWClient::getWork() {
 	            reqGmi("{\"method\": \"getmininginfo\", \"params\": [], \"id\": 0}\n");
 	json_t *jsonGw(NULL), *jsonGmi(NULL);
  	
-	jsonGw  = sendRPCCall(_curl, reqGw);
-	jsonGmi = sendRPCCall(_curl, reqGmi);
-	// Failure to GetWork or GetMiningInfo
-	if (jsonGw == NULL || jsonGmi == NULL) return false;
-	
+	jsonGw  = sendRPCCall(reqGw);
+	if (jsonGw == NULL) return false;
+	jsonGmi = sendRPCCall(reqGmi);
+	if (jsonGmi == NULL) {
+		json_decref(jsonGw);
+		return false;
+	}
 	// Extract GetWork data
 	hexStrToBin(json_string_value(json_object_get(json_object_get(jsonGw, "result"), "data")), (unsigned char*) &_gwd);
- 	_wd.bh = _gwd.bh;
- 	
- 	// Get current block number and difficulty
-	uint32_t height(json_integer_value(json_object_get(json_object_get(jsonGmi, "result"), "blocks")));
-	
+	// Get current block number and difficulty
+	_height = json_integer_value(json_object_get(json_object_get(jsonGmi, "result"), "blocks"));
 	// Notify when the network found a block
-	if (memcmp(_gwd.bh.previousblockhash, previousblockhashOld, 32) != 0) {
-		if (_wd.height != 0) {
-			stats.printTime();
-			if (_wd.height - stats.blockHeightAtDifficultyChange != 0) {
-				if (stats.difficulty != 1) {
-					std::cout << " Blockheight = " << height << ", average "
-						      << FIXED(1) << timeSince(stats.lastDifficultyChange)/(_wd.height - stats.blockHeightAtDifficultyChange)
-						      << " s, difficulty = " << stats.difficulty << std::endl;
-				}
-			}
-			else
-				std::cout << " Blockheight = " << _wd.height << ", new difficulty = " << stats.difficulty << std::endl;
-		}
-		else stats.blockHeightAtDifficultyChange = height;
-	}
-	
-	_wd.height = height;
-	
-	// Change endianness just for mining (will revert back when submit share)
-	_wd.bh.version = swab32(_wd.bh.version);
-	for (uint8_t i(0) ; i < 8; i++) {
-		_wd.bh.previousblockhash[i] = be32dec(&_wd.bh.previousblockhash[i]);
-		_wd.bh.merkleRoot[i] = be32dec(&_wd.bh.merkleRoot[i]);
-	}
-	_wd.bh.bits = swab32(_wd.bh.bits);
-	_wd.bh.curtime = swab32(_wd.bh.curtime);
-	_wd.targetCompact = getCompact(_wd.bh.bits);
+	if (memcmp(_gwd.bh.previousblockhash, previousblockhashOld, 32) != 0)
+		_manager->updateHeight(_height);
 	
 	json_decref(jsonGw);
 	json_decref(jsonGmi);
-	
 	return true;
 }
 
@@ -80,25 +55,25 @@ void GWClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 	
 	// Revert back endianness
 	bhToSend.version = swab32(bhToSend.version);
-	for (uint8_t i(0) ; i < 8; i++) {
-		bhToSend.previousblockhash[i] = be32dec(&bhToSend.previousblockhash[i]);
-		bhToSend.merkleRoot[i] = be32dec(&bhToSend.merkleRoot[i]);
-		bhToSend.nOffset[i] = be32dec(&bhToSend.nOffset[i]);
+	for (uint8_t i(0) ; i < 8 ; i++) {
+		((uint32_t*) bhToSend.previousblockhash)[i] = be32dec(&((uint32_t*) bhToSend.previousblockhash)[i]);
+		((uint32_t*) bhToSend.merkleRoot)[i] = be32dec(&((uint32_t*) bhToSend.merkleRoot)[i]);
+		((uint32_t*) bhToSend.nOffset)[i] = be32dec(&((uint32_t*) bhToSend.nOffset)[i]);
 	}
 	bhToSend.bits = swab32(bhToSend.bits);
 	bhToSend.curtime = swab32(bhToSend.curtime);
 	
-	json_t *jsonObj = NULL, *res = NULL, *reason = NULL;
+	json_t *jsonObj(NULL), *res(NULL), *reason(NULL);
 	
 	std::ostringstream oss;
 	std::string req;
 	oss << "{\"method\": \"getwork\", \"params\": [\"" << binToHexStr(&bhToSend, GWDSIZE/8) << "\"], \"id\": 1}\n";
 	req = oss.str();
-	jsonObj = sendRPCCall(_curl, req);
+	jsonObj = sendRPCCall(req);
 	
 	uint8_t k(share.second);
 	if (k >= 4) {
-		stats.printTime();
+		_manager->printTime();
 		std::cout << " 4-tuple found";
 		if (k == 4) std::cout << std::endl;
 	}
@@ -124,4 +99,20 @@ void GWClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 	}
 	
 	if (jsonObj != NULL) json_decref(jsonObj);
+}
+
+WorkData GWClient::workData() const {
+	WorkData wd;
+	wd.height = _height;
+	wd.bh = _gwd.bh;
+	// Change endianness just for mining (will revert back when submit share)
+	wd.bh.version = swab32(wd.bh.version);
+	for (uint8_t i(0) ; i < 8 ; i++) {
+		((uint32_t*) wd.bh.previousblockhash)[i] = be32dec(&((uint32_t*) wd.bh.previousblockhash)[i]);
+		((uint32_t*) wd.bh.merkleRoot)[i] = be32dec(&((uint32_t*) wd.bh.merkleRoot)[i]);
+	}
+	wd.bh.bits = swab32(wd.bh.bits);
+	wd.bh.curtime = swab32(wd.bh.curtime);
+	wd.targetCompact = getCompact(wd.bh.bits);
+	return wd;
 }

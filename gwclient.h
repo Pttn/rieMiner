@@ -12,13 +12,16 @@ struct GetWorkData {
 	GetWorkData() {bh = BlockHeader();}
 };
 
-class GWClient : public Client {
+class GWClient : public RPCClient {
 	GetWorkData _gwd;
+	uint32_t _height;
 	
 	public:
-	bool connect(const Arguments&);
+	using RPCClient::RPCClient;
+	bool connect();
 	bool getWork();
 	void sendWork(const std::pair<WorkData, uint8_t>&) const;
+	WorkData workData() const;
 };
 
 #endif

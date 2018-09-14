@@ -3,7 +3,16 @@
 #ifndef HEADER_TOOLS_H
 #define HEADER_TOOLS_H
 
-#include "global.h"
+#include <iostream>
+#include <cstdio>
+#include <cstdint>
+#include <cstring>
+#include <string>
+#include <sstream>
+#include <iomanip>
+#include <array>
+#include <vector>
+#include <chrono>
 #include <openssl/sha.h>
 #include <random>
 
@@ -32,6 +41,12 @@ bool addrToScriptPubKey(std::string, uint8_t*);
 std::array<uint32_t, 8> calculateMerkleRoot(std::vector<std::array<uint32_t, 8>>);
 std::array<uint32_t, 8> calculateMerkleRootStratum(std::vector<std::array<uint32_t, 8>>);
 uint8_t rand(uint8_t, uint8_t);
+
+inline double timeSince(std::chrono::time_point<std::chrono::system_clock> t0) {
+	std::chrono::time_point<std::chrono::system_clock> t(std::chrono::system_clock::now());
+	std::chrono::duration<double> dt(t - t0);
+	return dt.count();
+}
 
 inline void sha256(const uint8_t *data, uint8_t hash[32], uint32_t len) {
     SHA256_CTX sha256;

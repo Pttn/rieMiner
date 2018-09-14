@@ -42,13 +42,15 @@ struct GetBlockTemplateData {
 	}
 };
 
-class GBTClient : public Client {
+class GBTClient : public RPCClient {
 	GetBlockTemplateData _gbtd;
 	
 	public:
-	bool connect(const Arguments&);
+	using RPCClient::RPCClient;
+	bool connect();
 	bool getWork();
 	void sendWork(const std::pair<WorkData, uint8_t>&) const;
+	WorkData workData() const;
 };
 
 #endif

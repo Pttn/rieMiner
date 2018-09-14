@@ -6,17 +6,22 @@
 #include <vector>
 #include <jansson.h>
 #include <curl/curl.h>
-#include "global.h"
+#include "main.h"
 #include "tools.h"
+
+class WorkManager;
+
+enum JobType {TYPE_CHECK, TYPE_MOD, TYPE_SIEVE};
+#define WORK_INDEXES 64
 
 struct BlockHeader { // Total 1024 bits/128 bytes (256 hex chars)
 	uint32_t version;
-	uint32_t previousblockhash[8]; // 256 bits
-	uint32_t merkleRoot[8];        // 256 bits
+	uint8_t  previousblockhash[32]; // 256 bits
+	uint8_t  merkleRoot[32];        // 256 bits
 	uint32_t bits;
-	uint64_t curtime;              // Riecoin has 64 bits timestamps
-	uint32_t nOffset[8];           // 256 bits
-	uint32_t remaining[4];         // 128 bits
+	uint64_t curtime;               // Riecoin has 64 bits timestamps
+	uint8_t  nOffset[32];           // 256 bits
+	uint8_t  remaining[16];         // 128 bits
 	
 	BlockHeader() {
 		version = 0;
@@ -31,59 +36,31 @@ struct BlockHeader { // Total 1024 bits/128 bytes (256 hex chars)
 	}
 };
 
-// Store all the information needed for the miner and submissions
+// Stores all the information needed for the miner and submissions
 struct WorkData {
 	BlockHeader bh;
 	uint32_t height;
 	uint32_t targetCompact;
-	uint32_t target[8];
 	
 	// For GetBlockTemplate
 	std::string transactions; // Store the concatenation in hex format
 	uint16_t txCount;
 	
 	// For Stratum
-	std::vector<std::array<uint32_t, 8>> txHashes;
-	std::vector<uint8_t> coinbase1, coinbase2;
-	uint16_t extraNonce2Len;
-	std::vector<uint8_t> extraNonce1, extraNonce2, jobId;
+	std::vector<uint8_t> extraNonce1, extraNonce2;
+	std::string jobId;
 	
 	WorkData() {
 		bh = BlockHeader();
 		height = 0;
 		targetCompact = 0;
-		for (uint8_t i(0) ; i < 8 ; i++)
-			target[i] = 0;
+		
 		transactions = std::string();
 		txCount = 0;
 		
-		txHashes = std::vector<std::array<uint32_t, 8>>();
-		coinbase1 = std::vector<uint8_t>();
-		coinbase2 = std::vector<uint8_t>();
-		extraNonce2Len = 0;
 		extraNonce1 = std::vector<uint8_t>();
 		extraNonce2 = std::vector<uint8_t>();
-		jobId = std::vector<uint8_t>();
-	}
-	
-	void merkleRootGenStratum() {
-		std::vector<uint8_t> coinbase;
-		extraNonce2 = std::vector<uint8_t>();
-		for (uint32_t i(0) ; i < coinbase1.size() ; i++)   coinbase.push_back(coinbase1[i]);
-		for (uint32_t i(0) ; i < extraNonce1.size() ; i++) coinbase.push_back(extraNonce1[i]);
-		for (uint32_t i(0) ; i < extraNonce2Len ; i++) {
-			extraNonce2.push_back(rand(0x00, 0xFF));
-			coinbase.push_back(extraNonce2[i]);
-		}
-		for (uint32_t i(0) ; i < coinbase2.size() ; i++) coinbase.push_back(coinbase2[i]);
-		
-		uint8_t cbHashTmp[32];
-		sha256(coinbase.data(), cbHashTmp, coinbase.size());
-		sha256(cbHashTmp, cbHashTmp, 32);
-		std::array<uint32_t, 8> cbHash;
-		for (uint32_t i(0) ; i < 8 ; i++) cbHash[i] = ((uint32_t*) cbHashTmp)[i];
-		txHashes.insert(txHashes.begin(), cbHash);
-		memcpy(bh.merkleRoot, calculateMerkleRootStratum(txHashes).data(), 32);
+		jobId = std::string();
 	}
 };
 
@@ -92,32 +69,20 @@ struct WorkData {
 // Child concrete classes: GWClient, GBTClient
 class Client {
 	protected:
-	bool _connected;
-	std::string _user;
-	std::string _pass;
-	std::string _host;
-	uint16_t _port;
-	WorkData _wd;
+	bool _inited, _connected;
 	CURL *_curl;
 	std::mutex _submitMutex;
 	std::vector<std::pair<WorkData, uint8_t>> _pendingSubmissions;
 	
-	std::string getUserPass() const {
-		std::ostringstream oss;
-		oss << _user << ":" << _pass;
-		return oss.str();
-	}
+	std::shared_ptr<WorkManager> _manager;
 	
-	std::string getHostPort() const {
-		std::ostringstream oss;
-		oss << "http://" << _host << ":" << _port << "/";
-		return oss.str();
-	}
+	std::string getUserPass() const;
+	std::string getHostPort() const;
 	
 	public:
-	Client();
-	virtual bool connect(const Arguments&); // Returns false on error or if already connected
-	json_t* sendRPCCall(CURL*, const std::string&) const; // Send a RPC call to the server
+	Client() {_inited = false;}
+	Client(const std::shared_ptr<WorkManager>&);
+	virtual bool connect(); // Returns false on error or if already connected
 	virtual bool getWork() = 0; // Get work (block data,...) from the sever, depending on the chosen protocol
 	virtual void sendWork(const std::pair<WorkData, uint8_t>&) const = 0;  // Send work (share or block) to the sever, depending on the chosen protocol
 	void addSubmission(const WorkData& bhToSubmit, uint8_t difficulty) {
@@ -127,9 +92,27 @@ class Client {
 	}
 	virtual bool process(); // Processes submissions and updates work
 	bool connected() {return _connected;}
-	WorkData workData() const {return _wd;}
+	// The WorkManager will get the work ready to send to the miner using this
+	// In particular, will do the needed endianness changes or randomizations
+	virtual WorkData workData() const = 0; // If the returned work data has height 0, it is invalid
 };
 
-extern std::string minerVersionString;
+class RPCClient : public Client {
+	public:
+	using Client::Client;
+	json_t* sendRPCCall(const std::string&) const; // Send a RPC call to the server
+};
+
+class BMClient : public Client {
+	BlockHeader _bh;
+	uint32_t _height;
+	
+	public:
+	using Client::Client;
+	bool connect();
+	bool getWork();
+	void sendWork(const std::pair<WorkData, uint8_t>& share) const;
+	WorkData workData() const;
+};
 
 #endif

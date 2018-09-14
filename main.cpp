@@ -1,135 +1,141 @@
 // (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#include "global.h"
+#include "main.h"
 #include "client.h"
+#include "miner.h"
 #include "gwclient.h"
 #include "gbtclient.h"
 #include "stratumclient.h"
 #include "tools.h"
 #include <iomanip>
 #include <fstream>
+#include <unistd.h>
+#ifndef _WIN32
+	#include <signal.h>
+#endif
 
-std::string minerVersionString("rieMiner 0.9-alpha3.1");
+std::shared_ptr<WorkManager> manager;
 
-Client *client;
-std::mutex clientMutex;
-volatile uint32_t currentBlockHeight; // used to notify worker threads of new block data
-
-Stats stats = Stats();
-
-Arguments arguments;
-
-void submitWork(WorkData wd, uint32_t* nOffset, uint8_t length) {
-	clientMutex.lock();
-	// Fill the nOffset and submit
-	memcpy(wd.bh.nOffset, nOffset, 32); 
-	client->addSubmission(wd, length);
-	clientMutex.unlock();
+WorkManager::WorkManager() {
+	_options       = Options();
+	_stats         = Stats();
+	_client        = NULL;
+	_miner         = NULL;
+	_inited        = false;
+	_miningStarted = false;
+	_waitReconnect = 10;
+	_workRefresh   = 500;
 }
 
-bool algorithmInited(false);
+void WorkManager::init() {
+	_options.loadConf();
+	std::cout << "-----------------------------------------------------------" << std::endl;
+	if (_options.protocol() == "GetWork")
+		_client = std::unique_ptr<Client>(new GWClient(shared_from_this()));
+	else if (_options.protocol() == "Stratum")
+		_client = std::unique_ptr<Client>(new StratumClient(shared_from_this()));
+	else if (_options.protocol() == "GetBlockTemplate")
+		_client = std::unique_ptr<Client>(new GBTClient(shared_from_this()));
+	else _client = std::unique_ptr<Client>(new BMClient(shared_from_this()));
+	
+	_miner = std::unique_ptr<Miner>(new Miner(shared_from_this()));
+	
+	std::cout << "Starting " << _options.threads() << " + 1 threads" << std::endl;
+	for (uint16_t i(0) ; i < _options.threads() + 1 ; i++) {
+		_threads.push_back(std::thread(&WorkManager::minerThread, shared_from_this()));
+		_threads[i].detach();
+	}
+	
+	_inited = true;
+}
 
-void minerThread() {
+void WorkManager::submitWork(WorkData wd, uint32_t* nOffset, uint8_t length) {
+	_clientMutex.lock();
+	// Fill the nOffset and submit
+	memcpy(wd.bh.nOffset, nOffset, 32); 
+	_client->addSubmission(wd, length);
+	_clientMutex.unlock();
+}
+
+void WorkManager::minerThread() {
 	WorkData wd;
 	while (true) {
 		bool hasValidWork(false);
-		clientMutex.lock();
-		if (client->workData().height > 0) {
-			// Get RieCoin work data
-			wd = WorkData();
-			wd.bh = client->workData().bh;
-			wd.targetCompact = client->workData().targetCompact;
-			wd.height = client->workData().height;
-			if (arguments.protocol() == "GetBlockTemplate") {
-				wd.transactions = client->workData().transactions;
-				wd.txCount = client->workData().txCount;
-			}
-			else if (arguments.protocol() == "Stratum") {
-				wd.extraNonce2 = client->workData().extraNonce2;
-				wd.txHashes = client->workData().txHashes;
-				wd.coinbase1 = client->workData().coinbase1;
-				wd.coinbase2 = client->workData().coinbase2;
-				wd.extraNonce1 = client->workData().extraNonce1;
-				wd.extraNonce2Len = client->workData().extraNonce2Len;
-				wd.jobId = client->workData().jobId;
-				wd.merkleRootGenStratum();
-			}
-			hasValidWork = true;
-		}
-		clientMutex.unlock();
-		if (!hasValidWork) usleep(10000);
-		else miningProcess(wd);
+		_clientMutex.lock();
+		wd = _client->workData(); // Get generated work data from client
+		_clientMutex.unlock();
+		if (wd.height > 0) hasValidWork = true;
+		if (!hasValidWork) usleep(1000*_workRefresh/2);
+		else _miner->process(wd);
 	}
 }
 
-bool miningStarted(false);
-
-void getWorkFromClient(Client *client) {
-	if (!algorithmInited) {
-		miningInit(arguments.sieve(), arguments.threads() + 1, !(arguments.protocol() == "Stratum"));
-		algorithmInited = true;
-	}
-	
-	if (!miningStarted && client->workData().height != 0) {
-		stats.startMining = std::chrono::system_clock::now();
-		stats.lastDifficultyChange = std::chrono::system_clock::now();
-		stats.blockHeightAtDifficultyChange = client->workData().height - 1;
-		std::cout << "[0000:00:00] Started mining at block " << client->workData().height << std::endl;
-		miningStarted = true;
-	}
-	
-	currentBlockHeight = client->workData().height;
-	__sync_synchronize(); // memory barrier needed if this isn't done in crit
-}
-
-void workManagement() {
-	std::chrono::time_point<std::chrono::system_clock> timer;
-	while (true) {
-		if (client->connected()) {
-			if (arguments.refresh() != 0) {
-				double dt(timeSince(timer));
-				if (dt > arguments.refresh() && algorithmInited && miningStarted) {
-					stats.printStats();
-					stats.printEstimatedTimeToBlock();
-					timer = std::chrono::system_clock::now();
+void WorkManager::manage() {
+	if (!_inited) std::cerr << "Manager was not inited!" << std::endl;
+	else {
+		std::chrono::time_point<std::chrono::system_clock> timer;
+		while (true) {
+			if (_options.protocol() == "Benchmark" && _miningStarted) {
+				if (timeSince(_stats.miningStartTp()) > _options.testTime()) {
+					std::cout << _options.testTime() << " s elapsed, test finished. Version: " << minerVersionString << std::endl;
+					_stats.printTuplesStats();
+					_exit(0);
 				}
 			}
 			
-			clientMutex.lock();
-			client->process();
-			if (!client->connected()) {
-				// Mark work as invalid
-				currentBlockHeight = 0;
-				printf("Connection lost :|, reconnecting in 10 seconds...\n");
-				stats.printTuplesStats();
-				miningStarted = false;
-				clientMutex.unlock();
-				usleep(10000000);
+			if (_client->connected()) {
+				if (_options.refresh() != 0) {
+					double dt(timeSince(timer));
+					if (dt > _options.refresh() && _miner->inited() && _miningStarted) {
+						_stats.printStats();
+						_stats.printEstimatedTimeToBlock();
+						timer = std::chrono::system_clock::now();
+					}
+				}
+				
+				_clientMutex.lock();
+				_client->process();
+				if (!_client->connected()) {
+					_miner->updateHeight(0); // Mark work as invalid
+					std::cout << "Connection lost :|, reconnecting in 10 seconds..." << std::endl;
+					_stats.printTuplesStats();
+					_miningStarted = false;
+					_clientMutex.unlock();
+					usleep(1000000*_waitReconnect);
+				}
+				else {
+					if (!_miner->inited()) _miner->init();
+					if (!_miningStarted && _client->workData().height != 0) {
+						_stats.startTimer();
+						_stats.updateHeight(_client->workData().height - 1);
+						std::cout << "[0000:00:00] Started mining at block " << _client->workData().height << std::endl;
+						_miningStarted = true;
+					}
+					
+					_miner->updateHeight(_client->workData().height);
+					__sync_synchronize();
+					_clientMutex.unlock();
+					usleep(1000*_workRefresh);
+				}
 			}
 			else {
-				// Update work
-				getWorkFromClient(client);
-				clientMutex.unlock();
-				usleep(200000);
+				std::cout << "Connecting to Riecoin server..." << std::endl;
+				if (!_client->connect()) {
+					std::cout << "Failure :| ! Retry in 10 seconds..." << std::endl;
+					usleep(1000000*_waitReconnect);
+				}
+				else {
+					std::cout << "Connected!" << std::endl;
+					_stats = Stats();
+					_stats.setMiningType(_options.protocol());
+				}
+				usleep(10000);
 			}
-		}
-		else {
-			std::cout << "Connecting to Riecoin server..." << std::endl;
-			if (!client->connect(arguments)) {
-				std::cout << "Failure :| ! Retry in 10 seconds..." << std::endl;
-				usleep(10000000);
-			}
-			else {
-				std::cout << "Connected!" << std::endl;
-				stats = Stats();
-				stats.solo = !(arguments.protocol() == "Stratum");
-			}
-			usleep(10000);
 		}
 	}
 }
 
-void Arguments::parseLine(std::string line, std::string& key, std::string& value) const {
+void Options::parseLine(std::string line, std::string& key, std::string& value) const {
 	for (uint16_t i(0) ; i < line.size() ; i++) { // Delete spaces
 		if (line[i] == ' ' || line[i] == '\t') {
 			line.erase (i, 1);
@@ -149,7 +155,7 @@ void Arguments::parseLine(std::string line, std::string& key, std::string& value
 	}
 }
 
-void Arguments::loadConf() {
+void Options::loadConf() {
 	std::ifstream file("rieMiner.conf", std::ios::in);
 	std::cout << "Opening rieMiner.conf..." << std::endl;
 	if (file) {
@@ -184,7 +190,7 @@ void Arguments::loadConf() {
 					catch (...) {_refresh = 10;}
 				}
 				else if (key == "Protocol") {
-					if (value == "GetWork" || value == "GetBlockTemplate" || value == "Stratum") {
+					if (value == "GetWork" || value == "GetBlockTemplate" || value == "Stratum" || value == "Benchmark") {
 						_protocol = value;
 					}
 					else std::cout << "Invalid Protocol" << std::endl;
@@ -192,51 +198,73 @@ void Arguments::loadConf() {
 				else if (key == "Address") {
 					_address = value;
 				}
+				else if (key == "TestDiff") {
+					try {_testDiff = std::stoll(value);}
+					catch (...) {_testDiff = 304;}
+					if (_testDiff < 265) _testDiff = 265;
+					else if (_testDiff > 32767) _testDiff = 32767;
+				}
+				else if (key == "TestTime") {
+					try {_testTime = std::stoll(value);}
+					catch (...) {_testTime = 60;}
+				}
 				else if (key == "Error")
 					std::cout << "Ignoring invalid line" << std::endl;
 				else
 					std::cout << "Ignoring line with unused key " << key << std::endl;
 			}
 		}
+		file.close();
 	}
 	else
-		std::cerr << "rieMiner.conf not found or unreadable, no value loaded." << std::endl;
+		std::cerr << "rieMiner.conf not found or unreadable, values for standard benchmark loaded." << std::endl;
+	
+	std::cout << "Host = " << _host << std::endl;
+	std::cout << "Port = " << _port << std::endl;
+	if (_protocol != "Stratum")
+		std::cout << "User = " << _user << std::endl;
+	else std::cout << "User.worker = " << _user << std::endl;
+	std::cout << "Pass = ..." << std::endl;
+	std::cout << "Protocol = " << _protocol << std::endl;
+	if (_protocol == "GetBlockTemplate")
+		std::cout << "Payout address = " << _address << std::endl;
+	else if (_protocol == "Benchmark") {
+		std::cout << "Test difficulty = " << _testDiff << std::endl;
+		std::cout << "Test duration   = " << _testTime << std::endl;
+	}
+	std::cout << "Threads = " << _threads << std::endl;
+	std::cout << "Sieve max = " << _sieve << std::endl;
+	if (_protocol == "Benchmark")
+		std::cout << "Will notify tuples of at least length = " << (uint16_t) _tuples << std::endl;
+	else if (_protocol != "Stratum")
+		std::cout << "Will submit tuples of at least length = " << (uint16_t) _tuples << std::endl;
+	else std::cout << "Will submit 4-shares" << std::endl;
+	std::cout << "Stats refresh rate = " << _refresh << " s" << std::endl;
+}
+
+void signalHandler(int signum) {
+	std::cout << std::endl << "Signal " << signum << " received, terminating rieMiner." << std::endl;
+	manager->printTuplesStats();
+	_exit(0);
 }
 
 int main() {
+#ifndef _WIN32
+	struct sigaction SIGINTHandler;
+	SIGINTHandler.sa_handler = signalHandler;
+	sigemptyset(&SIGINTHandler.sa_mask);
+	SIGINTHandler.sa_flags = 0;
+	sigaction(SIGINT, &SIGINTHandler, NULL);
+#endif
+	
 	std::cout << minerVersionString << ", Riecoin miner by Pttn" << std::endl;
 	std::cout << "Project page: https://github.com/Pttn/rieMiner" << std::endl;
 	std::cout << "Go to project page or open README.md for usage information." << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
-	arguments.loadConf();
-	std::cout << "Host = " << arguments.host() << std::endl;
-	std::cout << "Port = " << arguments.port() << std::endl;
-	if (arguments.protocol() != "Stratum")
-		std::cout << "User = " << arguments.user() << std::endl;
-	else std::cout << "User.worker = " << arguments.user() << std::endl;
-	std::cout << "Pass = ..." << std::endl;
-	std::cout << "Protocol = " << arguments.protocol() << std::endl;
-	if (arguments.protocol() == "GetBlockTemplate")
-		std::cout << "Payout address = " << arguments.address() << std::endl;
-	std::cout << "Threads = " << arguments.threads() << std::endl;
-	std::cout << "Sieve max = " << arguments.sieve() << std::endl;
-	if (arguments.protocol() != "Stratum")
-		std::cout << "Will submit tuples of at least length = " << (uint16_t) arguments.tuples() << std::endl;
-	else std::cout << "Will submit 4-shares" << std::endl;
-	std::cout << "Stats refresh rate = " << arguments.refresh() << " s" << std::endl;
-	std::cout << "-----------------------------------------------------------" << std::endl;
 	
-	if (arguments.protocol() == "GetWork") client = new GWClient();
-	else if (arguments.protocol() == "Stratum")
-		client = new StratumClient();
-	else client = new GBTClient();
+	manager = std::shared_ptr<WorkManager>(new WorkManager);
+	manager->init();
+	manager->manage();
 	
-	std::thread threads[arguments.threads() + 1];
-	std::cout << "Starting " << arguments.threads() << " + 1 threads" << std::endl;
-	for (uint16_t i(0) ; i < arguments.threads() + 1 ; i++) {
-		threads[i] = std::thread(minerThread);
-		threads[i].detach();
-	}
-	workManagement();
 	return 0;
 }

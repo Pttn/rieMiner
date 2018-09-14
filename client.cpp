@@ -1,46 +1,53 @@
 // (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#include "global.h"
+#include "main.h"
 #include "client.h"
 #include "tools.h"
 
-Client::Client() {
-	_user = "";
-	_pass = "";
-	_host = "127.0.0.1";
-	_port = 28332;
+Client::Client(const std::shared_ptr<WorkManager> &manager) {
+	_manager = manager;
 	_connected = false;
-	_wd = WorkData();
 	_pendingSubmissions = std::vector<std::pair<WorkData, uint8_t>>();
 	_curl = curl_easy_init();
+	_inited = true;
 }
 
-bool Client::connect(const Arguments& arguments) {
+std::string Client::getUserPass() const {
+	std::ostringstream oss;
+	oss << _manager->options().user() << ":" << _manager->options().pass();
+	return oss.str();
+}
+
+std::string Client::getHostPort() const {
+	std::ostringstream oss;
+	oss << "http://" << _manager->options().host() << ":" << _manager->options().port() << "/";
+	return oss.str();
+}
+
+bool Client::connect() {
 	if (_connected) return false;
-	_user = arguments.user();
-	_pass = arguments.pass();
-	_host = arguments.host();
-	_port = arguments.port();
-	if (!getWork()) return false;
-	_wd = WorkData();
-	_pendingSubmissions = std::vector<std::pair<WorkData, uint8_t>>();
-	_connected = true;
-	return true;
+	if (_inited) {
+		if (!getWork()) return false;
+		_pendingSubmissions = std::vector<std::pair<WorkData, uint8_t>>();
+		_connected = true;
+		return true;
+	}
+	else {
+		std::cout << "Cannot connect because the client was not inited!" << std::endl;
+		return false;
+	}
 }
 
-size_t curlWriteCallback(void *data, size_t size, size_t nmemb, std::string *s) {
-	size_t newLength = size*nmemb;
-	size_t oldLength = s->size();
-	s->resize(oldLength + newLength);
-	std::copy((char*) data, (char*) data + newLength, s->begin() + oldLength);
+static size_t curlWriteCallback(void *data, size_t size, size_t nmemb, std::string *s) {
+	s->append((char*) data, size*nmemb);
 	return size*nmemb;
 }
 
-json_t* Client::sendRPCCall(CURL *curl, const std::string& req) const {
+json_t* RPCClient::sendRPCCall(const std::string& req) const {
 	std::string s;
-	json_t *jsonObj = NULL;
+	json_t *jsonObj(NULL);
 	
-	if (curl) {
+	if (_curl) {
 		json_error_t err;
 		curl_easy_setopt(_curl, CURLOPT_URL, getHostPort().c_str());
 		curl_easy_setopt(_curl, CURLOPT_POSTFIELDSIZE, (long) strlen(req.c_str()));
@@ -80,4 +87,47 @@ bool Client::process() {
 		_connected = false;
 		return false;
 	}
+}
+
+bool BMClient::connect() {
+	if (_connected) return false;
+	if (_inited) {
+		_bh = BlockHeader();
+		_pendingSubmissions = std::vector<std::pair<WorkData, uint8_t>>();
+		_connected = true;
+		_height = 0;
+		return true;
+	}
+	else {
+		std::cout << "Cannot start the benchmark because it was not inited!" << std::endl;
+		return false;
+	}
+}
+
+bool BMClient::getWork() {
+	if (_inited) {
+		_bh = BlockHeader();
+		((uint32_t*) &_bh.bits)[0] = 256*_manager->options().testDiff() + 33554432;
+		_height = 1;
+		return true;
+	}
+	else return false;
+}
+
+void BMClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
+	WorkData wdToSend(share.first);
+	uint8_t k(share.second);
+	_manager->printTime();
+	std::cout << " " << (uint16_t) k << "-tuple found" << std::endl;
+}
+
+WorkData BMClient::workData() const {
+	WorkData wd;
+	if (_height == 1) {
+		memcpy(&wd.bh, &_bh, 128);
+		wd.height = _height;
+		wd.targetCompact = getCompact(wd.bh.bits);
+		for (uint32_t i(0) ; i < 32 ; i++) wd.bh.merkleRoot[i] = rand(0x00, 0xFF);
+	}
+	return wd;
 }

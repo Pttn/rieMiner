@@ -1,24 +1,25 @@
 // (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#include "global.h"
+#include "main.h"
 #include "gbtclient.h"
 
-bool GBTClient::connect(const Arguments& arguments) {
+bool GBTClient::connect() {
 	if (_connected) return false;
-	_user = arguments.user();
-	_pass = arguments.pass();
-	_host = arguments.host();
-	_port = arguments.port();
-	if (!getWork()) return false;
-	_gbtd = GetBlockTemplateData();
-	if (!addrToScriptPubKey(arguments.address(), _gbtd.scriptPubKey)) {
-		std::cerr << "Invalid payout address! Using donation address instead." << std::endl;
-		addrToScriptPubKey("RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB", _gbtd.scriptPubKey);
+	if (_inited) {
+		if (!getWork()) return false;
+		_gbtd = GetBlockTemplateData();
+		if (!addrToScriptPubKey(_manager->options().address(), _gbtd.scriptPubKey)) {
+			std::cerr << "Invalid payout address! Using donation address instead." << std::endl;
+			addrToScriptPubKey("RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB", _gbtd.scriptPubKey);
+		}
+		_pendingSubmissions = std::vector<std::pair<WorkData, uint8_t>>();
+		_connected = true;
+		return true;
 	}
-	_wd = WorkData();
-	_pendingSubmissions = std::vector<std::pair<WorkData, uint8_t>>();
-	_connected = true;
-	return true;
+	else {
+		std::cout << "Cannot connect because the client was not inited!" << std::endl;
+		return false;
+	}
 }
 
 void GetBlockTemplateData::coinBaseGen() {
@@ -79,80 +80,49 @@ void GetBlockTemplateData::coinBaseGen() {
 }
 
 bool GBTClient::getWork() {
-	json_t *jsonGbt(NULL), *jsonRes(NULL), *jsonTxs(NULL);
-	jsonGbt = sendRPCCall(_curl, "{\"method\": \"getblocktemplate\", \"params\": [], \"id\": 0}\n");
-	jsonRes = json_object_get(jsonGbt, "result");
-	jsonTxs = json_object_get(jsonRes, "transactions");
+	json_t *jsonGbt(sendRPCCall("{\"method\": \"getblocktemplate\", \"params\": [], \"id\": 0}\n")),
+	       *jsonGbt_Res(json_object_get(jsonGbt, "result")),
+	       *jsonGbt_Res_Txs(json_object_get(jsonGbt_Res, "transactions"));
 	
 	// Failure to GetBlockTemplate
-	if (jsonGbt == NULL || jsonRes == NULL || jsonTxs == NULL ) return false;
+	if (jsonGbt == NULL || jsonGbt_Res == NULL || jsonGbt_Res_Txs == NULL ) return false;
 	
-	uint32_t oldHeight(_wd.height);
+	uint32_t oldHeight(_gbtd.height);
 	uint8_t bitsTmp[4];
-	hexStrToBin(json_string_value(json_object_get(jsonRes, "bits")), bitsTmp);
+	hexStrToBin(json_string_value(json_object_get(jsonGbt_Res, "bits")), bitsTmp);
 	_gbtd.bh = BlockHeader();
 	_gbtd.transactions = std::string();
 	_gbtd.txHashes = std::vector<std::array<uint32_t, 8>>();
 	
 	// Extract and build GetBlockTemplate data
-	_gbtd.bh.version = json_integer_value(json_object_get(jsonRes, "version"));
-	hexStrToBin(json_string_value(json_object_get(jsonRes, "previousblockhash")), (uint8_t*) &_gbtd.bh.previousblockhash);
-	_gbtd.height = json_integer_value(json_object_get(jsonRes, "height"));
-	_gbtd.coinbasevalue = json_integer_value(json_object_get(jsonRes, "coinbasevalue"));
-	_gbtd.bh.bits = ((uint32_t*) bitsTmp)[0];
-	_gbtd.bh.curtime = json_integer_value(json_object_get(jsonRes, "curtime"));
-	_gbtd.coinBaseGen();
+	_gbtd.bh.version = json_integer_value(json_object_get(jsonGbt_Res, "version"));
+	hexStrToBin(json_string_value(json_object_get(jsonGbt_Res, "previousblockhash")), (uint8_t*) &_gbtd.bh.previousblockhash);
+	_gbtd.height = json_integer_value(json_object_get(jsonGbt_Res, "height"));
+	_gbtd.coinbasevalue = json_integer_value(json_object_get(jsonGbt_Res, "coinbasevalue"));
+	_gbtd.bh.bits = ((uint32_t*) &bitsTmp)[0];
+	_gbtd.bh.curtime = json_integer_value(json_object_get(jsonGbt_Res, "curtime"));
 	_gbtd.transactions += binToHexStr(_gbtd.coinbase.data(), _gbtd.coinbase.size());
-	_gbtd.txHashes.push_back(_gbtd.coinBaseHash());
-	for (uint32_t i(0) ; i < json_array_size(jsonTxs) ; i++) {
+	for (uint32_t i(0) ; i < json_array_size(jsonGbt_Res_Txs) ; i++) {
 		std::array<uint32_t, 8> txHash;
 		uint8_t txHashTmp[32], txHashInvTmp[32];
-		hexStrToBin(json_string_value(json_object_get(json_array_get(jsonTxs, i), "hash")), txHashInvTmp);
+		hexStrToBin(json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "hash")), txHashInvTmp);
 		for (uint16_t j(0) ; j < 32 ; j++) txHashTmp[j] = txHashInvTmp[31 - j];
 		for (uint32_t j(0) ; j < 8 ; j++) txHash[j] = ((uint32_t*) txHashTmp)[j];
-		_gbtd.transactions += json_string_value(json_object_get(json_array_get(jsonTxs, i), "data"));
+		_gbtd.transactions += json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "data"));
 		_gbtd.txHashes.push_back(txHash);
 	}
-	_gbtd.merkleRootGen();
-	
-	memcpy(&_wd.bh, &_gbtd.bh, 128);
 	
 	// Notify when the network found a block
-	if (oldHeight != _gbtd.height) {
-		if (oldHeight != 0) {
-			stats.printTime();
-			if (_wd.height - stats.blockHeightAtDifficultyChange != 0) {
-				if (stats.difficulty != 1) {
-					std::cout << " Blockheight = " << _gbtd.height - 1 << ", average "
-						      << FIXED(1) << timeSince(stats.lastDifficultyChange)/(_wd.height - stats.blockHeightAtDifficultyChange)
-						      << " s, difficulty = " << stats.difficulty << std::endl;
-				}
-			}
-			else
-				std::cout << " Blockheight = " << _gbtd.height - 1 << ", new difficulty = " << stats.difficulty << std::endl;
-		}
-		else stats.blockHeightAtDifficultyChange = _gbtd.height;
-	}
-	
-	_wd.height = _gbtd.height;
-	_wd.bh.bits = swab32(_wd.bh.bits);
-	_wd.targetCompact = getCompact(_wd.bh.bits);
-	_wd.transactions  = _gbtd.transactions;
-	_wd.txCount       = _gbtd.txHashes.size();
-	// Change endianness for mining (will revert back when submit share)
-	for (uint8_t i(0) ; i < 32; i++) ((uint8_t*) _wd.bh.previousblockhash)[i] = ((uint8_t*) _gbtd.bh.previousblockhash)[31 - i];
+	if (oldHeight != _gbtd.height) _manager->updateHeight(_gbtd.height - 1);
 	
 	json_decref(jsonGbt);
-	json_decref(jsonRes);
-	json_decref(jsonTxs);
 	
 	return true;
 }
 
 void GBTClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 	WorkData wdToSend(share.first);
-	
-	json_t *jsonObj = NULL, *res = NULL, *reason = NULL;
+	json_t *jsonSb(NULL), *jsonSb_Res(NULL), *jsonSb_Err(NULL); // SubmitBlock response
 	
 	std::ostringstream oss;
 	std::string req;
@@ -164,11 +134,11 @@ void GBTClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 		oss << "fd" << binToHexStr((uint8_t*) &wdToSend.txCount, 2);
 	oss << wdToSend.transactions << "\"], \"id\": 0}\n";
 	req = oss.str();
-	jsonObj = sendRPCCall(_curl, req);
+	jsonSb = sendRPCCall(req);
 	
 	uint8_t k(share.second);
 	if (k >= 4) {
-		stats.printTime();
+		_manager->printTime();
 		std::cout << " 4-tuple found";
 		if (k == 4) std::cout << std::endl;
 	}
@@ -179,18 +149,37 @@ void GBTClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 	if (k >= 6) {
 		std::cout << "... No, no... A 6-tuple = BLOCK!!!!!!" << std::endl;
 		std::cout << "Sent: " << req;
-		if (jsonObj == NULL)
-			std::cerr << "Failure submiting block :|" << std::endl;
+		if (jsonSb == NULL) std::cerr << "Failure submiting block :|" << std::endl;
 		else {
-			res = json_object_get(jsonObj, "result");
-			if (json_is_null(res)) std::cout << "Submission accepted :D !" << std::endl;
+			jsonSb_Res = json_object_get(jsonSb, "result");
+			jsonSb_Err = json_object_get(jsonSb, "error");
+			if (json_is_null(jsonSb_Res) && json_is_null(jsonSb_Err)) std::cout << "Submission accepted :D !" << std::endl;
 			else {
 				std::cout << "Submission rejected :| ! ";
-				if (reason == NULL) std::cout << "No reason given" << std::endl;
-				else std::cout << "Reason: " << reason << std::endl;
+				if (json_is_null(jsonSb_Err)) std::cout << "No reason given" << std::endl;
+				else std::cout << "Reason: " << json_string_value(json_object_get(jsonSb_Err, "message")) << std::endl;
 			}
 		}
 	}
 	
-	if (jsonObj != NULL) json_decref(jsonObj);
+	if (jsonSb != NULL) json_decref(jsonSb);
+}
+
+WorkData GBTClient::workData() const {
+	GetBlockTemplateData gbtd(_gbtd);
+	gbtd.coinBaseGen();
+	gbtd.transactions = binToHexStr(gbtd.coinbase.data(), gbtd.coinbase.size()) + gbtd.transactions;
+	gbtd.txHashes.insert(gbtd.txHashes.begin(), gbtd.coinBaseHash());
+	gbtd.merkleRootGen();
+	
+	WorkData wd;
+	memcpy(&wd.bh, &gbtd.bh, 128);
+	if (gbtd.height != 0) wd.height = gbtd.height - 1;
+	wd.bh.bits       = swab32(wd.bh.bits);
+	wd.targetCompact = getCompact(wd.bh.bits);
+	wd.transactions  = gbtd.transactions;
+	wd.txCount       = gbtd.txHashes.size();
+	// Change endianness for mining (will revert back when submit share)
+	for (uint8_t i(0) ; i < 32; i++) wd.bh.previousblockhash[i] = gbtd.bh.previousblockhash[31 - i];
+	return wd;
 }

@@ -1,12 +1,16 @@
-# rieMiner 0.9α3
+# rieMiner 0.9β1
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining, and using the latest known mining algorithm. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie).
 
 Solo mining is done using the GetWork or the GetBlockTemplate protocol, while pooled mining is via the Stratum protocol.
 
-Official binaries will be distributed when the stable 0.9 code will be out.
+A benchmark mode is also proposed to compare more easily the performance between different computers.
+
+Official binaries will be distributed when the stable 0.9 code is out (which will not until Riecoin Core is officially updated).
 
 This README also serves as manual for rieMiner. I hope that this program will be useful for you! Happy mining!
+
+**Warning**: rieMiner 0.9β1 is the last version officially supporting the 0.10.2 wallet. It might work in future versions, but only the upcoming new Riecoin wallet will be tested for solo mining. GetWork support will also be removed.
 
 ![rieMiner just found a block](https://pttn.me/medias/bildoj/alia/rieMiner1.png)
 
@@ -35,13 +39,13 @@ cd rieMiner
 make
 ```
 
-For other Linux, executing equivalent commands should work.
+For other Linux, executing equivalent commands (using pacman instead of apt,...) should work.
 
 If you get a warning after the compilation that there may be a conflict between libcrypto.so files, install libssl1.0-dev instead of libssl-dev.
 
 ### In Windows x64
 
-You can compile rieMiner in Windows. Here is one way to do this. First, you have to install [MSYS2](http://www.msys2.org/) (follow the instructions on the website), then enter in the MSYS **MinGW-w64** console, and install the tools and dependencies:
+You can compile rieMiner in Windows, and here is one way to do this. First, install [MSYS2](http://www.msys2.org/) (follow the instructions on the website), then enter in the MSYS **MinGW-w64** console, and install the tools and dependencies:
 
 ```bash
 pacman -S make
@@ -50,11 +54,39 @@ pacman -S mingw64/mingw-w64-x86_64-gcc
 pacman -S mingw64/mingw-w64-x86_64-curl
 ```
 
-Edit the Makefile and add -lws2_32 at the end of the LIBS line, and finally compile with make.
+Recommended: move the rieMiner's folder to the MSYS2 home directory.
+
+Edit the Makefile and add -lws2_32 at the end of the LIBS line, go to the rieMiner's directory with cd, and finally compile with make.
+
+#### Static building
+
+The produced executable will run only in the MSYS console, or if all the needed DLLs are next to the executable. To obtain a standalone executable, you need to link statically the dependencies. Normally, this is done just by adding "-static" at the LIBS line in the Makefile. Unfortunately, libcurl will give you a hard time, and you need to compile it yourself.
+
+First, edit the Makefile add "-D CURL_STATICLIB" at the end of the CFLAGS line, and "-static" just after the "LIBS =" in the LIBS line. You might also want to change the march argument to support other/olders processors.
+
+```
+CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native -D CURL_STATICLIB
+LIBS   = -static -pthread -ljansson -lcurl -lgmp -lgmpxx -lcrypto -lws2_32
+```
+
+Then, download the [latest official libcurl code](https://curl.haxx.se/download.html) on their website, under "Source Archives", and decompress the folder somewhere (for example, next to the rieMiner's one).
+
+In the MSYS MinGW-w64 console, cd to the libcurl directory. We will now configure it so we will not build unused features:
+
+```bash
+./configure --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-ldap --disable-ldaps --disable-pop3 --disable-rtsp --disable-smtp --disable-telnet --disable-tftp --without-ssl --without-libssh2 --without-zlib --without-brotli --without-libidn2  --without-ldap  --without-ldaps --without-rtsp --without-psl --without-librtmp --without-libpsl --without-nghttp2 --disable-shared --disable-libcurl-option
+```
+
+This will for some reason take a very long time. Then, compile libcurl with make. We now need to replace the existing libcurl headers and libs provided by MinGW:
+
+* In the downloaded libcurl directory, go to the include directory and copy the "curl" folder to replace the one in X:\path\to\msys64\mingw64\include (make a backup if needed);
+* Do the same with the file "libcurl.a" in the libs/.lib folder to replace the one in X:\path\to\msys64\mingw64\lib (make a backup if needed).
+
+Now, you should be able to compile rieMiner with make and produce a standalone executable.
 
 ### For 32 bits computers
 
-First, go to the file global.h and change
+First, go to the file main.h and change
 
 ```
 #define BITS	64
@@ -82,12 +114,14 @@ It is case sensitive, but spaces and invalid lines are ignored. If an option or 
 * Port : port of the Riecoin wallet/server or pool. Default: 28332 (default port for Riecoin-Qt);
 * User : username used to connect in the server (rpcuser for solo mining). Includes the worker name (user.worker) if using Stratum. Default: nothing;
 * Pass : password used to connect in the server (rpcpassword for solo mining). Default: nothing;
-* Protocol : protocol to use: GetBlockTemplate or GetWork for solo mining, Stratum for pooled mining. Default: GetBlockTemplate;
+* Protocol : protocol to use: GetBlockTemplate or GetWork for solo mining, Stratum for pooled mining, Benchmark for testing. Default: Benchmark;
 * Address : custom payout address for solo mining (GetBlockTemplate only). Default: a donation address;
 * Threads : number of threads used for mining. Default: 8;
 * Sieve : size of the sieve table used for mining. Use a bigger number if you have more RAM, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^30;
 * Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6;
-* Refresh : refresh rate of the stats in seconds. 0 to disable them; will only notify when a k-tuple or share (k > 4) is found, or when the network finds a block. Default: 10.
+* Refresh : refresh rate of the stats in seconds. 0 to disable them; will only notify when a k-tuple or share (k > 4) is found, or when the network finds a block. Default: 30;
+* TestDiff : only for Benchmark, sets the testing difficulty (must be from 265 to 32767). Default: 1600;
+* TestTime : only for Benchmark, sets the testing duration in s. Default: 21600 (6 hours).
 
 You can finally run the newly created rieMiner executable using
 
@@ -188,10 +222,40 @@ Existing pools:
   * Port = 8000
   * Owner: [Simba84](https://bitcointalk.org/index.php?action=profile;u=349865) - inforiepool@gmail.com 
 * [uBlock.it](https://ublock.it/index.php)
-  * Host = mine.ublock.it
+  * Host = mine.ublock.it or mine.blockocean.com
   * Port = 5000
   * Owner: [ziiip](https://bitcointalk.org/index.php?action=profile;u=864739) - netops.ublock.it@gmail.com
   * Invitation needed to join (contact the owner)
+
+The miner will disconnect if it did not receive anything during 3 minutes (time out).
+
+## Benchmarking
+
+rieMiner provides a way to test the performance of a computer, and compare with others. This feature can also be used to appreciate the improvements when trying to improve the miner algorithm. When sharing benchmark results, you must always communicate the difficulty, the sieve size, the test duration, the CPU model, the memory speeds (frequency and CL), the miner version, and the OS.
+
+To compare two different platforms, you must absolutely test with the same difficulty, during enough time. The proposed parameters, conditions and interpretations for serious benchmarking are:
+
+* Standard Benchmark
+  * Difficulty of 1600;
+  * Sieve of 2^30 = 1073741824;
+  * Test during 6 hours;
+  * The computer must not do anything else during testing;
+  * Imprecise for slow computers but more like the real mining conditions;
+  * The precision will be about 3 digits for the 2 and 3-tuples/s metrics, and 2 for the 4-tuples/s one, for computers finding at least 0.1 3-tuple/s;
+  * 5 and 6-tuples find rates should be discarded as they are too rare;
+  * 6 hours are needed to get a reproductible enough result, but you could also do execute the Standard Benchmark for a few minutes if you only want an order of magnitude of your computer speed.
+
+If you do not want to test during 6 hours, or have a slow computer, other testing parameters are suggested:
+
+* Simplified Benchmark
+  * Difficulty of 800;
+  * Sieve of 2^27 = 134217728;
+  * Test during 30 minutes;
+  * The computer should not do anything else during testing, and must not do any other heavy tasks;
+  * Not adapted for powerful computers;
+  * The precision will be about 3 digits for the 2 and 3-tuples/s metrics, and 2 for the 4-tuples/s one, for computers finding at least 1 3-tuple/s;
+  * 5 and 6-tuples find rates should be discarded;
+  * Note that the results will be completely different to the ones provided by the standard benchmark.
 
 ## Miscellaneous
 
