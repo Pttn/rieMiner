@@ -3,7 +3,7 @@
 #ifndef HEADER_GLOBAL_H
 #define HEADER_GLOBAL_H
 
-#define minerVersionString	"rieMiner 0.9-beta1"
+#define minerVersionString	"rieMiner 0.9-beta1.5"
 #define BITS	64
 
 #include <unistd.h>
@@ -82,6 +82,7 @@ class Stats {
 	uint32_t heightAtDiffChange() const {return _heightAtDiffChange;}
 	
 	std::chrono::time_point<std::chrono::system_clock> miningStartTp() const {return _miningStartTp;}
+	std::array<uint32_t, 7> tuplesCount() const {return _tuples;}
 	
 	void printTime() const {
 		double elapsedSecs(timeSince(_miningStartTp));
@@ -140,14 +141,13 @@ class Options {
 	std::string _host, _user, _pass, _protocol, _address;
 	uint8_t _tuples;
 	uint16_t _port, _threads;
-	uint32_t _refresh, _testDiff;
+	uint32_t _refresh, _testDiff, _testTime, _test3t;
 	uint64_t _sieve;
-	double _testTime;
 	
 	void parseLine(std::string, std::string&, std::string&) const;
 	
 	public:
-	Options() { // Default options: standard benchmark
+	Options() { // Default options: Standard Benchmark with 8 threads
 		_user     = "";
 		_pass     = "";
 		_host     = "127.0.0.1";
@@ -159,7 +159,8 @@ class Options {
 		_tuples   = 6;
 		_refresh  = 30;
 		_testDiff = 1600;
-		_testTime = 21600;
+		_testTime = 0;
+		_test3t   = 1000;
 	}
 	
 	void loadConf();
@@ -176,6 +177,7 @@ class Options {
 	uint32_t refresh() const {return _refresh;}
 	uint32_t testDiff() const {return _testDiff;}
 	uint32_t testTime() const {return _testTime;}
+	uint32_t test3t() const {return _test3t;}
 };
 
 class WorkManager : public std::enable_shared_from_this<WorkManager> {

@@ -1,16 +1,12 @@
-# rieMiner 0.9β1
+# rieMiner 0.9β1.5
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining, and using the latest known mining algorithm. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie).
 
-Solo mining is done using the GetWork or the GetBlockTemplate protocol, while pooled mining is via the Stratum protocol.
-
-A benchmark mode is also proposed to compare more easily the performance between different computers.
+Solo mining is done using the GetBlockTemplate protocol, while pooled mining is via the Stratum protocol. A benchmark mode is also proposed to compare more easily the performance between different computers.
 
 Official binaries will be distributed when the stable 0.9 code is out (which will not until Riecoin Core is officially updated).
 
 This README also serves as manual for rieMiner. I hope that this program will be useful for you! Happy mining!
-
-**Warning**: rieMiner 0.9β1 is the last version officially supporting the 0.10.2 wallet. It might work in future versions, but only the upcoming new Riecoin wallet will be tested for solo mining. GetWork support will also be removed.
 
 ![rieMiner just found a block](https://pttn.me/medias/bildoj/alia/rieMiner1.png)
 
@@ -114,14 +110,15 @@ It is case sensitive, but spaces and invalid lines are ignored. If an option or 
 * Port : port of the Riecoin wallet/server or pool. Default: 28332 (default port for Riecoin-Qt);
 * User : username used to connect in the server (rpcuser for solo mining). Includes the worker name (user.worker) if using Stratum. Default: nothing;
 * Pass : password used to connect in the server (rpcpassword for solo mining). Default: nothing;
-* Protocol : protocol to use: GetBlockTemplate or GetWork for solo mining, Stratum for pooled mining, Benchmark for testing. Default: Benchmark;
+* Protocol : protocol to use: GetBlockTemplate for solo mining, Stratum for pooled mining, Benchmark for testing. Default: Benchmark;
 * Address : custom payout address for solo mining (GetBlockTemplate only). Default: a donation address;
 * Threads : number of threads used for mining. Default: 8;
 * Sieve : size of the sieve table used for mining. Use a bigger number if you have more RAM, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^30;
 * Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6;
 * Refresh : refresh rate of the stats in seconds. 0 to disable them; will only notify when a k-tuple or share (k > 4) is found, or when the network finds a block. Default: 30;
 * TestDiff : only for Benchmark, sets the testing difficulty (must be from 265 to 32767). Default: 1600;
-* TestTime : only for Benchmark, sets the testing duration in s. Default: 21600 (6 hours).
+* TestTime : only for Benchmark, sets the testing duration in s. 0 for no time limit. Default: 0;
+* Test3t : only for Benchmark, stops testing after finding this number of 3-tuples. 0 for no limit. Default: 1000.
 
 You can finally run the newly created rieMiner executable using
 
@@ -151,7 +148,7 @@ These results were obtained with a Ryzen R7 2700X at 3.7 GHz, and you can use th
 
 For pooled mining, the number of primes "non consecutive tuples" are shown instead, and there is an estimation of how much RIC/day you are earning. If you want to compare the performance with fastrie, multiply the speeds by 4.096. The performance should be the same as fastrie's, as rieMiner uses the same algorithm.
 
-rieMiner will also notify if it found a k-tuple (k > 3) in solo mining or a share in pooled mining, and if the network found a new block. If it finds a block or a share, it will show the full submission and tell if it was accepted (solo mining only) or not. For solo mining, if the block was accepted, the reward will be generated and sent to a new random address which is included in your wallet (when using GetWork), or the one specified (for GetBlockTemplate). You can then spend it after 100 confirmations.
+rieMiner will also notify if it found a k-tuple (k > 3) in solo mining or a share in pooled mining, and if the network found a new block. If it finds a block or a share, it will tell if the submission was accepted (solo mining only) or not. For solo mining, if the block was accepted, the reward will be generated for the address specified in the options. You can then spend it after 100 confirmations.
 
 ## Solo mining specific information
 
@@ -238,24 +235,24 @@ To compare two different platforms, you must absolutely test with the same diffi
 * Standard Benchmark
   * Difficulty of 1600;
   * Sieve of 2^30 = 1073741824;
-  * Test during 6 hours;
+  * Stop after finding 1000 3-tuples or more;
   * The computer must not do anything else during testing;
-  * Imprecise for slow computers but more like the real mining conditions;
-  * The precision will be about 3 digits for the 2 and 3-tuples/s metrics, and 2 for the 4-tuples/s one, for computers finding at least 0.1 3-tuple/s;
-  * 5 and 6-tuples find rates should be discarded as they are too rare;
-  * 6 hours are needed to get a reproductible enough result, but you could also do execute the Standard Benchmark for a few minutes if you only want an order of magnitude of your computer speed.
+  * Very long for slow computers, but like the real mining conditions;
+  * The precision will be 2 solid digits for the 2-tuples/s metric, and almost 2 digits for the 3-tuples/s one (the 2nd will still vary a bit). That said, you can share your result with 3 significant digits for each;
+  * It would not be enough to even obtain just one solid digit for the 4-tuples/s metric, so 4, 5 and 6-tuples find rates should be discarded.
 
-If you do not want to test during 6 hours, or have a slow computer, other testing parameters are suggested:
+Testing a few times longer will not really improve the precision. You would need to find tens if not hundreds times more tuples to gain another significant digit for each metric, which would be really unpractical. In the other direction, if you have a slow computer or want a very fast test, you can reduce the difficulty to find tuples much faster with these parameters:
 
-* Simplified Benchmark
+* Easy Benchmark
   * Difficulty of 800;
   * Sieve of 2^27 = 134217728;
-  * Test during 30 minutes;
-  * The computer should not do anything else during testing, and must not do any other heavy tasks;
+  * Stop after finding 1000 3-tuples or more;
+  * The computer must not do anything else during testing;
   * Not adapted for powerful computers;
-  * The precision will be about 3 digits for the 2 and 3-tuples/s metrics, and 2 for the 4-tuples/s one, for computers finding at least 1 3-tuple/s;
-  * 5 and 6-tuples find rates should be discarded;
-  * Note that the results will be completely different to the ones provided by the standard benchmark.
+  * The precision will be similar to Standard Benchmark, but note that the results will be completely different to the ones provided by the standard benchmark;
+  * 4, 5 and 6-tuples find rates should also be discarded.
+
+In all cases, the system must not swap. Else, the result would not make much sense. Ensure that you have enough memory when trying to benchmark.
 
 ## Miscellaneous
 
@@ -285,6 +282,5 @@ Donations welcome:
 * [Get the Riecoin wallet](http://riecoin.org/download.html)
 * [Fast prime cluster search - or building a fast Riecoin miner (part 1)](https://da-data.blogspot.ch/2014/03/fast-prime-cluster-search-or-building.html), nice article by dave-andersen explaining how Riecoin works and how to build an efficient miner and the algorithms. Unfortunately, he never published part 2...
 * [Riecoin FAQ](http://riecoin.org/faq.html) and [technical aspects](http://riecoin.org/about.html#tech)
-* [Bitcoin Wiki - Getwork](https://en.bitcoin.it/wiki/Getwork)
 * [Bitcoin Wiki - Getblocktemplate](https://en.bitcoin.it/wiki/Getblocktemplate)
 * [Bitcoin Wiki - Stratum](https://en.bitcoin.it/wiki/Stratum_mining_protocol)

@@ -3,7 +3,6 @@
 #include "main.h"
 #include "client.h"
 #include "miner.h"
-#include "gwclient.h"
 #include "gbtclient.h"
 #include "stratumclient.h"
 #include "tools.h"
@@ -30,12 +29,10 @@ WorkManager::WorkManager() {
 void WorkManager::init() {
 	_options.loadConf();
 	std::cout << "-----------------------------------------------------------" << std::endl;
-	if (_options.protocol() == "GetWork")
-		_client = std::unique_ptr<Client>(new GWClient(shared_from_this()));
+	if (_options.protocol() == "GetBlockTemplate")
+		_client = std::unique_ptr<Client>(new GBTClient(shared_from_this()));
 	else if (_options.protocol() == "Stratum")
 		_client = std::unique_ptr<Client>(new StratumClient(shared_from_this()));
-	else if (_options.protocol() == "GetBlockTemplate")
-		_client = std::unique_ptr<Client>(new GBTClient(shared_from_this()));
 	else _client = std::unique_ptr<Client>(new BMClient(shared_from_this()));
 	
 	_miner = std::unique_ptr<Miner>(new Miner(shared_from_this()));
@@ -76,8 +73,13 @@ void WorkManager::manage() {
 		std::chrono::time_point<std::chrono::system_clock> timer;
 		while (true) {
 			if (_options.protocol() == "Benchmark" && _miningStarted) {
-				if (timeSince(_stats.miningStartTp()) > _options.testTime()) {
-					std::cout << _options.testTime() << " s elapsed, test finished. Version: " << minerVersionString << std::endl;
+				if (timeSince(_stats.miningStartTp()) > _options.testTime() && _options.testTime() != 0) {
+					std::cout << _options.testTime() << " s elapsed, test finished. " << minerVersionString << ", diff " << _options.testDiff() << ", sieve " << _options.sieve() << std::endl;
+					_stats.printTuplesStats();
+					_exit(0);
+				}
+				if (_stats.tuplesCount()[3] >= _options.test3t() && _options.test3t() != 0) {
+					std::cout << _options.test3t() << " 3-tuples found, test finished. Version: " << minerVersionString << ", difficulty " << _options.testDiff() << ", sieve " << _options.sieve() << std::endl;
 					_stats.printTuplesStats();
 					_exit(0);
 				}
@@ -190,7 +192,7 @@ void Options::loadConf() {
 					catch (...) {_refresh = 10;}
 				}
 				else if (key == "Protocol") {
-					if (value == "GetWork" || value == "GetBlockTemplate" || value == "Stratum" || value == "Benchmark") {
+					if (value == "GetBlockTemplate" || value == "Stratum" || value == "Benchmark") {
 						_protocol = value;
 					}
 					else std::cout << "Invalid Protocol" << std::endl;
@@ -206,7 +208,11 @@ void Options::loadConf() {
 				}
 				else if (key == "TestTime") {
 					try {_testTime = std::stoll(value);}
-					catch (...) {_testTime = 60;}
+					catch (...) {_testTime = 0;}
+				}
+				else if (key == "Test3t") {
+					try {_test3t = std::stoll(value);}
+					catch (...) {_test3t = 1000;}
 				}
 				else if (key == "Error")
 					std::cout << "Ignoring invalid line" << std::endl;
@@ -230,7 +236,8 @@ void Options::loadConf() {
 		std::cout << "Payout address = " << _address << std::endl;
 	else if (_protocol == "Benchmark") {
 		std::cout << "Test difficulty = " << _testDiff << std::endl;
-		std::cout << "Test duration   = " << _testTime << std::endl;
+		if (_testTime != 0) std::cout << "Will stop after " << _testTime << " s" << std::endl;
+		if (_test3t   != 0) std::cout << "Will stop after finding " << _test3t << " 3-tuples" << std::endl;
 	}
 	std::cout << "Threads = " << _threads << std::endl;
 	std::cout << "Sieve max = " << _sieve << std::endl;

@@ -7,7 +7,6 @@
 #include <math.h>
 #include "main.h"
 #include "client.h"
-#include "gwclient.h"
 #include "tools.h"
 #include "tsqueue.hpp"
 
