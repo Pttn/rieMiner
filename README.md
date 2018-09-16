@@ -1,4 +1,4 @@
-# rieMiner 0.9β1.5
+# rieMiner 0.9β2
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining, and using the latest known mining algorithm. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie).
 
@@ -98,13 +98,15 @@ Then, follow the instructions for 64 bits systems. If you do not do this, the co
 
 ## Run this program
 
-First of all, open or create a file named "rieMiner.conf" next to the executable, in order to provide options to the miner. The rieMiner.conf syntax is very simple: each option is given by a line such
+If no "rieMiner.conf" next to the executable was found, you will be assisted to configure rieMiner. Answer to its questions to start mining. If there is a "rieMiner.conf" file next to the executable with incorrect information, you can delete this to get the assisted configuration.
+
+Alternatively, you can create or edit this "rieMiner.conf" file next to the executable, in order to provide options to the miner. The rieMiner.conf syntax is very simple: each option is given by a line such
 
 ```
 Option type = Option value
 ```
 
-It is case sensitive, but spaces and invalid lines are ignored. If an option or the file is missing, the default value(s) will be used. If there are duplicate lines, the last one will be used. The available options are:
+It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; at the end or use other delimiters than =** for each line, and **do not confuse rieMiner.conf with riecoin.conf**! If an option or the file is missing, the default value(s) will be used. If there are duplicate lines, the last one will be used. The available options are:
 
 * Host : IP of the Riecoin wallet/server or pool. Default: 127.0.0.1 (your computer);
 * Port : port of the Riecoin wallet/server or pool. Default: 28332 (default port for Riecoin-Qt);
@@ -159,6 +161,7 @@ Note that other ways for solo mining (protocol proxies,...) were never tested wi
 To solo mine with the official Riecoin-Qt wallet, you have to configure it.
 
 * Find the riecoin.conf configuration file. It should be located in /home/username/.riecoin or equivalent in Windows;
+* **Do not confuse this file with the rieMiner.conf**!
 * An example of riecoin.conf content suitable for mining is
 
 ```

@@ -62,10 +62,10 @@ void GetBlockTemplateData::coinBaseGen() {
 	// Output Count [s + 4]
 	coinbase.push_back(1);
 	// Output Value [s + 5 -> s + 12]
-	uint64_t coinbasevalue2(coinbasevalue);
+	uint64_t reward(coinbasevalue);
 	for (uint32_t i(0) ; i < 8 ; i++) {
-		coinbase.push_back(coinbasevalue2 % 256);
-		coinbasevalue2 /= 256;
+		coinbase.push_back(reward % 256);
+		reward /= 256;
 	}
 	coinbase.push_back(25); // Output Length [s + 13]
 	coinbase.push_back(0x76); // OP_DUP [s + 14]

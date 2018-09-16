@@ -110,6 +110,7 @@ void WorkManager::manage() {
 					if (!_miningStarted && _client->workData().height != 0) {
 						_stats.startTimer();
 						_stats.updateHeight(_client->workData().height - 1);
+						std::cout << "-----------------------------------------------------------" << std::endl;
 						std::cout << "[0000:00:00] Started mining at block " << _client->workData().height << std::endl;
 						_miningStarted = true;
 					}
@@ -155,6 +156,125 @@ void Options::parseLine(std::string line, std::string& key, std::string& value) 
 		key   = "Error";
 		value = "Ill formed configuration line";
 	}
+}
+
+void Options::askConf() {
+	std::string value;
+	std::ofstream file("rieMiner.conf");
+	if (file) {
+		std::cout << "Solo mining (solo), pooled mining (pool), or benchmarking (benchmark)? ";
+		std::cin >> value;
+		if (value == "solo") {
+			file << "Protocol = GetBlockTemplate" << std::endl;
+			_protocol = "GetBlockTemplate";
+		}
+		else if (value == "pool") {
+			file << "Protocol = Stratum" << std::endl;
+			_protocol = "Stratum";
+		}
+		else if (value == "benchmark") {
+			file << "Protocol = Benchmark" << std::endl;
+			_protocol = "Benchmark";
+		}
+		else {
+			std::cerr << "Invalid choice! Please answer solo, pool, or benchmark." << std::endl;
+			std::remove("rieMiner.conf");
+			exit(0);
+		}
+		
+		if (_protocol != "Benchmark") {
+			if (_protocol == "GetBlockTemplate") {
+				std::cout << "Riecoin Core (wallet) IP: ";
+				std::cin >> value;
+#ifndef _WIN32
+				struct sockaddr_in sa;
+				if (inet_pton(AF_INET, value.c_str(), &(sa.sin_addr)) != 1) {
+					std::cerr << "Invalid IP address!" << std::endl;
+					std::remove("rieMiner.conf");
+					exit(0);
+				}
+				else {
+					file << "Host = " << value << std::endl;
+					_host = value;
+				}
+#else
+				file << "Host = " << value << std::endl;
+				_host = value;
+#endif
+				std::cout << "RPC port: ";
+			}
+			else {
+				std::cout << "Current pools " << std::endl;
+				std::cout << "     XPoolX: mining.xpoolx.com:5000" << std::endl;
+				std::cout << "    riePool: riepool.ovh:8000" << std::endl;
+				std::cout << "   Block.it: mine.ublock.it:5000" << std::endl;
+				std::cout << "Pool address (without port): ";
+				std::cin >> value;
+				file << "Host = " << value << std::endl;
+				_host = value;
+				std::cout << "Pool port (example: 5000): ";
+			}
+			
+			std::cin >> value;
+			try {
+				_port = std::stoi(value);
+				file << "Port = " << value << std::endl;
+			}
+			catch (...) {
+				std::cerr << "Invalid port !" << std::endl;
+				std::remove("rieMiner.conf");
+				exit(0);
+			}
+			
+			if (_protocol == "GetBlockTemplate") std::cout << "RPC username: ";
+			else std::cout << "Pool username.worker: ";
+			
+			std::cin >> value;
+			file << "User = " << value << std::endl;
+			_user = value;
+			
+			if (_protocol == "GetBlockTemplate") std::cout << "RPC password: ";
+			else std::cout << "Worker password: ";
+			
+			std::cin >> value;
+			file << "Pass = " << value << std::endl;
+			_pass = value;
+			
+			if (_protocol == "GetBlockTemplate") {
+				uint8_t scriptPubKeyTest[20];
+				std::cout << "Payout address: ";
+				std::cin >> value;
+				if (!addrToScriptPubKey(value, scriptPubKeyTest)) {
+					std::cerr << "Invalid payout address!" << std::endl;
+					std::remove("rieMiner.conf");
+					exit(0);
+				}
+				else {
+					file << "Address = " << value << std::endl;
+					_address = value;
+				}
+			}
+		}
+		else std::cout << "Standard Benchmark values loaded. Edit the rieMiner.conf file if needed." << std::endl;
+		
+		std::cout << "Number of threads: ";
+		std::cin >> value;
+		try {
+			_threads = std::stoi(value);
+			file << "Threads = " << value << std::endl;
+		}
+		catch (...) {
+			std::cerr << "Invalid thread number!" << std::endl;
+			std::remove("rieMiner.conf");
+			exit(0);
+		}
+		
+		if (_protocol != "Benchmark") std::cout << "Thank you, happy mining :D !" << std::endl;
+		else std::cout << "Thank you :D !" << std::endl;
+		std::cout << "-----------------------------------------------------------" << std::endl;
+		file.close();
+	}
+	else std::cerr << "Unable to create rieMiner.conf :|, values for standard benchmark loaded." << std::endl;
 }
 
 void Options::loadConf() {
@@ -222,8 +342,10 @@ void Options::loadConf() {
 		}
 		file.close();
 	}
-	else
-		std::cerr << "rieMiner.conf not found or unreadable, values for standard benchmark loaded." << std::endl;
+	else {
+		std::cerr << "rieMiner.conf not found or unreadable, please configure rieMiner now." << std::endl;
+		askConf();
+	}
 	
 	std::cout << "Host = " << _host << std::endl;
 	std::cout << "Port = " << _port << std::endl;

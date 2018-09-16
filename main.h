@@ -3,7 +3,7 @@
 #ifndef HEADER_GLOBAL_H
 #define HEADER_GLOBAL_H
 
-#define minerVersionString	"rieMiner 0.9-beta1.5"
+#define minerVersionString	"rieMiner 0.9-beta2"
 #define BITS	64
 
 #include <unistd.h>
@@ -164,6 +164,7 @@ class Options {
 	}
 	
 	void loadConf();
+	void askConf();
 	
 	std::string host() const {return _host;}
 	uint16_t port() const {return _port;}
