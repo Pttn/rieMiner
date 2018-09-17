@@ -3,7 +3,7 @@
 #ifndef HEADER_GLOBAL_H
 #define HEADER_GLOBAL_H
 
-#define minerVersionString	"rieMiner 0.9-beta2"
+#define minerVersionString	"rieMiner 0.9-beta2.1"
 #define BITS	64
 
 #include <unistd.h>
@@ -27,7 +27,7 @@ class Miner;
 #define FIXED(x) std::fixed << std::setprecision(x)
 
 class Stats {
-	std::array<uint32_t, 7> _tuples, _tuplesSinceLastDiff;
+	std::vector<uint64_t> _tuples, _tuplesSinceLastDiff;
 	uint32_t _height, _difficulty, _heightAtDiffChange;
 	std::chrono::time_point<std::chrono::system_clock> _miningStartTp, _lastDiffChangeTp;
 	bool _solo;
@@ -35,11 +35,12 @@ class Stats {
 	bool inited() const {return _difficulty != 1 && _height != 0;}
 	
 	public:
-	Stats() {
-		for (uint8_t i(0) ; i < 7 ; i++) {
-			_tuples[i] = 0;
-			_tuplesSinceLastDiff[i] = 0;
+	Stats(uint8_t tupleLength = 6) {
+		for (uint8_t i(0) ; i <= tupleLength ; i++) {
+			_tuples.push_back(0);
+			_tuplesSinceLastDiff.push_back(0);
 		}
+		_height = 0;
 		_difficulty = 1;
 		_heightAtDiffChange = 0;
 		_lastDiffChangeTp = std::chrono::system_clock::now();
@@ -59,6 +60,7 @@ class Stats {
 	}
 	
 	uint32_t height() const {return _height;}
+	void initHeight(uint32_t height) {_height = height;}
 	void updateHeight(uint32_t height) {
 		if (inited()) {
 			printTime();
@@ -82,7 +84,7 @@ class Stats {
 	uint32_t heightAtDiffChange() const {return _heightAtDiffChange;}
 	
 	std::chrono::time_point<std::chrono::system_clock> miningStartTp() const {return _miningStartTp;}
-	std::array<uint32_t, 7> tuplesCount() const {return _tuples;}
+	std::vector<uint64_t> tuplesCount() const {return _tuples;}
 	
 	void printTime() const {
 		double elapsedSecs(timeSince(_miningStartTp));
@@ -94,22 +96,37 @@ class Stats {
 		double elapsedSecs(timeSince(_lastDiffChangeTp));
 		if (elapsedSecs > 1 && timeSince(_miningStartTp) > 1) {
 			printTime();
-			std::cout << " (2-4t/s) = (" << FIXED(2) << _tuplesSinceLastDiff[2]/elapsedSecs << " " << FIXED(3) << _tuplesSinceLastDiff[3]/elapsedSecs << " " << FIXED(4) << _tuplesSinceLastDiff[4]/elapsedSecs << ") ; "
-			          << "(2-6t) = (" << _tuples[2] << " " << _tuples[3] << " " << _tuples[4] << " " << _tuples[5] << " " << _tuples[6] << ")";
+			std::cout << " (2-4t/s) = (" << FIXED(2) << _tuplesSinceLastDiff[2]/elapsedSecs << " " << FIXED(3) << _tuplesSinceLastDiff[3]/elapsedSecs << " " << FIXED(4) << _tuplesSinceLastDiff[4]/elapsedSecs << ") ; ";
+			std::cout << "(2-" << _tuples.size() - 1 << "t) = (";
+			for (uint32_t i(2) ; i < _tuples.size() ; i++) {
+				std::cout << _tuples[i];
+				if (i != _tuples.size() - 1) std::cout << " ";
+			}
+			std::cout << ")";
 		}
 	}
 	
 	void printTuplesStats() const {
 		if (inited()) {
-			std::array<uint32_t, 7> t(_tuplesSinceLastDiff);
+			std::vector<uint64_t> t(_tuplesSinceLastDiff);
 			double elapsedSecs(timeSince(_lastDiffChangeTp));
-			std::cout << "Tuples found for diff " << _difficulty <<  ": (" << t[2] << " " << t[3] << " " << t[4] << " " << t[5] << " " << t[6] << ") during " << FIXED(3) << elapsedSecs << " s" << std::endl;
-			std::cout << "Tuples/s: (" << FIXED(6) << t[2]/elapsedSecs << " " << t[3]/elapsedSecs << " " << FIXED(6) << t[4]/elapsedSecs << " " << t[5]/elapsedSecs << " " << t[6]/elapsedSecs << ")" << std::endl;
+			std::cout << "Tuples found for diff " << _difficulty <<  ": (";
+			for (uint32_t i(2) ; i < _tuples.size() ; i++) {
+				std::cout << t[i];
+				if (i != _tuples.size() - 1) std::cout << " ";
+			}
+			std::cout << ") during " << FIXED(3) << elapsedSecs << " s" << std::endl;
+			std::cout << "Tuples/s: (" << FIXED(6);
+			for (uint32_t i(2) ; i < _tuples.size() ; i++) {
+				std::cout << t[i]/elapsedSecs;
+				if (i != _tuples.size() - 1) std::cout << " ";
+			}
+			std::cout << ")" << std::endl;
 			std::cout << "Ratios: (" << FIXED(1);
-			for (uint32_t i(3) ; i <= 6 ; i++) {
+			for (uint32_t i(3) ; i < _tuples.size() ; i++) {
 				if (t[i] != 0) std::cout << ((double) t[i - 1])/((double) t[i]);
 				else std::cout << "inf";
-				if (i != 6) std::cout << " ";
+				if (i != _tuples.size() - 1) std::cout << " ";
 			}
 			std::cout << ")" << std::endl;
 		}
@@ -191,6 +208,7 @@ class WorkManager : public std::enable_shared_from_this<WorkManager> {
 	bool _inited, _miningStarted;
 	uint16_t _waitReconnect; // Time in s to wait before reconnecting after disconnect
 	uint16_t _workRefresh;   // Time in ms for each fetch work cycle
+	std::vector<uint64_t> _constellationType; // What type of constellations are we mining (offsets)
 	
 	void minerThread();
 	
@@ -200,11 +218,12 @@ class WorkManager : public std::enable_shared_from_this<WorkManager> {
 	void init();
 	void submitWork(WorkData wd, uint32_t* nOffset, uint8_t length);
 	void manage();
-	Options options() {return _options;}
-	uint32_t height() {return _stats.height();}
-	uint32_t difficulty() {return _stats.difficulty();}
-	void printTime() {_stats.printTime();}
-	void printTuplesStats() {_stats.printTuplesStats();}
+	Options options() const {return _options;}
+	uint32_t height() const {return _stats.height();}
+	uint32_t difficulty() const {return _stats.difficulty();}
+	std::vector<uint64_t> offsets() const {return _constellationType;}
+	void printTime() const {_stats.printTime();}
+	void printTuplesStats() const {_stats.printTuplesStats();}
 	void incTupleCount(uint8_t i) {_stats.incTupleCount(i);}
 	void updateDifficulty(uint32_t newDifficulty, uint32_t height) {_stats.updateDifficulty(newDifficulty, height);}
 	void updateHeight(uint32_t height) {_stats.updateHeight(height);}

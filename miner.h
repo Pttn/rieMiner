@@ -20,8 +20,7 @@ struct MinerParameters {
 	bool solo;
 	int sieveWorkers;
 	uint64_t sieveBits, sieveSize, sieveWords, maxIncrements, maxIter, primorialOffset, denseLimit;
-	std::vector<uint64_t> primes, inverts;
-	std::array<uint64_t, 6> primeTupleOffset;
+	std::vector<uint64_t> primes, inverts, primeTupleOffset;
 	
 	MinerParameters() {
 		primorialNumber = 40;
@@ -34,10 +33,10 @@ struct MinerParameters {
 		sieveSize       = 1UL << sieveBits;
 		sieveWords      = sieveSize/64;
 		maxIncrements   = (1ULL << 29),
-        maxIter         = maxIncrements/sieveSize;
-        primorialOffset = 16057;
-        denseLimit      = 16384;
-        primeTupleOffset = {0, 4, 2, 4, 2, 4};
+		maxIter         = maxIncrements/sieveSize;
+		primorialOffset = 16057;
+		denseLimit      = 16384;
+		primeTupleOffset = {0, 4, 2, 4, 2, 4};
 	}
 };
 

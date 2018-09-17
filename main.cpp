@@ -16,14 +16,34 @@
 std::shared_ptr<WorkManager> manager;
 
 WorkManager::WorkManager() {
-	_options       = Options();
-	_stats         = Stats();
-	_client        = NULL;
-	_miner         = NULL;
-	_inited        = false;
-	_miningStarted = false;
-	_waitReconnect = 10;
-	_workRefresh   = 500;
+	_options           = Options();
+	_client            = NULL;
+	_miner             = NULL;
+	_inited            = false;
+	_miningStarted     = false;
+	_waitReconnect     = 10;
+	_workRefresh       = 500;
+	_constellationType = {0, 4, 2, 4, 2, 4};
+	_stats             = Stats(_constellationType.size());
+	/* Some possible constellations types
+	You will need to change the Primorial Offset in the MinerParameters constructor in miner.h
+	The Primorial Number may sometimes need to be lowered too
+	The sixoff[...] size should also be changed in miner.cpp
+	Format
+		(type) -> {copyable offsets} ; 3 first constellations (n + 0) which can be used as offsets
+	5-tuples
+		(0, 2, 6,  8, 12) -> {0, 2, 4, 2, 4} ; 5, 11, 101,...
+		(0, 4, 6, 10, 12) -> {0, 4, 2, 4, 2} ; 7, 97, 1867,...
+	6-tuples
+		(0, 4, 6, 10, 12, 16) -> {0, 4, 2, 4, 2, 4} (Riecoin) ; 7, 97, 16057,...
+	7-tuples
+		(0, 2, 6,  8, 12, 18, 20) -> {0, 2, 4, 2, 4, 6, 2} ; 11, 165701, 1068701,...
+		(0, 2, 8, 12, 14, 18, 20) -> {0, 2, 6, 4, 2, 4, 2} ; 5639, 88799, 284729,...
+	8-tuples
+		(0, 2, 6,  8, 12, 18, 20, 26) -> {0, 2, 4, 2, 4, 6, 2, 6} ; 11, 15760091, 25658441,...
+		(0, 2, 6, 12, 14, 20, 24, 26) -> {0, 2, 4, 6, 2, 6, 4, 2} ; 17, 1277, 113147,...
+		(0, 6, 8, 14, 18, 20, 24, 26) -> {0, 6, 2, 6, 4, 2, 4, 2} ; 88793, 284723, 855713,...
+	Also see the constellationsGen tool in my rieTools repository (https://github.com/Pttn/rieTools) */
 }
 
 void WorkManager::init() {
@@ -111,7 +131,9 @@ void WorkManager::manage() {
 						_stats.startTimer();
 						_stats.updateHeight(_client->workData().height - 1);
 						std::cout << "-----------------------------------------------------------" << std::endl;
-						std::cout << "[0000:00:00] Started mining at block " << _client->workData().height << std::endl;
+						uint32_t startHeight(_client->workData().height);
+						std::cout << "[0000:00:00] Started mining at block " << startHeight << std::endl;
+						_stats.initHeight(startHeight);
 						_miningStarted = true;
 					}
 					
@@ -129,7 +151,7 @@ void WorkManager::manage() {
 				}
 				else {
 					std::cout << "Connected!" << std::endl;
-					_stats = Stats();
+					_stats = Stats(_constellationType.size());
 					_stats.setMiningType(_options.protocol());
 				}
 				usleep(10000);
@@ -207,7 +229,7 @@ void Options::askConf() {
 				std::cout << "Current pools " << std::endl;
 				std::cout << "     XPoolX: mining.xpoolx.com:5000" << std::endl;
 				std::cout << "    riePool: riepool.ovh:8000" << std::endl;
-				std::cout << "   Block.it: mine.ublock.it:5000" << std::endl;
+				std::cout << "  uBlock.it: mine.ublock.it:5000" << std::endl;
 				std::cout << "Pool address (without port): ";
 				std::cin >> value;
 				file << "Host = " << value << std::endl;

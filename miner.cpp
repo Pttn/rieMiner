@@ -21,6 +21,7 @@ void Miner::init() {
 	_parameters.solo = !(_manager->options().protocol() == "Stratum");
 	_parameters.tuples = _manager->options().tuples();
 	_parameters.sieve = _manager->options().sieve();
+	_parameters.primeTupleOffset = _manager->offsets();
 	
 	mpz_init(z_verifyTarget);
 	mpz_init(z_verifyRemainderPrimorial);
@@ -119,7 +120,7 @@ void Miner::_updateRemainders(uint64_t start_i, uint64_t end_i) {
 			onceOnly = true;
 		 
 		uint64_t invert(_parameters.inverts[i]);
-		for (uint64_t f(0) ; f < 6 ; f++) {
+		for (std::vector<uint64_t>::size_type f(0) ; f < _parameters.primeTupleOffset.size() ; f++) {
 			remainder += _parameters.primeTupleOffset[f];
 			if (remainder > p)
 				remainder -= p;
@@ -221,7 +222,7 @@ void Miner::_verifyThread() {
 				
 				tupleSize++;
 				// Note start at 1 - we've already tested bias 0
-				for (int i(1) ; i < 6 ; i++) {
+				for (std::vector<uint64_t>::size_type i(1) ; i < _parameters.primeTupleOffset.size() ; i++) {
 					mpz_add_ui(z_temp, z_temp, _parameters.primeTupleOffset[i]);
 					mpz_sub_ui(z_ft_n, z_temp, 1);
 					mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_temp);
