@@ -16,11 +16,9 @@ void StratumData::merkleRootGen() {
 	}
 	for (uint32_t i(0) ; i < coinbase2.size() ; i++) coinbase.push_back(coinbase2[i]);
 	
-	uint8_t cbHashTmp[32];
-	sha256(coinbase.data(), cbHashTmp, coinbase.size());
-	sha256(cbHashTmp, cbHashTmp, 32);
+	std::vector<uint8_t> cbHashTmp(sha256sha256(coinbase.data(), coinbase.size()));
 	std::array<uint32_t, 8> cbHash;
-	for (uint32_t i(0) ; i < 8 ; i++) cbHash[i] = ((uint32_t*) cbHashTmp)[i];
+	for (uint32_t j(0) ; j < 8 ; j++) cbHash[j] = ((uint32_t*) cbHashTmp.data())[j];
 	txHashes.insert(txHashes.begin(), cbHash);
 	memcpy(bh.merkleRoot, calculateMerkleRootStratum(txHashes).data(), 32);
 }

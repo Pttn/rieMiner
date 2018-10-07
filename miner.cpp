@@ -261,13 +261,8 @@ void Miner::_verifyThread() {
 	}
 }
 
-void Miner::_getTargetFromBlock(mpz_t z_target, const WorkData& block) {
-	uint64_t searchBits = block.targetCompact;
-	std::ostringstream oss, oss2;
-	
-	uint8_t powHash[32];
-	sha256((uint8_t*) &block, powHash, 80);
-	sha256(powHash, powHash, 32);
+void Miner::_getTargetFromBlock(mpz_t z_target, const WorkData &block) {
+	std::vector<uint8_t> powHash(sha256sha256((uint8_t*) &block, 80));
 	
 	mpz_init_set_ui(z_target, 1);
 	mpz_mul_2exp(z_target, z_target, zeroesBeforeHashInPrime);
@@ -277,6 +272,7 @@ void Miner::_getTargetFromBlock(mpz_t z_target, const WorkData& block) {
 			z_target->_mp_d[0]++;
 	}
 	
+	uint64_t searchBits(block.targetCompact);
 	uint64_t trailingZeros(searchBits - 1 - zeroesBeforeHashInPrime - 256);
 	mpz_mul_2exp(z_target, z_target, trailingZeros);
 	

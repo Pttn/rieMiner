@@ -1,6 +1,4 @@
-/* Some parts taken from fastrie by dave-andersen (https://github.com/dave-andersen/fastrie).
-(c) 2014-2017 dave-andersen (http://www.cs.cmu.edu/~dga/)
-(c) 2018 Pttn (https://github.com/Pttn/rieMiner) */
+// (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
 
 #include "tools.h"
 
@@ -51,130 +49,73 @@ uint32_t getCompact(uint32_t nCompact) {
 	return p;
 }
 
-const int8_t base58Decode[] = {
-	-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-	-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-	-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-	-1, 0, 1, 2, 3, 4, 5, 6, 7, 8,-1,-1,-1,-1,-1,-1,
-	-1, 9,10,11,12,13,14,15,16,-1,17,18,19,20,21,-1,
-	22,23,24,25,26,27,28,29,30,31,32,-1,-1,-1,-1,-1,
-	-1,33,34,35,36,37,38,39,40,41,42,43,-1,44,45,46,
-	47,48,49,50,51,52,53,54,55,56,57,-1,-1,-1,-1,-1,
-};
+// GMP base 58 digits    : 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv
+// Bitcoin base 58 digits: 123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz
+// Ascii                          ⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅ !"#$%&'()*+,-./0123465789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}-⋅
+const std::string b58GmpBtcTable("000000000000000000000000000000000000000000000000123456789A0000000BCDEFGHJKLMNPQRSTUVWXYZabc000000defghijkmnopqrstuvwxyz000000000");
+const std::string b58BtcGmpTable("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz012345678zzzzzzz9ABCDEFGzHIJKLzMNOPQRSTUVWzzzzzzXYZabcdefghzijklmnopqrstuvzzzzz");
 
-bool decodeBase58(char* base58Input, int inputLength, uint8_t* dataOut, int* dataOutLength) {
-	if (inputLength == 0) return false;
-	if (inputLength > 200) return false;
-	uint32_t baseArray[32], baseTrack[32];
-	memset(baseArray, 0x00, sizeof(baseArray));
-	memset(baseTrack, 0x00, sizeof(baseTrack));
-	uint32_t baseArraySize(1);
-	baseArray[0] = 0;
-	baseTrack[0] = 57;
-	// Calculate exact size of output
-	for(int i(0) ; i < inputLength - 1 ; i++) {
-		// Multiply baseTrack with 58
-		for(int b(baseArraySize - 1) ; b >= 0 ; b--) {
-			uint64_t multiplyWithCarry((uint64_t) baseTrack[b] * 58ULL);
-			baseTrack[b] = (uint32_t) (multiplyWithCarry & 0xFFFFFFFFUL);
-			multiplyWithCarry >>= 32;
-			if (multiplyWithCarry != 0) {
-				// Add carry
-				for (uint32_t carryIndex = b + 1 ; carryIndex < baseArraySize ; carryIndex++) {
-					multiplyWithCarry += (uint64_t) baseTrack[carryIndex];
-					baseTrack[carryIndex] = (uint32_t) (multiplyWithCarry & 0xFFFFFFFFUL);
-					multiplyWithCarry >>= 32;
-					if (multiplyWithCarry == 0)
-						break;
-				}
-				if (multiplyWithCarry) {
-					// Extend
-					baseTrack[baseArraySize] = (uint32_t) multiplyWithCarry;
-					baseArraySize++;
-				}
-			}
+std::string gmp58Tobtc58(const std::string gmp58Str) {
+	std::string btc58Str;
+	for (uint64_t i(0) ; i < gmp58Str.size() ; i++) {
+		if (b58GmpBtcTable[gmp58Str[i]] == '0') {
+			std::cerr << "gmp58Tobtc58: invalid Base58 (GMP) string!" << std::endl;
+			return "1";
 		}
+		btc58Str += b58GmpBtcTable[gmp58Str[i]];
 	}
-	// Get length of output data
-	int outputLength(0);
-	uint64_t last(baseTrack[baseArraySize - 1]);
-	if (last & 0xFF000000)    outputLength = baseArraySize*4;
-	else if (last & 0xFF0000) outputLength = baseArraySize*4 - 1;
-	else if (last & 0xFF00)   outputLength = baseArraySize*4 - 2;
-	else                      outputLength = baseArraySize*4 - 3;
-	// Convert base
-	for(int i(0) ; i < inputLength; i++) {
-		if (base58Input[i] >= (int32_t) (sizeof(base58Decode)/sizeof(base58Decode[0])))
-			return false;
-		int8_t digit = base58Decode[(uint8_t) base58Input[i]];
-		if (digit == -1) return false;
-		//Multiply baseArray with 58
-		for(int b(baseArraySize - 1) ; b >= 0 ; b--) {
-			uint64_t multiplyWithCarry((uint64_t) baseArray[b]*58ULL);
-			baseArray[b] = (uint32_t) (multiplyWithCarry & 0xFFFFFFFFUL);
-			multiplyWithCarry >>= 32;
-			if (multiplyWithCarry != 0) {
-				// Add carry
-				for (uint32_t carryIndex(b + 1) ; carryIndex < baseArraySize ; carryIndex++) {
-					multiplyWithCarry += (uint64_t) baseArray[carryIndex];
-					baseArray[carryIndex] = (uint32_t) (multiplyWithCarry & 0xFFFFFFFFUL);
-					multiplyWithCarry >>= 32;
-					if (multiplyWithCarry == 0) break;
-				}
-				if (multiplyWithCarry) {
-					// Extend
-					baseArray[baseArraySize] = (uint32_t) multiplyWithCarry;
-					baseArraySize++;
-				}
-			}
-		}
-		// Add base58 digit to baseArray with carry
-		uint64_t addWithCarry((uint64_t) digit);
-		for(uint32_t b(0) ; addWithCarry != 0 && b < baseArraySize ; b++) {
-			addWithCarry += (uint64_t) baseArray[b];
-			baseArray[b] = (uint32_t) (addWithCarry & 0xFFFFFFFFUL);
-			addWithCarry >>= 32;
-		}
-		if (addWithCarry) {
-			// Extend
-			baseArray[baseArraySize] = (uint32_t) addWithCarry;
-			baseArraySize++;
-		}
-	}
-	*dataOutLength = outputLength;
-	// Write bytes
-	for (int i(0) ; i < outputLength ; i++)
-		dataOut[outputLength-i-1] = (uint8_t) (baseArray[i >> 2] >> 8*(i & 3));
-	return true;
+	return btc58Str;
 }
 
-bool addrToScriptPubKey(std::string address, uint8_t* spk) {
-	char* walletAddress(const_cast<char*>(address.c_str()));
-	uint8_t hexAddr[256];
-	int32_t hexAddrLen = sizeof(hexAddr);
-	if (decodeBase58(walletAddress, strlen(walletAddress), hexAddr, &hexAddrLen) == false) {
-		std::cerr << "AddrToScriptPubKey: failed to decode wallet address!" << std::endl;
-		memset(spk, 0, 20);
-		return false;
+std::string btc58Togmp58(const std::string btc58Str) {
+	std::string gmp58Str;
+	for (uint64_t i(0) ; i < btc58Str.size() ; i++) {
+		if (b58BtcGmpTable[btc58Str[i]] == 'z') {
+			std::cerr << "btc58Togmp58: invalid Base58 (Bitcoin) string!" << std::endl;
+			return "0";
+		}
+		gmp58Str += b58BtcGmpTable[btc58Str[i]];
 	}
-	if (hexAddrLen != 25) {
-		std::cerr << "AddrToScriptPubKey: invalid length of decoded address!" << std::endl;
-		memset(spk, 0, 20);
-		return false;
-	}
-	// Validate checksum
-	uint8_t addressHash[32];
-	{
-		sha256(hexAddr, addressHash, hexAddrLen - 4);
-		sha256(addressHash, addressHash, 32);
-	}
-	if (*(uint32_t*) (hexAddr + 21) != *(uint32_t*) addressHash) {
-		std::cerr << "AddrToScriptPubKey: invalid checksum!" << std::endl;
-		memset(spk, 0, 20);
-		return false;
-	}
+	return gmp58Str;
+}
+
+std::string v8ToB58Str(const std::vector<uint8_t> v8) {
+	mpz_class data;
+	mpz_import(data.get_mpz_t(), v8.size(), 1, 1, 0, 0, v8.data());
+	char c[255];
+	mpz_get_str(c, 58, data.get_mpz_t());
+	return gmp58Tobtc58(c);
+}
+
+std::vector<uint8_t> b58StrToV8(std::string btc58Str) {
+	mpz_class data(btc58Togmp58(btc58Str).c_str(), 58);
+	uint64_t size((mpz_sizeinbase(data.get_mpz_t(), 2) + 7)/8);
+	std::vector<uint8_t> v8(size);
+	mpz_export(&v8[0], &size, 1, 1, 0, 0, data.get_mpz_t());
+	return v8;
+}
+
+bool addrToScriptPubKey(std::string address, std::vector<uint8_t> &spk) {
+	spk = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+	std::vector<uint8_t> addr(b58StrToV8(address));
 	
-	memcpy(spk, &hexAddr[1], 20);
+	if (addr.size() != 25) {
+		std::cerr << "Invalid address length!" << std::endl;
+		return false;
+	}
+	else {
+		std::vector<uint8_t> addressHash;
+		addressHash = sha256(addr.data(), 21);
+		addressHash = sha256(addressHash.data(), 32);
+		
+		if (*((uint32_t*) &addr[21]) != *((uint32_t*) &addressHash[0])) {
+			std::cerr << "Invalid checksum!" << std::endl;
+			return false;
+		}
+		else {
+			for (uint8_t i(0) ; i < 20 ; i++) spk[i] = addr[i + 1];
+		}
+	}
 	return true;
 }
 
@@ -200,11 +141,9 @@ std::array<uint32_t, 8> calculateMerkleRoot(std::vector<std::array<uint32_t, 8>>
 					concat[j + 8] = txHashes[i + 1][j];
 			}
 			
-			uint8_t concatHash[32];
-			sha256((uint8_t*) concat, concatHash, 64);
-			sha256(concatHash, concatHash, 32);
+			std::vector<uint8_t> concatHash(sha256sha256((uint8_t*) concat, 64));
 			std::array<uint32_t, 8> concatHash2;
-			for (uint32_t j(0) ; j < 8 ; j++) concatHash2[j] = ((uint32_t*) concatHash)[j];
+			for (uint32_t j(0) ; j < 8 ; j++) concatHash2[j] = ((uint32_t*) concatHash.data())[j];
 			txHashes2.push_back(concatHash2);
 		}
 		// Process the next step
@@ -220,14 +159,14 @@ std::array<uint32_t, 8> calculateMerkleRootStratum(std::vector<std::array<uint32
 	else if (txHashes.size() == 1)
 		return txHashes[0];
 	else {
-		uint8_t hashData[64], hashOut[32];
-		memcpy(hashData, txHashes[0].data(), 32);
+		std::vector<uint8_t> hashData(64, 0), hashTmp;
+		for (uint32_t i(0) ; i < 32 ; i++) hashData[i] = ((uint8_t*) txHashes[0].data())[i];
 		for (uint32_t i(1) ; i < txHashes.size() ; i++) {
-			memcpy(&hashData[32], txHashes[i].data(), 32);
-			sha256(hashData, hashOut, 64);
-			sha256(hashOut, hashData, 32);
+			for (uint32_t j(32) ; j < 64 ; j++) hashData[j] = ((uint8_t*) txHashes[i].data())[j - 32];
+			hashTmp = sha256sha256(hashData.data(), 64);
+			for (uint32_t j(0) ; j < 32 ; j++) hashData[j] = hashTmp[j];
 		}
-		for (uint32_t i(0) ; i < 8 ; i++) merkleRoot[i] = ((uint32_t*) hashData)[i];
+		for (uint32_t i(0) ; i < 8 ; i++) merkleRoot[i] = ((uint32_t*) hashData.data())[i];
 	}
 	return merkleRoot;
 }

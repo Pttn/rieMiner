@@ -3,11 +3,10 @@
 #ifndef HEADER_GLOBAL_H
 #define HEADER_GLOBAL_H
 
-#define minerVersionString	"rieMiner 0.9-beta2.1"
+#define minerVersionString	"rieMiner 0.9-beta2.2"
 #define BITS	64
 
 #include <unistd.h>
-#include <gmpxx.h>
 #include <string>
 #include <array>
 #include <vector>

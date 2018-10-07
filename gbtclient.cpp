@@ -8,10 +8,12 @@ bool GBTClient::connect() {
 	if (_inited) {
 		if (!getWork()) return false;
 		_gbtd = GetBlockTemplateData();
-		if (!addrToScriptPubKey(_manager->options().address(), _gbtd.scriptPubKey)) {
+		std::vector<uint8_t> spk;
+		if (!addrToScriptPubKey(_manager->options().address(), spk)) {
 			std::cerr << "Invalid payout address! Using donation address instead." << std::endl;
-			addrToScriptPubKey("RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB", _gbtd.scriptPubKey);
+			addrToScriptPubKey("RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB", spk);
 		}
+		for (uint32_t i(0) ; i < 20 ; i++) _gbtd.scriptPubKey[i] = spk[i];
 		_pendingSubmissions = std::vector<std::pair<WorkData, uint8_t>>();
 		_connected = true;
 		return true;

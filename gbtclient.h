@@ -29,11 +29,9 @@ struct GetBlockTemplateData {
 	
 	void coinBaseGen();
 	std::array<uint32_t, 8> coinBaseHash() {
-		uint8_t cbHashTmp[32];
-		sha256(coinbase.data(), cbHashTmp, coinbase.size());
-		sha256(cbHashTmp, cbHashTmp, 32);
+		std::vector<uint8_t> cbHashTmp(sha256sha256(coinbase.data(), coinbase.size()));
 		std::array<uint32_t, 8> cbHash;
-		for (uint32_t j(0) ; j < 8 ; j++) cbHash[j] = ((uint32_t*) cbHashTmp)[j];
+		for (uint32_t j(0) ; j < 8 ; j++) cbHash[j] = ((uint32_t*) cbHashTmp.data())[j];
 		return cbHash;
 	}
 	void merkleRootGen() {

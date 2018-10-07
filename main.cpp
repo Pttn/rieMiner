@@ -263,10 +263,10 @@ void Options::askConf() {
 			_pass = value;
 			
 			if (_protocol == "GetBlockTemplate") {
-				uint8_t scriptPubKeyTest[20];
+				std::vector<uint8_t> spk;
 				std::cout << "Payout address: ";
 				std::cin >> value;
-				if (!addrToScriptPubKey(value, scriptPubKeyTest)) {
+				if (!addrToScriptPubKey(value, spk)) {
 					std::cerr << "Invalid payout address!" << std::endl;
 					std::remove("rieMiner.conf");
 					exit(0);
