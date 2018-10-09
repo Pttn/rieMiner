@@ -119,31 +119,30 @@ bool addrToScriptPubKey(std::string address, std::vector<uint8_t> &spk) {
 	return true;
 }
 
-std::array<uint32_t, 8> calculateMerkleRoot(std::vector<std::array<uint32_t, 8>> txHashes) {
-	std::array<uint32_t, 8> merkleRoot = {0, 0, 0, 0, 0, 0, 0, 0};
+std::array<uint8_t, 32> calculateMerkleRoot(std::vector<std::array<uint8_t, 32>> txHashes) {
+	std::array<uint8_t, 32> merkleRoot{};
 	if (txHashes.size() == 0)
 		std::cerr << "CalculateMerkleRoot: no transaction to hash!" << std::endl;
 	else if (txHashes.size() == 1)
 		return txHashes[0];
 	else {
-		std::vector<std::array<uint32_t, 8>> txHashes2;
+		std::vector<std::array<uint8_t, 32>> txHashes2;
 		
 		for (uint32_t i(0) ; i < txHashes.size() ; i += 2) {
-			uint32_t concat[16];
-			for (uint32_t j(0) ; j < 8 ; j++)
-				concat[j] = txHashes[i][j];
+			uint8_t concat[64];
+			for (uint32_t j(0) ; j < 32 ; j++) concat[j] = txHashes[i][j];
 			if (i == txHashes.size() - 1) { // Concatenation of the last element with itself for an odd number of transactions
-				for (uint32_t j(0) ; j < 8 ; j++)
-					concat[j + 8] = txHashes[i][j];
+				for (uint32_t j(0) ; j < 32 ; j++)
+					concat[j + 32] = txHashes[i][j];
 			}
 			else {
-				for (uint32_t j(0) ; j < 8 ; j++)
-					concat[j + 8] = txHashes[i + 1][j];
+				for (uint32_t j(0) ; j < 32 ; j++)
+					concat[j + 32] = txHashes[i + 1][j];
 			}
 			
 			std::vector<uint8_t> concatHash(sha256sha256((uint8_t*) concat, 64));
-			std::array<uint32_t, 8> concatHash2;
-			for (uint32_t j(0) ; j < 8 ; j++) concatHash2[j] = ((uint32_t*) concatHash.data())[j];
+			std::array<uint8_t, 32> concatHash2;
+			for (uint32_t j(0) ; j < 32 ; j++) concatHash2[j] = concatHash[j];
 			txHashes2.push_back(concatHash2);
 		}
 		// Process the next step
@@ -152,21 +151,21 @@ std::array<uint32_t, 8> calculateMerkleRoot(std::vector<std::array<uint32_t, 8>>
 	return merkleRoot;
 }
 
-std::array<uint32_t, 8> calculateMerkleRootStratum(std::vector<std::array<uint32_t, 8>> txHashes) {
-	std::array<uint32_t, 8> merkleRoot = {0, 0, 0, 0, 0, 0, 0, 0};
+std::array<uint8_t, 32> calculateMerkleRootStratum(std::vector<std::array<uint8_t, 32>> txHashes) {
+	std::array<uint8_t, 32> merkleRoot{};
 	if (txHashes.size() == 0)
 		std::cerr << "calculateMerkleRootStratum: no transaction to hash!";
 	else if (txHashes.size() == 1)
 		return txHashes[0];
 	else {
 		std::vector<uint8_t> hashData(64, 0), hashTmp;
-		for (uint32_t i(0) ; i < 32 ; i++) hashData[i] = ((uint8_t*) txHashes[0].data())[i];
+		for (uint32_t i(0) ; i < 32 ; i++) hashData[i] = txHashes[0][i];
 		for (uint32_t i(1) ; i < txHashes.size() ; i++) {
-			for (uint32_t j(32) ; j < 64 ; j++) hashData[j] = ((uint8_t*) txHashes[i].data())[j - 32];
+			for (uint32_t j(32) ; j < 64 ; j++) hashData[j] = txHashes[i][j - 32];
 			hashTmp = sha256sha256(hashData.data(), 64);
 			for (uint32_t j(0) ; j < 32 ; j++) hashData[j] = hashTmp[j];
 		}
-		for (uint32_t i(0) ; i < 8 ; i++) merkleRoot[i] = ((uint32_t*) hashData.data())[i];
+		for (uint32_t i(0) ; i < 32 ; i++) merkleRoot[i] = hashData[i];
 	}
 	return merkleRoot;
 }

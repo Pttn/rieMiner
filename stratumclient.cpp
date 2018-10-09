@@ -17,8 +17,8 @@ void StratumData::merkleRootGen() {
 	for (uint32_t i(0) ; i < coinbase2.size() ; i++) coinbase.push_back(coinbase2[i]);
 	
 	std::vector<uint8_t> cbHashTmp(sha256sha256(coinbase.data(), coinbase.size()));
-	std::array<uint32_t, 8> cbHash;
-	for (uint32_t j(0) ; j < 8 ; j++) cbHash[j] = ((uint32_t*) cbHashTmp.data())[j];
+	std::array<uint8_t, 32> cbHash;
+	for (uint32_t j(0) ; j < 32 ; j++) cbHash[j] = cbHashTmp[j];
 	txHashes.insert(txHashes.begin(), cbHash);
 	memcpy(bh.merkleRoot, calculateMerkleRootStratum(txHashes).data(), 32);
 }
@@ -235,7 +235,7 @@ bool StratumClient::getWork() {
 			}
 			
 			_sd.bh = BlockHeader();
-			_sd.txHashes = std::vector<std::array<uint32_t, 8>>();
+			_sd.txHashes = std::vector<std::array<uint8_t, 32>>();
 			hexStrToBin(version,  (uint8_t*) &_sd.bh.version);
 			hexStrToBin(prevhash, _sd.bh.previousblockhash);
 			hexStrToBin(nbits,    (uint8_t*) &_sd.bh.bits);
@@ -245,10 +245,10 @@ bool StratumClient::getWork() {
 			_sd.jobId     = jobId;
 			// Get Transactions Hashes
 			for (uint32_t i(0) ; i < json_array_size(jsonTxs) ; i++) {
-				std::array<uint32_t, 8> txHash;
+				std::array<uint8_t, 32> txHash;
 				uint8_t txHashTmp[32];
 				hexStrToBin(json_string_value(json_array_get(jsonTxs, i)), txHashTmp);
-				for (uint32_t j(0) ; j < 8 ; j++) txHash[j] = ((uint32_t*) txHashTmp)[j];
+				for (uint8_t j(0) ; j < 32 ; j++) txHash[j] = txHashTmp[j];
 				_sd.txHashes.push_back(txHash);
 			}
 			
@@ -272,8 +272,10 @@ void StratumClient::getSentShareResponse() {
 	else {
 		json_t *jsonRes(json_object_get(jsonObj, "result")),
 		       *jsonErr(json_object_get(jsonObj, "error"));
+		_manager->incShares();
 		if (jsonRes == NULL || json_is_null(jsonRes) || !json_is_null(jsonErr)) {
 			std::cout << "Share rejected :| - ";
+			_manager->incRejectedShares();
 			if (!json_is_null(jsonErr)) std::cout << "Reason: " << json_dumps(jsonErr, JSON_INDENT(3));
 			else std::cout << "No reason given";
 			std::cout << std::endl;
@@ -293,7 +295,7 @@ void StratumClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 	wdToSend.bh.curtime <<= 32;
 	
 	for (uint32_t i(0) ; i < 8 ; i++)
-		nonce[i] = swab32( *(((uint32_t *) wdToSend.bh.nOffset) + 8 - 1 - i) );
+		nonce[i] = swab32(*(((uint32_t *) wdToSend.bh.nOffset) + 8 - 1 - i));
 	
 	oss << "{\"method\": \"mining.submit\", \"params\": [\""
 	    << _manager->options().user() << "\", \""

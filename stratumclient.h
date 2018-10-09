@@ -18,7 +18,7 @@
 
 struct StratumData {
 	BlockHeader bh;
-	std::vector<std::array<uint32_t, 8>> txHashes;
+	std::vector<std::array<uint8_t, 32>> txHashes;
 	uint32_t height;
 	std::vector<uint8_t> coinbase1, coinbase2;
 	
@@ -29,7 +29,7 @@ struct StratumData {
 	
 	StratumData() {
 		bh = BlockHeader();
-		txHashes = std::vector<std::array<uint32_t, 8>>();
+		txHashes = std::vector<std::array<uint8_t, 32>>();
 		height = 0;
 		coinbase1 = std::vector<uint8_t>();
 		coinbase2 = std::vector<uint8_t>();

@@ -412,6 +412,10 @@ int main() {
 	std::cout << "Project page: https://github.com/Pttn/rieMiner" << std::endl;
 	std::cout << "Go to project page or open README.md for usage information." << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
+	std::cout << "GMP " << __GNU_MP_VERSION << "." << __GNU_MP_VERSION_MINOR << "." << __GNU_MP_VERSION_PATCHLEVEL << std::endl;
+	std::cout << "LibCurl " << LIBCURL_VERSION << std::endl;
+	std::cout << "Jansson " << JANSSON_VERSION << std::endl;
+	std::cout << "-----------------------------------------------------------" << std::endl;
 	
 	manager = std::shared_ptr<WorkManager>(new WorkManager);
 	manager->init();

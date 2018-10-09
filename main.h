@@ -3,7 +3,7 @@
 #ifndef HEADER_GLOBAL_H
 #define HEADER_GLOBAL_H
 
-#define minerVersionString	"rieMiner 0.9-beta2.2"
+#define minerVersionString	"rieMiner 0.9-beta2.3"
 #define BITS	64
 
 #include <unistd.h>
@@ -27,7 +27,7 @@ class Miner;
 
 class Stats {
 	std::vector<uint64_t> _tuples, _tuplesSinceLastDiff;
-	uint32_t _height, _difficulty, _heightAtDiffChange;
+	uint32_t _height, _difficulty, _heightAtDiffChange, _shares, _rejectedShares;
 	std::chrono::time_point<std::chrono::system_clock> _miningStartTp, _lastDiffChangeTp;
 	bool _solo;
 	
@@ -42,6 +42,8 @@ class Stats {
 		_height = 0;
 		_difficulty = 1;
 		_heightAtDiffChange = 0;
+		_shares = 0;
+		_rejectedShares = 0;
 		_lastDiffChangeTp = std::chrono::system_clock::now();
 		_solo = true;
 	}
@@ -57,6 +59,9 @@ class Stats {
 		_tuples[i]++;
 		_tuplesSinceLastDiff[i]++;
 	}
+	
+	void incShares() {_shares++;}
+	void incRejectedShares() {_rejectedShares++;}
 	
 	uint32_t height() const {return _height;}
 	void initHeight(uint32_t height) {_height = height;}
@@ -96,12 +101,18 @@ class Stats {
 		if (elapsedSecs > 1 && timeSince(_miningStartTp) > 1) {
 			printTime();
 			std::cout << " (2-4t/s) = (" << FIXED(2) << _tuplesSinceLastDiff[2]/elapsedSecs << " " << FIXED(3) << _tuplesSinceLastDiff[3]/elapsedSecs << " " << FIXED(4) << _tuplesSinceLastDiff[4]/elapsedSecs << ") ; ";
-			std::cout << "(2-" << _tuples.size() - 1 << "t) = (";
-			for (uint32_t i(2) ; i < _tuples.size() ; i++) {
-				std::cout << _tuples[i];
-				if (i != _tuples.size() - 1) std::cout << " ";
+			if (_solo) {
+				std::cout << "(2-" << _tuples.size() - 1 << "t) = (";
+				for (uint32_t i(2) ; i < _tuples.size() ; i++) {
+					std::cout << _tuples[i];
+					if (i != _tuples.size() - 1) std::cout << " ";
+				}
+				std::cout << ")";
 			}
-			std::cout << ")";
+			else {
+				std::cout << "Shares: " << _shares - _rejectedShares << "/" << _shares;
+				if (_shares > 0) std::cout << " (" << FIXED(1) << 100.*((double) _shares)/((double) _shares - _rejectedShares) << "%)";
+			}
 		}
 	}
 	
@@ -224,6 +235,8 @@ class WorkManager : public std::enable_shared_from_this<WorkManager> {
 	void printTime() const {_stats.printTime();}
 	void printTuplesStats() const {_stats.printTuplesStats();}
 	void incTupleCount(uint8_t i) {_stats.incTupleCount(i);}
+	void incShares() {_stats.incShares();}
+	void incRejectedShares() {_stats.incRejectedShares();}
 	void updateDifficulty(uint32_t newDifficulty, uint32_t height) {_stats.updateDifficulty(newDifficulty, height);}
 	void updateHeight(uint32_t height) {_stats.updateHeight(height);}
 };

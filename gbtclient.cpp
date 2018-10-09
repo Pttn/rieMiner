@@ -8,12 +8,10 @@ bool GBTClient::connect() {
 	if (_inited) {
 		if (!getWork()) return false;
 		_gbtd = GetBlockTemplateData();
-		std::vector<uint8_t> spk;
-		if (!addrToScriptPubKey(_manager->options().address(), spk)) {
+		if (!addrToScriptPubKey(_manager->options().address(), _gbtd.scriptPubKey)) {
 			std::cerr << "Invalid payout address! Using donation address instead." << std::endl;
-			addrToScriptPubKey("RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB", spk);
+			addrToScriptPubKey("RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB", _gbtd.scriptPubKey);
 		}
-		for (uint32_t i(0) ; i < 20 ; i++) _gbtd.scriptPubKey[i] = spk[i];
 		_pendingSubmissions = std::vector<std::pair<WorkData, uint8_t>>();
 		_connected = true;
 		return true;
@@ -26,14 +24,9 @@ bool GBTClient::connect() {
 
 void GetBlockTemplateData::coinBaseGen() {
 	coinbase = std::vector<uint8_t>();
-	uint8_t scriptSig[64], scriptSigLen(26 + 4);
-	// rieMiner's signature
-	hexStrToBin("4d696e65642077697468205074746e2773207269654d696e6572", scriptSig);
-	// Randomize this so 2 instances will not work on the same problem
-	scriptSig[26] = rand(0x00, 0xFF);
-	scriptSig[27] = rand(0x00, 0xFF);
-	scriptSig[28] = rand(0x00, 0xFF);
-	scriptSig[29] = rand(0x00, 0xFF);
+	std::vector<uint8_t> scriptSig(hexStrToV8("7269654d696e6572"));
+	// Randomization to avoid 2 threads working on the same problem
+	for (uint32_t i(0) ; i < 4 ; i++) scriptSig.push_back(rand(0x00, 0xFF));
 	
 	// Version [0 -> 3] (01000000)
 	coinbase.push_back(1);
@@ -45,7 +38,7 @@ void GetBlockTemplateData::coinBaseGen() {
 	// Input VOUT [37 -> 40] (FFFFFFFF)
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0xFF);
 	// ScriptSig Size [41]
-	coinbase.push_back(4 + scriptSigLen); // Block Height Push (4) + scriptSigLen
+	coinbase.push_back(4 + scriptSig.size()); // Block Height Push (4) + scriptSig.size()
 	// Block Height Length [42]
 	if (height/65536 == 0) {
 		if (height/256 == 0) coinbase.push_back(1);
@@ -56,8 +49,8 @@ void GetBlockTemplateData::coinBaseGen() {
 	coinbase.push_back(height % 256);
 	coinbase.push_back((height/256) % 256);
 	coinbase.push_back((height/65536) % 256);
-	// ScriptSig [46 -> 46 + scriptSigLen = s]
-	for (uint32_t i(0) ; i < scriptSigLen ; i++) coinbase.push_back(scriptSig[i]);
+	// ScriptSig [46 -> 46 + scriptSig.size() = s]
+	for (uint32_t i(0) ; i < scriptSig.size() ; i++) coinbase.push_back(scriptSig[i]);
 	// Input Sequence [s -> s + 3] (FFFFFFFF)
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0xFF);
 	
@@ -87,14 +80,14 @@ bool GBTClient::getWork() {
 	       *jsonGbt_Res_Txs(json_object_get(jsonGbt_Res, "transactions"));
 	
 	// Failure to GetBlockTemplate
-	if (jsonGbt == NULL || jsonGbt_Res == NULL || jsonGbt_Res_Txs == NULL ) return false;
+	if (jsonGbt == NULL || jsonGbt_Res == NULL || jsonGbt_Res_Txs == NULL) return false;
 	
 	uint32_t oldHeight(_gbtd.height);
 	uint8_t bitsTmp[4];
 	hexStrToBin(json_string_value(json_object_get(jsonGbt_Res, "bits")), bitsTmp);
 	_gbtd.bh = BlockHeader();
 	_gbtd.transactions = std::string();
-	_gbtd.txHashes = std::vector<std::array<uint32_t, 8>>();
+	_gbtd.txHashes = std::vector<std::array<uint8_t, 32>>();
 	
 	// Extract and build GetBlockTemplate data
 	_gbtd.bh.version = json_integer_value(json_object_get(jsonGbt_Res, "version"));
@@ -105,11 +98,10 @@ bool GBTClient::getWork() {
 	_gbtd.bh.curtime = json_integer_value(json_object_get(jsonGbt_Res, "curtime"));
 	_gbtd.transactions += binToHexStr(_gbtd.coinbase.data(), _gbtd.coinbase.size());
 	for (uint32_t i(0) ; i < json_array_size(jsonGbt_Res_Txs) ; i++) {
-		std::array<uint32_t, 8> txHash;
-		uint8_t txHashTmp[32], txHashInvTmp[32];
-		hexStrToBin(json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "hash")), txHashInvTmp);
-		for (uint16_t j(0) ; j < 32 ; j++) txHashTmp[j] = txHashInvTmp[31 - j];
-		for (uint32_t j(0) ; j < 8 ; j++) txHash[j] = ((uint32_t*) txHashTmp)[j];
+		std::array<uint8_t, 32> txHash;
+		uint8_t txHashInv[32];
+		hexStrToBin(json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "hash")), txHashInv);
+		for (uint8_t j(0) ; j < 32 ; j++) txHash[j] = txHashInv[31 - j];
 		_gbtd.transactions += json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "data"));
 		_gbtd.txHashes.push_back(txHash);
 	}
@@ -138,18 +130,12 @@ void GBTClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 	req = oss.str();
 	jsonSb = sendRPCCall(req);
 	
-	uint8_t k(share.second);
-	if (k >= 4) {
-		_manager->printTime();
-		std::cout << " 4-tuple found";
-		if (k == 4) std::cout << std::endl;
-	}
-	if (k >= 5) {
-		std::cout << "... Actually it was a 5-tuple";
-		if (k == 5) std::cout << std::endl;
-	}
-	if (k >= 6) {
-		std::cout << "... No, no... A 6-tuple = BLOCK!!!!!!" << std::endl;
+	uint16_t k(share.second);
+	_manager->printTime();
+	std::cout << " " << k << "-tuple found";
+	if (k < 6) std::cout << std::endl;
+	else if (k == 6) {
+		std::cout << ", this is a block!" << std::endl;
 		std::cout << "Sent: " << req;
 		if (jsonSb == NULL) std::cerr << "Failure submiting block :|" << std::endl;
 		else {

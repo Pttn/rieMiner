@@ -39,8 +39,8 @@ uint32_t getCompact(uint32_t);
 // Convert address to ScriptPubKey used for building the Coinbase Transaction
 bool addrToScriptPubKey(std::string, std::vector<uint8_t>&);
 // Calculate Merkle Root from a list of transactions
-std::array<uint32_t, 8> calculateMerkleRoot(std::vector<std::array<uint32_t, 8>>);
-std::array<uint32_t, 8> calculateMerkleRootStratum(std::vector<std::array<uint32_t, 8>>);
+std::array<uint8_t, 32> calculateMerkleRoot(std::vector<std::array<uint8_t, 32>>);
+std::array<uint8_t, 32> calculateMerkleRootStratum(std::vector<std::array<uint8_t, 32>>);
 uint8_t rand(uint8_t, uint8_t);
 
 inline double timeSince(std::chrono::time_point<std::chrono::system_clock> t0) {
@@ -61,10 +61,8 @@ inline std::vector<uint8_t> sha256(const uint8_t *data, uint32_t len) {
 }
 
 inline std::vector<uint8_t> sha256sha256(const uint8_t *data, uint32_t len) {
-	std::vector<uint8_t> hash;
-	hash = sha256(data, len);
-	hash = sha256(hash.data(), 32);
-	return hash;
+	std::vector<uint8_t> hash(sha256(data, len));
+	return sha256(hash.data(), 32);
 }
 
 #define bswap_32(x) ((((x) << 24) & 0xff000000u) | (((x) << 8) & 0x00ff0000u) | (((x) >> 8) & 0x0000ff00u) | (((x) >> 24) & 0x000000ffu))

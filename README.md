@@ -1,4 +1,4 @@
-# rieMiner 0.9β2.2
+# rieMiner 0.9β2.3
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining, and using the latest known mining algorithm. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie).
 
@@ -117,7 +117,7 @@ It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; a
 * Threads : number of threads used for mining. Default: 8;
 * Sieve : size of the sieve table used for mining. Use a bigger number if you have more RAM, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^30;
 * Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6;
-* Refresh : refresh rate of the stats in seconds. 0 to disable them; will only notify when a k-tuple or share (k > 4) is found, or when the network finds a block. Default: 30;
+* Refresh : refresh rate of the stats in seconds. 0 to disable them; will only notify when a k-tuple or share (k >= Tuples option value if solo mining) is found, or when the network finds a block. Default: 30;
 * TestDiff : only for Benchmark, sets the testing difficulty (must be from 265 to 32767). Default: 1600;
 * TestTime : only for Benchmark, sets the testing duration in s. 0 for no time limit. Default: 0;
 * Test3t : only for Benchmark, stops testing after finding this number of 3-tuples. 0 for no limit. Default: 1000.
@@ -139,18 +139,16 @@ If you have memory errors, try to lower the Sieve value.
 rieMiner will regularly print some stats, and the frequency of this can be changed with the Refresh parameter as said earlier. Example for solo mining:
 
 ```bash
-[0024:46:09] (2/3t/s) = (7.36 0.255) ; (2-6t) = (654259 22261 793 38 2) | 1.14 d
+[0521:41:15] (2-4t/s) = (3.60 0.136 0.0054) ; (2-6t) = (8864892 354753 14366 561 36) | 1.52 d
 ```
 
-These are the time since start of mining (24 h 46 min 9 s), the number of tuples found each second since the last difficulty change (7.36 2-tuples/s and 0.255 3-tuple/s), and the total of tuples found (for example, 793 4-tuples, and 2 blocks) since the start of the mining.
+These are the time since start of mining (521 h 41 min 15 s), the number of tuples found each second since the last difficulty change (3.60 2-tuples/s, 0.136 3-tuple/s, 0.0054 4-tuple/s), and the total of tuples found (for example, 14366 4-tuples, or 36 blocks) since the start of the mining.
 
 After finding at least a 4-tuple after a difficulty change, rieMiner will also estimate the average time to find a block (here, 1.14 days) by extrapolating from how many 2, 3 and 4-tuples were found, but of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week.
 
-These results were obtained with a Ryzen R7 2700X at 3.7 GHz, and you can use this reference to ensure that your miner is mining as fast as it should. Keep in mind that you should wait at least a few hours before comparing values, and the higher is the difficulty, the lower are the tuples find rates (I will add a benchmark mode in a future version). With a 2700X and at ~1600 difficulty, you can expect to get 2-3 blocks every week on average.
+For pooled mining, the number of valid and total shares are shown instead, and there is an estimation of how much RIC/day you are earning. If you want to compare the performance with fastrie, multiply the speeds by 4.096. The performance should be the same as fastrie's, as rieMiner uses the same algorithm.
 
-For pooled mining, the number of primes "non consecutive tuples" are shown instead, and there is an estimation of how much RIC/day you are earning. If you want to compare the performance with fastrie, multiply the speeds by 4.096. The performance should be the same as fastrie's, as rieMiner uses the same algorithm.
-
-rieMiner will also notify if it found a k-tuple (k > 3) in solo mining or a share in pooled mining, and if the network found a new block. If it finds a block or a share, it will tell if the submission was accepted (solo mining only) or not. For solo mining, if the block was accepted, the reward will be generated for the address specified in the options. You can then spend it after 100 confirmations.
+rieMiner will also notify if it found a k-tuple (k >= Tuples option value) in solo mining or a share in pooled mining, and if the network found a new block. If it finds a block or a share, it will tell if the submission was accepted (solo mining only) or not. For solo mining, if the block was accepted, the reward will be generated for the address specified in the options. You can then spend it after 100 confirmations.
 
 ## Solo mining specific information
 
@@ -256,6 +254,15 @@ Testing a few times longer will not really improve the precision. You would need
   * 4, 5 and 6-tuples find rates should also be discarded.
 
 In all cases, the system must not swap. Else, the result would not make much sense. Ensure that you have enough memory when trying to benchmark.
+
+### A few results
+
+Standard Benchmark:
+
+* AMD Ryzen 2700X @4 GHz, DDR4 2400 CL15, Debian 9, 0.9β1.5: (7.20 0.246 0.0079)
+* AMD Ryzen 2700X @3 GHz, DDR4 2400 CL15, Debian 9, 0.9β1.5: (5.37 0.189 0.0068)
+* Intel Core i7 6700K @3 GHz, DDR4 2400 CL15, Debian 9, 0.9β1.5: (2.77 0.092 0.0030)
+* Intel Core 2 Duo L7500 @1.6 GHz, DDR2 667 CL5, Debian 9, 0.9β1.5: (0.349 0.0118 0.00038)
 
 ## Miscellaneous
 

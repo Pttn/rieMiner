@@ -9,33 +9,33 @@
 struct GetBlockTemplateData {
 	BlockHeader bh;
 	std::string transactions; // Store the concatenation in hex format
-	std::vector<std::array<uint32_t, 8>> txHashes;
+	std::vector<std::array<uint8_t, 32>> txHashes;
 	uint64_t coinbasevalue;
 	uint32_t height;
 	uint32_t primes;
-	std::vector<uint8_t> coinbase; // Store Coinbase Transaction here
-	uint8_t scriptPubKey[20]; // Calculated from custom payout address for Coinbase Transaction
+	std::vector<uint8_t> coinbase, // Store Coinbase Transaction here
+	                     scriptPubKey; // Calculated from custom payout address for Coinbase Transaction
 	
 	GetBlockTemplateData() {
 		bh = BlockHeader();
 		transactions = std::string();
-		txHashes = std::vector<std::array<uint32_t, 8>>();
+		txHashes = std::vector<std::array<uint8_t, 32>>();
 		coinbasevalue = 0;
 		height = 0;
 		primes = 6;
 		coinbase = std::vector<uint8_t>();
-		for (uint16_t i(0) ; i < 20 ; i++) scriptPubKey[i] = 0;
+		scriptPubKey = std::vector<uint8_t>(20, 0);
 	}
 	
 	void coinBaseGen();
-	std::array<uint32_t, 8> coinBaseHash() {
+	std::array<uint8_t, 32> coinBaseHash() {
 		std::vector<uint8_t> cbHashTmp(sha256sha256(coinbase.data(), coinbase.size()));
-		std::array<uint32_t, 8> cbHash;
-		for (uint32_t j(0) ; j < 8 ; j++) cbHash[j] = ((uint32_t*) cbHashTmp.data())[j];
+		std::array<uint8_t, 32> cbHash;
+		for (uint8_t j(0) ; j < 32 ; j++) cbHash[j] = cbHashTmp[j];
 		return cbHash;
 	}
 	void merkleRootGen() {
-		std::array<uint32_t, 8> mr(calculateMerkleRoot(txHashes));
+		std::array<uint8_t, 32> mr(calculateMerkleRoot(txHashes));
 		memcpy(bh.merkleRoot, mr.data(), 32);
 	}
 };
