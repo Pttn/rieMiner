@@ -81,29 +81,39 @@ class Miner {
 	mpz_t z_verifyTarget, z_verifyRemainderPrimorial;
 	WorkData _verifyBlock;
 	
-	void _sortIndexes(uint64_t indexes[6]) {
-		for (int i(0) ; i < 5; i++) {
-			for (int j(i + 1) ; j < 6; j++) {
+	void _sortIndexes(uint32_t indexes[6]) {
+		for (uint64_t i(0) ; i < 5; i++) {
+			for (uint64_t j(i + 1) ; j < 6; j++) {
 				if (indexes[j] < indexes[i])
 					std::swap(indexes[i], indexes[j]);
 			}
 		}
 	}
 
-	void _initPending(uint64_t pending[PENDING_SIZE]) {
+	void _initPending(uint32_t pending[PENDING_SIZE]) {
 		for (int i(0) ; i < PENDING_SIZE; i++) pending[i] = 0;
 	}
 
-	void _addToPending(uint8_t *sieve, uint64_t pending[PENDING_SIZE], uint64_t &pos, uint64_t ent) {
+	void _addToPending(uint8_t *sieve, uint32_t pending[PENDING_SIZE], uint64_t &pos, uint64_t ent) {
 		__builtin_prefetch(&(sieve[ent >> 3]));
-		uint64_t old = pending[pos];
+		uint32_t old = pending[pos];
 		if (old != 0) {
 			assert(old < _parameters.sieveSize);
 			sieve[old >> 3] |= (1 << (old & 7));
 		}
 		pending[pos] = ent;
 		pos++;
-		pos &= 0xf;
+		pos &= PENDING_SIZE - 1;
+	}
+
+	void _termPending(uint8_t *sieve, uint32_t pending[PENDING_SIZE]) {
+		for (uint64_t i(0) ; i < PENDING_SIZE ; i++) {
+			uint32_t old(pending[i]);
+			if (old != 0) {
+				assert(old < _parameters.sieveSize);
+				sieve[old >> 3] |= (1 << (old & 7));
+			}
+		}
 	}
 	
 	void _putOffsetsInSegments(uint64_t *offsets, int n_offsets);

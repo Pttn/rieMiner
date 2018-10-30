@@ -7,7 +7,7 @@
 thread_local bool isMaster(false);
 thread_local uint64_t *offset_stack(NULL);
 
-typedef uint64_t sixoff[6];
+typedef uint32_t sixoff[6];
 
 thread_local uint8_t* riecoin_sieve(NULL);
 sixoff *offsets(NULL);
@@ -79,7 +79,12 @@ void Miner::init() {
 		uint64_t p(_parameters.primes[i]);
 		if (p < _parameters.denseLimit) _nDense++;
 		else if (p < _parameters.maxIncrements) _nSparse++;
+		else break;
 	}
+
+	uint64_t round(8 - ((_nDense + _parameters.primorialNumber) & 0x7));
+	_nDense += round;
+	_nSparse -= round;
 	
 	_inited = true;
 }
@@ -147,28 +152,22 @@ void Miner::_updateRemainders(uint64_t start_i, uint64_t end_i) {
 }
 
 void Miner::_processSieve(uint8_t *sieve, uint64_t start_i, uint64_t end_i) {
-	uint64_t pending[PENDING_SIZE], pending_pos(0);
+	uint32_t pending[PENDING_SIZE];
+	uint64_t pending_pos(0);
 	_initPending(pending);
 	
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
-		uint64_t pno(i + _startingPrimeIndex),
-		         p(_parameters.primes[pno]);
+		uint32_t p(_parameters.primes[i]);
 		for (uint64_t f(0) ; f < 6; f++) {
-			while (offsets[pno][f] < _parameters.sieveSize) {
-				_addToPending(sieve, pending, pending_pos, offsets[pno][f]);
-				offsets[pno][f] += p;
+			while (offsets[i][f] < _parameters.sieveSize) {
+				_addToPending(sieve, pending, pending_pos, offsets[i][f]);
+				offsets[i][f] += p;
 			}
-			offsets[pno][f] -= _parameters.sieveSize;
+			offsets[i][f] -= _parameters.sieveSize;
 		}
 	}
 
-	for (uint64_t i(0) ; i < PENDING_SIZE ; i++) {
-		uint64_t old(pending[i]);
-		if (old != 0) {
-			assert(old < _parameters.sieveSize);
-			sieve[old >> 3] |= (1 << (old & 7));
-		}
-	}
+	_termPending(sieve, pending);
 }
 
 void Miner::_verifyThread() {
@@ -405,15 +404,17 @@ void Miner::process(WorkData block) {
 		
 		wi.type = TYPE_SIEVE;
 		n_workers = 0;
-		incr = ((_nSparse)/_parameters.sieveWorkers) + 1;
+		incr = ((_nSparse)/_parameters.sieveWorkers);
+		uint64_t round(8 - (incr & 0x7));
+		incr += round;
 		int which_sieve(0);
 		for (uint64_t base(_nDense) ; base < (_nDense + _nSparse) ; base += incr) {
 			uint64_t lim(std::min(_nDense + _nSparse,
 			                      base + incr));
 			if (lim + 1000 > _nDense + _nSparse)
 				lim = (_nDense+_nSparse);
-			wi.sieveWork.start = base;
-			wi.sieveWork.end = lim;
+			wi.sieveWork.start = base + _startingPrimeIndex;
+			wi.sieveWork.end = lim + _startingPrimeIndex;
 			wi.sieveWork.sieveId = which_sieve;
 			// Need to do something for thread to sieve affinity
 			_verifyWorkQueue.push_front(wi);
@@ -429,10 +430,9 @@ void Miner::process(WorkData block) {
 		for (uint64_t i(0) ; i < _nDense ; i++) {
 			uint64_t pno(i + _startingPrimeIndex);
 			_sortIndexes(offsets[pno]);
-			uint64_t p(_parameters.primes[pno]);
+			uint32_t p(_parameters.primes[pno]);
 			for (uint64_t f(0) ; f < 6 ; f++) {
 				while (offsets[pno][f] < _parameters.sieveSize) {
-					assert(offsets[pno][f] < _parameters.sieveSize);
 					sieve[offsets[pno][f] >> 3] |= (1 << ((offsets[pno][f] & 7)));
 					offsets[pno][f] += p;
 				}
@@ -450,19 +450,13 @@ void Miner::process(WorkData block) {
 			}
 		}
 		
-		uint64_t pending[PENDING_SIZE];
+		uint32_t pending[PENDING_SIZE];
 		_initPending(pending);
-		uint64_t pending_pos = 0;
+		uint64_t pending_pos(0);
 		for (uint64_t i(0) ; i < _segmentCounts[loop] ; i++)
 			_addToPending(sieve, pending, pending_pos, _segmentHits[loop][i]);
 
-		for (uint64_t i = 0; i < PENDING_SIZE; i++) {
-			uint64_t old = pending[i];
-			if (old != 0) {
-				assert(old < _parameters.sieveSize);
-				sieve[old >> 3] |= (1 << (old & 7));
-			}
-		}
+		_termPending(sieve, pending);
 		
 		primeTestWork w;
 		w.testWork.n_indexes = 0;
