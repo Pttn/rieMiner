@@ -221,6 +221,7 @@ void Miner::_verifyThread() {
 					continue;
 				
 				tupleSize++;
+				_manager->incTupleCount(tupleSize);
 				// Note start at 1 - we've already tested bias 0
 				for (std::vector<uint64_t>::size_type i(1) ; i < _parameters.primeTupleOffset.size() ; i++) {
 					mpz_add_ui(z_temp, z_temp, _parameters.primeTupleOffset[i]);
