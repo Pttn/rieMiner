@@ -7,6 +7,9 @@ all: rieMiner
 release: CFLAGS += -DNDEBUG
 release: rieMiner
 
+debug: CFLAGS += -g
+debug: rieMiner
+
 rieMiner: main.o miner.o stratumclient.o gbtclient.o client.o tools.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 

@@ -25,6 +25,10 @@ void Miner::init() {
 	
 	mpz_init(z_verifyTarget);
 	mpz_init(z_verifyRemainderPrimorial);
+
+	// For larger ranges of offsets, need to add more inverts in _updateRemainders().
+	std::transform(_parameters.primeTupleOffset.begin(), _parameters.primeTupleOffset.end(), std::back_inserter(_halfPrimeTupleOffset),
+	               [](uint64_t n) { assert(n <= 4); return n >> 1; });
 	
 	std::cout << "Generating prime table using sieve of Eratosthenes...";
 	std::vector<uint8_t> vfComposite;
@@ -100,7 +104,7 @@ void Miner::_putOffsetsInSegments(uint64_t *offsets, int n_offsets) {
 			std::cerr << "Segment " << segment << " " << sc << " with index " << index << " is > " << _entriesPerSegment << std::endl;
 			exit(-1);
 		}
-		_segmentHits[segment][sc] = index - (_parameters.sieveSize*segment);
+		_segmentHits[segment][sc] = index & (_parameters.sieveSize - 1);
 		_segmentCounts[segment]++;
 	}
 	_bucketLock.unlock();
@@ -125,23 +129,36 @@ void Miner::_updateRemainders(uint64_t start_i, uint64_t end_i) {
 		if (p >= _parameters.maxIncrements)
 			onceOnly = true;
 		 
-		uint64_t invert(_parameters.inverts[i]);
-		for (std::vector<uint64_t>::size_type f(0) ; f < _parameters.primeTupleOffset.size() ; f++) {
-			remainder += _parameters.primeTupleOffset[f];
-			if (remainder > p)
-				remainder -= p;
-			uint64_t pa(p - remainder), index(pa*invert);
-			index %= p;
-			if (!onceOnly)
+		// Note the multiplication will overflow for p > 2^32 - relatively easy to fix on x64.
+		assert(p < 0x100000000ULL);
+		uint64_t invert[3];
+		invert[0] = _parameters.inverts[i];
+		uint64_t pa(p - remainder),
+		         index(pa*invert[0]);
+		index %= p;
+		invert[1] = (invert[0] << 1);
+		if (invert[1] > p) invert[1] -= p;
+		invert[2] = invert[1] << 1;
+		if (invert[2] > p) invert[2] -= p;
+
+		if (!onceOnly) {
+			offsets[i][0] = index;
+			for (std::vector<uint64_t>::size_type f(1) ; f < _halfPrimeTupleOffset.size() ; f++) {
+				if (index < invert[_halfPrimeTupleOffset[f]]) index += p;
+				index -= invert[_halfPrimeTupleOffset[f]];
 				offsets[i][f] = index;
-			else {
-				if (index < _parameters.maxIncrements) {
-					offset_stack[n_offsets++] = index;
-					if (n_offsets >= OFFSET_STACK_SIZE) {
-						_putOffsetsInSegments(offset_stack, n_offsets);
-						n_offsets = 0;
-					}
-				}
+			}
+		}
+		else {
+			if (n_offsets + _halfPrimeTupleOffset.size() >= OFFSET_STACK_SIZE) {
+				_putOffsetsInSegments(offset_stack, n_offsets);
+				n_offsets = 0;
+			}
+			if (index < _parameters.maxIncrements) offset_stack[n_offsets++] = index;
+			for (std::vector<uint64_t>::size_type f(1) ; f < _halfPrimeTupleOffset.size() ; f++) {
+				if (index < invert[_halfPrimeTupleOffset[f]]) index += p;
+				index -= invert[_halfPrimeTupleOffset[f]];
+				if (index < _parameters.maxIncrements) offset_stack[n_offsets++] = index;
 			}
 		}
 	}

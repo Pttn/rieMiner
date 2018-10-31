@@ -81,6 +81,7 @@ class Miner {
 	uint8_t  **_sieves;
 	uint32_t **_segmentHits;
 	std::vector<uint64_t> _segmentCounts;
+	std::vector<uint64_t> _halfPrimeTupleOffset;
 	
 	bool _masterExists;
 	std::mutex _masterLock, _bucketLock;
