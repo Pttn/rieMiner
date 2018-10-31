@@ -209,12 +209,14 @@ void Miner::_verifyThread() {
 	 */
 	mpz_t z_ft_r, z_ft_b, z_ft_n;
 	mpz_t z_temp, z_temp2;
+	mpz_t z_ploop;
 	
 	mpz_init(z_ft_r);
 	mpz_init_set_ui(z_ft_b, 2);
 	mpz_init(z_ft_n);
 	mpz_init(z_temp);
 	mpz_init(z_temp2);
+	mpz_init(z_ploop);
 
 	while (true) {
 		auto job(_verifyWorkQueue.pop_front());
@@ -232,23 +234,22 @@ void Miner::_verifyThread() {
 		}
 		// fallthrough:	job.type == TYPE_CHECK
 		if (job.type == TYPE_CHECK) {
+			mpz_mul_ui(z_ploop, _primorial, job.testWork.loop * _parameters.sieveSize);
+			mpz_add(z_ploop, z_ploop, z_verifyRemainderPrimorial);
+			mpz_add(z_ploop, z_ploop, z_verifyTarget);
+
 			for (uint64_t idx(0) ; idx < job.testWork.n_indexes ; idx++) {
 				uint8_t tupleSize(0);
-				mpz_set(z_temp, _primorial);
-				mpz_mul_ui(z_temp, z_temp, job.testWork.loop*_parameters.sieveSize);
-				mpz_set(z_temp2, _primorial);
-				mpz_mul_ui(z_temp2, z_temp2, job.testWork.indexes[idx]);
-				mpz_add(z_temp, z_temp, z_temp2);
-				mpz_add(z_temp, z_temp, z_verifyRemainderPrimorial);
-				mpz_add(z_temp, z_temp, z_verifyTarget);
-				
-				mpz_sub(z_temp2, z_temp, z_verifyTarget); // offset = tested - target
+				mpz_mul_ui(z_temp, _primorial, job.testWork.indexes[idx]);
+				mpz_add(z_temp, z_temp, z_ploop);
 				
 				mpz_sub_ui(z_ft_n, z_temp, 1);
 				mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_temp);
 				
 				if (mpz_cmp_ui(z_ft_r, 1) != 0)
 					continue;
+
+				mpz_sub(z_temp2, z_temp, z_verifyTarget); // offset = tested - target
 				
 				tupleSize++;
 				_manager->incTupleCount(tupleSize);
