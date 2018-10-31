@@ -85,6 +85,7 @@ void Miner::init() {
 	uint64_t round(8 - ((_nDense + _parameters.primorialNumber) & 0x7));
 	_nDense += round;
 	_nSparse -= round;
+	if ((_nSparse - _nDense) & 1) _nSparse += 1;
 	
 	_inited = true;
 }
@@ -155,16 +156,46 @@ void Miner::_processSieve(uint8_t *sieve, uint64_t start_i, uint64_t end_i) {
 	uint32_t pending[PENDING_SIZE];
 	uint64_t pending_pos(0);
 	_initPending(pending);
+
+	xmmreg_t offsetmax;
+	offsetmax.m128 = _mm_set1_epi32(_parameters.sieveSize);
 	
-	for (uint64_t i(start_i) ; i < end_i ; i++) {
-		uint32_t p(_parameters.primes[i]);
-		for (uint64_t f(0) ; f < 6; f++) {
-			while (offsets[i][f] < _parameters.sieveSize) {
-				_addToPending(sieve, pending, pending_pos, offsets[i][f]);
-				offsets[i][f] += p;
-			}
-			offsets[i][f] -= _parameters.sieveSize;
+	assert((start_i & 1) == (end_i & 1));
+
+	for (uint64_t i(start_i) ; i < end_i ; i+=2) {
+		xmmreg_t p1, p2, p3;
+		xmmreg_t offset1, offset2, offset3, nextIncr1, nextIncr2, nextIncr3;
+		xmmreg_t cmpres1, cmpres2, cmpres3;
+		p1.m128 = _mm_set1_epi32(_parameters.primes[i]);
+		p3.m128 = _mm_set1_epi32(_parameters.primes[i+1]);
+		p2.m128 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(p1.m128), _mm_castsi128_ps(p3.m128), _MM_SHUFFLE(0,0,0,0)));
+		offset1.m128 = _mm_load_si128((__m128i const *)&offsets[i][0]);
+		offset2.m128 = _mm_load_si128((__m128i const *)&offsets[i][4]);
+		offset3.m128 = _mm_load_si128((__m128i const *)&offsets[i+1][2]);
+		while (true) {
+			cmpres1.m128 = _mm_cmpgt_epi32(offsetmax.m128, offset1.m128);
+			cmpres2.m128 = _mm_cmpgt_epi32(offsetmax.m128, offset2.m128);
+			cmpres3.m128 = _mm_cmpgt_epi32(offsetmax.m128, offset3.m128);
+			int mask1 = _mm_movemask_epi8(cmpres1.m128);
+			int mask2 = _mm_movemask_epi8(cmpres2.m128);
+			int mask3 = _mm_movemask_epi8(cmpres3.m128);
+			if ((mask1 == 0) && (mask2 == 0) && (mask3 == 0)) break;
+			_addRegToPending(sieve, pending, pending_pos, offset1, mask1);
+			_addRegToPending(sieve, pending, pending_pos, offset2, mask2);
+			_addRegToPending(sieve, pending, pending_pos, offset3, mask3);
+			nextIncr1.m128 = _mm_and_si128(cmpres1.m128, p1.m128);
+			nextIncr2.m128 = _mm_and_si128(cmpres2.m128, p2.m128);
+			nextIncr3.m128 = _mm_and_si128(cmpres3.m128, p3.m128);
+			offset1.m128 = _mm_add_epi32(offset1.m128, nextIncr1.m128);
+			offset2.m128 = _mm_add_epi32(offset2.m128, nextIncr2.m128);
+			offset3.m128 = _mm_add_epi32(offset3.m128, nextIncr3.m128);
 		}
+		offset1.m128 = _mm_sub_epi32(offset1.m128, offsetmax.m128);
+		offset2.m128 = _mm_sub_epi32(offset2.m128, offsetmax.m128);
+		offset3.m128 = _mm_sub_epi32(offset3.m128, offsetmax.m128);
+		_mm_store_si128((__m128i*)&offsets[i][0], offset1.m128);
+		_mm_store_si128((__m128i*)&offsets[i][4], offset2.m128);
+		_mm_store_si128((__m128i*)&offsets[i+1][2], offset3.m128);
 	}
 
 	_termPending(sieve, pending);
@@ -404,7 +435,7 @@ void Miner::process(WorkData block) {
 		
 		wi.type = TYPE_SIEVE;
 		n_workers = 0;
-		incr = ((_nSparse)/_parameters.sieveWorkers);
+		incr = ((_nSparse - _nDense)/_parameters.sieveWorkers);
 		uint64_t round(8 - (incr & 0x7));
 		incr += round;
 		int which_sieve(0);
@@ -444,10 +475,16 @@ void Miner::process(WorkData block) {
 		for (int32_t i(0) ; i < n_workers; i++)
 			_workerDoneQueue.pop_front();
 		
-		for (uint64_t i(0) ; i < _parameters.sieveWords ; i++) {
+		__m128i *sp128 = (__m128i *)sieve;
+		for (uint64_t i(0) ; i < _parameters.sieveWords / 2 ; i++) {
+			__m128i s128;
+			s128 = _mm_load_si128(&sp128[i]);
 			for (int j(0) ; j < _parameters.sieveWorkers; j++) {
-				((uint64_t*) sieve)[i] |= ((uint64_t*) (_sieves[j]))[i];
+				__m128i ws128;
+				ws128 = _mm_load_si128(&((__m128i *)(_sieves[j]))[i]);
+				s128 = _mm_or_si128(s128, ws128);
 			}
+			_mm_store_si128(&sp128[i], s128);
 		}
 		
 		uint32_t pending[PENDING_SIZE];

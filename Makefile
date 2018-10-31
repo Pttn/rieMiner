@@ -4,6 +4,9 @@ LIBS   = -pthread -ljansson -lcurl -lgmp -lgmpxx -lcrypto
 
 all: rieMiner
 
+release: CFLAGS += -DNDEBUG
+release: rieMiner
+
 rieMiner: main.o miner.o stratumclient.o gbtclient.o client.o tools.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
