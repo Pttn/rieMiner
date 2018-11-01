@@ -89,7 +89,10 @@ void Miner::init() {
 	uint64_t round(8 - ((_nDense + _parameters.primorialNumber) & 0x7));
 	_nDense += round;
 	_nSparse -= round;
-	if ((_nSparse - _nDense) & 1) _nSparse += 1;
+	if ((_nSparse - _nDense) & 1) {
+		if (_nSparse + _nDense + _parameters.primorialNumber < _nPrimes) _nSparse += 1;
+		else _nSparse -= 1;
+	}
 	
 	_inited = true;
 }
@@ -177,7 +180,8 @@ void Miner::_processSieve(uint8_t *sieve, uint64_t start_i, uint64_t end_i) {
 	xmmreg_t offsetmax;
 	offsetmax.m128 = _mm_set1_epi32(_parameters.sieveSize);
 	
-	assert((start_i & 1) == (end_i & 1));
+	assert((start_i & 1) == 0);
+	assert((end_i & 1) == 0);
 
 	for (uint64_t i(start_i) ; i < end_i ; i+=2) {
 		xmmreg_t p1, p2, p3;
