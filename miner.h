@@ -11,8 +11,7 @@
 #include "tools.h"
 #include "tsqueue.hpp"
 
-union xmmreg_t
-{
+union xmmreg_t {
 	uint32_t v[4];
 	__m128i m128;
 };
@@ -33,7 +32,7 @@ struct MinerParameters {
 		primorialNumber = 40;
 		threads         = 8;
 		tuples          = 6;
-		sieve           = 1073741824;
+		sieve           = 2147483648;
 		sieveWorkers    = 2;
 		solo            = true;
 		sieveBits       = 24;
@@ -90,7 +89,7 @@ class Miner {
 	WorkData _verifyBlock;
 	
 	void _sortIndexes(uint32_t indexes[6]) {
-		for (uint64_t i(0) ; i < 5; i++) {
+		for (uint64_t i(0) ; i < 5 ; i++) {
 			for (uint64_t j(i + 1) ; j < 6; j++) {
 				if (indexes[j] < indexes[i])
 					std::swap(indexes[i], indexes[j]);

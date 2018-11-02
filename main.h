@@ -3,7 +3,7 @@
 #ifndef HEADER_GLOBAL_H
 #define HEADER_GLOBAL_H
 
-#define minerVersionString	"rieMiner 0.9-beta2.3"
+#define minerVersionString	"rieMiner 0.9-beta2.4"
 #define BITS	64
 
 #include <unistd.h>
@@ -100,7 +100,7 @@ class Stats {
 		double elapsedSecs(timeSince(_lastDiffChangeTp));
 		if (elapsedSecs > 1 && timeSince(_miningStartTp) > 1) {
 			printTime();
-			std::cout << " (1-4t/s) = (" << FIXED(1) << _tuplesSinceLastDiff[1]/elapsedSecs << " " << FIXED(2) << _tuplesSinceLastDiff[2]/elapsedSecs << " " << FIXED(3) << _tuplesSinceLastDiff[3]/elapsedSecs << " " << FIXED(4) << _tuplesSinceLastDiff[4]/elapsedSecs << ") ; ";
+			std::cout << " (1-3t/s) = (" << FIXED(1) << _tuplesSinceLastDiff[1]/elapsedSecs << " " << FIXED(2) << _tuplesSinceLastDiff[2]/elapsedSecs << " " << FIXED(3) << _tuplesSinceLastDiff[3]/elapsedSecs << ") ; ";
 			if (_solo) {
 				std::cout << "(2-" << _tuples.size() - 1 << "t) = (";
 				for (uint32_t i(2) ; i < _tuples.size() ; i++) {
@@ -121,7 +121,7 @@ class Stats {
 			std::vector<uint64_t> t(_tuplesSinceLastDiff);
 			double elapsedSecs(timeSince(_lastDiffChangeTp));
 			std::cout << "Tuples found for diff " << _difficulty <<  ": (";
-			for (uint32_t i(2) ; i < _tuples.size() ; i++) {
+			for (uint32_t i(1) ; i < _tuples.size() ; i++) {
 				std::cout << t[i];
 				if (i != _tuples.size() - 1) std::cout << " ";
 			}

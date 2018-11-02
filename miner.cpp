@@ -1,6 +1,6 @@
-/* Adapted from latest known optimized Riecoin miner, fastrie from dave-andersen (https://github.com/dave-andersen/fastrie).
-(c) 2014-2017 dave-andersen (http://www.cs.cmu.edu/~dga/)
-(c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner) */
+/* (c) 2014-2017 dave-andersen (base code) (http://www.cs.cmu.edu/~dga/)
+(c) 2017-2018 Pttn (refactoring and porting to modern C++) (https://ric.pttn.me/)
+(c) 2018 Michael Bell/Rockhawk (assembly optimizations and some more) (https://github.com/MichaelBell/) */
 
 #include "miner.h"
 
@@ -183,7 +183,7 @@ void Miner::_processSieve(uint8_t *sieve, uint64_t start_i, uint64_t end_i) {
 	assert((start_i & 1) == 0);
 	assert((end_i & 1) == 0);
 
-	for (uint64_t i(start_i) ; i < end_i ; i+=2) {
+	for (uint64_t i(start_i) ; i < end_i ; i += 2) {
 		xmmreg_t p1, p2, p3;
 		xmmreg_t offset1, offset2, offset3, nextIncr1, nextIncr2, nextIncr3;
 		xmmreg_t cmpres1, cmpres2, cmpres3;
@@ -255,7 +255,7 @@ void Miner::_verifyThread() {
 		}
 		// fallthrough:	job.type == TYPE_CHECK
 		if (job.type == TYPE_CHECK) {
-			mpz_mul_ui(z_ploop, _primorial, job.testWork.loop * _parameters.sieveSize);
+			mpz_mul_ui(z_ploop, _primorial, job.testWork.loop*_parameters.sieveSize);
 			mpz_add(z_ploop, z_ploop, z_verifyRemainderPrimorial);
 			mpz_add(z_ploop, z_ploop, z_verifyTarget);
 
@@ -267,8 +267,7 @@ void Miner::_verifyThread() {
 				mpz_sub_ui(z_ft_n, z_temp, 1);
 				mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_temp);
 				
-				if (mpz_cmp_ui(z_ft_r, 1) != 0)
-					continue;
+				if (mpz_cmp_ui(z_ft_r, 1) != 0) continue;
 
 				mpz_sub(z_temp2, z_temp, z_verifyTarget); // offset = tested - target
 				
@@ -498,7 +497,7 @@ void Miner::process(WorkData block) {
 			_workerDoneQueue.pop_front();
 		
 		__m128i *sp128 = (__m128i *)sieve;
-		for (uint64_t i(0) ; i < _parameters.sieveWords / 2 ; i++) {
+		for (uint64_t i(0) ; i < _parameters.sieveWords/2 ; i++) {
 			__m128i s128;
 			s128 = _mm_load_si128(&sp128[i]);
 			for (int j(0) ; j < _parameters.sieveWorkers; j++) {

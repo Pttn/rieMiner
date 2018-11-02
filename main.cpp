@@ -369,20 +369,22 @@ void Options::loadConf() {
 		askConf();
 	}
 	
-	std::cout << "Host = " << _host << std::endl;
-	std::cout << "Port = " << _port << std::endl;
-	if (_protocol != "Stratum")
-		std::cout << "User = " << _user << std::endl;
-	else std::cout << "User.worker = " << _user << std::endl;
-	std::cout << "Pass = ..." << std::endl;
-	std::cout << "Protocol = " << _protocol << std::endl;
-	if (_protocol == "GetBlockTemplate")
-		std::cout << "Payout address = " << _address << std::endl;
-	else if (_protocol == "Benchmark") {
-		std::cout << "Test difficulty = " << _testDiff << std::endl;
+	if (_protocol == "Benchmark") {
+		std::cout << "Benchmark Mode at difficulty " << _testDiff << std::endl;
 		if (_testTime != 0) std::cout << "Will stop after " << _testTime << " s" << std::endl;
 		if (_test3t   != 0) std::cout << "Will stop after finding " << _test3t << " 3-tuples" << std::endl;
 	}
+	else {
+		std::cout << "Host = " << _host << std::endl;
+		std::cout << "Port = " << _port << std::endl;
+		if (_protocol != "Stratum")
+			std::cout << "User = " << _user << std::endl;
+		else std::cout << "User.worker = " << _user << std::endl;
+		std::cout << "Pass = ..." << std::endl;
+		std::cout << "Protocol = " << _protocol << std::endl;
+	}
+	if (_protocol == "GetBlockTemplate")
+		std::cout << "Payout address = " << _address << std::endl;
 	std::cout << "Threads = " << _threads << std::endl;
 	std::cout << "Sieve max = " << _sieve << std::endl;
 	if (_protocol == "Benchmark")
