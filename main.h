@@ -100,7 +100,7 @@ class Stats {
 		double elapsedSecs(timeSince(_lastDiffChangeTp));
 		if (elapsedSecs > 1 && timeSince(_miningStartTp) > 1) {
 			printTime();
-			std::cout << " (2-4t/s) = (" << FIXED(2) << _tuplesSinceLastDiff[2]/elapsedSecs << " " << FIXED(3) << _tuplesSinceLastDiff[3]/elapsedSecs << " " << FIXED(4) << _tuplesSinceLastDiff[4]/elapsedSecs << ") ; ";
+			std::cout << " (1-4t/s) = (" << FIXED(1) << _tuplesSinceLastDiff[1]/elapsedSecs << " " << FIXED(2) << _tuplesSinceLastDiff[2]/elapsedSecs << " " << FIXED(3) << _tuplesSinceLastDiff[3]/elapsedSecs << " " << FIXED(4) << _tuplesSinceLastDiff[4]/elapsedSecs << ") ; ";
 			if (_solo) {
 				std::cout << "(2-" << _tuples.size() - 1 << "t) = (";
 				for (uint32_t i(2) ; i < _tuples.size() ; i++) {
@@ -127,13 +127,13 @@ class Stats {
 			}
 			std::cout << ") during " << FIXED(3) << elapsedSecs << " s" << std::endl;
 			std::cout << "Tuples/s: (" << FIXED(6);
-			for (uint32_t i(2) ; i < _tuples.size() ; i++) {
+			for (uint32_t i(1) ; i < _tuples.size() ; i++) {
 				std::cout << t[i]/elapsedSecs;
 				if (i != _tuples.size() - 1) std::cout << " ";
 			}
 			std::cout << ")" << std::endl;
 			std::cout << "Ratios: (" << FIXED(1);
-			for (uint32_t i(3) ; i < _tuples.size() ; i++) {
+			for (uint32_t i(2) ; i < _tuples.size() ; i++) {
 				if (t[i] != 0) std::cout << ((double) t[i - 1])/((double) t[i]);
 				else std::cout << "inf";
 				if (i != _tuples.size() - 1) std::cout << " ";
@@ -147,10 +147,10 @@ class Stats {
 		if (elapsedSecs > 1 && timeSince(_miningStartTp) > 1) {
 			if (_tuplesSinceLastDiff[4] > 0) {
 				if (_solo) {
-					double r23(((double) _tuplesSinceLastDiff[2])/((double) _tuplesSinceLastDiff[3])),
-						   r34(((double) _tuplesSinceLastDiff[3])/((double) _tuplesSinceLastDiff[4])),
-						   s3(((double) _tuplesSinceLastDiff[3])/elapsedSecs);
-					std::cout << FIXED(2) << " | " << r23*r23*r34/(86400.*s3) << " d";
+					double r12(((double) _tuplesSinceLastDiff[1])/((double) _tuplesSinceLastDiff[2])),
+						   r23(((double) _tuplesSinceLastDiff[2])/((double) _tuplesSinceLastDiff[3])),
+						   s2(((double) _tuplesSinceLastDiff[2])/elapsedSecs);
+					std::cout << FIXED(2) << " | " << r12*r12*r23*r23/(86400.*s2) << " d";
 				}
 				else { // Hint: it is 15x easier to find a 2 or 4-share, and 20x for 3 shares, than true k-tuples: (6 2) = (6 4) = 15, (6 3) = 20
 					double r34(((double) _tuplesSinceLastDiff[2]/15.)/((double) _tuplesSinceLastDiff[3]/20.)),

@@ -7,7 +7,7 @@
 thread_local bool isMaster(false);
 thread_local uint64_t *offset_stack(NULL);
 
-typedef uint64_t sixoff[6];
+typedef uint32_t sixoff[6];
 
 thread_local uint8_t* riecoin_sieve(NULL);
 sixoff *offsets(NULL);
@@ -25,6 +25,10 @@ void Miner::init() {
 	
 	mpz_init(z_verifyTarget);
 	mpz_init(z_verifyRemainderPrimorial);
+
+	// For larger ranges of offsets, need to add more inverts in _updateRemainders().
+	std::transform(_parameters.primeTupleOffset.begin(), _parameters.primeTupleOffset.end(), std::back_inserter(_halfPrimeTupleOffset),
+	               [](uint64_t n) { assert(n <= 4); return n >> 1; });
 	
 	std::cout << "Generating prime table using sieve of Eratosthenes...";
 	std::vector<uint8_t> vfComposite;
@@ -79,6 +83,15 @@ void Miner::init() {
 		uint64_t p(_parameters.primes[i]);
 		if (p < _parameters.denseLimit) _nDense++;
 		else if (p < _parameters.maxIncrements) _nSparse++;
+		else break;
+	}
+
+	uint64_t round(8 - ((_nDense + _parameters.primorialNumber) & 0x7));
+	_nDense += round;
+	_nSparse -= round;
+	if ((_nSparse - _nDense) & 1) {
+		if (_nSparse + _nDense + _parameters.primorialNumber < _nPrimes) _nSparse += 1;
+		else _nSparse -= 1;
 	}
 	
 	_inited = true;
@@ -94,7 +107,7 @@ void Miner::_putOffsetsInSegments(uint64_t *offsets, int n_offsets) {
 			std::cerr << "Segment " << segment << " " << sc << " with index " << index << " is > " << _entriesPerSegment << std::endl;
 			exit(-1);
 		}
-		_segmentHits[segment][sc] = index - (_parameters.sieveSize*segment);
+		_segmentHits[segment][sc] = index & (_parameters.sieveSize - 1);
 		_segmentCounts[segment]++;
 	}
 	_bucketLock.unlock();
@@ -119,23 +132,36 @@ void Miner::_updateRemainders(uint64_t start_i, uint64_t end_i) {
 		if (p >= _parameters.maxIncrements)
 			onceOnly = true;
 		 
-		uint64_t invert(_parameters.inverts[i]);
-		for (std::vector<uint64_t>::size_type f(0) ; f < _parameters.primeTupleOffset.size() ; f++) {
-			remainder += _parameters.primeTupleOffset[f];
-			if (remainder > p)
-				remainder -= p;
-			uint64_t pa(p - remainder), index(pa*invert);
-			index %= p;
-			if (!onceOnly)
+		// Note the multiplication will overflow for p > 2^32 - relatively easy to fix on x64.
+		assert(p < 0x100000000ULL);
+		uint64_t invert[3];
+		invert[0] = _parameters.inverts[i];
+		uint64_t pa(p - remainder),
+		         index(pa*invert[0]);
+		index %= p;
+		invert[1] = (invert[0] << 1);
+		if (invert[1] > p) invert[1] -= p;
+		invert[2] = invert[1] << 1;
+		if (invert[2] > p) invert[2] -= p;
+
+		if (!onceOnly) {
+			offsets[i][0] = index;
+			for (std::vector<uint64_t>::size_type f(1) ; f < _halfPrimeTupleOffset.size() ; f++) {
+				if (index < invert[_halfPrimeTupleOffset[f]]) index += p;
+				index -= invert[_halfPrimeTupleOffset[f]];
 				offsets[i][f] = index;
-			else {
-				if (index < _parameters.maxIncrements) {
-					offset_stack[n_offsets++] = index;
-					if (n_offsets >= OFFSET_STACK_SIZE) {
-						_putOffsetsInSegments(offset_stack, n_offsets);
-						n_offsets = 0;
-					}
-				}
+			}
+		}
+		else {
+			if (n_offsets + _halfPrimeTupleOffset.size() >= OFFSET_STACK_SIZE) {
+				_putOffsetsInSegments(offset_stack, n_offsets);
+				n_offsets = 0;
+			}
+			if (index < _parameters.maxIncrements) offset_stack[n_offsets++] = index;
+			for (std::vector<uint64_t>::size_type f(1) ; f < _halfPrimeTupleOffset.size() ; f++) {
+				if (index < invert[_halfPrimeTupleOffset[f]]) index += p;
+				index -= invert[_halfPrimeTupleOffset[f]];
+				if (index < _parameters.maxIncrements) offset_stack[n_offsets++] = index;
 			}
 		}
 	}
@@ -147,28 +173,53 @@ void Miner::_updateRemainders(uint64_t start_i, uint64_t end_i) {
 }
 
 void Miner::_processSieve(uint8_t *sieve, uint64_t start_i, uint64_t end_i) {
-	uint64_t pending[PENDING_SIZE], pending_pos(0);
+	uint32_t pending[PENDING_SIZE];
+	uint64_t pending_pos(0);
 	_initPending(pending);
+
+	xmmreg_t offsetmax;
+	offsetmax.m128 = _mm_set1_epi32(_parameters.sieveSize);
 	
-	for (uint64_t i(start_i) ; i < end_i ; i++) {
-		uint64_t pno(i + _startingPrimeIndex),
-		         p(_parameters.primes[pno]);
-		for (uint64_t f(0) ; f < 6; f++) {
-			while (offsets[pno][f] < _parameters.sieveSize) {
-				_addToPending(sieve, pending, pending_pos, offsets[pno][f]);
-				offsets[pno][f] += p;
-			}
-			offsets[pno][f] -= _parameters.sieveSize;
+	assert((start_i & 1) == 0);
+	assert((end_i & 1) == 0);
+
+	for (uint64_t i(start_i) ; i < end_i ; i+=2) {
+		xmmreg_t p1, p2, p3;
+		xmmreg_t offset1, offset2, offset3, nextIncr1, nextIncr2, nextIncr3;
+		xmmreg_t cmpres1, cmpres2, cmpres3;
+		p1.m128 = _mm_set1_epi32(_parameters.primes[i]);
+		p3.m128 = _mm_set1_epi32(_parameters.primes[i+1]);
+		p2.m128 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(p1.m128), _mm_castsi128_ps(p3.m128), _MM_SHUFFLE(0,0,0,0)));
+		offset1.m128 = _mm_load_si128((__m128i const *)&offsets[i][0]);
+		offset2.m128 = _mm_load_si128((__m128i const *)&offsets[i][4]);
+		offset3.m128 = _mm_load_si128((__m128i const *)&offsets[i+1][2]);
+		while (true) {
+			cmpres1.m128 = _mm_cmpgt_epi32(offsetmax.m128, offset1.m128);
+			cmpres2.m128 = _mm_cmpgt_epi32(offsetmax.m128, offset2.m128);
+			cmpres3.m128 = _mm_cmpgt_epi32(offsetmax.m128, offset3.m128);
+			int mask1 = _mm_movemask_epi8(cmpres1.m128);
+			int mask2 = _mm_movemask_epi8(cmpres2.m128);
+			int mask3 = _mm_movemask_epi8(cmpres3.m128);
+			if ((mask1 == 0) && (mask2 == 0) && (mask3 == 0)) break;
+			_addRegToPending(sieve, pending, pending_pos, offset1, mask1);
+			_addRegToPending(sieve, pending, pending_pos, offset2, mask2);
+			_addRegToPending(sieve, pending, pending_pos, offset3, mask3);
+			nextIncr1.m128 = _mm_and_si128(cmpres1.m128, p1.m128);
+			nextIncr2.m128 = _mm_and_si128(cmpres2.m128, p2.m128);
+			nextIncr3.m128 = _mm_and_si128(cmpres3.m128, p3.m128);
+			offset1.m128 = _mm_add_epi32(offset1.m128, nextIncr1.m128);
+			offset2.m128 = _mm_add_epi32(offset2.m128, nextIncr2.m128);
+			offset3.m128 = _mm_add_epi32(offset3.m128, nextIncr3.m128);
 		}
+		offset1.m128 = _mm_sub_epi32(offset1.m128, offsetmax.m128);
+		offset2.m128 = _mm_sub_epi32(offset2.m128, offsetmax.m128);
+		offset3.m128 = _mm_sub_epi32(offset3.m128, offsetmax.m128);
+		_mm_store_si128((__m128i*)&offsets[i][0], offset1.m128);
+		_mm_store_si128((__m128i*)&offsets[i][4], offset2.m128);
+		_mm_store_si128((__m128i*)&offsets[i+1][2], offset3.m128);
 	}
 
-	for (uint64_t i(0) ; i < PENDING_SIZE ; i++) {
-		uint64_t old(pending[i]);
-		if (old != 0) {
-			assert(old < _parameters.sieveSize);
-			sieve[old >> 3] |= (1 << (old & 7));
-		}
-	}
+	_termPending(sieve, pending);
 }
 
 void Miner::_verifyThread() {
@@ -179,12 +230,14 @@ void Miner::_verifyThread() {
 	 */
 	mpz_t z_ft_r, z_ft_b, z_ft_n;
 	mpz_t z_temp, z_temp2;
+	mpz_t z_ploop;
 	
 	mpz_init(z_ft_r);
 	mpz_init_set_ui(z_ft_b, 2);
 	mpz_init(z_ft_n);
 	mpz_init(z_temp);
 	mpz_init(z_temp2);
+	mpz_init(z_ploop);
 
 	while (true) {
 		auto job(_verifyWorkQueue.pop_front());
@@ -202,25 +255,25 @@ void Miner::_verifyThread() {
 		}
 		// fallthrough:	job.type == TYPE_CHECK
 		if (job.type == TYPE_CHECK) {
+			mpz_mul_ui(z_ploop, _primorial, job.testWork.loop * _parameters.sieveSize);
+			mpz_add(z_ploop, z_ploop, z_verifyRemainderPrimorial);
+			mpz_add(z_ploop, z_ploop, z_verifyTarget);
+
 			for (uint64_t idx(0) ; idx < job.testWork.n_indexes ; idx++) {
 				uint8_t tupleSize(0);
-				mpz_set(z_temp, _primorial);
-				mpz_mul_ui(z_temp, z_temp, job.testWork.loop*_parameters.sieveSize);
-				mpz_set(z_temp2, _primorial);
-				mpz_mul_ui(z_temp2, z_temp2, job.testWork.indexes[idx]);
-				mpz_add(z_temp, z_temp, z_temp2);
-				mpz_add(z_temp, z_temp, z_verifyRemainderPrimorial);
-				mpz_add(z_temp, z_temp, z_verifyTarget);
-				
-				mpz_sub(z_temp2, z_temp, z_verifyTarget); // offset = tested - target
+				mpz_mul_ui(z_temp, _primorial, job.testWork.indexes[idx]);
+				mpz_add(z_temp, z_temp, z_ploop);
 				
 				mpz_sub_ui(z_ft_n, z_temp, 1);
 				mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_temp);
 				
 				if (mpz_cmp_ui(z_ft_r, 1) != 0)
 					continue;
+
+				mpz_sub(z_temp2, z_temp, z_verifyTarget); // offset = tested - target
 				
 				tupleSize++;
+				_manager->incTupleCount(tupleSize);
 				// Note start at 1 - we've already tested bias 0
 				for (std::vector<uint64_t>::size_type i(1) ; i < _parameters.primeTupleOffset.size() ; i++) {
 					mpz_add_ui(z_temp, z_temp, _parameters.primeTupleOffset[i]);
@@ -404,15 +457,17 @@ void Miner::process(WorkData block) {
 		
 		wi.type = TYPE_SIEVE;
 		n_workers = 0;
-		incr = ((_nSparse)/_parameters.sieveWorkers) + 1;
+		incr = ((_nSparse - _nDense)/_parameters.sieveWorkers);
+		uint64_t round(8 - (incr & 0x7));
+		incr += round;
 		int which_sieve(0);
 		for (uint64_t base(_nDense) ; base < (_nDense + _nSparse) ; base += incr) {
 			uint64_t lim(std::min(_nDense + _nSparse,
 			                      base + incr));
 			if (lim + 1000 > _nDense + _nSparse)
 				lim = (_nDense+_nSparse);
-			wi.sieveWork.start = base;
-			wi.sieveWork.end = lim;
+			wi.sieveWork.start = base + _startingPrimeIndex;
+			wi.sieveWork.end = lim + _startingPrimeIndex;
 			wi.sieveWork.sieveId = which_sieve;
 			// Need to do something for thread to sieve affinity
 			_verifyWorkQueue.push_front(wi);
@@ -428,10 +483,9 @@ void Miner::process(WorkData block) {
 		for (uint64_t i(0) ; i < _nDense ; i++) {
 			uint64_t pno(i + _startingPrimeIndex);
 			_sortIndexes(offsets[pno]);
-			uint64_t p(_parameters.primes[pno]);
+			uint32_t p(_parameters.primes[pno]);
 			for (uint64_t f(0) ; f < 6 ; f++) {
 				while (offsets[pno][f] < _parameters.sieveSize) {
-					assert(offsets[pno][f] < _parameters.sieveSize);
 					sieve[offsets[pno][f] >> 3] |= (1 << ((offsets[pno][f] & 7)));
 					offsets[pno][f] += p;
 				}
@@ -443,25 +497,25 @@ void Miner::process(WorkData block) {
 		for (int32_t i(0) ; i < n_workers; i++)
 			_workerDoneQueue.pop_front();
 		
-		for (uint64_t i(0) ; i < _parameters.sieveWords ; i++) {
+		__m128i *sp128 = (__m128i *)sieve;
+		for (uint64_t i(0) ; i < _parameters.sieveWords / 2 ; i++) {
+			__m128i s128;
+			s128 = _mm_load_si128(&sp128[i]);
 			for (int j(0) ; j < _parameters.sieveWorkers; j++) {
-				((uint64_t*) sieve)[i] |= ((uint64_t*) (_sieves[j]))[i];
+				__m128i ws128;
+				ws128 = _mm_load_si128(&((__m128i *)(_sieves[j]))[i]);
+				s128 = _mm_or_si128(s128, ws128);
 			}
+			_mm_store_si128(&sp128[i], s128);
 		}
 		
-		uint64_t pending[PENDING_SIZE];
+		uint32_t pending[PENDING_SIZE];
 		_initPending(pending);
-		uint64_t pending_pos = 0;
+		uint64_t pending_pos(0);
 		for (uint64_t i(0) ; i < _segmentCounts[loop] ; i++)
 			_addToPending(sieve, pending, pending_pos, _segmentHits[loop][i]);
 
-		for (uint64_t i = 0; i < PENDING_SIZE; i++) {
-			uint64_t old = pending[i];
-			if (old != 0) {
-				assert(old < _parameters.sieveSize);
-				sieve[old >> 3] |= (1 << (old & 7));
-			}
-		}
+		_termPending(sieve, pending);
 		
 		primeTestWork w;
 		w.testWork.n_indexes = 0;

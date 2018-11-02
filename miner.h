@@ -5,10 +5,17 @@
 
 #include <assert.h>
 #include <math.h>
+#include <immintrin.h>
 #include "main.h"
 #include "client.h"
 #include "tools.h"
 #include "tsqueue.hpp"
+
+union xmmreg_t
+{
+	uint32_t v[4];
+	__m128i m128;
+};
 
 #define PENDING_SIZE 16
 
@@ -74,6 +81,7 @@ class Miner {
 	uint8_t  **_sieves;
 	uint32_t **_segmentHits;
 	std::vector<uint64_t> _segmentCounts;
+	std::vector<uint64_t> _halfPrimeTupleOffset;
 	
 	bool _masterExists;
 	std::mutex _masterLock, _bucketLock;
@@ -81,29 +89,46 @@ class Miner {
 	mpz_t z_verifyTarget, z_verifyRemainderPrimorial;
 	WorkData _verifyBlock;
 	
-	void _sortIndexes(uint64_t indexes[6]) {
-		for (int i(0) ; i < 5; i++) {
-			for (int j(i + 1) ; j < 6; j++) {
+	void _sortIndexes(uint32_t indexes[6]) {
+		for (uint64_t i(0) ; i < 5; i++) {
+			for (uint64_t j(i + 1) ; j < 6; j++) {
 				if (indexes[j] < indexes[i])
 					std::swap(indexes[i], indexes[j]);
 			}
 		}
 	}
 
-	void _initPending(uint64_t pending[PENDING_SIZE]) {
+	void _initPending(uint32_t pending[PENDING_SIZE]) {
 		for (int i(0) ; i < PENDING_SIZE; i++) pending[i] = 0;
 	}
 
-	void _addToPending(uint8_t *sieve, uint64_t pending[PENDING_SIZE], uint64_t &pos, uint64_t ent) {
+	void _addToPending(uint8_t *sieve, uint32_t pending[PENDING_SIZE], uint64_t &pos, uint32_t ent) {
 		__builtin_prefetch(&(sieve[ent >> 3]));
-		uint64_t old = pending[pos];
+		uint32_t old = pending[pos];
 		if (old != 0) {
 			assert(old < _parameters.sieveSize);
 			sieve[old >> 3] |= (1 << (old & 7));
 		}
 		pending[pos] = ent;
 		pos++;
-		pos &= 0xf;
+		pos &= PENDING_SIZE - 1;
+	}
+
+	void _addRegToPending(uint8_t *sieve, uint32_t pending[PENDING_SIZE], uint64_t &pos, xmmreg_t reg, int mask) {
+		if (mask & 0x0008) _addToPending(sieve, pending, pos, reg.v[0]);
+		if (mask & 0x0080) _addToPending(sieve, pending, pos, reg.v[1]);
+		if (mask & 0x0800) _addToPending(sieve, pending, pos, reg.v[2]);
+		if (mask & 0x8000) _addToPending(sieve, pending, pos, reg.v[3]);
+	}
+
+	void _termPending(uint8_t *sieve, uint32_t pending[PENDING_SIZE]) {
+		for (uint64_t i(0) ; i < PENDING_SIZE ; i++) {
+			uint32_t old(pending[i]);
+			if (old != 0) {
+				assert(old < _parameters.sieveSize);
+				sieve[old >> 3] |= (1 << (old & 7));
+			}
+		}
 	}
 	
 	void _putOffsetsInSegments(uint64_t *offsets, int n_offsets);
