@@ -491,11 +491,20 @@ void Miner::process(WorkData block) {
 				offsets[pno][f] -= _parameters.sieveSize;
 			}
 		}
+
+		uint32_t pending[PENDING_SIZE];
+		_initPending(pending);
+		uint64_t pending_pos(0);
+		for (uint64_t i(0) ; i < _segmentCounts[loop] ; i++)
+			_addToPending(sieve, pending, pending_pos, _segmentHits[loop][i]);
+
+		_termPending(sieve, pending);
 		
 		outstandingTests -= _testDoneQueue.clear();
 		for (int32_t i(0) ; i < n_workers; i++)
 			_workerDoneQueue.pop_front();
 		
+#if 0
 		__m128i *sp128 = (__m128i *)sieve;
 		for (uint64_t i(0) ; i < _parameters.sieveWords / 2 ; i++) {
 			__m128i s128;
@@ -507,14 +516,7 @@ void Miner::process(WorkData block) {
 			}
 			_mm_store_si128(&sp128[i], s128);
 		}
-		
-		uint32_t pending[PENDING_SIZE];
-		_initPending(pending);
-		uint64_t pending_pos(0);
-		for (uint64_t i(0) ; i < _segmentCounts[loop] ; i++)
-			_addToPending(sieve, pending, pending_pos, _segmentHits[loop][i]);
-
-		_termPending(sieve, pending);
+#endif
 		
 		primeTestWork w;
 		w.testWork.n_indexes = 0;
@@ -524,7 +526,11 @@ void Miner::process(WorkData block) {
 		bool reset(false);
 		uint64_t *sieve64 = (uint64_t*) sieve;
 		for(uint32_t b(0) ; !reset && b < _parameters.sieveWords ; b++) {
-			uint64_t sb(~sieve64[b]);
+			uint64_t sb(sieve64[b]);
+			for (int j(0) ; j < _parameters.sieveWorkers; j++) {
+				sb |= ((uint64_t*)_sieves[j])[b];
+			}
+			sb = ~sb;
 			
 			while (sb != 0) {
 				uint32_t lowsb(__builtin_ctzll(sb));
@@ -533,7 +539,6 @@ void Miner::process(WorkData block) {
 				
 				w.testWork.indexes[w.testWork.n_indexes] = i;
 				w.testWork.n_indexes++;
-				outstandingTests -= _testDoneQueue.clear();
 				
 				if (w.testWork.n_indexes == WORK_INDEXES) {
 					// Low overhead but still often enough
