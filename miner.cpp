@@ -457,7 +457,7 @@ void Miner::process(WorkData block) {
 		
 		wi.type = TYPE_SIEVE;
 		n_workers = 0;
-		incr = ((_nSparse - _nDense)/_parameters.sieveWorkers);
+		incr = (_nSparse / _parameters.sieveWorkers);
 		uint64_t round(8 - (incr & 0x7));
 		incr += round;
 		int which_sieve(0);
@@ -524,19 +524,19 @@ void Miner::process(WorkData block) {
 
 		bool reset(false);
 		uint64_t *sieve64 = (uint64_t*) sieve;
-		for(uint64_t b(0) ; !reset && b < _parameters.sieveWords ; b++) {
+		for(uint32_t b(0) ; !reset && b < _parameters.sieveWords ; b++) {
 			uint64_t sb(~sieve64[b]);
 			
-			int sb_process_count(0);
 			while (sb != 0) {
-				sb_process_count++;
-				if (sb_process_count > 65) {
-					std::cerr << "Impossible: process count too high :|" << std::endl;
-					exit(-1);
-				}
+#if 0
 				uint64_t highsb(__builtin_clzll(sb));
 				uint64_t i((b*64) + (63 - highsb));
 				sb &= ~(1ULL<<(63 - highsb));
+#else
+				uint32_t lowsb(__builtin_ctzll(sb));
+				uint32_t i((b*64) + lowsb);
+				sb &= sb - 1;
+#endif
 				
 				countCandidates++;
 				
@@ -545,16 +545,17 @@ void Miner::process(WorkData block) {
 				outstandingTests -= _testDoneQueue.clear();
 				
 				if (w.testWork.n_indexes == WORK_INDEXES) {
+					// Low overhead but still often enough
+					if (block.height != _currentHeight) {
+						outstandingTests -= _verifyWorkQueue.clear();
+						reset = true;
+						break;
+					}
+
 					_verifyWorkQueue.push_back(w);
 					w.testWork.n_indexes = 0;
 					outstandingTests++;
-				}
-				outstandingTests -= _testDoneQueue.clear();
-				// Low overhead but still often enough
-				if (block.height != _currentHeight) {
-					outstandingTests -= _verifyWorkQueue.clear();
-					reset = true;
-					break;
+					outstandingTests -= _testDoneQueue.clear();
 				}
 			}
 		}
