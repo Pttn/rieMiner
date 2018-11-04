@@ -13,7 +13,7 @@ debug: rieMiner
 rieMiner: main.o miner.o stratumclient.o gbtclient.o client.o tools.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
-main.o: main.cpp main.h
+main.o: main.cpp main.h miner.h client.h gbtclient.h stratumclient.h tools.h
 	$(CXX) $(CFLAGS) -c -o main.o main.cpp
 
 miner.o: miner.cpp miner.h
