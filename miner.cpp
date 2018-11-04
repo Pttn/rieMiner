@@ -445,7 +445,6 @@ void Miner::process(WorkData block) {
 	 * 4)	Scan sieve for candidates, test, report
 	 */
 
-	uint64_t countCandidates = 0;
 	uint64_t outstandingTests = 0;
 	for (uint64_t loop(0); loop < _parameters.maxIter; loop++) {
 		__sync_synchronize(); // gcc specific - memory barrier for checking height
@@ -528,17 +527,9 @@ void Miner::process(WorkData block) {
 			uint64_t sb(~sieve64[b]);
 			
 			while (sb != 0) {
-#if 0
-				uint64_t highsb(__builtin_clzll(sb));
-				uint64_t i((b*64) + (63 - highsb));
-				sb &= ~(1ULL<<(63 - highsb));
-#else
 				uint32_t lowsb(__builtin_ctzll(sb));
 				uint32_t i((b*64) + lowsb);
 				sb &= sb - 1;
-#endif
-				
-				countCandidates++;
 				
 				w.testWork.indexes[w.testWork.n_indexes] = i;
 				w.testWork.n_indexes++;
