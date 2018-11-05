@@ -12,7 +12,7 @@
 class WorkManager;
 
 enum JobType {TYPE_CHECK, TYPE_MOD, TYPE_SIEVE};
-#define WORK_INDEXES 64
+#define WORK_INDEXES 32
 
 struct BlockHeader { // Total 1024 bits/128 bytes (256 hex chars)
 	uint32_t version;

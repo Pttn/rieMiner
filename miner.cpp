@@ -285,7 +285,9 @@ void Miner::_verifyThread() {
 			mpz_add(z_ploop, z_ploop, z_verifyRemainderPrimorial);
 			mpz_add(z_ploop, z_ploop, z_verifyTarget);
 
-			for (uint64_t idx(0) ; idx < job.testWork.n_indexes ; idx++) {
+			for (uint32_t idx(0) ; idx < job.testWork.n_indexes ; idx++) {
+				if (_currentHeight != job.testWork.block_height) break;
+
 				uint8_t tupleSize(0);
 				mpz_mul_ui(z_temp, _primorial, job.testWork.indexes[idx]);
 				mpz_add(z_temp, z_temp, z_ploop);
@@ -548,6 +550,7 @@ void Miner::process(WorkData block) {
 		primeTestWork w;
 		w.testWork.n_indexes = 0;
 		w.testWork.loop = loop;
+		w.testWork.block_height = block.height;
 		w.type = TYPE_CHECK;
 
 		bool reset(false);
