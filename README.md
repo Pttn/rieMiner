@@ -1,6 +1,6 @@
-# rieMiner 0.9β2.4
+# rieMiner 0.9β2.5
 
-rieMiner is a Riecoin miner supporting both solo and pooled mining, and using the latest known mining algorithm. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie).
+rieMiner is a Riecoin miner supporting both solo and pooled mining, and using the latest known mining algorithm. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
 Solo mining is done using the GetBlockTemplate protocol, while pooled mining is via the Stratum protocol. A benchmark mode is also proposed to compare more easily the performance between different computers.
 
@@ -114,7 +114,8 @@ It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; a
 * Refresh : refresh rate of the stats in seconds. 0 to disable them; will only notify when a k-tuple or share (k >= Tuples option value if solo mining) is found, or when the network finds a block. Default: 30;
 * TestDiff : only for Benchmark, sets the testing difficulty (must be from 265 to 32767). Default: 1600;
 * TestTime : only for Benchmark, sets the testing duration in s. 0 for no time limit. Default: 0;
-* Test3t : only for Benchmark, stops testing after finding this number of 3-tuples. 0 for no limit. Default: 1000.
+* Test3t : only for Benchmark, stops testing after finding this number of 3-tuples. 0 for no limit. Default: 1000;
+* TCFile : Tuples Counts filename, in which rieMiner will save for each difficulty the number of tuples found. Note that there must never be more than one rieMiner instance using the same file. Default: None (special value that disables this feature).
 
 You can finally run the newly created rieMiner executable using
 

@@ -3,17 +3,19 @@
 #ifndef HEADER_GLOBAL_H
 #define HEADER_GLOBAL_H
 
-#define minerVersionString	"rieMiner 0.9-beta2.4"
+#define minerVersionString	"rieMiner 0.9-beta2.5"
 #define BITS	64
 
 #include <unistd.h>
 #include <string>
 #include <array>
 #include <vector>
+#include <algorithm>
 #include <iomanip>
 #include <chrono>
 #include <thread>
 #include <mutex>
+#include <fstream>
 #include "tools.h"
 
 struct GetWorkData;
@@ -26,15 +28,18 @@ class Miner;
 #define FIXED(x) std::fixed << std::setprecision(x)
 
 class Stats {
+	std::vector<std::vector<uint64_t>> _totalTuples;
 	std::vector<uint64_t> _tuples, _tuplesSinceLastDiff;
 	uint32_t _height, _difficulty, _heightAtDiffChange, _shares, _rejectedShares;
 	std::chrono::time_point<std::chrono::system_clock> _miningStartTp, _lastDiffChangeTp;
-	bool _solo;
+	bool _solo, _saveTuplesCounts;
 	
-	bool inited() const {return _difficulty != 1 && _height != 0;}
+	bool _inited() const {return _difficulty != 1 && _height != 0;}
+	static bool _tuplesDiffSortComp(std::vector<uint64_t> a, std::vector<uint64_t> b) {return a[0] < b[0];}
 	
 	public:
 	Stats(uint8_t tupleLength = 6) {
+		_totalTuples = std::vector<std::vector<uint64_t>>();
 		for (uint8_t i(0) ; i <= tupleLength ; i++) {
 			_tuples.push_back(0);
 			_tuplesSinceLastDiff.push_back(0);
@@ -46,6 +51,7 @@ class Stats {
 		_rejectedShares = 0;
 		_lastDiffChangeTp = std::chrono::system_clock::now();
 		_solo = true;
+		_saveTuplesCounts = false;
 	}
 	
 	void startTimer() {
@@ -66,7 +72,7 @@ class Stats {
 	uint32_t height() const {return _height;}
 	void initHeight(uint32_t height) {_height = height;}
 	void updateHeight(uint32_t height) {
-		if (inited()) {
+		if (_inited()) {
 			printTime();
 			if (height - _heightAtDiffChange != 0) {
 				std::cout << " Blockheight = " << height << ", average "
@@ -77,13 +83,33 @@ class Stats {
 		}
 	}
 	
+	void updateTotalTuplesCounts() {
+		bool found(false);
+		for (std::vector<std::vector<uint64_t>>::size_type i(0) ; i < _totalTuples.size() ; i++) {
+			if (_totalTuples[i][0] == _difficulty) {
+				found = true;
+				for (std::vector<uint64_t>::size_type j(1) ; j < _totalTuples[i].size() ; j++) {
+					_totalTuples[i][j] += _tuplesSinceLastDiff[j];
+					_tuplesSinceLastDiff[j] = 0;
+				}
+			}
+		}
+		if (!found && _inited()) {
+			_totalTuples.push_back(_tuplesSinceLastDiff);
+			for (std::vector<uint64_t>::size_type i(0) ; i < _tuplesSinceLastDiff.size() ; i++)
+				_tuplesSinceLastDiff[i] = 0;
+			_totalTuples[_totalTuples.size() - 1][0] = _difficulty;
+		}
+		std::sort(_totalTuples.begin(), _totalTuples.end(), _tuplesDiffSortComp);
+	}
+	
 	uint32_t difficulty() const {return _difficulty;}
 	void updateDifficulty(uint32_t newDifficulty, uint32_t height) {
 		printTuplesStats();
+		updateTotalTuplesCounts();
 		_difficulty = newDifficulty;
 		_heightAtDiffChange = height;
 		_lastDiffChangeTp = std::chrono::system_clock::now();
-		for (uint8_t i(0) ; i < 7 ; i++) _tuplesSinceLastDiff[i] = 0;
 	}
 	uint32_t heightAtDiffChange() const {return _heightAtDiffChange;}
 	
@@ -117,7 +143,7 @@ class Stats {
 	}
 	
 	void printTuplesStats() const {
-		if (inited()) {
+		if (_inited()) {
 			std::vector<uint64_t> t(_tuplesSinceLastDiff);
 			double elapsedSecs(timeSince(_lastDiffChangeTp));
 			std::cout << "Tuples found for diff " << _difficulty <<  ": (";
@@ -162,10 +188,69 @@ class Stats {
 			std::cout << std::endl;
 		}
 	}
+	
+	void loadTuplesCounts(std::string tcFilename) {
+		if (tcFilename != "None" && _solo) {
+			std::ifstream tcfile(tcFilename, std::ios::in);
+			std::cout << "Opening tuples counts file " << tcFilename << "..." << std::endl;
+			if (tcfile) {
+				std::cout << "Success! Loading data..." << std::endl;
+				_saveTuplesCounts = true;
+				std::string lineStr;
+				while (std::getline(tcfile, lineStr)) {
+					std::stringstream line(lineStr);
+					std::vector<uint64_t> tupleCount;
+					uint64_t tmp;
+					if (!(line >> tmp))
+						std::cerr << "Unable to read the tuples count difficulty :|" << std::endl;
+					else {
+						tupleCount.push_back(tmp);
+						bool ok(true);
+						for (uint16_t i(1) ; i < _tuples.size() ; i++) {
+							if (!(line >> tmp)) {
+								std::cerr << "Unable to read the " << i << "-tuples count for difficulty " << tupleCount[0] << " :|" << std::endl;
+								ok = false;
+								break;
+							}
+							else tupleCount.push_back(tmp);
+						}
+						if (ok) _totalTuples.push_back(tupleCount);
+					}
+				}
+			}
+			else {
+				std::cout << "Not found or unreadable, creating... ";
+				std::ofstream tcFile2(tcFilename);
+				if (tcFile2) {
+					std::cout << "Done!" << std::endl;
+					_saveTuplesCounts = true;
+				}
+				else std::cerr << "Failure :|" << std::endl;
+			}
+		}
+	}
+	
+	void saveTuplesCounts(std::string tcFilename) {
+		if (_saveTuplesCounts && _inited()) {
+			updateTotalTuplesCounts();
+			std::ofstream tcfile(tcFilename, std::ofstream::out | std::ofstream::trunc);
+			if (tcfile) {
+				for (std::vector<std::vector<uint64_t>>::size_type i(0) ; i < _totalTuples.size() ; i++) {
+					for (std::vector<uint64_t>::size_type j(0) ; j < _totalTuples[i].size() ; j++) {
+						tcfile << _totalTuples[i][j];
+						if (j < _totalTuples[i].size() - 1) tcfile << " ";
+					}
+					tcfile << std::endl;
+				}
+				std::cout << "Tuples counts saved." << std::endl;
+			}
+			else std::cerr << "Unable to open or write to the tuples counts file :|" << std::endl;
+		}
+	}
 };
 
 class Options {
-	std::string _host, _user, _pass, _protocol, _address;
+	std::string _host, _user, _pass, _protocol, _address, _tcFile;
 	uint8_t _tuples;
 	uint16_t _port, _threads;
 	uint32_t _refresh, _testDiff, _testTime, _test3t;
@@ -180,6 +265,7 @@ class Options {
 		_host     = "127.0.0.1";
 		_protocol = "Benchmark";
 		_address  = "RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB";
+		_tcFile   = "None";
 		_port     = 28332;
 		_threads  = 8;
 		_sieve    = 1073741824;
@@ -199,6 +285,7 @@ class Options {
 	std::string pass() const {return _pass;}
 	std::string protocol() const {return _protocol;}
 	std::string address() const {return _address;}
+	std::string tcFile() const {return _tcFile;}
 	uint16_t threads() const {return _threads;}
 	uint64_t sieve() const {return _sieve;}
 	uint8_t tuples() const {return _tuples;}
@@ -239,6 +326,7 @@ class WorkManager : public std::enable_shared_from_this<WorkManager> {
 	void incRejectedShares() {_stats.incRejectedShares();}
 	void updateDifficulty(uint32_t newDifficulty, uint32_t height) {_stats.updateDifficulty(newDifficulty, height);}
 	void updateHeight(uint32_t height) {_stats.updateHeight(height);}
+	void saveTuplesCounts() {_stats.saveTuplesCounts(_options.tcFile());}
 };
 
 #endif
