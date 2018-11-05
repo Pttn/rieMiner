@@ -1,6 +1,6 @@
-# rieMiner 0.9β2.3
+# rieMiner 0.9β2.5
 
-rieMiner is a Riecoin miner supporting both solo and pooled mining, and using the latest known mining algorithm. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie).
+rieMiner is a Riecoin miner supporting both solo and pooled mining, and using the latest known mining algorithm. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
 Solo mining is done using the GetBlockTemplate protocol, while pooled mining is via the Stratum protocol. A benchmark mode is also proposed to compare more easily the performance between different computers.
 
@@ -8,9 +8,13 @@ Official binaries will be distributed when the stable 0.9 code is out (which wil
 
 This README also serves as manual for rieMiner. I hope that this program will be useful for you! Happy mining!
 
+The Riecoin community thanks you for your participation, you will be a contributor to the robustness of the Riecoin network.
+
 ![rieMiner just found a block](https://pttn.me/medias/bildoj/alia/rieMiner1.png)
 
 ## Compile this program
+
+Only x64 systems are supported since version 0.9β2.4.
 
 ### In Debian/Ubuntu x64
 
@@ -73,34 +77,24 @@ In the MSYS MinGW-w64 console, cd to the libcurl directory. We will now configur
 ./configure --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-ldap --disable-ldaps --disable-pop3 --disable-rtsp --disable-smtp --disable-telnet --disable-tftp --without-ssl --without-libssh2 --without-zlib --without-brotli --without-libidn2  --without-ldap  --without-ldaps --without-rtsp --without-psl --without-librtmp --without-libpsl --without-nghttp2 --disable-shared --disable-libcurl-option
 ```
 
-This will for some reason take a very long time. Then, compile libcurl with make. We now need to replace the existing libcurl headers and libs provided by MinGW:
+Then, compile libcurl with make. We now need to replace the existing libcurl headers and libs provided by MinGW:
 
 * In the downloaded libcurl directory, go to the include directory and copy the "curl" folder to replace the one in X:\path\to\msys64\mingw64\include (make a backup if needed);
 * Do the same with the file "libcurl.a" in the libs/.lib folder to replace the one in X:\path\to\msys64\mingw64\lib (make a backup if needed).
 
 Now, you should be able to compile rieMiner with make and produce a standalone executable.
 
-### For 32 bits computers
+## Run and configure this program
 
-First, go to the file main.h and change
+You can finally run the newly created rieMiner executable using
 
-```
-#define BITS	64
-```
-
-to
-
-```
-#define BITS	32
+```bash
+./rieMiner
 ```
 
-Then, follow the instructions for 64 bits systems. If you do not do this, the compilation will work, but the blocks produced will be invalid.
+If no "rieMiner.conf" next to the executable was found, you will be assisted to configure rieMiner. Answer to its questions to start mining. If there is a "rieMiner.conf" file next to the executable with incorrect information that was read, you can delete this to get the assistant.
 
-## Run this program
-
-If no "rieMiner.conf" next to the executable was found, you will be assisted to configure rieMiner. Answer to its questions to start mining. If there is a "rieMiner.conf" file next to the executable with incorrect information, you can delete this to get the assisted configuration.
-
-Alternatively, you can create or edit this "rieMiner.conf" file next to the executable, in order to provide options to the miner. The rieMiner.conf syntax is very simple: each option is given by a line such
+Alternatively, you can create or edit this "rieMiner.conf" file next to the executable yourself, in order to provide options to the miner. The rieMiner.conf syntax is very simple: each option is given by a line such
 
 ```
 Option type = Option value
@@ -115,12 +109,13 @@ It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; a
 * Protocol : protocol to use: GetBlockTemplate for solo mining, Stratum for pooled mining, Benchmark for testing. Default: Benchmark;
 * Address : custom payout address for solo mining (GetBlockTemplate only). Default: a donation address;
 * Threads : number of threads used for mining. Default: 8;
-* Sieve : size of the sieve table used for mining. Use a bigger number if you have more RAM, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^30;
+* Sieve : size of the sieve table used for mining. Use a bigger number if you have more RAM, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^31;
 * Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6;
 * Refresh : refresh rate of the stats in seconds. 0 to disable them; will only notify when a k-tuple or share (k >= Tuples option value if solo mining) is found, or when the network finds a block. Default: 30;
 * TestDiff : only for Benchmark, sets the testing difficulty (must be from 265 to 32767). Default: 1600;
 * TestTime : only for Benchmark, sets the testing duration in s. 0 for no time limit. Default: 0;
-* Test3t : only for Benchmark, stops testing after finding this number of 3-tuples. 0 for no limit. Default: 1000.
+* Test3t : only for Benchmark, stops testing after finding this number of 3-tuples. 0 for no limit. Default: 1000;
+* TCFile : Tuples Counts filename, in which rieMiner will save for each difficulty the number of tuples found. Note that there must never be more than one rieMiner instance using the same file. Default: None (special value that disables this feature).
 
 You can finally run the newly created rieMiner executable using
 
@@ -136,17 +131,11 @@ If you have memory errors, try to lower the Sieve value.
 
 ## Statistics
 
-rieMiner will regularly print some stats, and the frequency of this can be changed with the Refresh parameter as said earlier. Example for solo mining:
+rieMiner will regularly print some stats, and the frequency of this can be changed with the Refresh parameter as said earlier. For solo mining, rieMiner will regularly show the 1 to 3 tuples found per second metrics, and the number of 2 to 6 tuples found since the start of the mining.
 
-```bash
-[0521:41:15] (2-4t/s) = (3.60 0.136 0.0054) ; (2-6t) = (8864892 354753 14366 561 36) | 1.52 d
-```
+After finding at least a 4-tuple after a difficulty change, rieMiner will also estimate the average time to find a block by extrapolating from how many 1, 2, and 3-tuples were found, but of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week.
 
-These are the time since start of mining (521 h 41 min 15 s), the number of tuples found each second since the last difficulty change (3.60 2-tuples/s, 0.136 3-tuple/s, 0.0054 4-tuple/s), and the total of tuples found (for example, 14366 4-tuples, or 36 blocks) since the start of the mining.
-
-After finding at least a 4-tuple after a difficulty change, rieMiner will also estimate the average time to find a block (here, 1.14 days) by extrapolating from how many 2, 3 and 4-tuples were found, but of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week.
-
-For pooled mining, the number of valid and total shares are shown instead, and there is an estimation of how much RIC/day you are earning. If you want to compare the performance with fastrie, multiply the speeds by 4.096. The performance should be the same as fastrie's, as rieMiner uses the same algorithm.
+For pooled mining, the number of valid and total shares are shown instead, and there is an estimation of how much RIC/day you are earning. If you want to compare the performance with fastrie, multiply the 2 and 3-"tuples/s" speeds by 4.096. The performance should be a bit better than fastrie's, as rieMiner includes some more optimized code.
 
 rieMiner will also notify if it found a k-tuple (k >= Tuples option value) in solo mining or a share in pooled mining, and if the network found a new block. If it finds a block or a share, it will tell if the submission was accepted (solo mining only) or not. For solo mining, if the block was accepted, the reward will be generated for the address specified in the options. You can then spend it after 100 confirmations.
 
@@ -235,29 +224,18 @@ To compare two different platforms, you must absolutely test with the same diffi
 
 * Standard Benchmark
   * Difficulty of 1600;
-  * Sieve of 2^30 = 1073741824;
+  * Sieve of 2^30 = 1073741824 or 2^31 = 2147483648 (always precise this information too);
   * Stop after finding 1000 3-tuples or more;
   * The computer must not do anything else during testing;
   * Very long for slow computers, but like the real mining conditions;
-  * The precision will be 2 solid digits for the 2-tuples/s metric, and almost 2 digits for the 3-tuples/s one (the 2nd will still vary a bit). That said, you can share your result with 3 significant digits for each;
-  * It would not be enough to even obtain just one solid digit for the 4-tuples/s metric, so 4, 5 and 6-tuples find rates should be discarded.
+  * The precision will be about 3 solid digits for the 1-tuples/s metric, 2 for the 2-tuples/s one and 1 of the 3-tuples/s one. That said, you can share your results with 3-4 significant digits for each;
+  * 4 to 6-tuples find rates should be discarded.
 
-Testing a few times longer will not really improve the precision. You would need to find tens if not hundreds times more tuples to gain another significant digit for each metric, which would be really unpractical. In the other direction, if you have a slow computer or want a very fast test, you can reduce the difficulty to find tuples much faster with these parameters:
-
-* Easy Benchmark
-  * Difficulty of 800;
-  * Sieve of 2^27 = 134217728;
-  * Stop after finding 1000 3-tuples or more;
-  * The computer must not do anything else during testing;
-  * Not adapted for powerful computers;
-  * The precision will be similar to Standard Benchmark, but note that the results will be completely different to the ones provided by the standard benchmark;
-  * 4, 5 and 6-tuples find rates should also be discarded.
-
-In all cases, the system must not swap. Else, the result would not make much sense. Ensure that you have enough memory when trying to benchmark.
+The system must not swap. Else, the result would not make much sense. Ensure that you have enough memory when trying to benchmark.
 
 ### A few results
 
-Standard Benchmark:
+Standard Benchmark with a Sieve of 2^30.
 
 * AMD Ryzen 2700X @4 GHz, DDR4 2400 CL15, Debian 9, 0.9β1.5: (7.20 0.246 0.0079)
 * AMD Ryzen 2700X @3 GHz, DDR4 2400 CL15, Debian 9, 0.9β1.5: (5.37 0.189 0.0068)
@@ -265,6 +243,8 @@ Standard Benchmark:
 * Intel Core 2 Duo L7500 @1.6 GHz, DDR2 667 CL5, Debian 9, 0.9β1.5: (0.349 0.0118 0.00038)
 
 ## Miscellaneous
+
+It is recommended to use a recent enough CPU with at least 4 cores and 8 GB of RAM to mine efficiently enough.
 
 Unless the weather is very cold, I do not recommend to overclock a CPU for mining, unless you can do that without increasing noticeably the power consumption. My 2700X computer would draw much, much more power at 4 GHz/1.2875 V instead of 3.7 GHz/1.08125 V, which is certainly absurd for a mere 8% increase. To get maximum efficiency, you might want to find the frequency with the best performance/power consumption ratio (which could also be obtained by underclocking the processor).
 
@@ -274,7 +254,11 @@ If you can, try to undervolt the CPU to reduce power consumption, heat and noise
 
 * [Pttn](https://github.com/Pttn), contact: dev at Pttn dot me
 
-Parts coming from other projects are subject to their respective licenses. Else, this work is released under the MIT license. See the [LICENSE](LICENSE) or top of source files for details.
+Parts coming from other projects and libraries are subject to their respective licenses. Else, this work is released under the MIT license. See the [LICENSE](LICENSE) or top of source files for details.
+
+### Contributors
+
+* [Michael Bell](https://github.com/MichaelBell/): assembly optimizations and some more.
 
 ## Contributing
 
@@ -289,6 +273,7 @@ Donations welcome:
 ## Resources
 
 * [rieMiner thread on Riecoin-Community.com forum](https://forum.riecoin-community.com/viewtopic.php?f=16&t=15)
+* [My personal website about Riecoin](http://ric.Pttn.me/)
 * [Get the Riecoin wallet](http://riecoin.org/download.html)
 * [Fast prime cluster search - or building a fast Riecoin miner (part 1)](https://da-data.blogspot.ch/2014/03/fast-prime-cluster-search-or-building.html), nice article by dave-andersen explaining how Riecoin works and how to build an efficient miner and the algorithms. Unfortunately, he never published part 2...
 * [Riecoin FAQ](http://riecoin.org/faq.html) and [technical aspects](http://riecoin.org/about.html#tech)

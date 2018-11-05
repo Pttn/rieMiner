@@ -2,10 +2,10 @@ Some parts were adapted from other projects:
 
 - dave-andersen's fastrie (https://github.com/dave-andersen/fastrie)
 	- Based on jh00's xptMiner
-- gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) (GPL-2.0)
 
 These parts are subject to their respective licenses.
-GPL-2.0: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
+
+Michael Bell provided the miner optimizations in the MIT license.
 
 Else, this work is released under the following MIT license. https://opensource.org/licenses/MIT
 

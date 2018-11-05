@@ -7,7 +7,6 @@
 #include "stratumclient.h"
 #include "tools.h"
 #include <iomanip>
-#include <fstream>
 #include <unistd.h>
 #ifndef _WIN32
 	#include <signal.h>
@@ -96,11 +95,13 @@ void WorkManager::manage() {
 				if (timeSince(_stats.miningStartTp()) > _options.testTime() && _options.testTime() != 0) {
 					std::cout << _options.testTime() << " s elapsed, test finished. " << minerVersionString << ", diff " << _options.testDiff() << ", sieve " << _options.sieve() << std::endl;
 					_stats.printTuplesStats();
+					_stats.saveTuplesCounts(_options.tcFile());
 					_exit(0);
 				}
 				if (_stats.tuplesCount()[3] >= _options.test3t() && _options.test3t() != 0) {
 					std::cout << _options.test3t() << " 3-tuples found, test finished. Version: " << minerVersionString << ", difficulty " << _options.testDiff() << ", sieve " << _options.sieve() << std::endl;
 					_stats.printTuplesStats();
+					_stats.saveTuplesCounts(_options.tcFile());
 					_exit(0);
 				}
 			}
@@ -121,6 +122,7 @@ void WorkManager::manage() {
 					_miner->updateHeight(0); // Mark work as invalid
 					std::cout << "Connection lost :|, reconnecting in 10 seconds..." << std::endl;
 					_stats.printTuplesStats();
+					_stats.saveTuplesCounts(_options.tcFile());
 					_miningStarted = false;
 					_clientMutex.unlock();
 					usleep(1000000*_waitReconnect);
@@ -152,6 +154,7 @@ void WorkManager::manage() {
 				else {
 					std::cout << "Connected!" << std::endl;
 					_stats = Stats(_constellationType.size());
+					_stats.loadTuplesCounts(_options.tcFile());
 					_stats.setMiningType(_options.protocol());
 				}
 				usleep(10000);
@@ -356,6 +359,9 @@ void Options::loadConf() {
 					try {_test3t = std::stoll(value);}
 					catch (...) {_test3t = 1000;}
 				}
+				else if (key == "TCFile") {
+					_tcFile = value;
+				}
 				else if (key == "Error")
 					std::cout << "Ignoring invalid line" << std::endl;
 				else
@@ -369,20 +375,22 @@ void Options::loadConf() {
 		askConf();
 	}
 	
-	std::cout << "Host = " << _host << std::endl;
-	std::cout << "Port = " << _port << std::endl;
-	if (_protocol != "Stratum")
-		std::cout << "User = " << _user << std::endl;
-	else std::cout << "User.worker = " << _user << std::endl;
-	std::cout << "Pass = ..." << std::endl;
-	std::cout << "Protocol = " << _protocol << std::endl;
-	if (_protocol == "GetBlockTemplate")
-		std::cout << "Payout address = " << _address << std::endl;
-	else if (_protocol == "Benchmark") {
-		std::cout << "Test difficulty = " << _testDiff << std::endl;
+	if (_protocol == "Benchmark") {
+		std::cout << "Benchmark Mode at difficulty " << _testDiff << std::endl;
 		if (_testTime != 0) std::cout << "Will stop after " << _testTime << " s" << std::endl;
 		if (_test3t   != 0) std::cout << "Will stop after finding " << _test3t << " 3-tuples" << std::endl;
 	}
+	else {
+		std::cout << "Host = " << _host << std::endl;
+		std::cout << "Port = " << _port << std::endl;
+		if (_protocol != "Stratum")
+			std::cout << "User = " << _user << std::endl;
+		else std::cout << "User.worker = " << _user << std::endl;
+		std::cout << "Pass = ..." << std::endl;
+		std::cout << "Protocol = " << _protocol << std::endl;
+	}
+	if (_protocol == "GetBlockTemplate")
+		std::cout << "Payout address = " << _address << std::endl;
 	std::cout << "Threads = " << _threads << std::endl;
 	std::cout << "Sieve max = " << _sieve << std::endl;
 	if (_protocol == "Benchmark")
@@ -391,11 +399,13 @@ void Options::loadConf() {
 		std::cout << "Will submit tuples of at least length = " << (uint16_t) _tuples << std::endl;
 	else std::cout << "Will submit 4-shares" << std::endl;
 	std::cout << "Stats refresh rate = " << _refresh << " s" << std::endl;
+	if (_tcFile != "None") std::cout << "Tuple Count File = " << _tcFile << std::endl;
 }
 
 void signalHandler(int signum) {
 	std::cout << std::endl << "Signal " << signum << " received, terminating rieMiner." << std::endl;
 	manager->printTuplesStats();
+	manager->saveTuplesCounts();
 	_exit(0);
 }
 
