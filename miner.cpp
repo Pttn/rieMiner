@@ -28,7 +28,7 @@ void Miner::init() {
 
 	// For larger ranges of offsets, need to add more inverts in _updateRemainders().
 	std::transform(_parameters.primeTupleOffset.begin(), _parameters.primeTupleOffset.end(), std::back_inserter(_halfPrimeTupleOffset),
-	               [](uint64_t n) { assert(n <= 4); return n >> 1; });
+	               [](uint64_t n) { assert(n <= 6); return n >> 1; });
 	
 	std::cout << "Generating prime table using sieve of Eratosthenes...";
 	std::vector<uint8_t> vfComposite;
@@ -134,7 +134,7 @@ void Miner::_updateRemainders(uint64_t start_i, uint64_t end_i) {
 		 
 		// Note the multiplication will overflow for p > 2^32 - relatively easy to fix on x64.
 		assert(p < 0x100000000ULL);
-		uint64_t invert[3];
+		uint64_t invert[4];
 		invert[0] = _parameters.inverts[i];
 		uint64_t pa(p - remainder),
 		         index(pa*invert[0]);
@@ -143,6 +143,8 @@ void Miner::_updateRemainders(uint64_t start_i, uint64_t end_i) {
 		if (invert[1] > p) invert[1] -= p;
 		invert[2] = invert[1] << 1;
 		if (invert[2] > p) invert[2] -= p;
+		invert[3] = invert[1] + invert[2];
+		if (invert[3] > p) invert[3] -= p;
 
 		if (!onceOnly) {
 			offsets[i][0] = index;
