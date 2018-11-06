@@ -122,7 +122,7 @@ It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; a
 Normally, you should never need to change them, but they can be useful for developing purposes, or maybe some further optimizations.
 
 * PN : Primorial Number for the Wheel Factorization. Default: 40;
-* POff : Primorial Number for the Wheel Factorization. Default: 1000;
+* POff : Primorial Offset for the Wheel Factorization. Default: 16057;
 * ConsType : set your Constellation Type, i. e. the primes tuple offsets, each separated by a comma. Default: 0, 4, 2, 4, 2, 4 (values for Riecoin mining).
 
 Some possible constellations types (format: (type) -> offsets to put in the config file ; 3 first constellations (n + 0) which can be used as offsets)
