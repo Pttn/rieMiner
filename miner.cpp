@@ -4,6 +4,8 @@
 
 #include "miner.h"
 
+#include "external/gmp_util.h"
+
 thread_local bool isMaster(false);
 thread_local uint64_t *offset_stack(NULL);
 
@@ -11,6 +13,11 @@ thread_local uint8_t* riecoin_sieve(NULL);
 uint32_t *offsets(NULL);
 
 #define	zeroesBeforeHashInPrime	8
+
+extern "C" {
+	void rie_mod_1s_4p_cps (mp_limb_t cps[7], mp_limb_t b);
+	mp_limb_t rie_mod_1s_4p (mp_srcptr ap, mp_size_t n, mp_limb_t b, const mp_limb_t cps[7]);
+}
 
 void Miner::init() {
 	_parameters.threads = _manager->options().threads();
@@ -50,6 +57,7 @@ void Miner::init() {
 		mpz_mul_ui(_primorial, _primorial, _parameters.primes[i]);
 	
 	_parameters.inverts.resize(_nPrimes);
+	_parameters.modPrecompute.resize(_nPrimes * 7);
 	
 	mpz_t z_tmp, z_p;
 	mpz_init(z_tmp);
@@ -58,6 +66,7 @@ void Miner::init() {
 		mpz_set_ui(z_p, _parameters.primes[i]);
 		mpz_invert(z_tmp, _primorial, z_p);
 		_parameters.inverts[i] = mpz_get_ui(z_tmp);
+		rie_mod_1s_4p_cps(&_parameters.modPrecompute[i*7], _parameters.primes[i]);
 	}
 	mpz_clear(z_p);
 	mpz_clear(z_tmp);
@@ -127,26 +136,35 @@ void Miner::_updateRemainders(uint64_t start_i, uint64_t end_i) {
 
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
 		uint64_t p(_parameters.primes[i]),
-		         remainder(mpz_tdiv_ui(tar, p));
+		         cnt(_parameters.modPrecompute[i*7 + 1]),
+		         ps(p << cnt),
+		         remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, &_parameters.modPrecompute[i*7]));
+		//if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail\n"); exit(-1); }
 		bool onceOnly(false);
 
 		/* Also update the offsets unless once only */
 		if (p >= _parameters.maxIncrements)
 			onceOnly = true;
 		 
-		// Note the multiplication will overflow for p > 2^32 - relatively easy to fix on x64.
-		assert(p < 0x100000000ULL);
 		uint64_t invert[4];
 		invert[0] = _parameters.inverts[i];
-		uint64_t pa(p - remainder),
-		         index(pa*invert[0]);
-		index %= p;
+
+		uint64_t index;
+		{
+			uint64_t pa(ps - remainder);
+			uint64_t r, nh, nl;
+			umul_ppmm(nh, nl, pa, invert[0]);
+			udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i*7]);
+			index = r >> cnt;
+			//if ((r >> cnt) != ((pa >> cnt)*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); }
+		}
+
 		invert[1] = (invert[0] << 1);
-		if (invert[1] > p) invert[1] -= p;
+		if (invert[1] >= p) invert[1] -= p;
 		invert[2] = invert[1] << 1;
-		if (invert[2] > p) invert[2] -= p;
+		if (invert[2] >= p) invert[2] -= p;
 		invert[3] = invert[1] + invert[2];
-		if (invert[3] > p) invert[3] -= p;
+		if (invert[3] >= p) invert[3] -= p;
 
 		if (!onceOnly) {
 			offsets[tupleSize*i + 0] = index;

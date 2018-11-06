@@ -26,7 +26,7 @@ struct MinerParameters {
 	bool solo;
 	int sieveWorkers;
 	uint64_t sieveBits, sieveSize, sieveWords, maxIncrements, maxIter, primorialOffset, denseLimit;
-	std::vector<uint64_t> primes, inverts, primeTupleOffset;
+	std::vector<uint64_t> primes, inverts, modPrecompute, primeTupleOffset;
 	
 	MinerParameters() {
 		primorialNumber = 40;

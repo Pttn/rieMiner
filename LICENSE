@@ -2,6 +2,7 @@ Some parts were adapted from other projects:
 
 - dave-andersen's fastrie (https://github.com/dave-andersen/fastrie)
 	- Based on jh00's xptMiner
+- modified GMP code
 
 These parts are subject to their respective licenses.
 
