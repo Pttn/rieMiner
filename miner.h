@@ -52,7 +52,7 @@ struct primeTestWork {
 		struct {
 			uint64_t loop;
 			uint64_t n_indexes;
-			uint64_t indexes[WORK_INDEXES];
+			uint32_t indexes[WORK_INDEXES];
 		} testWork;
 		struct {
 			uint64_t start;
@@ -88,15 +88,6 @@ class Miner {
 	mpz_t z_verifyTarget, z_verifyRemainderPrimorial;
 	WorkData _verifyBlock;
 	
-	void _sortIndexes(uint32_t indexes[6]) {
-		for (uint64_t i(0) ; i < 5 ; i++) {
-			for (uint64_t j(i + 1) ; j < 6; j++) {
-				if (indexes[j] < indexes[i])
-					std::swap(indexes[i], indexes[j]);
-			}
-		}
-	}
-
 	void _initPending(uint32_t pending[PENDING_SIZE]) {
 		for (int i(0) ; i < PENDING_SIZE; i++) pending[i] = 0;
 	}
@@ -133,6 +124,7 @@ class Miner {
 	void _putOffsetsInSegments(uint64_t *offsets, int n_offsets);
 	void _updateRemainders(uint64_t start_i, uint64_t end_i);
 	void _processSieve(uint8_t *sieve, uint64_t start_i, uint64_t end_i);
+	void _processSieve6(uint8_t *sieve, uint64_t start_i, uint64_t end_i);
 	void _verifyThread();
 	void _getTargetFromBlock(mpz_t z_target, const WorkData& block);
 	
