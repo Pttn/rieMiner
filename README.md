@@ -1,4 +1,4 @@
-# rieMiner 0.9β2.5
+# rieMiner 0.9β2.6
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining, and using the latest known mining algorithm. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
@@ -117,13 +117,32 @@ It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; a
 * Test3t : only for Benchmark, stops testing after finding this number of 3-tuples. 0 for no limit. Default: 1000;
 * TCFile : Tuples Counts filename, in which rieMiner will save for each difficulty the number of tuples found. Note that there must never be more than one rieMiner instance using the same file. Default: None (special value that disables this feature).
 
-You can finally run the newly created rieMiner executable using
+### Advanced options
 
-```bash
-./rieMiner
-```
+Normally, you should never need to change them, but they can be useful for developing purposes, or maybe some further optimizations.
 
-The Riecoin community thanks you for your participation, you will be a contributor to the robustness of the Riecoin network.
+* PN : Primorial Number for the Wheel Factorization. Default: 40;
+* POff : Primorial Number for the Wheel Factorization. Default: 1000;
+* ConsType : set your Constellation Type, i. e. the primes tuple offsets, each separated by a comma. Default: 0, 4, 2, 4, 2, 4 (values for Riecoin mining).
+
+Some possible constellations types (format: (type) -> offsets to put in the config file ; 3 first constellations (n + 0) which can be used as offsets)
+
+* 5-tuples
+  * (0, 2, 6,  8, 12) -> 0, 2, 4, 2, 4 ; 5, 11, 101,...
+  * (0, 4, 6, 10, 12) -> 0, 4, 2, 4, 2 ; 7, 97, 1867,...
+* 6-tuples
+  * (0, 4, 6, 10, 12, 16) -> 0, 4, 2, 4, 2, 4 (Riecoin) ; 7, 97, 16057,...
+* 7-tuples
+  * (0, 2, 6,  8, 12, 18, 20) -> 0, 2, 4, 2, 4, 6, 2 ; 11, 165701, 1068701,...
+  * (0, 2, 8, 12, 14, 18, 20) -> 0, 2, 6, 4, 2, 4, 2 ; 5639, 88799, 284729,...
+* 8-tuples
+  * (0, 2, 6,  8, 12, 18, 20, 26) -> 0, 2, 4, 2, 4, 6, 2, 6 ; 11, 15760091, 25658441,...
+  * (0, 2, 6, 12, 14, 20, 24, 26) -> 0, 2, 4, 6, 2, 6, 4, 2 ; 17, 1277, 113147,...
+  * (0, 6, 8, 14, 18, 20, 24, 26) -> 0, 6, 2, 6, 4, 2, 4, 2 ; 88793, 284723, 855713,...
+
+Also see the constellationsGen tool in my rieTools repository (https://github.com/Pttn/rieTools).
+
+Note that you must use different tuples counts files if you use different constellations types, and you should also if you use different Sieve sizes, to not skew the stats.
 
 ### Memory problems
 

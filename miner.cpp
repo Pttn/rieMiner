@@ -19,7 +19,9 @@ void Miner::init() {
 	_parameters.solo = !(_manager->options().protocol() == "Stratum");
 	_parameters.tuples = _manager->options().tuples();
 	_parameters.sieve = _manager->options().sieve();
-	_parameters.primeTupleOffset = _manager->offsets();
+	_parameters.primorialNumber  = _manager->options().pn();
+	_parameters.primorialOffset  = _manager->options().pOff();
+	_parameters.primeTupleOffset = _manager->options().consType();
 	
 	mpz_init(z_verifyTarget);
 	mpz_init(z_verifyRemainderPrimorial);
@@ -60,20 +62,20 @@ void Miner::init() {
 	mpz_clear(z_p);
 	mpz_clear(z_tmp);
 	
-	uint64_t high_segment_entries(0);
-	double high_floats(0.);
-	double tuple_size_as_double(_parameters.primeTupleOffset.size());
+	uint64_t highSegmentEntries(0);
+	double highFloats(0.);
+	double tupleSizeAsDouble(_parameters.primeTupleOffset.size());
 	_primeTestStoreOffsetsSize = 0;
 	for (uint64_t i(5) ; i < _nPrimes ; i++) {
 		uint64_t p(_parameters.primes[i]);
 		if (p < _parameters.maxIncrements) _primeTestStoreOffsetsSize++;
-		else high_floats += ((tuple_size_as_double * _parameters.maxIncrements)/(double) p);
+		else highFloats += ((tupleSizeAsDouble*_parameters.maxIncrements)/(double) p);
 	}
 	
-	high_segment_entries = ceil(high_floats);
-	if (high_segment_entries == 0) _entriesPerSegment = 1;
+	highSegmentEntries = ceil(highFloats);
+	if (highSegmentEntries == 0) _entriesPerSegment = 1;
 	else {
-		_entriesPerSegment = high_segment_entries/_parameters.maxIter + 4; // Rounding up a bit
+		_entriesPerSegment = highSegmentEntries/_parameters.maxIter + 4; // Rounding up a bit
 		_entriesPerSegment = (_entriesPerSegment + (_entriesPerSegment >> 3));
 	}
 	
@@ -147,11 +149,11 @@ void Miner::_updateRemainders(uint64_t start_i, uint64_t end_i) {
 		if (invert[3] > p) invert[3] -= p;
 
 		if (!onceOnly) {
-			offsets[tupleSize * i + 0] = index;
+			offsets[tupleSize*i + 0] = index;
 			for (std::vector<uint64_t>::size_type f(1) ; f < _halfPrimeTupleOffset.size() ; f++) {
 				if (index < invert[_halfPrimeTupleOffset[f]]) index += p;
 				index -= invert[_halfPrimeTupleOffset[f]];
-				offsets[tupleSize * i + f] = index;
+				offsets[tupleSize*i + f] = index;
 			}
 		}
 		else {
@@ -183,11 +185,11 @@ void Miner::_processSieve(uint8_t *sieve, uint64_t start_i, uint64_t end_i) {
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
 		uint32_t p(_parameters.primes[i]);
 		for (uint64_t f(0) ; f < tupleSize; f++) {
-			while (offsets[i * tupleSize + f] < _parameters.sieveSize) {
-				_addToPending(sieve, pending, pending_pos, offsets[i * tupleSize + f]);
-				offsets[i * tupleSize + f] += p;
+			while (offsets[i*tupleSize + f] < _parameters.sieveSize) {
+				_addToPending(sieve, pending, pending_pos, offsets[i*tupleSize + f]);
+				offsets[i*tupleSize + f] += p;
 			}
-			offsets[i * tupleSize + f] -= _parameters.sieveSize;
+			offsets[i*tupleSize + f] -= _parameters.sieveSize;
 		}
 	}
 
@@ -212,10 +214,10 @@ void Miner::_processSieve6(uint8_t *sieve, uint64_t start_i, uint64_t end_i) {
 		xmmreg_t cmpres1, cmpres2, cmpres3;
 		p1.m128 = _mm_set1_epi32(_parameters.primes[i]);
 		p3.m128 = _mm_set1_epi32(_parameters.primes[i+1]);
-		p2.m128 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(p1.m128), _mm_castsi128_ps(p3.m128), _MM_SHUFFLE(0,0,0,0)));
-		offset1.m128 = _mm_load_si128((__m128i const *)&offsets[i * 6 + 0]);
-		offset2.m128 = _mm_load_si128((__m128i const *)&offsets[i * 6 + 4]);
-		offset3.m128 = _mm_load_si128((__m128i const *)&offsets[i * 6 + 8]);
+		p2.m128 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(p1.m128), _mm_castsi128_ps(p3.m128), _MM_SHUFFLE(0, 0, 0, 0)));
+		offset1.m128 = _mm_load_si128((__m128i const*) &offsets[i*6 + 0]);
+		offset2.m128 = _mm_load_si128((__m128i const*) &offsets[i*6 + 4]);
+		offset3.m128 = _mm_load_si128((__m128i const*) &offsets[i*6 + 8]);
 		while (true) {
 			cmpres1.m128 = _mm_cmpgt_epi32(offsetmax.m128, offset1.m128);
 			cmpres2.m128 = _mm_cmpgt_epi32(offsetmax.m128, offset2.m128);
@@ -237,9 +239,9 @@ void Miner::_processSieve6(uint8_t *sieve, uint64_t start_i, uint64_t end_i) {
 		offset1.m128 = _mm_sub_epi32(offset1.m128, offsetmax.m128);
 		offset2.m128 = _mm_sub_epi32(offset2.m128, offsetmax.m128);
 		offset3.m128 = _mm_sub_epi32(offset3.m128, offsetmax.m128);
-		_mm_store_si128((__m128i*)&offsets[i * 6 + 0], offset1.m128);
-		_mm_store_si128((__m128i*)&offsets[i * 6 + 4], offset2.m128);
-		_mm_store_si128((__m128i*)&offsets[i * 6 + 8], offset3.m128);
+		_mm_store_si128((__m128i*)&offsets[i*6 + 0], offset1.m128);
+		_mm_store_si128((__m128i*)&offsets[i*6 + 4], offset2.m128);
+		_mm_store_si128((__m128i*)&offsets[i*6 + 8], offset3.m128);
 	}
 
 	_termPending(sieve, pending);
@@ -356,8 +358,10 @@ void Miner::_getTargetFromBlock(mpz_t z_target, const WorkData &block) {
 	
 	uint64_t difficulty(mpz_sizeinbase(z_target, 2));
 	if (_manager->difficulty() != difficulty) {
-		if (_manager->difficulty() != 1) _manager->saveTuplesCounts();
+		bool save(true);
+		if (_manager->difficulty() == 1) save = false;
 		_manager->updateDifficulty(difficulty, block.height);
+		if (save) _manager->saveTuplesCounts();
 	}
 }
 
@@ -407,7 +411,7 @@ void Miner::process(WorkData block) {
 		
 		try {
 			// std::cout << "Allocating " << 6*4*(_primeTestStoreOffsetsSize + 1024) << " bytes for the offsets..." << std::endl;
-			offsets = new uint32_t[(_primeTestStoreOffsetsSize + 1024) * _parameters.primeTupleOffset.size()];
+			offsets = new uint32_t[(_primeTestStoreOffsetsSize + 1024)*_parameters.primeTupleOffset.size()];
 		}
 		catch (std::bad_alloc& ba) {
 			std::cerr << "Unable to allocate memory for the offsets :|..." << std::endl;
@@ -427,7 +431,7 @@ void Miner::process(WorkData block) {
 			exit(-1);
 		}
 	}
-	uint8_t* sieve(riecoin_sieve);
+	uint8_t *sieve(riecoin_sieve);
 	
 	mpz_t z_target, z_temp, z_remainderPrimorial;
 	
@@ -483,7 +487,7 @@ void Miner::process(WorkData block) {
 		
 		wi.type = TYPE_SIEVE;
 		n_workers = 0;
-		incr = (_nSparse / _parameters.sieveWorkers);
+		incr = (_nSparse/_parameters.sieveWorkers);
 		uint64_t round(8 - (incr & 0x7));
 		incr += round;
 		int which_sieve(0);
@@ -511,11 +515,11 @@ void Miner::process(WorkData block) {
 			uint64_t pno(i + _startingPrimeIndex);
 			uint32_t p(_parameters.primes[pno]);
 			for (uint64_t f(0) ; f < tupleSize ; f++) {
-				while (offsets[pno * tupleSize + f] < _parameters.sieveSize) {
-					sieve[offsets[pno * tupleSize + f] >> 3] |= (1 << ((offsets[pno * tupleSize + f] & 7)));
-					offsets[pno * tupleSize + f] += p;
+				while (offsets[pno*tupleSize + f] < _parameters.sieveSize) {
+					sieve[offsets[pno*tupleSize + f] >> 3] |= (1 << ((offsets[pno*tupleSize + f] & 7)));
+					offsets[pno*tupleSize + f] += p;
 				}
-				offsets[pno * tupleSize + f] -= _parameters.sieveSize;
+				offsets[pno*tupleSize + f] -= _parameters.sieveSize;
 			}
 		}
 		
@@ -523,13 +527,13 @@ void Miner::process(WorkData block) {
 		for (int32_t i(0) ; i < n_workers; i++)
 			_workerDoneQueue.pop_front();
 		
-		__m128i *sp128 = (__m128i *)sieve;
+		__m128i *sp128 = (__m128i*) sieve;
 		for (uint64_t i(0) ; i < _parameters.sieveWords/2 ; i++) {
 			__m128i s128;
 			s128 = _mm_load_si128(&sp128[i]);
 			for (int j(0) ; j < _parameters.sieveWorkers; j++) {
 				__m128i ws128;
-				ws128 = _mm_load_si128(&((__m128i *)(_sieves[j]))[i]);
+				ws128 = _mm_load_si128(&((__m128i*) (_sieves[j]))[i]);
 				s128 = _mm_or_si128(s128, ws128);
 			}
 			_mm_store_si128(&sp128[i], s128);
