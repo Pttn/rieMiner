@@ -90,20 +90,21 @@ C VIA nano	 4.75
 	.text
 	ALIGN(16)
 PROLOGUE(rie_mod_1s_4p)
-	push	%r15
 	push	%r14
 	push	%r13
 	push	%r12
 	push	%rbp
 	push	%rbx
 
-	mov	%rdx, %r15
+	push	%rdx
 	mov	%rcx, %r14
-	mov	16(%rcx), %r11		C B1modb
-	mov	24(%rcx), %rbx		C B2modb
-	mov	32(%rcx), %rbp		C B3modb
-	mov	40(%rcx), %r13		C B4modb
-	mov	48(%rcx), %r12		C B5modb
+	mov	8(%rcx), %r11		C B1modb
+	shl     $8, %r11                C Mask out cnt
+	shr     $8, %r11
+	mov	16(%rcx), %rbx		C B2modb
+	mov	24(%rcx), %rbp		C B3modb
+	mov	32(%rcx), %r13		C B4modb
+	mov	40(%rcx), %r12		C B5modb
 	xor	R32(%r8), R32(%r8)
 	mov	R32(%rsi), R32(%rdx)
 	and	$3, R32(%rdx)
@@ -177,7 +178,8 @@ L(m0):	add	%rax, %r9
 L(m1):	sub	$4, %rsi
 	ja	L(top)
 
-L(end):	mov	8(%r14), R32(%rsi)
+L(end):	mov	12(%r14), R32(%rsi)
+	shr	$24, R32(%rsi)
 	mov	%r8, %rax
 	mul	%r11
 	mov	%rax, %r8
@@ -192,7 +194,7 @@ L(end):	mov	8(%r14), R32(%rsi)
 	or	%rdx, %rdi
 	mov	%rdi, %rax
 	mulq	(%r14)
-	mov	%r15, %rbx
+	pop	%rbx
 	mov	%rax, %r9
 	sal	R8(%rcx), %r8
 	inc	%rdi
@@ -212,7 +214,6 @@ dnl	shr	R8(%rcx), %rax
 	pop	%r12
 	pop	%r13
 	pop	%r14
-	pop	%r15
 	ret
 
 	ALIGN(16)
@@ -232,9 +233,9 @@ dnl	ASSERT(nz, `test $15, %rsp')
 	mov	%r12, %r8
 	mov	%rax, %r11
 	mov	%rax, (%rbx)		C store bi
-	mov	%rbp, 8(%rbx)		C store cnt
 	neg	%r8
 	mov	R32(%rbp), R32(%rcx)
+	shl     $56, %rbp
 	mov	$1, R32(%rsi)
 	shld	R8(%rcx), %rax, %rsi	C FIXME: Slow on Atom and Nano
 	imul	%r8, %rsi
@@ -242,7 +243,8 @@ dnl	ASSERT(nz, `test $15, %rsp')
 
 	add	%rsi, %rdx
 	shr	R8(%rcx), %rsi
-	mov	%rsi, 16(%rbx)		C store B1modb
+	or      %rbp, %rsi
+	mov	%rsi, 8(%rbx)		C store B1modb
 
 	not	%rdx
 	imul	%r12, %rdx
@@ -254,7 +256,7 @@ dnl	ASSERT(nz, `test $15, %rsp')
 
 	add	%rsi, %rdx
 	shr	R8(%rcx), %rsi
-	mov	%rsi, 24(%rbx)		C store B2modb
+	mov	%rsi, 16(%rbx)		C store B2modb
 
 	not	%rdx
 	imul	%r12, %rdx
@@ -266,7 +268,7 @@ dnl	ASSERT(nz, `test $15, %rsp')
 
 	add	%rsi, %rdx
 	shr	R8(%rcx), %rsi
-	mov	%rsi, 32(%rbx)		C store B3modb
+	mov	%rsi, 24(%rbx)		C store B3modb
 
 	not	%rdx
 	imul	%r12, %rdx
@@ -278,7 +280,7 @@ dnl	ASSERT(nz, `test $15, %rsp')
 
 	add	%rsi, %rdx
 	shr	R8(%rcx), %rsi
-	mov	%rsi, 40(%rbx)		C store B4modb
+	mov	%rsi, 32(%rbx)		C store B4modb
 
 	not	%rdx
 	imul	%r12, %rdx
@@ -287,7 +289,7 @@ dnl	ASSERT(nz, `test $15, %rsp')
 	cmovnc	%rdx, %r12
 
 	shr	R8(%rcx), %r12
-	mov	%r12, 48(%rbx)		C store B5modb
+	mov	%r12, 40(%rbx)		C store B5modb
 
 	pop	%r12
 	pop	%rbx

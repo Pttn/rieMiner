@@ -15,8 +15,8 @@ uint32_t *offsets(NULL);
 #define	zeroesBeforeHashInPrime	8
 
 extern "C" {
-	void rie_mod_1s_4p_cps (mp_limb_t cps[7], mp_limb_t b);
-	mp_limb_t rie_mod_1s_4p (mp_srcptr ap, mp_size_t n, mp_limb_t b, const mp_limb_t cps[7]);
+	void rie_mod_1s_4p_cps (mp_limb_t cps[6], mp_limb_t b);
+	mp_limb_t rie_mod_1s_4p (mp_srcptr ap, mp_size_t n, mp_limb_t b, const mp_limb_t cps[6]);
 }
 
 void Miner::init() {
@@ -37,27 +37,29 @@ void Miner::init() {
 	std::transform(_parameters.primeTupleOffset.begin(), _parameters.primeTupleOffset.end(), std::back_inserter(_halfPrimeTupleOffset),
 	               [](uint64_t n) { assert(n <= 6); return n >> 1; });
 	
-	std::cout << "Generating prime table using sieve of Eratosthenes...";
-	std::vector<uint8_t> vfComposite;
-	vfComposite.resize((_parameters.sieve + 7)/8, 0);
-	for (uint64_t nFactor(2) ; nFactor*nFactor < _parameters.sieve ; nFactor++) {
-		if (vfComposite[nFactor >> 3] & (1 << (nFactor & 7))) continue;
-		for (uint64_t nComposite(nFactor*nFactor) ; nComposite < _parameters.sieve ; nComposite += nFactor)
-			vfComposite[nComposite >> 3] |= 1 << (nComposite & 7);
+	{
+		std::cout << "Generating prime table using sieve of Eratosthenes...";
+		std::vector<uint8_t> vfComposite;
+		vfComposite.resize((_parameters.sieve + 7)/8, 0);
+		for (uint64_t nFactor(2) ; nFactor*nFactor < _parameters.sieve ; nFactor++) {
+			if (vfComposite[nFactor >> 3] & (1 << (nFactor & 7))) continue;
+			for (uint64_t nComposite(nFactor*nFactor) ; nComposite < _parameters.sieve ; nComposite += nFactor)
+				vfComposite[nComposite >> 3] |= 1 << (nComposite & 7);
+		}
+		for (uint64_t n(2) ; n < _parameters.sieve ; n++) {
+			if (!(vfComposite[n >> 3] & (1 << (n & 7))))
+				_parameters.primes.push_back(n);
+		}
+		_nPrimes = _parameters.primes.size();
+		std::cout << " Done!" << std::endl << "Table with all " << _nPrimes << " first primes generated." << std::endl;
 	}
-	for (uint64_t n(2) ; n < _parameters.sieve ; n++) {
-		if (!(vfComposite[n >> 3] & (1 << (n & 7))))
-			_parameters.primes.push_back(n);
-	}
-	_nPrimes = _parameters.primes.size();
-	std::cout << " Done!" << std::endl << "Table with all " << _nPrimes << " first primes generated." << std::endl;
 	
 	mpz_init_set_ui(_primorial, _parameters.primes[0]);
 	for (uint64_t i(1) ; i < _parameters.primorialNumber ; i++)
 		mpz_mul_ui(_primorial, _primorial, _parameters.primes[i]);
 	
 	_parameters.inverts.resize(_nPrimes);
-	_parameters.modPrecompute.resize(_nPrimes * 7);
+	_parameters.modPrecompute.resize(_nPrimes * 6);
 	
 	mpz_t z_tmp, z_p;
 	mpz_init(z_tmp);
@@ -66,7 +68,7 @@ void Miner::init() {
 		mpz_set_ui(z_p, _parameters.primes[i]);
 		mpz_invert(z_tmp, _primorial, z_p);
 		_parameters.inverts[i] = mpz_get_ui(z_tmp);
-		rie_mod_1s_4p_cps(&_parameters.modPrecompute[i*7], _parameters.primes[i]);
+		rie_mod_1s_4p_cps(&_parameters.modPrecompute[i*6], _parameters.primes[i]);
 	}
 	mpz_clear(z_p);
 	mpz_clear(z_tmp);
@@ -136,9 +138,9 @@ void Miner::_updateRemainders(uint64_t start_i, uint64_t end_i) {
 
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
 		uint64_t p(_parameters.primes[i]),
-		         cnt(_parameters.modPrecompute[i*7 + 1]),
+		         cnt(_parameters.modPrecompute[i*6 + 1] >> 56),
 		         ps(p << cnt),
-		         remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, &_parameters.modPrecompute[i*7]));
+		         remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, &_parameters.modPrecompute[i*6]));
 		//if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail\n"); exit(-1); }
 		bool onceOnly(false);
 
@@ -154,7 +156,7 @@ void Miner::_updateRemainders(uint64_t start_i, uint64_t end_i) {
 			uint64_t pa(ps - remainder);
 			uint64_t r, nh, nl;
 			umul_ppmm(nh, nl, pa, invert[0]);
-			udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i*7]);
+			udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i*6]);
 			index = r >> cnt;
 			//if ((r >> cnt) != ((pa >> cnt)*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); }
 		}
