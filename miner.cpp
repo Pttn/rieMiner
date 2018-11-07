@@ -58,6 +58,7 @@ void Miner::init() {
 	for (uint64_t i(1) ; i < _parameters.primorialNumber ; i++)
 		mpz_mul_ui(_primorial, _primorial, _parameters.primes[i]);
 	
+	// Consider requested memory limit
 	uint64_t maxMemory(_manager->options().maxMem()),
 	         precompPrimes;
 	if (maxMemory < 1000000000)
@@ -74,6 +75,9 @@ void Miner::init() {
 		else
 			precompPrimes = std::min(_nPrimes, (maxMemory - _nPrimes * 24) / 32);
 	}
+
+	// Precomputation only works up to p=2^37
+	precompPrimes = std::min(precompPrimes, 5586502348UL);
 
 	_parameters.inverts.resize(_nPrimes);
 	_parameters.modPrecompute.resize(precompPrimes * 4);
