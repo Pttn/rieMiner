@@ -2,7 +2,7 @@ CXX    = g++
 M4     = m4
 AS     = as
 CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native
-LIBS   = -pthread -ljansson -lcurl -lgmp -lgmpxx -lcrypto
+LIBS   = -pthread -ljansson -lcurl -lcrypto -Wl,-Bstatic -lgmp -lgmpxx -Wl,-Bdynamic
 
 all: rieMiner
 
