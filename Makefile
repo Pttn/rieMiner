@@ -4,6 +4,11 @@ AS     = as
 CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native
 LIBS   = -pthread -ljansson -lcurl -lcrypto -Wl,-Bstatic -lgmp -lgmpxx -Wl,-Bdynamic
 
+msys_version := $(if $(findstring Msys, $(shell uname -o)),$(word 1, $(subst ., ,$(shell uname -r))),0)
+ifneq ($(msys_version), 0)
+	LIBS   += -lws2_32
+endif
+
 all: rieMiner
 
 release: CFLAGS += -DNDEBUG
