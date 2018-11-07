@@ -15,8 +15,8 @@ uint32_t *offsets(NULL);
 #define	zeroesBeforeHashInPrime	8
 
 extern "C" {
-	void rie_mod_1s_4p_cps (mp_limb_t cps[6], mp_limb_t b);
-	mp_limb_t rie_mod_1s_4p (mp_srcptr ap, mp_size_t n, mp_limb_t b, const mp_limb_t cps[6]);
+	void rie_mod_1s_4p_cps (uint64_t cps[4], uint64_t b);
+	mp_limb_t rie_mod_1s_4p (mp_srcptr ap, mp_size_t n, uint64_t b, const uint64_t cps[4]);
 }
 
 void Miner::init() {
@@ -38,7 +38,7 @@ void Miner::init() {
 	               [](uint64_t n) { assert(n <= 6); return n >> 1; });
 	
 	{
-		std::cout << "Generating prime table using sieve of Eratosthenes...";
+		std::cout << "Generating prime table using sieve of Eratosthenes..." << std::endl;
 		std::vector<uint8_t> vfComposite;
 		vfComposite.resize((_parameters.sieve + 7)/8, 0);
 		for (uint64_t nFactor(2) ; nFactor*nFactor < _parameters.sieve ; nFactor++) {
@@ -51,15 +51,32 @@ void Miner::init() {
 				_parameters.primes.push_back(n);
 		}
 		_nPrimes = _parameters.primes.size();
-		std::cout << " Done!" << std::endl << "Table with all " << _nPrimes << " first primes generated." << std::endl;
+		std::cout << "Table with all " << _nPrimes << " first primes generated." << std::endl;
 	}
 	
 	mpz_init_set_ui(_primorial, _parameters.primes[0]);
 	for (uint64_t i(1) ; i < _parameters.primorialNumber ; i++)
 		mpz_mul_ui(_primorial, _primorial, _parameters.primes[i]);
 	
+	uint64_t maxMemory(_manager->options().maxMem()),
+	         precompPrimes;
+	if (maxMemory < 1000000000)
+		precompPrimes = _nPrimes;
+	else {
+		maxMemory -= 768 * 1024 * 1024;
+		if (maxMemory < _nPrimes * 24) {
+			_nPrimes = maxMemory / 24;
+			_parameters.primes.resize(_nPrimes);
+			std::cout << "Reducing number of primes to " << _nPrimes << " due to memory limit" << std::endl;
+			std::cout << "Sieve max = " << _parameters.primes[_nPrimes - 1] << std::endl;
+			precompPrimes = 0;
+		}
+		else
+			precompPrimes = std::min(_nPrimes, (maxMemory - _nPrimes * 24) / 32);
+	}
+
 	_parameters.inverts.resize(_nPrimes);
-	_parameters.modPrecompute.resize(_nPrimes * 6);
+	_parameters.modPrecompute.resize(precompPrimes * 4);
 	
 	mpz_t z_tmp, z_p;
 	mpz_init(z_tmp);
@@ -68,7 +85,7 @@ void Miner::init() {
 		mpz_set_ui(z_p, _parameters.primes[i]);
 		mpz_invert(z_tmp, _primorial, z_p);
 		_parameters.inverts[i] = mpz_get_ui(z_tmp);
-		rie_mod_1s_4p_cps(&_parameters.modPrecompute[i*6], _parameters.primes[i]);
+		if (i < precompPrimes) rie_mod_1s_4p_cps(&_parameters.modPrecompute[i*4], _parameters.primes[i]);
 	}
 	mpz_clear(z_p);
 	mpz_clear(z_tmp);
@@ -125,7 +142,7 @@ void Miner::_putOffsetsInSegments(uint64_t *offsets, int n_offsets) {
 	_bucketLock.unlock();
 }
 
-void Miner::_updateRemainders(uint64_t start_i, uint64_t end_i) {
+void Miner::_updateRemainders(uint64_t start_i, uint64_t end_i, bool usePrecomp) {
 	mpz_t tar;
 	mpz_init(tar);
 	mpz_set(tar, z_verifyTarget);
@@ -137,28 +154,36 @@ void Miner::_updateRemainders(uint64_t start_i, uint64_t end_i) {
 		offset_stack = new uint64_t[OFFSET_STACK_SIZE];
 
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
-		uint64_t p(_parameters.primes[i]),
-		         cnt(_parameters.modPrecompute[i*6 + 1] >> 56),
-		         ps(p << cnt),
-		         remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, &_parameters.modPrecompute[i*6]));
-		//if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail\n"); exit(-1); }
-		bool onceOnly(false);
+		uint64_t p(_parameters.primes[i]);
 
 		/* Also update the offsets unless once only */
-		if (p >= _parameters.maxIncrements)
-			onceOnly = true;
-		 
+		bool onceOnly(p >= _parameters.maxIncrements);
+
 		uint64_t invert[4];
 		invert[0] = _parameters.inverts[i];
 
+		/* Compute the index, using precomputation speed up if available. */
 		uint64_t index;
-		{
-			uint64_t pa(ps - remainder);
-			uint64_t r, nh, nl;
+		if (usePrecomp) {
+			uint64_t cnt(_parameters.modPrecompute[i*4 + 3] >> 57),
+			         ps(p << cnt),
+			         remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, &_parameters.modPrecompute[i*4]));
+			//if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail\n"); exit(-1); }
+			{
+				uint64_t pa(ps - remainder);
+				uint64_t r, nh, nl;
+				umul_ppmm(nh, nl, pa, invert[0]);
+				udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i*4]);
+				index = r >> cnt;
+				//if ((r >> cnt) != ((pa >> cnt)*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); }
+			}
+		}
+		else {
+			uint64_t remainder(mpz_tdiv_ui(tar, p)),
+			         pa(p - remainder),
+			         q, nh, nl;
 			umul_ppmm(nh, nl, pa, invert[0]);
-			udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i*6]);
-			index = r >> cnt;
-			//if ((r >> cnt) != ((pa >> cnt)*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); }
+			udiv_qrnnd(q, index, nh, nl, p);
 		}
 
 		invert[1] = (invert[0] << 1);
@@ -286,10 +311,12 @@ void Miner::_verifyThread() {
 
 	while (true) {
 		auto job(_verifyWorkQueue.pop_front());
+		auto startTime(std::chrono::high_resolution_clock::now());
 		
 		if (job.type == TYPE_MOD) {
-			_updateRemainders(job.modWork.start, job.modWork.end);
+			_updateRemainders(job.modWork.start, job.modWork.end, _parameters.modPrecompute.size() >= job.modWork.end * 4);
 			_workerDoneQueue.push_back(1);
+			_modTime += std::chrono::duration_cast<decltype(_modTime)>(std::chrono::high_resolution_clock::now() - startTime);
 			continue;
 		}
 		
@@ -299,6 +326,7 @@ void Miner::_verifyThread() {
 			else
 				_processSieve(_sieves[job.sieveWork.sieveId], job.sieveWork.start, job.sieveWork.end);
 			_workerDoneQueue.push_back(1);
+			_sieveTime += std::chrono::duration_cast<decltype(_sieveTime)>(std::chrono::high_resolution_clock::now() - startTime);
 			continue;
 		}
 		// fallthrough:	job.type == TYPE_CHECK
@@ -357,6 +385,7 @@ void Miner::_verifyThread() {
 			}
 			
 			_testDoneQueue.push_back(1);
+			_verifyTime += std::chrono::duration_cast<decltype(_verifyTime)>(std::chrono::high_resolution_clock::now() - startTime);
 		}
 	}
 }
@@ -452,6 +481,10 @@ void Miner::process(WorkData block) {
 		}
 	}
 	uint8_t *sieve(riecoin_sieve);
+
+	_modTime = _modTime.zero();
+	_sieveTime = _sieveTime.zero();
+	_verifyTime = _verifyTime.zero();
 	
 	mpz_t z_target, z_temp, z_remainderPrimorial;
 	
@@ -618,5 +651,7 @@ void Miner::process(WorkData block) {
 			outstandingTests -= _verifyWorkQueue.clear();
 	}
 	
+	//std::cout << "Block timing: " << _modTime.count() << ", " << _sieveTime.count() << ", " << _verifyTime.count() << std::endl;
+
 	mpz_clears(z_target, z_temp, z_remainderPrimorial, NULL);
 }

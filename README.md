@@ -112,6 +112,7 @@ It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; a
 * Sieve : size of the sieve table used for mining. Use a bigger number if you have more RAM, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^31;
 * Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6;
 * Refresh : refresh rate of the stats in seconds. 0 to disable them; will only notify when a k-tuple or share (k >= Tuples option value if solo mining) is found, or when the network finds a block. Default: 30;
+* MaxMemory : set an approximate limit on amount of memory to use. 0 for no limit. Default: 0;
 * TestDiff : only for Benchmark, sets the testing difficulty (must be from 265 to 32767). Default: 1600;
 * TestTime : only for Benchmark, sets the testing duration in s. 0 for no time limit. Default: 0;
 * Test3t : only for Benchmark, stops testing after finding this number of 3-tuples. 0 for no limit. Default: 1000;
@@ -146,7 +147,7 @@ Note that you must use different tuples counts files if you use different conste
 
 ### Memory problems
 
-If you have memory errors, try to lower the Sieve value.
+If you have memory errors, try to lower the Sieve value or set MaxMemory to control memory usage.
 
 ## Statistics
 

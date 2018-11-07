@@ -350,6 +350,11 @@ void Options::loadConf() {
 					try {_pOff = std::stoll(value);}
 					catch (...) {_pOff = 16057;}
 				}
+				else if (key == "MaxMemory") {
+					try {_maxMem = std::stoll(value);}
+					catch (...) {_maxMem = 0;}
+					if (_maxMem > 0 && _maxMem < 1024 * 1024 * 1024) _maxMem = 1024 * 1024 * 1024;
+				}
 				else if (key == "ConsType") {
 					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
 					std::stringstream offsets(value);
@@ -391,6 +396,8 @@ void Options::loadConf() {
 		std::cout << "Payout address = " << _address << std::endl;
 	std::cout << "Threads = " << _threads << std::endl;
 	std::cout << "Sieve max = " << _sieve << std::endl;
+	if (_maxMem != 0)
+		std::cout << "Max Memory = " << _maxMem << std::endl;
 	if (_protocol == "Benchmark")
 		std::cout << "Will notify tuples of at least length = " << (uint16_t) _tuples << std::endl;
 	else if (_protocol != "Stratum")

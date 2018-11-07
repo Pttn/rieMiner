@@ -255,6 +255,7 @@ class Options {
 	uint16_t _port, _threads;
 	uint32_t _refresh, _testDiff, _testTime, _test3t;
 	uint64_t _sieve, _pn, _pOff;
+	uint64_t _maxMem;
 	std::vector<uint64_t> _consType;
 	
 	void parseLine(std::string, std::string&, std::string&) const;
@@ -277,6 +278,7 @@ class Options {
 		_test3t   = 1000;
 		_pn       = 40; // Primorial Number
 		_pOff     = 16057; // Primorial Offset
+		_maxMem   = 0;
 		_consType = {0, 4, 2, 4, 2, 4}; // What type of constellations are we mining (offsets)
 	}
 	
@@ -299,6 +301,7 @@ class Options {
 	uint32_t test3t() const {return _test3t;}
 	uint64_t pn() const {return _pn;}
 	uint64_t pOff() const {return _pOff;}
+	uint64_t maxMem() const {return _maxMem;}
 	std::vector<uint64_t> consType() const {return _consType;}
 };
 
