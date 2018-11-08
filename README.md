@@ -56,7 +56,7 @@ pacman -S mingw64/mingw-w64-x86_64-curl
 
 Recommended: move the rieMiner's folder to the MSYS2 home directory.
 
-Edit the Makefile and add -lws2_32 at the end of the LIBS line, go to the rieMiner's directory with cd, and finally compile with make.
+Go to the rieMiner's directory with cd, and compile with make.
 
 #### Static building
 
@@ -66,7 +66,7 @@ First, edit the Makefile add "-D CURL_STATICLIB" at the end of the CFLAGS line, 
 
 ```
 CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native -D CURL_STATICLIB
-LIBS   = -static -pthread -ljansson -lcurl -lgmp -lgmpxx -lcrypto -lws2_32
+LIBS   = -static -pthread -ljansson -lcurl -lgmp -lgmpxx -lcrypto
 ```
 
 Then, download the [latest official libcurl code](https://curl.haxx.se/download.html) on their website, under "Source Archives", and decompress the folder somewhere (for example, next to the rieMiner's one).
