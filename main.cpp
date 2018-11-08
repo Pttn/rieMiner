@@ -353,7 +353,7 @@ void Options::loadConf() {
 				else if (key == "MaxMemory") {
 					try {_maxMem = std::stoll(value);}
 					catch (...) {_maxMem = 0;}
-					_maxMem *= 1024 * 1024 * 1024;
+					_maxMem *= 1024*1024*1024;
 				}
 				else if (key == "ConsType") {
 					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}

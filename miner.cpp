@@ -64,8 +64,8 @@ void Miner::init() {
 	if (maxMemory < 1000000000)
 		precompPrimes = _nPrimes;
 	else {
-		maxMemory -= 768 * 1024 * 1024;
-		if (maxMemory < _nPrimes * 24) {
+		maxMemory -= 768*1024*1024;
+		if (maxMemory < _nPrimes*24) {
 			_nPrimes = maxMemory / 24;
 			_parameters.primes.resize(_nPrimes);
 			std::cout << "Reducing number of primes to " << _nPrimes << " due to memory limit" << std::endl;
@@ -73,14 +73,14 @@ void Miner::init() {
 			precompPrimes = 0;
 		}
 		else
-			precompPrimes = std::min(_nPrimes, (maxMemory - _nPrimes * 24) / 32);
+			precompPrimes = std::min(_nPrimes, (maxMemory - _nPrimes*24) / 32);
 	}
 
 	// Precomputation only works up to p=2^37
 	precompPrimes = std::min(precompPrimes, 5586502348UL);
 
 	_parameters.inverts.resize(_nPrimes);
-	_parameters.modPrecompute.resize(precompPrimes * 4);
+	_parameters.modPrecompute.resize(precompPrimes*4);
 	
 	mpz_t z_tmp, z_p;
 	mpz_init(z_tmp);
@@ -377,13 +377,8 @@ void Miner::_verifyThread() {
 				// Generate nOffset and submit
 				uint8_t nOffset[32];
 				memset(nOffset, 0x00, 32);
-#if BITS == 32
-				for(uint32_t d(0) ; d < (uint32_t) std::min(32/4, z_temp2->_mp_size) ; d++)
-					*(uint32_t*) (nOffset + d*4) = z_temp2->_mp_d[d];
-#else
 				for(uint32_t d(0) ; d < (uint32_t) std::min(32/8, z_temp2->_mp_size) ; d++)
 					*(uint64_t*) (nOffset + d*8) = z_temp2->_mp_d[d];
-#endif
 				
 				_manager->submitWork(_verifyBlock, (uint32_t*) nOffset, tupleSize);
 			}
