@@ -120,18 +120,16 @@ PROLOGUE(rie_mod_1s_4p)
 
         mov     %rcx, %rdi
         mov     %rdx, %rsi
-        mov     %r8, %rdx
-        mov     %r9, %rcx
 
-	push	%rdx
-	mov	%rcx, %r14
-	mov	8(%rcx), R32(%r11)		C B1modb
-	mov	12(%rcx), R32(%rbx)		C B2modb
-	mov	16(%rcx), R32(%rbp)		C B3modb
-	mov	20(%rcx), R32(%r13)		C B4modb
-	mov	24(%rcx), R32(%r12)		C B5modb
+	push	%r8
+	mov	%r9, %r14
+	mov	8(%r9), R32(%r11)		C B1modb
+	mov	12(%r9), R32(%rbx)		C B2modb
+	mov	16(%r9), R32(%rbp)		C B3modb
+	mov	20(%r9), R32(%r13)		C B4modb
+	mov	24(%r9), R32(%r12)		C B5modb
 
-	mov	28(%rcx), R32(%r8)
+	mov	28(%r9), R32(%r8)
 	and	$0x1ffffff, R32(%r8)
 	jz	L(nohi)
 
