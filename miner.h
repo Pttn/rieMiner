@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <math.h>
 #include <immintrin.h>
+#include <chrono>
 #include "main.h"
 #include "client.h"
 #include "tools.h"
@@ -26,7 +27,7 @@ struct MinerParameters {
 	bool solo;
 	int sieveWorkers;
 	uint64_t sieveBits, sieveSize, sieveWords, maxIncrements, maxIter, primorialOffset, denseLimit;
-	std::vector<uint64_t> primes, inverts, primeTupleOffset;
+	std::vector<uint64_t> primes, inverts, modPrecompute, primeTupleOffset;
 	
 	MinerParameters() {
 		primorialNumber = 40;
@@ -82,6 +83,8 @@ class Miner {
 	uint32_t **_segmentHits;
 	std::vector<uint64_t> _segmentCounts;
 	std::vector<uint64_t> _halfPrimeTupleOffset;
+
+	std::chrono::microseconds _modTime, _sieveTime, _verifyTime;
 	
 	bool _masterExists;
 	std::mutex _masterLock, _bucketLock;
@@ -123,7 +126,7 @@ class Miner {
 	}
 	
 	void _putOffsetsInSegments(uint64_t *offsets, int n_offsets);
-	void _updateRemainders(uint64_t start_i, uint64_t end_i);
+	void _updateRemainders(uint64_t start_i, uint64_t end_i, bool usePrecomp);
 	void _processSieve(uint8_t *sieve, uint64_t start_i, uint64_t end_i);
 	void _processSieve6(uint8_t *sieve, uint64_t start_i, uint64_t end_i);
 	void _verifyThread();

@@ -1,4 +1,4 @@
-# rieMiner 0.9β2.5
+# rieMiner 0.9β2.7
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining, and using the latest known mining algorithm. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
@@ -18,7 +18,7 @@ Only x64 systems are supported since version 0.9β2.4.
 
 ### In Debian/Ubuntu x64
 
-You can compile this C++ program with g++ and make, install them if needed. Then, get if needed the following dependencies:
+You can compile this C++ program with g++, as, m4 and make, install them if needed. Then, get if needed the following dependencies:
 
 * Jansson
 * cURL
@@ -28,7 +28,7 @@ You can compile this C++ program with g++ and make, install them if needed. Then
 On a recent enough Debian or Ubuntu, you can easily install these by doing as root:
 
 ```bash
-apt install g++ make git libjansson-dev libcurl4-openssl-dev libssl-dev libgmp-dev
+apt install g++ make m4 git libjansson-dev libcurl4-openssl-dev libssl-dev libgmp-dev
 ```
 
 Then, just download the source files, go/cd to the directory, and do a simple make:
@@ -56,7 +56,7 @@ pacman -S mingw64/mingw-w64-x86_64-curl
 
 Recommended: move the rieMiner's folder to the MSYS2 home directory.
 
-Edit the Makefile and add -lws2_32 at the end of the LIBS line, go to the rieMiner's directory with cd, and finally compile with make.
+Go to the rieMiner's directory with cd, and compile with make.
 
 #### Static building
 
@@ -66,7 +66,7 @@ First, edit the Makefile add "-D CURL_STATICLIB" at the end of the CFLAGS line, 
 
 ```
 CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native -D CURL_STATICLIB
-LIBS   = -static -pthread -ljansson -lcurl -lgmp -lgmpxx -lcrypto -lws2_32
+LIBS   = -static -pthread -ljansson -lcurl -lgmp -lgmpxx -lcrypto
 ```
 
 Then, download the [latest official libcurl code](https://curl.haxx.se/download.html) on their website, under "Source Archives", and decompress the folder somewhere (for example, next to the rieMiner's one).
@@ -112,22 +112,42 @@ It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; a
 * Sieve : size of the sieve table used for mining. Use a bigger number if you have more RAM, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^31;
 * Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6;
 * Refresh : refresh rate of the stats in seconds. 0 to disable them; will only notify when a k-tuple or share (k >= Tuples option value if solo mining) is found, or when the network finds a block. Default: 30;
+* MaxMemory : set an approximate limit on amount of memory to use in GiB. 0 for no limit. Default: 0;
 * TestDiff : only for Benchmark, sets the testing difficulty (must be from 265 to 32767). Default: 1600;
 * TestTime : only for Benchmark, sets the testing duration in s. 0 for no time limit. Default: 0;
 * Test3t : only for Benchmark, stops testing after finding this number of 3-tuples. 0 for no limit. Default: 1000;
 * TCFile : Tuples Counts filename, in which rieMiner will save for each difficulty the number of tuples found. Note that there must never be more than one rieMiner instance using the same file. Default: None (special value that disables this feature).
 
-You can finally run the newly created rieMiner executable using
+### Advanced options
 
-```bash
-./rieMiner
-```
+Normally, you should never need to change them, but they can be useful for developing purposes, or maybe some further optimizations.
 
-The Riecoin community thanks you for your participation, you will be a contributor to the robustness of the Riecoin network.
+* PN : Primorial Number for the Wheel Factorization. Default: 40;
+* POff : Primorial Offset for the Wheel Factorization. Default: 16057;
+* ConsType : set your Constellation Type, i. e. the primes tuple offsets, each separated by a comma. Default: 0, 4, 2, 4, 2, 4 (values for Riecoin mining).
+
+Some possible constellations types (format: (type) -> offsets to put in the config file ; 3 first constellations (n + 0) which can be used as offsets)
+
+* 5-tuples
+  * (0, 2, 6,  8, 12) -> 0, 2, 4, 2, 4 ; 5, 11, 101,...
+  * (0, 4, 6, 10, 12) -> 0, 4, 2, 4, 2 ; 7, 97, 1867,...
+* 6-tuples
+  * (0, 4, 6, 10, 12, 16) -> 0, 4, 2, 4, 2, 4 (Riecoin) ; 7, 97, 16057,...
+* 7-tuples
+  * (0, 2, 6,  8, 12, 18, 20) -> 0, 2, 4, 2, 4, 6, 2 ; 11, 165701, 1068701,...
+  * (0, 2, 8, 12, 14, 18, 20) -> 0, 2, 6, 4, 2, 4, 2 ; 5639, 88799, 284729,...
+* 8-tuples
+  * (0, 2, 6,  8, 12, 18, 20, 26) -> 0, 2, 4, 2, 4, 6, 2, 6 ; 11, 15760091, 25658441,...
+  * (0, 2, 6, 12, 14, 20, 24, 26) -> 0, 2, 4, 6, 2, 6, 4, 2 ; 17, 1277, 113147,...
+  * (0, 6, 8, 14, 18, 20, 24, 26) -> 0, 6, 2, 6, 4, 2, 4, 2 ; 88793, 284723, 855713,...
+
+Also see the constellationsGen tool in my rieTools repository (https://github.com/Pttn/rieTools).
+
+Note that you must use different tuples counts files if you use different constellations types, and you should also if you use different Sieve sizes, to not skew the stats.
 
 ### Memory problems
 
-If you have memory errors, try to lower the Sieve value.
+If you have memory errors, try to lower the Sieve value or set MaxMemory to control memory usage.
 
 ## Statistics
 

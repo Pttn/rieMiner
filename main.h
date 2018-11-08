@@ -3,8 +3,7 @@
 #ifndef HEADER_GLOBAL_H
 #define HEADER_GLOBAL_H
 
-#define minerVersionString	"rieMiner 0.9-beta2.5"
-#define BITS	64
+#define minerVersionString	"rieMiner 0.9-beta2.7"
 
 #include <unistd.h>
 #include <string>
@@ -254,7 +253,9 @@ class Options {
 	uint8_t _tuples;
 	uint16_t _port, _threads;
 	uint32_t _refresh, _testDiff, _testTime, _test3t;
-	uint64_t _sieve;
+	uint64_t _sieve, _pn, _pOff;
+	uint64_t _maxMem;
+	std::vector<uint64_t> _consType;
 	
 	void parseLine(std::string, std::string&, std::string&) const;
 	
@@ -268,12 +269,16 @@ class Options {
 		_tcFile   = "None";
 		_port     = 28332;
 		_threads  = 8;
-		_sieve    = 1073741824;
+		_sieve    = 2147483648;
 		_tuples   = 6;
 		_refresh  = 30;
 		_testDiff = 1600;
 		_testTime = 0;
 		_test3t   = 1000;
+		_pn       = 40; // Primorial Number
+		_pOff     = 16057; // Primorial Offset
+		_maxMem   = 0;
+		_consType = {0, 4, 2, 4, 2, 4}; // What type of constellations are we mining (offsets)
 	}
 	
 	void loadConf();
@@ -293,6 +298,10 @@ class Options {
 	uint32_t testDiff() const {return _testDiff;}
 	uint32_t testTime() const {return _testTime;}
 	uint32_t test3t() const {return _test3t;}
+	uint64_t pn() const {return _pn;}
+	uint64_t pOff() const {return _pOff;}
+	uint64_t maxMem() const {return _maxMem;}
+	std::vector<uint64_t> consType() const {return _consType;}
 };
 
 class WorkManager : public std::enable_shared_from_this<WorkManager> {
@@ -305,7 +314,6 @@ class WorkManager : public std::enable_shared_from_this<WorkManager> {
 	bool _inited, _miningStarted;
 	uint16_t _waitReconnect; // Time in s to wait before reconnecting after disconnect
 	uint16_t _workRefresh;   // Time in ms for each fetch work cycle
-	std::vector<uint64_t> _constellationType; // What type of constellations are we mining (offsets)
 	
 	void minerThread();
 	
@@ -318,7 +326,7 @@ class WorkManager : public std::enable_shared_from_this<WorkManager> {
 	Options options() const {return _options;}
 	uint32_t height() const {return _stats.height();}
 	uint32_t difficulty() const {return _stats.difficulty();}
-	std::vector<uint64_t> offsets() const {return _constellationType;}
+	std::vector<uint64_t> offsets() const {return _options.consType();}
 	void printTime() const {_stats.printTime();}
 	void printTuplesStats() const {_stats.printTuplesStats();}
 	void incTupleCount(uint8_t i) {_stats.incTupleCount(i);}

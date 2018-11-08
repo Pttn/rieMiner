@@ -22,27 +22,7 @@ WorkManager::WorkManager() {
 	_miningStarted     = false;
 	_waitReconnect     = 10;
 	_workRefresh       = 500;
-	_constellationType = {0, 4, 2, 4, 2, 4};
-	_stats             = Stats(_constellationType.size());
-	/* Some possible constellations types
-	You will need to change the Primorial Offset in the MinerParameters constructor in miner.h
-	The Primorial Number may sometimes need to be lowered too
-	The sixoff[...] size should also be changed in miner.cpp
-	Format
-		(type) -> {copyable offsets} ; 3 first constellations (n + 0) which can be used as offsets
-	5-tuples
-		(0, 2, 6,  8, 12) -> {0, 2, 4, 2, 4} ; 5, 11, 101,...
-		(0, 4, 6, 10, 12) -> {0, 4, 2, 4, 2} ; 7, 97, 1867,...
-	6-tuples
-		(0, 4, 6, 10, 12, 16) -> {0, 4, 2, 4, 2, 4} (Riecoin) ; 7, 97, 16057,...
-	7-tuples
-		(0, 2, 6,  8, 12, 18, 20) -> {0, 2, 4, 2, 4, 6, 2} ; 11, 165701, 1068701,...
-		(0, 2, 8, 12, 14, 18, 20) -> {0, 2, 6, 4, 2, 4, 2} ; 5639, 88799, 284729,...
-	8-tuples
-		(0, 2, 6,  8, 12, 18, 20, 26) -> {0, 2, 4, 2, 4, 6, 2, 6} ; 11, 15760091, 25658441,...
-		(0, 2, 6, 12, 14, 20, 24, 26) -> {0, 2, 4, 6, 2, 6, 4, 2} ; 17, 1277, 113147,...
-		(0, 6, 8, 14, 18, 20, 24, 26) -> {0, 6, 2, 6, 4, 2, 4, 2} ; 88793, 284723, 855713,...
-	Also see the constellationsGen tool in my rieTools repository (https://github.com/Pttn/rieTools) */
+	_stats             = Stats(offsets().size());
 }
 
 void WorkManager::init() {
@@ -153,7 +133,7 @@ void WorkManager::manage() {
 				}
 				else {
 					std::cout << "Connected!" << std::endl;
-					_stats = Stats(_constellationType.size());
+					_stats = Stats(offsets().size());
 					_stats.loadTuplesCounts(_options.tcFile());
 					_stats.setMiningType(_options.protocol());
 				}
@@ -362,6 +342,29 @@ void Options::loadConf() {
 				else if (key == "TCFile") {
 					_tcFile = value;
 				}
+				else if (key == "PN") {
+					try {_pn = std::stoll(value);}
+					catch (...) {_pn = 40;}
+				}
+				else if (key == "POff") {
+					try {_pOff = std::stoll(value);}
+					catch (...) {_pOff = 16057;}
+				}
+				else if (key == "MaxMemory") {
+					try {_maxMem = std::stoll(value);}
+					catch (...) {_maxMem = 0;}
+					_maxMem *= 1024*1024*1024;
+				}
+				else if (key == "ConsType") {
+					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
+					std::stringstream offsets(value);
+					std::vector<uint64_t> primeTupleOffset;
+					uint64_t tmp;
+					while (offsets >> tmp) primeTupleOffset.push_back(tmp);
+					if (primeTupleOffset.size() < 2)
+						std::cout << "Too short or invalid tuple offsets, ignoring." << std::endl;
+					else _consType = primeTupleOffset;
+				}
 				else if (key == "Error")
 					std::cout << "Ignoring invalid line" << std::endl;
 				else
@@ -393,6 +396,8 @@ void Options::loadConf() {
 		std::cout << "Payout address = " << _address << std::endl;
 	std::cout << "Threads = " << _threads << std::endl;
 	std::cout << "Sieve max = " << _sieve << std::endl;
+	if (_maxMem != 0)
+		std::cout << "Max Memory = " << _maxMem << std::endl;
 	if (_protocol == "Benchmark")
 		std::cout << "Will notify tuples of at least length = " << (uint16_t) _tuples << std::endl;
 	else if (_protocol != "Stratum")
@@ -400,6 +405,17 @@ void Options::loadConf() {
 	else std::cout << "Will submit 4-shares" << std::endl;
 	std::cout << "Stats refresh rate = " << _refresh << " s" << std::endl;
 	if (_tcFile != "None") std::cout << "Tuple Count File = " << _tcFile << std::endl;
+	std::cout << "Primorial Number = " << _pn << std::endl;
+	std::cout << "Primorial Offset = " << _pOff << std::endl;
+	uint64_t offsetTemp(0);
+	std::cout << "Constellation Type = " << "(";
+	for (std::vector<uint64_t>::size_type i(0) ; i < _consType.size() ; i++) {
+		offsetTemp += _consType[i];
+		if (offsetTemp == 0) std::cout << "n";
+		else std::cout << "n + " << offsetTemp;
+		if (i != _consType.size() - 1) std::cout << ", ";
+	}
+	std::cout << "), length " << _consType.size() << std::endl;
 }
 
 void signalHandler(int signum) {
