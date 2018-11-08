@@ -1,0 +1,11 @@
+# Build artifacts
+*.o
+rieMiner
+rieMiner.exe
+
+# Per user configuration
+rieMiner.conf
+
+# Other
+rieMiner.exe.stackdump
+.*.swp
