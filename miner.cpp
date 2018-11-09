@@ -646,6 +646,9 @@ void Miner::process(WorkData block) {
 			w.testWork.n_indexes = 0;
 		}
 	}
+
+	for (int i(0) ; i < n_modWorkers ; i++)
+		_modDoneQueue.pop_front();
 	
 	outstandingTests -= _testDoneQueue.clear();
 	
