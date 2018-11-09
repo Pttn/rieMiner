@@ -14,10 +14,14 @@
 
 union xmmreg_t {
 	uint32_t v[4];
+	uint64_t v64[2];
 	__m128i m128;
 };
 
 #define PENDING_SIZE 16
+
+#define WORK_INDEXES 64
+enum JobType {TYPE_CHECK, TYPE_MOD, TYPE_SIEVE};
 
 struct MinerParameters {
 	uint64_t primorialNumber;
@@ -63,7 +67,7 @@ struct primeTestWork {
 		struct {
 			uint64_t start;
 			uint64_t end;
-			uint64_t sieveId;
+			uint32_t sieveId;
 		} sieveWork;
 	};
 };
@@ -75,8 +79,9 @@ class Miner {
 	MinerParameters _parameters;
 	
 	ts_queue<primeTestWork, 1024> _verifyWorkQueue;
-	ts_queue<int, 3096> _workerDoneQueue;
-	ts_queue<int, 3096> _testDoneQueue;
+	ts_queue<uint64_t, 1024> _modDoneQueue;
+	ts_queue<uint32_t, 128> _sieveDoneQueue;
+	ts_queue<int, 4096> _testDoneQueue;
 	mpz_t _primorial;
 	uint64_t _nPrimes, _entriesPerSegment, _primeTestStoreOffsetsSize, _startingPrimeIndex, _nDense, _nSparse;
 	uint8_t  **_sieves;
