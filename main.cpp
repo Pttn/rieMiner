@@ -53,15 +53,17 @@ void WorkManager::submitWork(WorkData wd, uint32_t* nOffset, uint8_t length) {
 	_clientMutex.unlock();
 }
 
+bool WorkManager::getWork(WorkData& wd) {
+	_clientMutex.lock();
+	wd = _client->workData();
+	_clientMutex.unlock();
+	return wd.height != 0;
+}
+
 void WorkManager::minerThread() {
 	WorkData wd;
 	while (true) {
-		bool hasValidWork(false);
-		_clientMutex.lock();
-		wd = _client->workData(); // Get generated work data from client
-		_clientMutex.unlock();
-		if (wd.height > 0) hasValidWork = true;
-		if (!hasValidWork) usleep(1000*_workRefresh/2);
+		if (!getWork(wd)) usleep(1000*_workRefresh/2);
 		else _miner->process(wd);
 	}
 }
