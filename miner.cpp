@@ -409,7 +409,10 @@ void Miner::_getTargetFromBlock(mpz_t z_target, const WorkData &block) {
 	uint64_t difficulty(mpz_sizeinbase(z_target, 2));
 	if (_manager->difficulty() != difficulty) {
 		bool save(true);
-		if (_manager->difficulty() == 1) save = false;
+		if (_manager->difficulty() == 1) {
+			std::cout << " difficulty " << difficulty << std::endl;
+			save = false;
+		}
 		_manager->updateDifficulty(difficulty, block.height);
 		if (save) _manager->saveTuplesCounts();
 	}
@@ -538,7 +541,6 @@ void Miner::process(WorkData block) {
 
 	uint64_t outstandingTests = 0;
 	for (uint64_t loop(0); loop < _parameters.maxIter; loop++) {
-		__sync_synchronize(); // gcc specific - memory barrier for checking height
 		if (block.height != _currentHeight)
 			break;
 		
@@ -600,6 +602,9 @@ void Miner::process(WorkData block) {
 
 		for (int i(0) ; i < n_sieveWorkers; i++)
 			_sieveDoneQueue.pop_front();
+
+		if (block.height != _currentHeight)
+			break;
 		
 		primeTestWork w;
 		w.testWork.n_indexes = 0;

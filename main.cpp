@@ -114,7 +114,7 @@ void WorkManager::manage() {
 						_stats.updateHeight(_client->workData().height - 1);
 						std::cout << "-----------------------------------------------------------" << std::endl;
 						uint32_t startHeight(_client->workData().height);
-						std::cout << "[0000:00:00] Started mining at block " << startHeight << std::endl;
+						std::cout << "[0000:00:00] Started mining at block " << startHeight;
 						_stats.initHeight(startHeight);
 						_miningStarted = true;
 					}
