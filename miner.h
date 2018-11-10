@@ -58,7 +58,6 @@ struct primeTestWork {
 	union {
 		struct {
 			uint64_t loop;
-			uint32_t blockHeight;
 			uint32_t numIndexes;
 			uint32_t indexes[WORK_INDEXES];
 		} testWork;
@@ -77,6 +76,7 @@ struct primeTestWork {
 struct MinerWorkData {
 	mpz_t z_verifyTarget, z_verifyRemainderPrimorial;
 	WorkData verifyBlock;
+	uint64_t outstandingTests = 0;
 };
 
 class Miner {
@@ -85,7 +85,7 @@ class Miner {
 	volatile uint32_t _currentHeight;
 	MinerParameters _parameters;
 	
-	ts_queue<primeTestWork, 1024> _verifyWorkQueue;
+	ts_queue<primeTestWork, 4096> _verifyWorkQueue;
 	ts_queue<uint64_t, 1024> _modDoneQueue;
 	ts_queue<uint32_t, 128> _sieveDoneQueue;
 	ts_queue<uint32_t, 4096> _testDoneQueue;
@@ -143,6 +143,7 @@ class Miner {
 	void _processSieve6(uint8_t *sieve, uint64_t start_i, uint64_t end_i);
 	void _verifyThread();
 	void _getTargetFromBlock(mpz_t z_target, const WorkData& block);
+	void _processOneBlock(uint32_t workDataIndex, uint8_t* sieve);
 	
 	public:
 	Miner(const std::shared_ptr<WorkManager> &manager) {
