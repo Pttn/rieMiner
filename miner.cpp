@@ -346,7 +346,7 @@ void Miner::_verifyThread() {
 			mpz_add(z_ploop, z_ploop, _workData[job.workDataIndex].z_verifyRemainderPrimorial);
 			mpz_add(z_ploop, z_ploop, _workData[job.workDataIndex].z_verifyTarget);
 
-			for (uint32_t idx(0) ; idx < job.testWork.numIndexes ; idx++) {
+			for (uint32_t idx(0) ; idx < job.testWork.n_indexes ; idx++) {
 				if (_currentHeight != _workData[job.workDataIndex].verifyBlock.height) break;
 
 				uint8_t tupleSize(0);
@@ -513,7 +513,7 @@ void Miner::process(WorkData block) {
 			_workData[_testDoneQueue.pop_front()].outstandingTests--;
 		}
 
-		std::cout << "Block timing: " << _modTime.count() << ", " << _sieveTime.count() << ", " << _verifyTime.count() << "  Tests out: " << _workData[0].outstandingTests << ", " << _workData[1].outstandingTests << std::endl;
+		//std::cout << "Block timing: " << _modTime.count() << ", " << _sieveTime.count() << ", " << _verifyTime.count() << "  Tests out: " << _workData[0].outstandingTests << ", " << _workData[1].outstandingTests << std::endl;
 
 	} while (_manager->getWork(_workData[workDataIndex].verifyBlock));
 
@@ -580,7 +580,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 	 * 3)	Sieve "so sparse they happen at most once" primes;
 	 * 4)	Scan sieve for candidates, test, report
 	 */
-	for (int i(0) ; i < _parameters.sieveWorkers * 2 ; i++)
+	for (int i(0) ; i < _parameters.sieveWorkers ; i++)
 		memset(_sieves[i], 0, _parameters.sieveSize/8);
 		
 	wi.type = TYPE_SIEVE;
@@ -681,7 +681,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 		}
 
 		primeTestWork w;
-		w.testWork.numIndexes = 0;
+		w.testWork.n_indexes = 0;
 		w.testWork.loop = loop;
 		w.type = TYPE_CHECK;
 		w.workDataIndex = workDataIndex;
@@ -700,10 +700,10 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 				uint32_t i((b*64) + lowsb);
 				sb &= sb - 1;
 				
-				w.testWork.indexes[w.testWork.numIndexes] = i;
-				w.testWork.numIndexes++;
+				w.testWork.indexes[w.testWork.n_indexes] = i;
+				w.testWork.n_indexes++;
 				
-				if (w.testWork.numIndexes == WORK_INDEXES) {
+				if (w.testWork.n_indexes == WORK_INDEXES) {
 					// Low overhead but still often enough
 					if (_workData[workDataIndex].verifyBlock.height != _currentHeight) {
 						reset = true;
@@ -711,7 +711,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 					}
 
 					_verifyWorkQueue.push_back(w);
-					w.testWork.numIndexes = 0;
+					w.testWork.n_indexes = 0;
 					_workData[workDataIndex].outstandingTests++;
 				}
 			}
@@ -720,7 +720,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 		verifySieve += _parameters.sieveWorkers;
 		if (verifySieve == _parameters.sieveWorkers * 2) verifySieve = 0;
 
-		if (w.testWork.numIndexes > 0) {
+		if (w.testWork.n_indexes > 0) {
 			_verifyWorkQueue.push_back(w);
 			_workData[workDataIndex].outstandingTests++;
 		}

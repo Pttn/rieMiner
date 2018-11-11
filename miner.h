@@ -58,7 +58,7 @@ struct primeTestWork {
 	union {
 		struct {
 			uint64_t loop;
-			uint32_t numIndexes;
+			uint32_t n_indexes;
 			uint32_t indexes[WORK_INDEXES];
 		} testWork;
 		struct {
