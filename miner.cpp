@@ -449,7 +449,7 @@ void Miner::process(WorkData block) {
 		
 		try {
 			// std::cout << "Allocating " << _parameters.sieveWorkers << " bytes for the sieves..." << std::endl;
-			_sieves = new uint8_t*[_parameters.sieveWorkers];
+			_sieves = new uint8_t*[_parameters.sieveWorkers * 2];
 		}
 		catch (std::bad_alloc& ba) {
 			std::cerr << "Unable to allocate memory for the sieves :|..." << std::endl;
@@ -458,7 +458,7 @@ void Miner::process(WorkData block) {
 		
 		try {
 			// std::cout << "Allocating " << _parameters.sieveSize/8*_parameters.sieveWorkers << " bytes for the sieves..." << std::endl;
-			for (int i(0) ; i < _parameters.sieveWorkers; i++)
+			for (int i(0) ; i < _parameters.sieveWorkers*2; i++)
 				_sieves[i] = new uint8_t[_parameters.sieveSize/8];
 		}
 		catch (std::bad_alloc& ba) {
@@ -577,39 +577,39 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 	 * 3)	Sieve "so sparse they happen at most once" primes;
 	 * 4)	Scan sieve for candidates, test, report
 	 */
+	for (int i(0) ; i < _parameters.sieveWorkers * 2 ; i++)
+		memset(_sieves[i], 0, _parameters.sieveSize/8);
+		
+	wi.type = TYPE_SIEVE;
+	int n_sieveWorkers(0);
+	incr = (_nSparse/_parameters.sieveWorkers);
+	uint64_t round(8 - (incr & 0x7));
+	incr += round;
+	int whichSieve(0),
+	    verifySieve(0);
+	for (uint64_t base(_nDense) ; base < (_nDense + _nSparse) ; base += incr) {
+		uint64_t lim(std::min(_nDense + _nSparse,
+		                      base + incr));
+		if (lim + 1000 > _nDense + _nSparse)
+			lim = (_nDense+_nSparse);
+		wi.sieveWork.start = base + _startingPrimeIndex;
+		wi.sieveWork.end = lim + _startingPrimeIndex;
+		wi.sieveWork.sieveId = whichSieve;
+		// Need to do something for thread to sieve affinity
+		if (n_modWorkers == 0 || busy) _verifyWorkQueue.push_front(wi);
+		else _verifyWorkQueue.push_back(wi);
+		whichSieve++;
+		n_sieveWorkers++;
+		if (lim + 1000 > _nDense + _nSparse)
+			break;
+	}
+	assert(n_sieveWorkers == _parameters.sieveWorkers);
 
 	assert(_workData[workDataIndex].outstandingTests == 0);
 	for (uint64_t loop(0); loop < _parameters.maxIter; loop++) {
 		if (_workData[workDataIndex].verifyBlock.height != _currentHeight)
 			break;
 		
-		for (int i(0) ; i < _parameters.sieveWorkers ; i++)
-			memset(_sieves[i], 0, _parameters.sieveSize/8);
-		
-		wi.type = TYPE_SIEVE;
-		int n_sieveWorkers(0);
-		incr = (_nSparse/_parameters.sieveWorkers);
-		uint64_t round(8 - (incr & 0x7));
-		incr += round;
-		int which_sieve(0);
-		for (uint64_t base(_nDense) ; base < (_nDense + _nSparse) ; base += incr) {
-			uint64_t lim(std::min(_nDense + _nSparse,
-			                      base + incr));
-			if (lim + 1000 > _nDense + _nSparse)
-				lim = (_nDense+_nSparse);
-			wi.sieveWork.start = base + _startingPrimeIndex;
-			wi.sieveWork.end = lim + _startingPrimeIndex;
-			wi.sieveWork.sieveId = which_sieve;
-			// Need to do something for thread to sieve affinity
-			if (n_modWorkers == 0 || busy) _verifyWorkQueue.push_front(wi);
-			else _verifyWorkQueue.push_back(wi);
-			which_sieve++;
-			which_sieve %= _parameters.sieveWorkers;
-			n_sieveWorkers++;
-			if (lim + 1000 > _nDense + _nSparse)
-				break;
-		}
-
 		memset(sieve, 0, _parameters.sieveSize/8);
 		
 		const uint64_t tupleSize(_parameters.primeTupleOffset.size());
@@ -642,10 +642,37 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 
 		for (int i(0) ; i < n_sieveWorkers ; i++)
 			_sieveDoneQueue.pop_front();
+		n_sieveWorkers = 0;
 
 		if (_workData[workDataIndex].verifyBlock.height != _currentHeight)
 			break;
 		
+		// Kick off next set of sieving
+		if (loop + 1 < _parameters.maxIter) {
+			for (int i(whichSieve) ; i < whichSieve + _parameters.sieveWorkers ; i++)
+				memset(_sieves[i], 0, _parameters.sieveSize/8);
+		
+			for (uint64_t base(_nDense) ; base < (_nDense + _nSparse) ; base += incr) {
+				uint64_t lim(std::min(_nDense + _nSparse,
+				                      base + incr));
+				if (lim + 1000 > _nDense + _nSparse)
+					lim = (_nDense+_nSparse);
+				wi.sieveWork.start = base + _startingPrimeIndex;
+				wi.sieveWork.end = lim + _startingPrimeIndex;
+				wi.sieveWork.sieveId = whichSieve;
+				// Need to do something for thread to sieve affinity
+				if (n_modWorkers == 0 || busy) _verifyWorkQueue.push_front(wi);
+				else _verifyWorkQueue.push_back(wi);
+				whichSieve++;
+				n_sieveWorkers++;
+				if (lim + 1000 > _nDense + _nSparse)
+					break;
+			}
+			assert(n_sieveWorkers == _parameters.sieveWorkers);
+			
+			if (whichSieve == _parameters.sieveWorkers * 2) whichSieve = 0;
+		}
+
 		primeTestWork w;
 		w.testWork.numIndexes = 0;
 		w.testWork.loop = loop;
@@ -656,7 +683,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 		uint64_t *sieve64 = (uint64_t*) sieve;
 		for(uint32_t b(0) ; !reset && b < _parameters.sieveWords ; b++) {
 			uint64_t sb(sieve64[b]);
-			for (int j(0) ; j < _parameters.sieveWorkers; j++) {
+			for (int j(verifySieve) ; j < verifySieve + _parameters.sieveWorkers; j++) {
 				sb |= ((uint64_t*)_sieves[j])[b];
 			}
 			sb = ~sb;
@@ -683,6 +710,9 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 			}
 		}
 
+		verifySieve += _parameters.sieveWorkers;
+		if (verifySieve == _parameters.sieveWorkers * 2) verifySieve = 0;
+
 		if (w.testWork.numIndexes > 0) {
 			_verifyWorkQueue.push_back(w);
 			_workData[workDataIndex].outstandingTests++;
@@ -692,5 +722,8 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 	for (int i(0) ; i < n_modWorkers ; i++)
 		_modDoneQueue.pop_front();
 	
+	for (int i(0) ; i < n_sieveWorkers ; i++)
+		_sieveDoneQueue.pop_front();
+
 	mpz_clears(z_target, z_temp, z_remainderPrimorial, NULL);
 }
