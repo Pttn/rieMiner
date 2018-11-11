@@ -41,7 +41,7 @@ struct MinerParameters {
 		sieve           = 2147483648;
 		sieveWorkers    = 2;
 		solo            = true;
-		sieveBits       = 25;
+		sieveBits       = 24;
 		sieveSize       = 1UL << sieveBits;
 		sieveWords      = sieveSize/64;
 		maxIncrements   = (1ULL << 29),
