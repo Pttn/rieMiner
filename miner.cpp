@@ -334,7 +334,9 @@ void Miner::_verifyThread() {
 			else
 				_processSieve(_sieves[job.sieveWork.sieveId], job.sieveWork.start, job.sieveWork.end);
 			_sieveDoneQueue.push_back(job.sieveWork.sieveId);
-			_sieveTime += std::chrono::duration_cast<decltype(_sieveTime)>(std::chrono::high_resolution_clock::now() - startTime);
+			auto myTime = std::chrono::duration_cast<decltype(_sieveTime)>(std::chrono::high_resolution_clock::now() - startTime);
+			//std::cout << "Sieve " << job.sieveWork.sieveId << " Time: " << myTime.count() << std::endl;
+			_sieveTime += myTime;
 			continue;
 		}
 		// fallthrough:	job.type == TYPE_CHECK
@@ -490,7 +492,7 @@ void Miner::process(WorkData block) {
 	}
 	uint8_t *sieve(riecoin_sieve);
 
-	uint32_t maxWorkOut(_manager->options().threads() * 32);
+	uint32_t maxWorkOut(_parameters.threads * 32);
 	uint32_t workDataIndex(0);
 	_workData[workDataIndex].verifyBlock = block;
 
@@ -550,11 +552,11 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 	int n_lowModWorkers(0);
 
 	bool busy(false);
-	uint64_t incr(_nPrimes/128);
+	uint64_t incr(_nPrimes/(_parameters.threads*2));
 	if (_verifyWorkQueue.size() != 0) {
-		// Just use 4 jobs to reduce lock contention and allow other threads to keep processing verify tests.
+		// Just use half the threads to reduce lock contention and allow other threads to keep processing verify tests.
 		busy = true;
-		incr = _nPrimes/4;
+		incr = _nPrimes/(_parameters.threads/2);
 	}
 	for (auto base(_startingPrimeIndex) ; base < _nPrimes ; base += incr) {
 		uint64_t lim(std::min(_nPrimes, base+incr));
@@ -583,14 +585,16 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 	wi.type = TYPE_SIEVE;
 	int n_sieveWorkers(0);
 	incr = (_nSparse/_parameters.sieveWorkers);
+	if (_parameters.sieveWorkers > 1) incr /= 2;
 	uint64_t round(8 - (incr & 0x7));
 	incr += round;
 	int whichSieve(0),
 	    verifySieve(0);
 	for (uint64_t base(_nDense) ; base < (_nDense + _nSparse) ; base += incr) {
+		if (base == _nDense + incr) incr *= 2;
 		uint64_t lim(std::min(_nDense + _nSparse,
 		                      base + incr));
-		if (lim + 1000 > _nDense + _nSparse)
+		if (lim + incr/2 + 1000 > _nDense + _nSparse)
 			lim = (_nDense+_nSparse);
 		wi.sieveWork.start = base + _startingPrimeIndex;
 		wi.sieveWork.end = lim + _startingPrimeIndex;
@@ -600,7 +604,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 		else _verifyWorkQueue.push_back(wi);
 		whichSieve++;
 		n_sieveWorkers++;
-		if (lim + 1000 > _nDense + _nSparse)
+		if (lim == _nDense + _nSparse)
 			break;
 	}
 	assert(n_sieveWorkers == _parameters.sieveWorkers);
@@ -652,10 +656,12 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 			for (int i(whichSieve) ; i < whichSieve + _parameters.sieveWorkers ; i++)
 				memset(_sieves[i], 0, _parameters.sieveSize/8);
 		
+			if (_parameters.sieveWorkers > 1) incr /= 2;
 			for (uint64_t base(_nDense) ; base < (_nDense + _nSparse) ; base += incr) {
+				if (base == _nDense + incr) incr *= 2;
 				uint64_t lim(std::min(_nDense + _nSparse,
 				                      base + incr));
-				if (lim + 1000 > _nDense + _nSparse)
+				if (lim + incr/2 + 1000 > _nDense + _nSparse)
 					lim = (_nDense+_nSparse);
 				wi.sieveWork.start = base + _startingPrimeIndex;
 				wi.sieveWork.end = lim + _startingPrimeIndex;
@@ -665,7 +671,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 				else _verifyWorkQueue.push_back(wi);
 				whichSieve++;
 				n_sieveWorkers++;
-				if (lim + 1000 > _nDense + _nSparse)
+				if (lim == _nDense + _nSparse)
 					break;
 			}
 			assert(n_sieveWorkers == _parameters.sieveWorkers);
