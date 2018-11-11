@@ -138,7 +138,7 @@ class Miner {
 	}
 	
 	void _putOffsetsInSegments(uint64_t *offsets, int n_offsets);
-	void _updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t end_i, bool usePrecomp);
+	void _updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t end_i);
 	void _processSieve(uint8_t *sieve, uint64_t start_i, uint64_t end_i);
 	void _processSieve6(uint8_t *sieve, uint64_t start_i, uint64_t end_i);
 	void _verifyThread();

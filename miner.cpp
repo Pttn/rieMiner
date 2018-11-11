@@ -150,7 +150,7 @@ void Miner::_putOffsetsInSegments(uint64_t *offsets, int n_offsets) {
 	_bucketLock.unlock();
 }
 
-void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t end_i, bool usePrecomp) {
+void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t end_i) {
 	mpz_t tar;
 	mpz_init(tar);
 	mpz_set(tar, _workData[workDataIndex].z_verifyTarget);
@@ -160,6 +160,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 	const uint64_t tupleSize(_parameters.primeTupleOffset.size());
 	if (offset_stack == NULL)
 		offset_stack = new uint64_t[OFFSET_STACK_SIZE];
+	uint64_t precompLimit = _parameters.modPrecompute.size() / 4;
 
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
 		uint64_t p(_parameters.primes[i]);
@@ -172,7 +173,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 
 		/* Compute the index, using precomputation speed up if available. */
 		uint64_t index;
-		if (usePrecomp) {
+		if (i < precompLimit) {
 			uint64_t cnt(_parameters.modPrecompute[i*4 + 3] >> 57),
 			         ps(p << cnt),
 			         remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, &_parameters.modPrecompute[i*4]));
@@ -322,7 +323,7 @@ void Miner::_verifyThread() {
 		auto startTime(std::chrono::high_resolution_clock::now());
 		
 		if (job.type == TYPE_MOD) {
-			_updateRemainders(job.workDataIndex, job.modWork.start, job.modWork.end, _parameters.modPrecompute.size() >= job.modWork.end * 4);
+			_updateRemainders(job.workDataIndex, job.modWork.start, job.modWork.end);
 			_modDoneQueue.push_back(job.modWork.start);
 			_modTime += std::chrono::duration_cast<decltype(_modTime)>(std::chrono::high_resolution_clock::now() - startTime);
 			continue;
@@ -552,7 +553,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, uint8_t* sieve)
 	int n_lowModWorkers(0);
 
 	bool busy(false);
-	uint64_t incr(_nPrimes/(_parameters.threads*2));
+	uint64_t incr(_nPrimes/(_parameters.threads*4));
 	if (_verifyWorkQueue.size() != 0) {
 		// Just use half the threads to reduce lock contention and allow other threads to keep processing verify tests.
 		busy = true;
