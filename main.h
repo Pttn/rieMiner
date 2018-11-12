@@ -136,7 +136,7 @@ class Stats {
 			}
 			else {
 				std::cout << " Shares: " << _shares - _rejectedShares << "/" << _shares;
-				if (_shares > 0) std::cout << " (" << FIXED(1) << 100.*((double) _shares)/((double) _shares - _rejectedShares) << "%)";
+				if (_shares > 0) std::cout << " (" << FIXED(1) << 100.*((double) _shares - _rejectedShares)/((double) _shares) << "%)";
 				std::cout << ", sh/min = " << FIXED(1) << 60.*((double) _shares)/elapsedSecs;
 			}
 		}
