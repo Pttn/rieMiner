@@ -322,6 +322,7 @@ class WorkManager : public std::enable_shared_from_this<WorkManager> {
 	
 	void init();
 	void submitWork(WorkData wd, uint32_t* nOffset, uint8_t length);
+	bool getWork(WorkData& wd);
 	void manage();
 	Options options() const {return _options;}
 	uint32_t height() const {return _stats.height();}

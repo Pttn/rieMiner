@@ -14,10 +14,15 @@
 
 union xmmreg_t {
 	uint32_t v[4];
+	uint64_t v64[2];
 	__m128i m128;
 };
 
 #define PENDING_SIZE 16
+
+#define WORK_DATAS 2
+#define WORK_INDEXES 64
+enum JobType {TYPE_CHECK, TYPE_MOD, TYPE_SIEVE};
 
 struct MinerParameters {
 	uint64_t primorialNumber;
@@ -49,10 +54,11 @@ struct MinerParameters {
 
 struct primeTestWork {
 	JobType type;
+	uint32_t workDataIndex;
 	union {
 		struct {
 			uint64_t loop;
-			uint64_t n_indexes;
+			uint32_t n_indexes;
 			uint32_t indexes[WORK_INDEXES];
 		} testWork;
 		struct {
@@ -62,9 +68,15 @@ struct primeTestWork {
 		struct {
 			uint64_t start;
 			uint64_t end;
-			uint64_t sieveId;
+			uint32_t sieveId;
 		} sieveWork;
 	};
+};
+
+struct MinerWorkData {
+	mpz_t z_verifyTarget, z_verifyRemainderPrimorial;
+	WorkData verifyBlock;
+	uint64_t outstandingTests = 0;
 };
 
 class Miner {
@@ -73,9 +85,10 @@ class Miner {
 	volatile uint32_t _currentHeight;
 	MinerParameters _parameters;
 	
-	ts_queue<primeTestWork, 1024> _verifyWorkQueue;
-	ts_queue<int, 3096> _workerDoneQueue;
-	ts_queue<int, 3096> _testDoneQueue;
+	ts_queue<primeTestWork, 4096> _verifyWorkQueue;
+	ts_queue<uint64_t, 1024> _modDoneQueue;
+	ts_queue<uint32_t, 128> _sieveDoneQueue;
+	ts_queue<uint32_t, 4096> _testDoneQueue;
 	mpz_t _primorial;
 	uint64_t _nPrimes, _entriesPerSegment, _primeTestStoreOffsetsSize, _startingPrimeIndex, _nDense, _nSparse;
 	uint8_t  **_sieves;
@@ -88,9 +101,9 @@ class Miner {
 	bool _masterExists;
 	std::mutex _masterLock, _bucketLock;
 
-	mpz_t z_verifyTarget, z_verifyRemainderPrimorial;
-	WorkData _verifyBlock;
-	
+	uint64_t _curWorkDataIndex;
+	MinerWorkData _workData[WORK_DATAS];
+
 	void _initPending(uint32_t pending[PENDING_SIZE]) {
 		for (int i(0) ; i < PENDING_SIZE; i++) pending[i] = 0;
 	}
@@ -125,11 +138,12 @@ class Miner {
 	}
 	
 	void _putOffsetsInSegments(uint64_t *offsets, int n_offsets);
-	void _updateRemainders(uint64_t start_i, uint64_t end_i, bool usePrecomp);
+	void _updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t end_i);
 	void _processSieve(uint8_t *sieve, uint64_t start_i, uint64_t end_i);
 	void _processSieve6(uint8_t *sieve, uint64_t start_i, uint64_t end_i);
 	void _verifyThread();
 	void _getTargetFromBlock(mpz_t z_target, const WorkData& block);
+	void _processOneBlock(uint32_t workDataIndex, uint8_t* sieve);
 	
 	public:
 	Miner(const std::shared_ptr<WorkManager> &manager) {
