@@ -3,7 +3,7 @@
 #include "main.h"
 #include "stratumclient.h"
 
-#define USER_AGENT "rieMiner/0.9b2"
+#define USER_AGENT "rieMiner/0.9b3"
 
 void StratumData::merkleRootGen() {
 	std::vector<uint8_t> coinbase;

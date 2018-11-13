@@ -133,8 +133,8 @@ void GBTClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 	uint16_t k(share.second);
 	_manager->printTime();
 	std::cout << " " << k << "-tuple found";
-	if (k < 6) std::cout << std::endl;
-	else if (k == 6) {
+	if (k < _gbtd.primes) std::cout << std::endl;
+	else {
 		std::cout << ", this is a block!" << std::endl;
 		std::cout << "Sent: " << req;
 		if (jsonSb == NULL) std::cerr << "Failure submiting block :|" << std::endl;

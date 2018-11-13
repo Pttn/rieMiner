@@ -1,20 +1,22 @@
-# rieMiner 0.9β2.7
+# rieMiner 0.9β3
 
-rieMiner is a Riecoin miner supporting both solo and pooled mining, and using the latest known mining algorithm. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
+rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
 Solo mining is done using the GetBlockTemplate protocol, while pooled mining is via the Stratum protocol. A benchmark mode is also proposed to compare more easily the performance between different computers.
 
-Official binaries will be distributed when the stable 0.9 code is out (which will not until Riecoin Core is officially updated).
+It is recommended to use a recent enough CPU with at least 4 cores and 8 GB of RAM to mine efficiently enough.
+
+Direct link to the latest official [Windows x64 standalone executable](https://ric.pttn.me/file.php?d=rieMinerWin64).
 
 This README also serves as manual for rieMiner. I hope that this program will be useful for you! Happy mining!
 
 The Riecoin community thanks you for your participation, you will be a contributor to the robustness of the Riecoin network.
 
-![rieMiner just found a block](https://pttn.me/medias/bildoj/alia/rieMiner1.png)
+![rieMiner just found a block](https://ric.pttn.me/file.php?d=rieMiner)
 
 ## Compile this program
 
-Only x64 systems are supported since version 0.9β2.4.
+Only x64 systems with SSE are supported since version 0.9β2.4.
 
 ### In Debian/Ubuntu x64
 
@@ -62,11 +64,12 @@ Go to the rieMiner's directory with cd, and compile with make.
 
 The produced executable will run only in the MSYS console, or if all the needed DLLs are next to the executable. To obtain a standalone executable, you need to link statically the dependencies. Normally, this is done just by adding "-static" at the LIBS line in the Makefile. Unfortunately, libcurl will give you a hard time, and you need to compile it yourself.
 
-First, edit the Makefile add "-D CURL_STATICLIB" at the end of the CFLAGS line, and "-static" just after the "LIBS =" in the LIBS line. You might also want to change the march argument to support other/olders processors.
+First, edit the Makefile to add "-D CURL_STATICLIB" at the end of the CFLAGS line and "-static" just after the "LIBS =" in the first LIBS line. You might also want to change the march argument to support other/olders processors.
 
 ```
 CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native -D CURL_STATICLIB
-LIBS   = -static -pthread -ljansson -lcurl -lgmp -lgmpxx -lcrypto
+[...]
+LIBS   = -static -pthread -ljansson -lcurl -lcrypto -lgmp -lgmpxx -lws2_32
 ```
 
 Then, download the [latest official libcurl code](https://curl.haxx.se/download.html) on their website, under "Source Archives", and decompress the folder somewhere (for example, next to the rieMiner's one).
@@ -100,7 +103,7 @@ Alternatively, you can create or edit this "rieMiner.conf" file next to the exec
 Option type = Option value
 ```
 
-It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; at the end or use other delimiters than =** for each line, and **do not confuse rieMiner.conf with riecoin.conf**! If an option or the file is missing, the default value(s) will be used. If there are duplicate lines, the last one will be used. The available options are:
+It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; at the end or use other delimiters than =** for each line, and **do not confuse rieMiner.conf with riecoin.conf**! If an option is missing, the default value(s) will be used. If there are duplicate lines, the last one will be used. The available options are:
 
 * Host : IP of the Riecoin wallet/server or pool. Default: 127.0.0.1 (your computer);
 * Port : port of the Riecoin wallet/server or pool. Default: 28332 (default port for Riecoin-Qt);
@@ -109,14 +112,22 @@ It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; a
 * Protocol : protocol to use: GetBlockTemplate for solo mining, Stratum for pooled mining, Benchmark for testing. Default: Benchmark;
 * Address : custom payout address for solo mining (GetBlockTemplate only). Default: a donation address;
 * Threads : number of threads used for mining. Default: 8;
-* Sieve : size of the sieve table used for mining. Use a bigger number if you have more RAM, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^31;
+* Sieve : size of the sieve table used for mining. Use a bigger number if you have more RAM, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^30;
 * Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6;
-* Refresh : refresh rate of the stats in seconds. 0 to disable them; will only notify when a k-tuple or share (k >= Tuples option value if solo mining) is found, or when the network finds a block. Default: 30;
-* MaxMemory : set an approximate limit on amount of memory to use in GiB. 0 for no limit. Default: 0;
+* Refresh : refresh rate of the stats in seconds. 0 to disable them: will only notify when a k-tuple or share (k >= Tuples option value if solo mining) is found, or when the network finds a block. Default: 30;
+* MaxMem : set an approximate limit on amount of memory to use in MiB. 0 for no limit. Default: 0;
 * TestDiff : only for Benchmark, sets the testing difficulty (must be from 265 to 32767). Default: 1600;
 * TestTime : only for Benchmark, sets the testing duration in s. 0 for no time limit. Default: 0;
 * Test3t : only for Benchmark, stops testing after finding this number of 3-tuples. 0 for no limit. Default: 1000;
 * TCFile : Tuples Counts filename, in which rieMiner will save for each difficulty the number of tuples found. Note that there must never be more than one rieMiner instance using the same file. Default: None (special value that disables this feature).
+
+It is also possible to use custom configuration file paths, examples:
+
+```bash
+./rieMiner config/example.txt
+./rieMiner "config 2.conf"
+./rieMiner /home/user/rieMiner/rieMiner.conf
+```
 
 ### Advanced options
 
@@ -126,7 +137,7 @@ Normally, you should never need to change them, but they can be useful for devel
 * POff : Primorial Offset for the Wheel Factorization. Default: 16057;
 * ConsType : set your Constellation Type, i. e. the primes tuple offsets, each separated by a comma. Default: 0, 4, 2, 4, 2, 4 (values for Riecoin mining).
 
-Some possible constellations types (format: (type) -> offsets to put in the config file ; 3 first constellations (n + 0) which can be used as offsets)
+Some possible constellations types (format: (type) -> offsets to put in the config file ; 3 first constellations (n + 0) which can be used as offsets, though some might not work)
 
 * 5-tuples
   * (0, 2, 6,  8, 12) -> 0, 2, 4, 2, 4 ; 5, 11, 101,...
@@ -147,7 +158,7 @@ Note that you must use different tuples counts files if you use different conste
 
 ### Memory problems
 
-If you have memory errors, try to lower the Sieve value or set MaxMemory to control memory usage.
+If you have memory errors, try to lower the Sieve value in the configuration file, or set MaxMem to control memory usage.
 
 ## Statistics
 
@@ -155,9 +166,9 @@ rieMiner will regularly print some stats, and the frequency of this can be chang
 
 After finding at least a 4-tuple after a difficulty change, rieMiner will also estimate the average time to find a block by extrapolating from how many 1, 2, and 3-tuples were found, but of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week.
 
-For pooled mining, the number of valid and total shares are shown instead, and there is an estimation of how much RIC/day you are earning. If you want to compare the performance with fastrie, multiply the 2 and 3-"tuples/s" speeds by 4.096. The performance should be a bit better than fastrie's, as rieMiner includes some more optimized code.
+For pooled mining, the shares per minute metric and the numbers of valid and total shares are shown instead, and there is an estimation of how much RIC/day you are earning. These metrics should not be used to compare performance.
 
-rieMiner will also notify if it found a k-tuple (k >= Tuples option value) in solo mining or a share in pooled mining, and if the network found a new block. If it finds a block or a share, it will tell if the submission was accepted (solo mining only) or not. For solo mining, if the block was accepted, the reward will be generated for the address specified in the options. You can then spend it after 100 confirmations.
+rieMiner will also notify if it found a k-tuple (k >= Tuples option value) in solo mining or a share in pooled mining, and if the network found a new block. If it finds a block or a share, it will tell if the submission was accepted (solo mining only) or not. For solo mining, if the block was accepted, the reward will be generated for the address specified in the options. You can then spend it after 100 confirmations. Note that orphaned blocks will be shown as accepted.
 
 ## Solo mining specific information
 
@@ -165,7 +176,7 @@ Note that other ways for solo mining (protocol proxies,...) were never tested wi
 
 ### Configure the Riecoin wallet for solo mining
 
-To solo mine with the official Riecoin-Qt wallet, you have to configure it.
+We assume that Riecoin Core is already working and synced. To solo mine with it, you have to configure it.
 
 * Find the riecoin.conf configuration file. It should be located in /home/username/.riecoin or equivalent in Windows;
 * **Do not confuse this file with the rieMiner.conf**!
@@ -203,8 +214,10 @@ Remember that the miner searches numbers n such that n, n + 2, n + 6, n + 10, n 
 Also watch regularly if the wallet is correctly syncing, especially if the message "Blockheight = ..." did not appear since a very long time (except if the Diff is very high, in this case, it means that the network is now mining the superblock). In Riecoin-Qt, this can be done by hovering the green check at the lower right corner, and comparing the number with the latest block found in an Riecoin explorer. If something is wrong, try to change the nodes in riecoin.conf, the following always worked fine for me:
 
 ```
+connect=nodes.riecoin-community.com
 ﻿connect=5.9.39.9
 connect=37.59.143.10
+﻿connect=78.83.27.28
 connect=144.217.15.39
 connect=149.14.200.26
 connect=178.251.25.240
@@ -245,6 +258,7 @@ To compare two different platforms, you must absolutely test with the same diffi
 * Standard Benchmark
   * Difficulty of 1600;
   * Sieve of 2^30 = 1073741824 or 2^31 = 2147483648 (always precise this information too);
+  * No memory limit;
   * Stop after finding 1000 3-tuples or more;
   * The computer must not do anything else during testing;
   * Very long for slow computers, but like the real mining conditions;
@@ -257,32 +271,37 @@ The system must not swap. Else, the result would not make much sense. Ensure tha
 
 Standard Benchmark with a Sieve of 2^30.
 
-* AMD Ryzen 2700X @4 GHz, DDR4 2400 CL15, Debian 9, 0.9β1.5: (7.20 0.246 0.0079)
-* AMD Ryzen 2700X @3 GHz, DDR4 2400 CL15, Debian 9, 0.9β1.5: (5.37 0.189 0.0068)
-* Intel Core i7 6700K @3 GHz, DDR4 2400 CL15, Debian 9, 0.9β1.5: (2.77 0.092 0.0030)
-* Intel Core 2 Duo L7500 @1.6 GHz, DDR2 667 CL5, Debian 9, 0.9β1.5: (0.349 0.0118 0.00038)
+* AMD Ryzen 2700X @4 GHz, DDR4 2400 CL15, Debian 9, 0.9β3: (228.0 7.58 0.258) (1 to 3-tuples/s)
+* AMD Ryzen 2700X @4 GHz, DDR4 2400 CL15, Debian 9, 0.9β1.5: (7.20 0.246 0.0079) (outdated version, 2 to 4-tuples/s)
+* AMD Ryzen 2700X @3 GHz, DDR4 2400 CL15, Debian 9, 0.9β1.5: (5.37 0.189 0.0068) (outdated version, 2 to 4-tuples/s)
+* Intel Core i7 6700K @3 GHz, DDR4 2400 CL15, Debian 9, 0.9β1.5: (2.77 0.092 0.0030) (outdated version, 2 to 4-tuples/s)
+* Intel Core 2 Duo L7500 @1.6 GHz, DDR2 667 CL5, Debian 9, 0.9β1.5: (0.349 0.0118 0.00038) (outdated version, 2 to 4-tuples/s)
+
+With a Sieve of 2^31.
+
+* AMD Ryzen 2700X @4 GHz, DDR4 2400 CL15, Debian 9, 0.9β3: (227.1 7.81 0.266)
 
 ## Miscellaneous
-
-It is recommended to use a recent enough CPU with at least 4 cores and 8 GB of RAM to mine efficiently enough.
 
 Unless the weather is very cold, I do not recommend to overclock a CPU for mining, unless you can do that without increasing noticeably the power consumption. My 2700X computer would draw much, much more power at 4 GHz/1.2875 V instead of 3.7 GHz/1.08125 V, which is certainly absurd for a mere 8% increase. To get maximum efficiency, you might want to find the frequency with the best performance/power consumption ratio (which could also be obtained by underclocking the processor).
 
 If you can, try to undervolt the CPU to reduce power consumption, heat and noise.
 
-## Author and license
+## Developers and license
 
-* [Pttn](https://github.com/Pttn), contact: dev at Pttn dot me
+* [Pttn](https://github.com/Pttn), author, contact: dev at Pttn dot me
 
 Parts coming from other projects and libraries are subject to their respective licenses. Else, this work is released under the MIT license. See the [LICENSE](LICENSE) or top of source files for details.
 
-### Contributors
+### Notable contributors
 
-* [Michael Bell](https://github.com/MichaelBell/): assembly optimizations and some more.
+* [Michael Bell](https://github.com/MichaelBell/): assembly optimizations, improvements of work management between threads, and some more.
 
 ## Contributing
 
 Feel free to do a pull request or open an issue, and I will review it. I am open for adding new features, but I also wish to keep this project minimalist. Any useful contribution will be welcomed.
+
+By contributing to rieMiner, you accept to place your code in the MIT license.
 
 Donations welcome:
 

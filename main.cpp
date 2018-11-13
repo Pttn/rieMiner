@@ -13,6 +13,7 @@
 #endif
 
 std::shared_ptr<WorkManager> manager;
+static std::string confPath("rieMiner.conf");
 
 WorkManager::WorkManager() {
 	_options           = Options();
@@ -167,7 +168,7 @@ void Options::parseLine(std::string line, std::string& key, std::string& value) 
 
 void Options::askConf() {
 	std::string value;
-	std::ofstream file("rieMiner.conf");
+	std::ofstream file(confPath);
 	if (file) {
 		std::cout << "Solo mining (solo), pooled mining (pool), or benchmarking (benchmark)? ";
 		std::cin >> value;
@@ -185,7 +186,7 @@ void Options::askConf() {
 		}
 		else {
 			std::cerr << "Invalid choice! Please answer solo, pool, or benchmark." << std::endl;
-			std::remove("rieMiner.conf");
+			std::remove(confPath.c_str());
 			exit(0);
 		}
 		
@@ -197,7 +198,7 @@ void Options::askConf() {
 				struct sockaddr_in sa;
 				if (inet_pton(AF_INET, value.c_str(), &(sa.sin_addr)) != 1) {
 					std::cerr << "Invalid IP address!" << std::endl;
-					std::remove("rieMiner.conf");
+					std::remove(confPath.c_str());
 					exit(0);
 				}
 				else {
@@ -229,7 +230,7 @@ void Options::askConf() {
 			}
 			catch (...) {
 				std::cerr << "Invalid port !" << std::endl;
-				std::remove("rieMiner.conf");
+				std::remove(confPath.c_str());
 				exit(0);
 			}
 			
@@ -253,7 +254,7 @@ void Options::askConf() {
 				std::cin >> value;
 				if (!addrToScriptPubKey(value, spk)) {
 					std::cerr << "Invalid payout address!" << std::endl;
-					std::remove("rieMiner.conf");
+					std::remove(confPath.c_str());
 					exit(0);
 				}
 				else {
@@ -262,7 +263,7 @@ void Options::askConf() {
 				}
 			}
 		}
-		else std::cout << "Standard Benchmark values loaded. Edit the rieMiner.conf file if needed." << std::endl;
+		else std::cout << "Standard Benchmark values loaded. Edit the configuration file if needed." << std::endl;
 		
 		std::cout << "Number of threads: ";
 		std::cin >> value;
@@ -272,7 +273,7 @@ void Options::askConf() {
 		}
 		catch (...) {
 			std::cerr << "Invalid thread number!" << std::endl;
-			std::remove("rieMiner.conf");
+			std::remove(confPath.c_str());
 			exit(0);
 		}
 		
@@ -281,12 +282,12 @@ void Options::askConf() {
 		std::cout << "-----------------------------------------------------------" << std::endl;
 		file.close();
 	}
-	else std::cerr << "Unable to create rieMiner.conf :|, values for standard benchmark loaded." << std::endl;
+	else std::cerr << "Unable to create " << confPath << " :|, values for standard benchmark loaded." << std::endl;
 }
 
 void Options::loadConf() {
-	std::ifstream file("rieMiner.conf", std::ios::in);
-	std::cout << "Opening rieMiner.conf..." << std::endl;
+	std::ifstream file(confPath, std::ios::in);
+	std::cout << "Opening " << confPath << "..." << std::endl;
 	if (file) {
 		std::string line, key, value;
 		while (std::getline(file, line)) {
@@ -306,13 +307,11 @@ void Options::loadConf() {
 				else if (key == "Sieve") {
 					try {_sieve = std::stoll(value);}
 					catch (...) {_sieve = 1073741824;}
-					if (_sieve < 100000) _sieve = 100000;
+					if (_sieve < 65536) _sieve = 65536;
 				}
 				else if (key == "Tuples") {
 					try {_tuples = std::stoi(value);}
 					catch (...) {_tuples = 6;}
-					if (_tuples < 2 || _tuples > 6)
-						_tuples = 6;
 				}
 				else if (key == "Refresh") {
 					try {_refresh = std::stoi(value);}
@@ -352,10 +351,10 @@ void Options::loadConf() {
 					try {_pOff = std::stoll(value);}
 					catch (...) {_pOff = 16057;}
 				}
-				else if (key == "MaxMemory") {
+				else if (key == "MaxMem") {
 					try {_maxMem = std::stoll(value);}
 					catch (...) {_maxMem = 0;}
-					_maxMem *= 1024*1024*1024;
+					_maxMem *= 1048576;
 				}
 				else if (key == "ConsType") {
 					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
@@ -373,10 +372,13 @@ void Options::loadConf() {
 					std::cout << "Ignoring line with unused key " << key << std::endl;
 			}
 		}
+		
+		if (_tuples < 2 || _tuples > _consType.size())
+			_tuples = _consType.size();
 		file.close();
 	}
 	else {
-		std::cerr << "rieMiner.conf not found or unreadable, please configure rieMiner now." << std::endl;
+		std::cout << confPath << " not found or unreadable, please configure rieMiner now." << std::endl;
 		askConf();
 	}
 	
@@ -427,7 +429,7 @@ void signalHandler(int signum) {
 	_exit(0);
 }
 
-int main() {
+int main(int argc, char** argv) {
 #ifndef _WIN32
 	struct sigaction SIGINTHandler;
 	SIGINTHandler.sa_handler = signalHandler;
@@ -436,14 +438,19 @@ int main() {
 	sigaction(SIGINT, &SIGINTHandler, NULL);
 #endif
 	
-	std::cout << minerVersionString << ", Riecoin miner by Pttn" << std::endl;
+	std::cout << minerVersionString << ", Riecoin miner by Pttn and contributors" << std::endl;
 	std::cout << "Project page: https://github.com/Pttn/rieMiner" << std::endl;
-	std::cout << "Go to project page or open README.md for usage information." << std::endl;
+	std::cout << "Go to project page or open README.md for usage information" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
 	std::cout << "GMP " << __GNU_MP_VERSION << "." << __GNU_MP_VERSION_MINOR << "." << __GNU_MP_VERSION_PATCHLEVEL << std::endl;
 	std::cout << "LibCurl " << LIBCURL_VERSION << std::endl;
 	std::cout << "Jansson " << JANSSON_VERSION << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
+	
+	if (argc >= 2) {
+		confPath = argv[1];
+		std::cout << "Using custom configuration file path " << confPath << std::endl;
+	}
 	
 	manager = std::shared_ptr<WorkManager>(new WorkManager);
 	manager->init();

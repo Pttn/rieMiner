@@ -63,7 +63,6 @@ struct WorkData {
 
 // Communicates with the server to get, parse, and submit mining work
 // Absctract class with protocol independent member variables and functions
-// Child concrete classes: GWClient, GBTClient
 class Client {
 	protected:
 	bool _inited, _connected;
