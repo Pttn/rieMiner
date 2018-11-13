@@ -138,6 +138,7 @@ void Miner::init() {
 		_parameters.instances <<= 1;
 		_parameters.threads >>= 1;
 	}
+	std::cout << "Will use " << int(_parameters.instances) << " instances each with " << _parameters.threads << " threads." << std::endl;
 
 	for (uint8_t i(0) ; i < _parameters.instances ; i++) {
 		_instances.push_back(new MinerInstance(this, &_parameters));
