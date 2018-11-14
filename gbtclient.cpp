@@ -161,7 +161,7 @@ WorkData GBTClient::workData() const {
 	gbtd.merkleRootGen();
 	
 	WorkData wd;
-	memcpy(&wd.bh, &gbtd.bh, 128);
+	wd.bh = gbtd.bh;
 	if (gbtd.height != 0) wd.height = gbtd.height - 1;
 	wd.bh.bits       = swab32(wd.bh.bits);
 	wd.targetCompact = getCompact(wd.bh.bits);

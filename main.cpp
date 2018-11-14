@@ -53,7 +53,8 @@ void WorkManager::submitWork(WorkData wd, uint32_t* nOffset, uint8_t length) {
 
 bool WorkManager::getWork(WorkData& wd) {
 	_clientMutex.lock();
-	wd = _client->workData();
+	if (!_client->connected()) wd = WorkData();
+	else wd = _client->workData();
 	_clientMutex.unlock();
 	return wd.height != 0;
 }

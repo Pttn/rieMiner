@@ -537,7 +537,7 @@ void MinerInstance::process() {
 	uint32_t maxWorkOut(_parameters->threads*32);
 	uint32_t workDataIndex(0);
 
-	do {
+	while (true) {
 		while (_miner->_manager->getWork(_workData[workDataIndex].verifyBlock)) {
 			_modTime = _modTime.zero();
 			_sieveTime = _sieveTime.zero();
@@ -555,13 +555,13 @@ void MinerInstance::process() {
 			//std::cout << "Block timing: " << _modTime.count() << ", " << _sieveTime.count() << ", " << _verifyTime.count() << "  Tests out: " << _workData[0].outstandingTests << ", " << _workData[1].outstandingTests << std::endl;
 		}
 
-		for (workDataIndex = 0; workDataIndex < WORK_DATAS; workDataIndex++) {
-			while (_workData[workDataIndex].outstandingTests > 0)
+		for (uint32_t i(0); i < WORK_DATAS; i++) {
+			while (_workData[i].outstandingTests > 0)
 				_workData[_testDoneQueue.pop_front()].outstandingTests--;
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	} while (true);
+	}
 }
 
 void MinerInstance::_processOneBlock(uint32_t workDataIndex) {
