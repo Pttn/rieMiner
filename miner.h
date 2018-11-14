@@ -161,6 +161,7 @@ class MinerInstance {
 
 class Miner {
 	std::shared_ptr<WorkManager> _manager;
+	mutable std::mutex _mutex;
 	bool _inited;
 	volatile uint32_t _currentHeight;
 	MinerParameters _parameters;

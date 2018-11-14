@@ -300,6 +300,10 @@ void Options::loadConf() {
 					try {_threads = std::stoi(value);}
 					catch (...) {_threads = 8;}
 				}
+				else if (key == "Instances") {
+					try {_instances = std::stoi(value);}
+					catch (...) {_instances = 1;}
+				}
 				else if (key == "Sieve") {
 					try {_sieve = std::stoll(value);}
 					catch (...) {_sieve = 1073741824;}

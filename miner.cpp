@@ -16,6 +16,7 @@ extern "C" {
 }
 
 void Miner::init() {
+	_parameters.instances = _manager->options().instances();
 	_parameters.threads = _manager->options().threads();
 	_parameters.sieveWorkers = std::max(1, _manager->options().threads()/4);
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, 8);
@@ -80,9 +81,10 @@ void Miner::init() {
 	_parameters.modPrecompute.resize(precompPrimes*4);
 	
 	_startingPrimeIndex = _parameters.primorialNumber;
-	uint64_t blockSize((_nPrimes - _startingPrimeIndex + _parameters.threads - 1) / _parameters.threads);
-	std::thread threads[_parameters.threads];
-	for (int16_t j(0) ; j < _parameters.threads ; j++) {
+	uint16_t totalThreads = _parameters.threads * _parameters.instances;
+	uint64_t blockSize((_nPrimes - _startingPrimeIndex + totalThreads - 1) / totalThreads);
+	std::thread threads[totalThreads];
+	for (int16_t j(0) ; j < totalThreads ; j++) {
 		threads[j] = std::thread([&, j]() {
 			mpz_t z_tmp, z_p;
 			mpz_init(z_tmp);
@@ -98,7 +100,7 @@ void Miner::init() {
 			mpz_clear(z_tmp);
 		});
 	}
-	for (int16_t j(0) ; j < _parameters.threads ; j++)
+	for (int16_t j(0) ; j < totalThreads ; j++)
 		threads[j].join();
 	
 	uint64_t highSegmentEntries(0);
@@ -133,11 +135,6 @@ void Miner::init() {
 		else _nSparse -= 1;
 	}
 	
-	while (_parameters.threads > 8 && (_parameters.threads & 1) == 0)
-	{
-		_parameters.instances <<= 1;
-		_parameters.threads >>= 1;
-	}
 	std::cout << "Will use " << int(_parameters.instances) << " instances each with " << _parameters.threads << " threads." << std::endl;
 
 	for (uint8_t i(0) ; i < _parameters.instances ; i++) {
@@ -410,6 +407,7 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				for(uint32_t d(0) ; d < (uint32_t) std::min(32/8, z_temp2->_mp_size) ; d++)
 					*(uint64_t*) (nOffset + d*8) = z_temp2->_mp_d[d];
 				
+				std::lock_guard<std::mutex> lock(_miner->_mutex);
 				_miner->_manager->submitWork(_workData[job.workDataIndex].verifyBlock, (uint32_t*) nOffset, tupleSize);
 			}
 			
@@ -434,6 +432,7 @@ void MinerInstance::_getTargetFromBlock(mpz_t z_target, const WorkData &block) {
 	uint64_t trailingZeros(searchBits - 1 - zeroesBeforeHashInPrime - 256);
 	mpz_mul_2exp(z_target, z_target, trailingZeros);
 	
+	std::lock_guard<std::mutex> lock(_miner->_mutex);
 	uint64_t difficulty(mpz_sizeinbase(z_target, 2));
 	if (_miner->_manager->difficulty() != difficulty) {
 		bool save(true);
