@@ -1,4 +1,4 @@
-# rieMiner 0.9β3
+# rieMiner 0.9β3.1
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
@@ -118,7 +118,7 @@ It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; a
 * MaxMem : set an approximate limit on amount of memory to use in MiB. 0 for no limit. Default: 0;
 * TestDiff : only for Benchmark, sets the testing difficulty (must be from 265 to 32767). Default: 1600;
 * TestTime : only for Benchmark, sets the testing duration in s. 0 for no time limit. Default: 0;
-* Test3t : only for Benchmark, stops testing after finding this number of 3-tuples. 0 for no limit. Default: 1000;
+* Test2t : only for Benchmark, stops testing after finding this number of 2-tuples. 0 for no limit. Default: 50000;
 * TCFile : Tuples Counts filename, in which rieMiner will save for each difficulty the number of tuples found. Note that there must never be more than one rieMiner instance using the same file. Default: None (special value that disables this feature).
 
 It is also possible to use custom configuration file paths, examples:
@@ -162,11 +162,11 @@ If you have memory errors, try to lower the Sieve value in the configuration fil
 
 ## Statistics
 
-rieMiner will regularly print some stats, and the frequency of this can be changed with the Refresh parameter as said earlier. For solo mining, rieMiner will regularly show the 1 to 3 tuples found per second metrics, and the number of 2 to 6 tuples found since the start of the mining.
+rieMiner will regularly print some stats, and the frequency of this can be changed with the Refresh parameter as said earlier.
 
-After finding at least a 4-tuple after a difficulty change, rieMiner will also estimate the average time to find a block by extrapolating from how many 1, 2, and 3-tuples were found, but of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week.
+For solo mining, rieMiner will regularly show the 1 to 3 tuples found per second metrics, and the number of 2 to 6 tuples found since the start of the mining. It will also estimate the average time to find a block by extrapolating from the 1-tuples/s (primes per second) metric and the 1 to 2-tuples/s ratio (note that all the ratios are the same, and the estimation should be fairly precise). Of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week.
 
-For pooled mining, the shares per minute metric and the numbers of valid and total shares are shown instead, and there is an estimation of how much RIC/day you are earning. These metrics should not be used to compare performance.
+For pooled mining, the shares per minute metric and the numbers of valid and total shares are shown instead. As it is hard to get a correct estimation earnings from k-shares, no other metric is shown. The Benchmark Mode (or solo mining) can be used to get better figures for comparisons.
 
 rieMiner will also notify if it found a k-tuple (k >= Tuples option value) in solo mining or a share in pooled mining, and if the network found a new block. If it finds a block or a share, it will tell if the submission was accepted (solo mining only) or not. For solo mining, if the block was accepted, the reward will be generated for the address specified in the options. You can then spend it after 100 confirmations. Note that orphaned blocks will be shown as accepted.
 
@@ -259,27 +259,33 @@ To compare two different platforms, you must absolutely test with the same diffi
   * Difficulty of 1600;
   * Sieve of 2^30 = 1073741824 or 2^31 = 2147483648 (always precise this information too);
   * No memory limit;
-  * Stop after finding 1000 3-tuples or more;
+  * Stop after finding 50000 2-tuples or more;
   * The computer must not do anything else during testing;
   * Very long for slow computers, but like the real mining conditions;
-  * The precision will be about 3 solid digits for the 1-tuples/s metric, 2 for the 2-tuples/s one and 1 of the 3-tuples/s one. That said, you can share your results with 3-4 significant digits for each;
-  * 4 to 6-tuples find rates should be discarded.
+  * The system must not swap. Else, the result would not make much sense. Ensure that you have enough memory when trying to benchmark.
 
-The system must not swap. Else, the result would not make much sense. Ensure that you have enough memory when trying to benchmark.
+Once the benchmark finished itself (i. e. not by the user), it will print something like:
+
+```
+50000 2-tuples found, test finished. rieMiner 0.9-beta3.1, difficulty 1600, sieve 2147483648
+BENCHMARK RESULTS: 227.470700 primes/s with ratio 28.914627 -> 0.972414 block(s)/day
+```
+
+The block(s)/day metric is the one that should be shared or used to compare performance, though it is always good to also take in consideration the other ones. The precision will be about 2 significant digits for the block(s)/day. To get 3 solid digits, about 1 million of 2-tuples would need to be found, which would be way too long to be practical for the Standard Benchmark.
+
+A run with valid parameters for the Standard Benchmark will additionally print the message
+
+```
+VALID parameters for Standard Benchmark
+```
+
+Which should appear if you want to share your results.
 
 ### A few results
 
-Standard Benchmark with a Sieve of 2^30.
+More current results Coming Soon. Data: primes/s, ratio -> block(s)/day.
 
-* AMD Ryzen 2700X @4 GHz, DDR4 2400 CL15, Debian 9, 0.9β3: (228.0 7.58 0.258) (1 to 3-tuples/s)
-* AMD Ryzen 2700X @4 GHz, DDR4 2400 CL15, Debian 9, 0.9β1.5: (7.20 0.246 0.0079) (outdated version, 2 to 4-tuples/s)
-* AMD Ryzen 2700X @3 GHz, DDR4 2400 CL15, Debian 9, 0.9β1.5: (5.37 0.189 0.0068) (outdated version, 2 to 4-tuples/s)
-* Intel Core i7 6700K @3 GHz, DDR4 2400 CL15, Debian 9, 0.9β1.5: (2.77 0.092 0.0030) (outdated version, 2 to 4-tuples/s)
-* Intel Core 2 Duo L7500 @1.6 GHz, DDR2 667 CL5, Debian 9, 0.9β1.5: (0.349 0.0118 0.00038) (outdated version, 2 to 4-tuples/s)
-
-With a Sieve of 2^31.
-
-* AMD Ryzen 2700X @4 GHz, DDR4 2400 CL15, Debian 9, 0.9β3: (227.1 7.81 0.266)
+* AMD Ryzen 2700X @4 GHz, DDR4 2400 CL15, Debian 9, 0.9β3.1: 227.470700, 28.914627 -> 0.972414
 
 ## Miscellaneous
 

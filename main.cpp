@@ -81,8 +81,11 @@ void WorkManager::manage() {
 					_stats.saveTuplesCounts(_options.tcFile());
 					_exit(0);
 				}
-				if (_stats.tuplesCount()[3] >= _options.test3t() && _options.test3t() != 0) {
-					std::cout << _options.test3t() << " 3-tuples found, test finished. Version: " << minerVersionString << ", difficulty " << _options.testDiff() << ", sieve " << _options.sieve() << std::endl;
+				if (_stats.tuplesCount()[2] >= _options.test2t() && _options.test2t() != 0) {
+					std::cout << _options.test2t() << " 2-tuples found, test finished. " << minerVersionString << ", difficulty " << _options.testDiff() << ", sieve " << _options.sieve() << std::endl;
+					_stats.printBenchmarkResults();
+					if (_options.testDiff() == 1600 && (_options.sieve() == 1073741824 || _options.sieve() == 2147483648) && _options.test2t() >= 50000)
+						std::cout << "VALID parameters for Standard Benchmark" << std::endl;
 					_stats.printTuplesStats();
 					_stats.saveTuplesCounts(_options.tcFile());
 					_exit(0);
@@ -336,9 +339,9 @@ void Options::loadConf() {
 					try {_testTime = std::stoll(value);}
 					catch (...) {_testTime = 0;}
 				}
-				else if (key == "Test3t") {
-					try {_test3t = std::stoll(value);}
-					catch (...) {_test3t = 1000;}
+				else if (key == "Test2t") {
+					try {_test2t = std::stoll(value);}
+					catch (...) {_test2t = 50000;}
 				}
 				else if (key == "TCFile") {
 					_tcFile = value;
@@ -385,7 +388,9 @@ void Options::loadConf() {
 	if (_protocol == "Benchmark") {
 		std::cout << "Benchmark Mode at difficulty " << _testDiff << std::endl;
 		if (_testTime != 0) std::cout << "Will stop after " << _testTime << " s" << std::endl;
-		if (_test3t   != 0) std::cout << "Will stop after finding " << _test3t << " 3-tuples" << std::endl;
+		if (_test2t   != 0) std::cout << "Will stop after finding " << _test2t << " 2-tuples" << std::endl;
+		if (_testDiff == 1600 && (_sieve == 1073741824 || _sieve == 2147483648) && _test2t >= 50000)
+			std::cout << "VALID parameters for Standard Benchmark" << std::endl;
 	}
 	else {
 		std::cout << "Host = " << _host << std::endl;
