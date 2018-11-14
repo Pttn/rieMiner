@@ -37,7 +37,7 @@ void Miner::init() {
 		std::cout << "Generating prime table using sieve of Eratosthenes..." << std::endl;
 		std::vector<uint8_t> vfComposite;
 		vfComposite.resize((_parameters.sieve + 15)/16, 0);
-		for (uint64_t nFactor(3) ; nFactor*nFactor < _parameters.sieve ; nFactor+=2) {
+		for (uint64_t nFactor(3) ; nFactor*nFactor < _parameters.sieve ; nFactor += 2) {
 			if (vfComposite[nFactor >> 4] & (1 << ((nFactor >> 1) & 7))) continue;
 			for (uint64_t nComposite((nFactor*nFactor) >> 1) ; nComposite < (_parameters.sieve >> 1) ; nComposite += nFactor)
 				vfComposite[nComposite >> 3] |= 1 << (nComposite & 7);
@@ -56,8 +56,7 @@ void Miner::init() {
 		mpz_mul_ui(_primorial, _primorial, _parameters.primes[i]);
 	
 	// Consider requested memory limit
-	uint64_t maxMemory(_manager->options().maxMem()),
-	         precompPrimes;
+	uint64_t maxMemory(_manager->options().maxMem()), precompPrimes;
 	if (maxMemory < 1000000000)
 		precompPrimes = _nPrimes;
 	else {
@@ -89,7 +88,7 @@ void Miner::init() {
 			mpz_t z_tmp, z_p;
 			mpz_init(z_tmp);
 			mpz_init(z_p);
-			uint64_t endIndex = std::min(_startingPrimeIndex + (j+1)*blockSize, _nPrimes);
+			uint64_t endIndex = std::min(_startingPrimeIndex + (j + 1)*blockSize, _nPrimes);
 			for (uint64_t i(_startingPrimeIndex + j*blockSize) ; i < endIndex ; i++) {
 				mpz_set_ui(z_p, _parameters.primes[i]);
 				mpz_invert(z_tmp, _primorial, z_p);
@@ -104,8 +103,7 @@ void Miner::init() {
 		threads[j].join();
 	
 	uint64_t highSegmentEntries(0);
-	double highFloats(0.);
-	double tupleSizeAsDouble(_parameters.primeTupleOffset.size());
+	double highFloats(0.), tupleSizeAsDouble(_parameters.primeTupleOffset.size());
 	_primeTestStoreOffsetsSize = 0;
 	for (uint64_t i(5) ; i < _nPrimes ; i++) {
 		uint64_t p(_parameters.primes[i]);

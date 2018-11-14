@@ -3,7 +3,7 @@
 #ifndef HEADER_GLOBAL_H
 #define HEADER_GLOBAL_H
 
-#define minerVersionString	"rieMiner 0.9-beta3"
+#define minerVersionString	"rieMiner 0.9-beta3.1"
 
 #include <unistd.h>
 #include <string>
@@ -171,21 +171,29 @@ class Stats {
 	void printEstimatedTimeToBlock() const {
 		double elapsedSecs(timeSince(_lastDiffChangeTp));
 		if (elapsedSecs > 1 && timeSince(_miningStartTp) > 1) {
-			if (_tuplesSinceLastDiff[4] > 0) {
-				if (_solo) {
+			if (_solo) {
+				if (_tuplesSinceLastDiff[3] > 0) {
 					double r12(((double) _tuplesSinceLastDiff[1])/((double) _tuplesSinceLastDiff[2])),
-						   r23(((double) _tuplesSinceLastDiff[2])/((double) _tuplesSinceLastDiff[3])),
-						   s2(((double) _tuplesSinceLastDiff[2])/elapsedSecs);
-					std::cout << FIXED(2) << " | " << r12*r12*r12*r23/(86400.*s2) << " d";
-				}
-				else { // Hint: it is 15x easier to find a 2 or 4-share, and 20x for 3 shares, than true k-tuples: (6 2) = (6 4) = 15, (6 3) = 20
-					double r34(((double) _tuplesSinceLastDiff[2]/15.)/((double) _tuplesSinceLastDiff[3]/20.)),
-						   r23(((double) _tuplesSinceLastDiff[3]/20.)/((double) _tuplesSinceLastDiff[4]/15.)),
-						   s3(((double) _tuplesSinceLastDiff[3]/20.)/elapsedSecs);
-					std::cout << FIXED(2) << " | " << (25.*86400.*s3)/(r23*r23*r34) << " RIC/d";
+					       s1(((double) _tuplesSinceLastDiff[1])/elapsedSecs),
+					       t(r12*r12*r12*r12*r12/(86400.*s1));
+					if (t < 1./1440.) std::cout << FIXED(1 + (86400.*t < 10.)) << " | " << 86400.*t << " s";
+					else if (t < 1./24.) std::cout << FIXED(1 + (1440.*t < 10.)) << " | " << 1440.*t << " min";
+					else if (t < 1.) std::cout << FIXED(1 + (24.*t < 10.)) << " | " << 24.*t << " h";
+					else if (t < 365.2425) std::cout << FIXED(2) << " | " << t << " d";
+					else std::cout << FIXED(2) << " | " << t/365.2425 << " y";
 				}
 			}
 			std::cout << std::endl;
+		}
+	}
+	
+	void printBenchmarkResults() const {
+		double elapsedSecs(timeSince(_lastDiffChangeTp));
+		if (_tuplesSinceLastDiff[2] > 0) {
+			double r12(((double) _tuplesSinceLastDiff[1])/((double) _tuplesSinceLastDiff[2])),
+			       s1(((double) _tuplesSinceLastDiff[1])/elapsedSecs),
+			       bpd(86400.*s1/(r12*r12*r12*r12*r12));
+			std::cout << "BENCHMARK RESULTS: " << FIXED(6) << s1 << " primes/s with ratio " << r12 << " -> " << bpd << " block(s)/day" << std::endl;
 		}
 	}
 	
@@ -253,7 +261,7 @@ class Options {
 	std::string _host, _user, _pass, _protocol, _address, _tcFile;
 	uint8_t _tuples, _instances;
 	uint16_t _port, _threads;
-	uint32_t _refresh, _testDiff, _testTime, _test3t;
+	uint32_t _refresh, _testDiff, _testTime, _test2t;
 	uint64_t _sieve, _pn, _pOff;
 	uint64_t _maxMem;
 	std::vector<uint64_t> _consType;
@@ -276,7 +284,7 @@ class Options {
 		_refresh   = 30;
 		_testDiff  = 1600;
 		_testTime  = 0;
-		_test3t    = 1000;
+		_test2t    = 50000;
 		_pn        = 40; // Primorial Number
 		_pOff      = 16057; // Primorial Offset
 		_maxMem    = 0;
@@ -300,7 +308,7 @@ class Options {
 	uint32_t refresh() const {return _refresh;}
 	uint32_t testDiff() const {return _testDiff;}
 	uint32_t testTime() const {return _testTime;}
-	uint32_t test3t() const {return _test3t;}
+	uint32_t test2t() const {return _test2t;}
 	uint64_t pn() const {return _pn;}
 	uint64_t pOff() const {return _pOff;}
 	uint64_t maxMem() const {return _maxMem;}
