@@ -534,7 +534,7 @@ void MinerInstance::process() {
 
 	//std::cout << "Master thread initialized" << std::endl;
 
-	uint32_t maxWorkOut(_parameters->threads*32);
+	uint32_t maxWorkOut(_parameters->threads*64);
 	uint32_t workDataIndex(0);
 
 	do {
