@@ -42,15 +42,16 @@ void Miner::init() {
 	{
 		std::cout << "Generating prime table using sieve of Eratosthenes..." << std::endl;
 		std::vector<uint8_t> vfComposite;
-		vfComposite.resize((_parameters.sieve + 7)/8, 0);
-		for (uint64_t nFactor(2) ; nFactor*nFactor < _parameters.sieve ; nFactor++) {
-			if (vfComposite[nFactor >> 3] & (1 << (nFactor & 7))) continue;
-			for (uint64_t nComposite(nFactor*nFactor) ; nComposite < _parameters.sieve ; nComposite += nFactor)
+		vfComposite.resize((_parameters.sieve + 15)/16, 0);
+		for (uint64_t nFactor(3) ; nFactor*nFactor < _parameters.sieve ; nFactor+=2) {
+			if (vfComposite[nFactor >> 4] & (1 << ((nFactor >> 1) & 7))) continue;
+			for (uint64_t nComposite((nFactor*nFactor) >> 1) ; nComposite < (_parameters.sieve >> 1) ; nComposite += nFactor)
 				vfComposite[nComposite >> 3] |= 1 << (nComposite & 7);
 		}
-		for (uint64_t n(2) ; n < _parameters.sieve ; n++) {
+		_parameters.primes.push_back(2);
+		for (uint64_t n(1) ; (n << 1) + 1 < _parameters.sieve ; n++) {
 			if (!(vfComposite[n >> 3] & (1 << (n & 7))))
-				_parameters.primes.push_back(n);
+				_parameters.primes.push_back((n << 1) + 1);
 		}
 		_nPrimes = _parameters.primes.size();
 		std::cout << "Table with all " << _nPrimes << " first primes generated." << std::endl;
@@ -85,18 +86,27 @@ void Miner::init() {
 	_parameters.inverts.resize(_nPrimes);
 	_parameters.modPrecompute.resize(precompPrimes*4);
 	
-	mpz_t z_tmp, z_p;
-	mpz_init(z_tmp);
-	mpz_init(z_p);
 	_startingPrimeIndex = _parameters.primorialNumber;
-	for (uint64_t i(_startingPrimeIndex) ; i < _nPrimes ; i++) {
-		mpz_set_ui(z_p, _parameters.primes[i]);
-		mpz_invert(z_tmp, _primorial, z_p);
-		_parameters.inverts[i] = mpz_get_ui(z_tmp);
-		if (i < precompPrimes) rie_mod_1s_4p_cps(&_parameters.modPrecompute[i*4], _parameters.primes[i]);
+	uint64_t blockSize((_nPrimes - _startingPrimeIndex + _parameters.threads - 1) / _parameters.threads);
+	std::thread threads[_parameters.threads];
+	for (int16_t j(0) ; j < _parameters.threads ; j++) {
+		threads[j] = std::thread([&, j]() {
+			mpz_t z_tmp, z_p;
+			mpz_init(z_tmp);
+			mpz_init(z_p);
+			uint64_t endIndex = std::min(_startingPrimeIndex + (j+1)*blockSize, _nPrimes);
+			for (uint64_t i(_startingPrimeIndex + j*blockSize) ; i < endIndex ; i++) {
+				mpz_set_ui(z_p, _parameters.primes[i]);
+				mpz_invert(z_tmp, _primorial, z_p);
+				_parameters.inverts[i] = mpz_get_ui(z_tmp);
+				if (i < precompPrimes) rie_mod_1s_4p_cps(&_parameters.modPrecompute[i*4], _parameters.primes[i]);
+			}
+			mpz_clear(z_p);
+			mpz_clear(z_tmp);
+		});
 	}
-	mpz_clear(z_p);
-	mpz_clear(z_tmp);
+	for (int16_t j(0) ; j < _parameters.threads ; j++)
+		threads[j].join();
 	
 	uint64_t highSegmentEntries(0);
 	double highFloats(0.);
