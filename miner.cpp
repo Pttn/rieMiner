@@ -555,7 +555,7 @@ void MinerInstance::process() {
 			while (_workData[workDataIndex].outstandingTests > 0)
 				_workData[_testDoneQueue.pop_front()].outstandingTests--;
 
-			std::cout << "Block timing: " << _modTime.count() << ", " << _sieveTime.count() << ", " << _verifyTime.count() << "  Tests out: " << _workData[0].outstandingTests << ", " << _workData[1].outstandingTests << std::endl;
+			//std::cout << "Block timing: " << _modTime.count() << ", " << _sieveTime.count() << ", " << _verifyTime.count() << "  Tests out: " << _workData[0].outstandingTests << ", " << _workData[1].outstandingTests << std::endl;
 		}
 
 		for (uint32_t i(0); i < WORK_DATAS; i++) {
