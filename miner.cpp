@@ -177,28 +177,32 @@ void MinerInstance::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, 
 		offset_stack = new uint64_t[OFFSET_STACK_SIZE];
 	uint64_t precompLimit = _parameters->modPrecompute.size()/4;
 	const uint64_t* halfPrimeTupleOffset = &_miner->_halfPrimeTupleOffset[0];
+	const uint64_t* inverts = &_parameters->inverts[0];
+	const uint64_t* modPrecompute = &_parameters->modPrecompute[0];
+	const uint64_t* primes = &_parameters->primes[0];
+	uint64_t maxIncrements = _parameters->maxIncrements;
 
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
-		uint64_t p(_parameters->primes[i]);
+		uint64_t p(primes[i]);
 
 		// Also update the offsets unless once only
-		bool onceOnly(p >= _parameters->maxIncrements);
+		bool onceOnly(p >= maxIncrements);
 
 		uint64_t invert[4];
-		invert[0] = _parameters->inverts[i];
+		invert[0] = inverts[i];
 
 		// Compute the index, using precomputation speed up if available.
 		uint64_t index;
 		if (i < precompLimit) {
-			uint64_t cnt(_parameters->modPrecompute[i*4 + 3] >> 57),
+			uint64_t cnt(modPrecompute[i*4 + 3] >> 57),
 			         ps(p << cnt),
-			         remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, &_parameters->modPrecompute[i*4]));
+			         remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, &modPrecompute[i*4]));
 			//if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail\n"); exit(-1); }
 			{
 				uint64_t pa(ps - remainder);
 				uint64_t r, nh, nl;
 				umul_ppmm(nh, nl, pa, invert[0]);
-				udiv_rnnd_preinv(r, nh, nl, ps, _parameters->modPrecompute[i*4]);
+				udiv_rnnd_preinv(r, nh, nl, ps, modPrecompute[i*4]);
 				index = r >> cnt;
 				//if ((r >> cnt) != ((pa >> cnt)*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); }
 			}
@@ -231,11 +235,11 @@ void MinerInstance::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, 
 				_putOffsetsInSegments(offset_stack, n_offsets);
 				n_offsets = 0;
 			}
-			if (index < _parameters->maxIncrements) offset_stack[n_offsets++] = index;
+			if (index < maxIncrements) offset_stack[n_offsets++] = index;
 			for (std::vector<uint64_t>::size_type f(1) ; f < tupleSize ; f++) {
 				if (index < invert[halfPrimeTupleOffset[f]]) index += p;
 				index -= invert[halfPrimeTupleOffset[f]];
-				if (index < _parameters->maxIncrements) offset_stack[n_offsets++] = index;
+				if (index < maxIncrements) offset_stack[n_offsets++] = index;
 			}
 		}
 	}
@@ -251,9 +255,10 @@ void MinerInstance::_processSieve(uint8_t *sieve, uint64_t start_i, uint64_t end
 	uint32_t pending[PENDING_SIZE];
 	uint64_t pending_pos(0);
 	_initPending(pending);
+	const uint64_t* primes = &_parameters->primes[0];
 
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
-		uint32_t p(_parameters->primes[i]);
+		uint32_t p(primes[i]);
 		for (uint64_t f(0) ; f < tupleSize; f++) {
 			while (_offsets[i*tupleSize + f] < _parameters->sieveSize) {
 				_addToPending(sieve, pending, pending_pos, _offsets[i*tupleSize + f]);
@@ -271,6 +276,7 @@ void MinerInstance::_processSieve6(uint8_t *sieve, uint64_t start_i, uint64_t en
 	uint32_t pending[PENDING_SIZE];
 	uint64_t pending_pos(0);
 	_initPending(pending);
+	const uint64_t* primes = &_parameters->primes[0];
 
 	xmmreg_t offsetmax;
 	offsetmax.m128 = _mm_set1_epi32(_parameters->sieveSize);
@@ -282,8 +288,8 @@ void MinerInstance::_processSieve6(uint8_t *sieve, uint64_t start_i, uint64_t en
 		xmmreg_t p1, p2, p3;
 		xmmreg_t offset1, offset2, offset3, nextIncr1, nextIncr2, nextIncr3;
 		xmmreg_t cmpres1, cmpres2, cmpres3;
-		p1.m128 = _mm_set1_epi32(_parameters->primes[i]);
-		p3.m128 = _mm_set1_epi32(_parameters->primes[i+1]);
+		p1.m128 = _mm_set1_epi32(primes[i]);
+		p3.m128 = _mm_set1_epi32(primes[i+1]);
 		p2.m128 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(p1.m128), _mm_castsi128_ps(p3.m128), _MM_SHUFFLE(0, 0, 0, 0)));
 		offset1.m128 = _mm_load_si128((__m128i const*) &_offsets[i*6 + 0]);
 		offset2.m128 = _mm_load_si128((__m128i const*) &_offsets[i*6 + 4]);
@@ -549,7 +555,7 @@ void MinerInstance::process() {
 			while (_workData[workDataIndex].outstandingTests > 0)
 				_workData[_testDoneQueue.pop_front()].outstandingTests--;
 
-			//std::cout << "Block timing: " << _modTime.count() << ", " << _sieveTime.count() << ", " << _verifyTime.count() << "  Tests out: " << _workData[0].outstandingTests << ", " << _workData[1].outstandingTests << std::endl;
+			std::cout << "Block timing: " << _modTime.count() << ", " << _sieveTime.count() << ", " << _verifyTime.count() << "  Tests out: " << _workData[0].outstandingTests << ", " << _workData[1].outstandingTests << std::endl;
 		}
 
 		for (uint32_t i(0); i < WORK_DATAS; i++) {
@@ -647,6 +653,7 @@ void MinerInstance::_processOneBlock(uint32_t workDataIndex) {
 	}
 	assert(nSieveWorkers == _parameters->sieveWorkers);
 	
+	const uint64_t* primes = &_parameters->primes[0];
 	assert(_workData[workDataIndex].outstandingTests == 0);
 	for (uint64_t loop(0); loop < _parameters->maxIter; loop++) {
 		if (_workData[workDataIndex].verifyBlock.height != _miner->_currentHeight)
@@ -656,7 +663,7 @@ void MinerInstance::_processOneBlock(uint32_t workDataIndex) {
 		
 		const uint64_t tupleSize(_parameters->primeTupleOffset.size());
 		for (uint64_t i(startPrimeIndex) ; i < denseLimit ; i++) {
-			uint32_t p(_parameters->primes[i]);
+			uint32_t p(primes[i]);
 			for (uint64_t f(0) ; f < tupleSize ; f++) {
 				while (_offsets[i*tupleSize + f] < _parameters->sieveSize) {
 					_mainSieve[_offsets[i*tupleSize + f] >> 3] |= (1 << ((_offsets[i*tupleSize + f] & 7)));
