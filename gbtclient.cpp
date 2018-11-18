@@ -163,7 +163,7 @@ WorkData GBTClient::workData() const {
 	WorkData wd;
 	memcpy(&wd.bh, &gbtd.bh, 128);
 	if (gbtd.height != 0) wd.height = gbtd.height - 1;
-	wd.bh.bits       = swab32(wd.bh.bits);
+	wd.bh.bits       = invEnd32(wd.bh.bits);
 	wd.targetCompact = getCompact(wd.bh.bits);
 	wd.transactions  = gbtd.transactions;
 	wd.txCount       = gbtd.txHashes.size();

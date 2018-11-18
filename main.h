@@ -3,7 +3,7 @@
 #ifndef HEADER_GLOBAL_H
 #define HEADER_GLOBAL_H
 
-#define minerVersionString	"rieMiner 0.9-beta3.1"
+#define minerVersionString	"rieMiner 0.9-beta3.1a"
 
 #include <unistd.h>
 #include <string>
@@ -29,7 +29,7 @@ class Miner;
 class Stats {
 	std::vector<std::vector<uint64_t>> _totalTuples;
 	std::vector<uint64_t> _tuples, _tuplesSinceLastDiff;
-	uint32_t _height, _difficulty, _heightAtDiffChange, _shares, _rejectedShares;
+	uint32_t _height, _difficulty, _heightAtDiffChange, _rejectedShares;
 	std::chrono::time_point<std::chrono::system_clock> _miningStartTp, _lastDiffChangeTp;
 	bool _solo, _saveTuplesCounts;
 	
@@ -46,7 +46,6 @@ class Stats {
 		_height = 0;
 		_difficulty = 1;
 		_heightAtDiffChange = 0;
-		_shares = 0;
 		_rejectedShares = 0;
 		_lastDiffChangeTp = std::chrono::system_clock::now();
 		_solo = true;
@@ -65,7 +64,6 @@ class Stats {
 		_tuplesSinceLastDiff[i]++;
 	}
 	
-	void incShares() {_shares++;}
 	void incRejectedShares() {_rejectedShares++;}
 	
 	uint32_t height() const {return _height;}
@@ -135,9 +133,9 @@ class Stats {
 				std::cout << ")";
 			}
 			else {
-				std::cout << " Shares: " << _shares - _rejectedShares << "/" << _shares;
-				if (_shares > 0) std::cout << " (" << FIXED(1) << 100.*((double) _shares - _rejectedShares)/((double) _shares) << "%)";
-				std::cout << ", sh/min = " << FIXED(1) << 60.*((double) _shares)/elapsedSecs;
+				std::cout << " Shares: " << _tuples[4] - _rejectedShares << "/" << _tuples[4];
+				if (_tuples[4] > 0) std::cout << " (" << FIXED(1) << 100.*((double) _tuples[4] - _rejectedShares)/((double) _tuples[4]) << "%)";
+				std::cout << ", sh/min = " << FIXED(1) << 60.*((double) _tuples[4])/elapsedSecs;
 			}
 		}
 	}
@@ -340,7 +338,6 @@ class WorkManager : public std::enable_shared_from_this<WorkManager> {
 	void printTime() const {_stats.printTime();}
 	void printTuplesStats() const {_stats.printTuplesStats();}
 	void incTupleCount(uint8_t i) {_stats.incTupleCount(i);}
-	void incShares() {_stats.incShares();}
 	void incRejectedShares() {_stats.incRejectedShares();}
 	void updateDifficulty(uint32_t newDifficulty, uint32_t height) {_stats.updateDifficulty(newDifficulty, height);}
 	void updateHeight(uint32_t height) {_stats.updateHeight(height);}

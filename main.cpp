@@ -140,8 +140,8 @@ void WorkManager::manage() {
 				else {
 					std::cout << "Connected!" << std::endl;
 					_stats = Stats(offsets().size());
-					_stats.loadTuplesCounts(_options.tcFile());
 					_stats.setMiningType(_options.protocol());
+					_stats.loadTuplesCounts(_options.tcFile());
 				}
 				usleep(10000);
 			}
