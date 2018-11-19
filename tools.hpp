@@ -1,7 +1,7 @@
 // (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#ifndef HEADER_TOOLS_H
-#define HEADER_TOOLS_H
+#ifndef HEADER_tools_hpp
+#define HEADER_tools_hpp
 
 #include <iostream>
 #include <cstdio>

@@ -1,153 +1,22 @@
 // (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#include "main.h"
-#include "client.h"
-#include "miner.h"
-#include "gbtclient.h"
-#include "stratumclient.h"
-#include "tools.h"
+#include "main.hpp"
+#include "Client.hpp"
+#include "Miner.hpp"
+#include "WorkManager.hpp"
+#include "tools.hpp"
 #include <iomanip>
 #include <unistd.h>
 #ifndef _WIN32
 	#include <signal.h>
+	#include <arpa/inet.h>
+	#include <netdb.h>
+#else
+	#include <winsock2.h>
 #endif
 
 std::shared_ptr<WorkManager> manager;
 static std::string confPath("rieMiner.conf");
-
-WorkManager::WorkManager() {
-	_options           = Options();
-	_client            = NULL;
-	_miner             = NULL;
-	_inited            = false;
-	_miningStarted     = false;
-	_waitReconnect     = 10;
-	_workRefresh       = 500;
-	_stats             = Stats(offsets().size());
-}
-
-void WorkManager::init() {
-	_options.loadConf();
-	std::cout << "-----------------------------------------------------------" << std::endl;
-	if (_options.protocol() == "GetBlockTemplate")
-		_client = std::unique_ptr<Client>(new GBTClient(shared_from_this()));
-	else if (_options.protocol() == "Stratum")
-		_client = std::unique_ptr<Client>(new StratumClient(shared_from_this()));
-	else _client = std::unique_ptr<Client>(new BMClient(shared_from_this()));
-	
-	_miner = std::unique_ptr<Miner>(new Miner(shared_from_this()));
-	
-	std::cout << "Starting " << _options.threads() << " + 1 threads" << std::endl;
-	for (uint16_t i(0) ; i < _options.threads() + 1 ; i++) {
-		_threads.push_back(std::thread(&WorkManager::minerThread, shared_from_this()));
-		_threads[i].detach();
-	}
-	
-	_inited = true;
-}
-
-void WorkManager::submitWork(WorkData wd, uint32_t* nOffset, uint8_t length) {
-	_clientMutex.lock();
-	// Fill the nOffset and submit
-	memcpy(wd.bh.nOffset, nOffset, 32); 
-	_client->addSubmission(wd, length);
-	_clientMutex.unlock();
-}
-
-bool WorkManager::getWork(WorkData& wd) {
-	_clientMutex.lock();
-	wd = _client->workData();
-	_clientMutex.unlock();
-	return wd.height != 0;
-}
-
-void WorkManager::minerThread() {
-	WorkData wd;
-	while (true) {
-		if (!getWork(wd)) usleep(1000*_workRefresh/2);
-		else _miner->process(wd);
-	}
-}
-
-void WorkManager::manage() {
-	if (!_inited) std::cerr << "Manager was not inited!" << std::endl;
-	else {
-		std::chrono::time_point<std::chrono::system_clock> timer;
-		while (true) {
-			if (_options.protocol() == "Benchmark" && _miningStarted) {
-				if (timeSince(_stats.miningStartTp()) > _options.testTime() && _options.testTime() != 0) {
-					std::cout << _options.testTime() << " s elapsed, test finished. " << minerVersionString << ", diff " << _options.testDiff() << ", sieve " << _options.sieve() << std::endl;
-					_stats.printTuplesStats();
-					_stats.saveTuplesCounts(_options.tcFile());
-					_exit(0);
-				}
-				if (_stats.tuplesCount()[2] >= _options.test2t() && _options.test2t() != 0) {
-					std::cout << _options.test2t() << " 2-tuples found, test finished. " << minerVersionString << ", difficulty " << _options.testDiff() << ", sieve " << _options.sieve() << std::endl;
-					_stats.printBenchmarkResults();
-					if (_options.testDiff() == 1600 && (_options.sieve() == 1073741824 || _options.sieve() == 2147483648) && _options.test2t() >= 50000)
-						std::cout << "VALID parameters for Standard Benchmark" << std::endl;
-					_stats.printTuplesStats();
-					_stats.saveTuplesCounts(_options.tcFile());
-					_exit(0);
-				}
-			}
-			
-			if (_client->connected()) {
-				if (_options.refresh() != 0) {
-					double dt(timeSince(timer));
-					if (dt > _options.refresh() && _miner->inited() && _miningStarted) {
-						_stats.printStats();
-						_stats.printEstimatedTimeToBlock();
-						timer = std::chrono::system_clock::now();
-					}
-				}
-				
-				_clientMutex.lock();
-				_client->process();
-				if (!_client->connected()) {
-					_miner->updateHeight(0); // Mark work as invalid
-					std::cout << "Connection lost :|, reconnecting in 10 seconds..." << std::endl;
-					_stats.printTuplesStats();
-					_stats.saveTuplesCounts(_options.tcFile());
-					_miningStarted = false;
-					_clientMutex.unlock();
-					usleep(1000000*_waitReconnect);
-				}
-				else {
-					if (!_miner->inited()) _miner->init();
-					if (!_miningStarted && _client->workData().height != 0) {
-						_stats.startTimer();
-						_stats.updateHeight(_client->workData().height - 1);
-						std::cout << "-----------------------------------------------------------" << std::endl;
-						uint32_t startHeight(_client->workData().height);
-						std::cout << "[0000:00:00] Started mining at block " << startHeight;
-						_stats.initHeight(startHeight);
-						_miningStarted = true;
-					}
-					
-					_miner->updateHeight(_client->workData().height);
-					__sync_synchronize();
-					_clientMutex.unlock();
-					usleep(1000*_workRefresh);
-				}
-			}
-			else {
-				std::cout << "Connecting to Riecoin server..." << std::endl;
-				if (!_client->connect()) {
-					std::cout << "Failure :| ! Retry in 10 seconds..." << std::endl;
-					usleep(1000000*_waitReconnect);
-				}
-				else {
-					std::cout << "Connected!" << std::endl;
-					_stats = Stats(offsets().size());
-					_stats.setMiningType(_options.protocol());
-					_stats.loadTuplesCounts(_options.tcFile());
-				}
-				usleep(10000);
-			}
-		}
-	}
-}
 
 void Options::parseLine(std::string line, std::string& key, std::string& value) const {
 	for (uint16_t i(0) ; i < line.size() ; i++) { // Delete spaces

@@ -1,8 +1,7 @@
 // (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#include "main.h"
-#include "client.h"
-#include "tools.h"
+#include "Client.hpp"
+#include "WorkManager.hpp"
 
 Client::Client(const std::shared_ptr<WorkManager> &manager) {
 	_manager = manager;

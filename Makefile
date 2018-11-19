@@ -20,23 +20,29 @@ release: rieMiner
 debug: CFLAGS += -g
 debug: rieMiner
 
-rieMiner: main.o miner.o stratumclient.o gbtclient.o client.o tools.o mod_1_4.o
+rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o WorkManager.cpp Stats.cpp tools.o mod_1_4.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
-main.o: main.cpp main.h miner.h client.h gbtclient.h stratumclient.h tools.h
+main.o: main.cpp main.hpp Miner.hpp StratumClient.hpp GBTClient.hpp Client.hpp WorkManager.hpp Stats.hpp tools.hpp
 	$(CXX) $(CFLAGS) -c -o main.o main.cpp
 
-miner.o: miner.cpp miner.h
-	$(CXX) $(CFLAGS) -c -o miner.o miner.cpp
+Miner.o: Miner.cpp Miner.hpp
+	$(CXX) $(CFLAGS) -c -o Miner.o Miner.cpp
 
-stratumclient.o: stratumclient.cpp
-	$(CXX) $(CFLAGS) -c -o stratumclient.o stratumclient.cpp
+StratumClient.o: StratumClient.cpp
+	$(CXX) $(CFLAGS) -c -o StratumClient.o StratumClient.cpp
 
-gbtclient.o: gbtclient.cpp
-	$(CXX) $(CFLAGS) -c -o gbtclient.o gbtclient.cpp
+GBTClient.o: GBTClient.cpp
+	$(CXX) $(CFLAGS) -c -o GBTClient.o GBTClient.cpp
 
-client.o: client.cpp
-	$(CXX) $(CFLAGS) -c -o client.o client.cpp
+Client.o: Client.cpp
+	$(CXX) $(CFLAGS) -c -o Client.o Client.cpp
+
+Stats.o: Stats.cpp
+	$(CXX) $(CFLAGS) -c -o Stats.o Stats.cpp
+
+WorkManager.o: WorkManager.cpp
+	$(CXX) $(CFLAGS) -c -o WorkManager.o WorkManager.cpp
 
 tools.o: tools.cpp
 	$(CXX) $(CFLAGS) -c -o tools.o tools.cpp

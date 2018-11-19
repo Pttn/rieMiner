@@ -1,6 +1,6 @@
 // (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#include "tools.h"
+#include "tools.hpp"
 
 std::default_random_engine eng((std::random_device())());
 

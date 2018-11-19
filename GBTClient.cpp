@@ -1,7 +1,8 @@
 // (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#include "main.h"
-#include "gbtclient.h"
+#include "main.hpp"
+#include "GBTClient.hpp"
+#include "WorkManager.hpp"
 
 bool GBTClient::connect() {
 	if (_connected) return false;

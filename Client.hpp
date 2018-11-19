@@ -1,13 +1,13 @@
 // (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#ifndef HEADER_CLIENT_H
-#define HEADER_CLIENT_H
+#ifndef HEADER_Client_hpp
+#define HEADER_Client_hpp
 
 #include <vector>
+#include <memory>
+#include <mutex>
 #include <jansson.h>
 #include <curl/curl.h>
-#include "main.h"
-#include "tools.h"
 
 class WorkManager;
 

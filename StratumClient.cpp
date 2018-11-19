@@ -1,9 +1,10 @@
 // (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#include "main.h"
-#include "stratumclient.h"
+#include "main.hpp"
+#include "StratumClient.hpp"
+#include "WorkManager.hpp"
 
-#define USER_AGENT "rieMiner/0.9b3"
+#define USER_AGENT "rieMiner/0.9"
 
 void StratumData::merkleRootGen() {
 	std::vector<uint8_t> coinbase;
