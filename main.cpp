@@ -307,6 +307,10 @@ void Options::loadConf() {
 					try {_threads = std::stoi(value);}
 					catch (...) {_threads = 8;}
 				}
+				else if (key == "SieveWorkers") {
+					try {_sieveWorkers = std::stoi(value);}
+					catch (...) {_sieveWorkers = 0;}
+				}
 				else if (key == "Sieve") {
 					try {_sieve = std::stoll(value);}
 					catch (...) {_sieve = 1073741824;}
@@ -351,8 +355,14 @@ void Options::loadConf() {
 					catch (...) {_pn = 40;}
 				}
 				else if (key == "POff") {
-					try {_pOff = std::stoll(value);}
-					catch (...) {_pOff = 16057;}
+					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
+					std::stringstream offsets(value);
+					std::vector<uint64_t> primorialOffset;
+					uint64_t tmp;
+					while (offsets >> tmp) primorialOffset.push_back(tmp);
+					if (primorialOffset.size() < 1)
+						std::cout << "Too short or invalid primorial offsets, ignoring." << std::endl;
+					else _pOff = primorialOffset;
 				}
 				else if (key == "MaxMem") {
 					try {_maxMem = std::stoll(value);}
@@ -415,9 +425,14 @@ void Options::loadConf() {
 	std::cout << "Stats refresh rate = " << _refresh << " s" << std::endl;
 	if (_tcFile != "None") std::cout << "Tuple Count File = " << _tcFile << std::endl;
 	std::cout << "Primorial Number = " << _pn << std::endl;
-	std::cout << "Primorial Offset = " << _pOff << std::endl;
-	uint64_t offsetTemp(0);
+	std::cout << "Primorial Offset = " << "(";
+	for (std::vector<uint64_t>::size_type i(0) ; i < _pOff.size() ; i++) {
+		std::cout << _pOff[i];
+		if (i != _pOff.size() - 1) std::cout << ", ";
+	}
+	std::cout << ")" << std::endl;
 	std::cout << "Constellation Type = " << "(";
+	uint64_t offsetTemp(0);
 	for (std::vector<uint64_t>::size_type i(0) ; i < _consType.size() ; i++) {
 		offsetTemp += _consType[i];
 		if (offsetTemp == 0) std::cout << "n";

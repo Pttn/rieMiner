@@ -7,6 +7,7 @@
 #include <math.h>
 #include <immintrin.h>
 #include <chrono>
+#include <atomic>
 #include "main.h"
 #include "client.h"
 #include "tools.h"
@@ -31,8 +32,8 @@ struct MinerParameters {
 	uint64_t sieve;
 	bool solo;
 	int sieveWorkers;
-	uint64_t sieveBits, sieveSize, sieveWords, maxIncrements, maxIter, primorialOffset, denseLimit;
-	std::vector<uint64_t> primes, inverts, modPrecompute, primeTupleOffset;
+	uint64_t sieveBits, sieveSize, sieveWords, maxIncrements, maxIter, denseLimit;
+	std::vector<uint64_t> primes, inverts, modPrecompute, primeTupleOffset, primorialOffset;
 	
 	MinerParameters() {
 		primorialNumber = 40;
@@ -41,12 +42,12 @@ struct MinerParameters {
 		sieve           = 2147483648;
 		sieveWorkers    = 2;
 		solo            = true;
-		sieveBits       = 24;
+		sieveBits       = 25;
 		sieveSize       = 1UL << sieveBits;
 		sieveWords      = sieveSize/64;
 		maxIncrements   = (1ULL << 29),
 		maxIter         = maxIncrements/sieveSize;
-		primorialOffset = 16057;
+		primorialOffset = {16057, 19417, 43777, 1091257, 1615837, 1954357, 2822707, 2839927};
 		denseLimit      = 16384;
 		primeTupleOffset = {0, 4, 2, 4, 2, 4};
 	}
@@ -58,6 +59,7 @@ struct primeTestWork {
 	union {
 		struct {
 			uint64_t loop;
+			uint32_t offsetId;
 			uint32_t n_indexes;
 			uint32_t indexes[WORK_INDEXES];
 		} testWork;
@@ -66,8 +68,6 @@ struct primeTestWork {
 			uint64_t end;
 		} modWork;
 		struct {
-			uint64_t start;
-			uint64_t end;
 			uint32_t sieveId;
 		} sieveWork;
 	};
@@ -76,7 +76,16 @@ struct primeTestWork {
 struct MinerWorkData {
 	mpz_t z_verifyTarget, z_verifyRemainderPrimorial;
 	WorkData verifyBlock;
-	uint64_t outstandingTests = 0;
+	std::atomic<uint64_t> outstandingTests {0};
+};
+
+struct SieveInstance {
+	uint32_t id;
+	std::mutex bucketLock, modLock;
+	uint8_t* sieve = NULL;
+	uint32_t **segmentHits = NULL;
+	std::vector<uint64_t> segmentCounts;
+	uint32_t* offsets = NULL;
 };
 
 class Miner {
@@ -87,19 +96,16 @@ class Miner {
 	
 	ts_queue<primeTestWork, 4096> _verifyWorkQueue;
 	ts_queue<uint64_t, 1024> _modDoneQueue;
-	ts_queue<uint32_t, 128> _sieveDoneQueue;
-	ts_queue<uint32_t, 4096> _testDoneQueue;
+	ts_queue<int, 9216> _workDoneQueue;
 	mpz_t _primorial;
 	uint64_t _nPrimes, _entriesPerSegment, _primeTestStoreOffsetsSize, _startingPrimeIndex, _nDense, _nSparse;
-	uint8_t  **_sieves;
-	uint32_t **_segmentHits;
-	std::vector<uint64_t> _segmentCounts;
-	std::vector<uint64_t> _halfPrimeTupleOffset;
+	std::vector<uint64_t> _halfPrimeTupleOffset, _primorialOffsetDiff, _primorialOffsetDiffToFirst;
+	SieveInstance* _sieves;
 
 	std::chrono::microseconds _modTime, _sieveTime, _verifyTime;
 	
 	bool _masterExists;
-	std::mutex _masterLock, _bucketLock;
+	std::mutex _masterLock;
 
 	uint64_t _curWorkDataIndex;
 	MinerWorkData _workData[WORK_DATAS];
@@ -137,13 +143,14 @@ class Miner {
 		}
 	}
 	
-	void _putOffsetsInSegments(uint64_t *offsets, int n_offsets);
+	void _putOffsetsInSegments(SieveInstance& sieve, uint64_t *offsets, int n_offsets);
 	void _updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t end_i);
-	void _processSieve(uint8_t *sieve, uint64_t start_i, uint64_t end_i);
-	void _processSieve6(uint8_t *sieve, uint64_t start_i, uint64_t end_i);
+	void _processSieve(uint8_t *sieve, uint32_t* offsets, uint64_t start_i, uint64_t end_i);
+	void _processSieve6(uint8_t *sieve, uint32_t* offsets, uint64_t start_i, uint64_t end_i);
+	void _runSieve(SieveInstance& sieve, uint32_t workDataIndex);
 	void _verifyThread();
 	void _getTargetFromBlock(mpz_t z_target, const WorkData& block);
-	void _processOneBlock(uint32_t workDataIndex, uint8_t* sieve);
+	void _processOneBlock(uint32_t workDataIndex);
 	
 	public:
 	Miner(const std::shared_ptr<WorkManager> &manager) {
@@ -151,11 +158,8 @@ class Miner {
 		_inited = false;
 		_currentHeight = 0;
 		_parameters = MinerParameters();
-		_sieves = NULL;
-		_segmentHits = NULL;
 		_nPrimes = 0;
 		_entriesPerSegment = 0;
-		_segmentCounts = std::vector<uint64_t>();
 		_primeTestStoreOffsetsSize = 0;
 		_startingPrimeIndex = 0;
 		_nDense  = 0;
