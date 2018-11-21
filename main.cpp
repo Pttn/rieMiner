@@ -36,7 +36,8 @@ void WorkManager::init() {
 	else _client = std::unique_ptr<Client>(new BMClient(shared_from_this()));
 	
 	_miner = std::unique_ptr<Miner>(new Miner(shared_from_this()));
-	
+	_miner->init();
+
 	std::cout << "Starting " << _options.threads() << " + 1 threads" << std::endl;
 	for (uint16_t i(0) ; i < _options.threads() + 1 ; i++) {
 		_threads.push_back(std::thread(&WorkManager::minerThread, shared_from_this()));
@@ -114,7 +115,7 @@ void WorkManager::manage() {
 					usleep(1000000*_waitReconnect);
 				}
 				else {
-					if (!_miner->inited()) _miner->init();
+					assert(_miner->inited());
 					if (!_miningStarted && _client->workData().height != 0) {
 						_stats.startTimer();
 						_stats.updateHeight(_client->workData().height - 1);

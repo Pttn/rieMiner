@@ -22,7 +22,7 @@ void Miner::init() {
 	_parameters.primorialOffset  = _manager->options().pOff();
 	_parameters.sieveWorkers = _manager->options().sieveWorkers();
 	if (_parameters.sieveWorkers == 0) {
-		_parameters.sieveWorkers = (_manager->options().threads()+7)/8;
+		_parameters.sieveWorkers = (_manager->options().threads()+4)/5;
 	}
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, MAX_SIEVE_WORKERS);
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, int(_parameters.primorialOffset.size()));
@@ -734,41 +734,43 @@ void Miner::_processOneBlock(uint32_t workDataIndex) {
 		minWorkOut = std::min(minWorkOut, _verifyWorkQueue.size());
 	}
 
-	//std::cout << "Min work outstanding during sieving: " << minWorkOut << std::endl;
-	if (curWorkOut > _maxWorkOut - _parameters.threads*2) {
-		// If we are acheiving our work target, then adjust it towards the amount
-		// required to maintain a healthy minimum work queue length.
-		if (minWorkOut == 0) {
-			// Need more, but don't know how much, try adding some.
-			_maxWorkOut += 4*_parameters.threads*_parameters.sieveWorkers;
-		}
-		else {
-			// Adjust towards target of min work = 4 * threads
-			uint32_t targetMaxWork = (_maxWorkOut - minWorkOut) + 4*_parameters.threads;
-			_maxWorkOut = (_maxWorkOut + targetMaxWork) / 2;
-		}
-	}
-	else if (minWorkOut > 4u*_parameters.threads) {
-		// Didn't make the target, but also didn't run out of work.  Can still adjust target.
-		uint32_t targetMaxWork = (curWorkOut - minWorkOut) + 6*_parameters.threads;
-		_maxWorkOut = (_maxWorkOut + targetMaxWork) / 2;
-	}
-	else if (minWorkOut == 0 && curWorkOut > 0) {
-		// Warn the user they may need to change their configuration
-		static int allowedFails = 5;
-		static bool first = true;
-		if (--allowedFails == 0) {
-			allowedFails = 5;
-			std::cout << "WARNING: Unable to generate enough verification work to keep threads busy." << std::endl;
-			if (first) {
-				std::cout << "If you see the above message frequently consider reducing Sieve Max or increasing Sieve Workers" << std::endl;
-				std::cout << "Current Sieve max = " << _parameters.sieve << "   Sieve Workers = " << _parameters.sieveWorkers << std::endl;
-				first = false;
+	if (_currentHeight == _workData[workDataIndex].verifyBlock.height) {
+		//std::cout << "Min work outstanding during sieving: " << minWorkOut << std::endl;
+		if (curWorkOut > _maxWorkOut - _parameters.threads*2) {
+			// If we are acheiving our work target, then adjust it towards the amount
+			// required to maintain a healthy minimum work queue length.
+			if (minWorkOut == 0) {
+				// Need more, but don't know how much, try adding some.
+				_maxWorkOut += 4*_parameters.threads*_parameters.sieveWorkers;
+			}
+			else {
+				// Adjust towards target of min work = 4 * threads
+				uint32_t targetMaxWork = (_maxWorkOut - minWorkOut) + 4*_parameters.threads;
+				_maxWorkOut = (_maxWorkOut + targetMaxWork) / 2;
 			}
 		}
+		else if (minWorkOut > 4u*_parameters.threads) {
+			// Didn't make the target, but also didn't run out of work.  Can still adjust target.
+			uint32_t targetMaxWork = (curWorkOut - minWorkOut) + 6*_parameters.threads;
+			_maxWorkOut = (_maxWorkOut + targetMaxWork) / 2;
+		}
+		else if (minWorkOut == 0 && curWorkOut > 0) {
+			// Warn the user they may need to change their configuration
+			static int allowedFails = 5;
+			static bool first = true;
+			if (--allowedFails == 0) {
+				allowedFails = 5;
+				std::cout << "WARNING: Unable to generate enough verification work to keep threads busy." << std::endl;
+				if (first) {
+					std::cout << "If you see the above message frequently consider reducing Sieve Max or increasing Sieve Workers" << std::endl;
+					std::cout << "Current Sieve max = " << _parameters.sieve << "   Sieve Workers = " << _parameters.sieveWorkers << std::endl;
+					first = false;
+				}
+			}
+		}
+		_maxWorkOut = std::min(_maxWorkOut, _workDoneQueue.size() - 256);
+		//std::cout << "Work target before starting next block now: " << _maxWorkOut << std::endl;
 	}
-	_maxWorkOut = std::min(_maxWorkOut, _workDoneQueue.size() - 256);
-	//std::cout << "Work target before starting next block now: " << _maxWorkOut << std::endl;
 
 	mpz_clears(z_target, z_temp, z_remainderPrimorial, NULL);
 }
