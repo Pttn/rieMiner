@@ -8,7 +8,7 @@
 thread_local bool isMaster(false);
 thread_local uint64_t** offset_stack(NULL);
 
-#define MAX_SIEVE_WORKERS 8
+#define MAX_SIEVE_WORKERS 16
 
 #define	zeroesBeforeHashInPrime	8
 
@@ -199,7 +199,7 @@ void Miner::init() {
 	}
 
 	// Initial guess at a value for maxWorkOut
-	_maxWorkOut = std::min(_parameters.threads*32*_parameters.sieveWorkers, 8192);
+	_maxWorkOut = std::min(_parameters.threads*32u*_parameters.sieveWorkers, _workDoneQueue.size() - 256);
 
 	_inited = true;
 }
@@ -229,7 +229,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 	const uint64_t tupleSize(_parameters.primeTupleOffset.size());
 	if (offset_stack == NULL) {
 		offset_stack = new uint64_t*[MAX_SIEVE_WORKERS];
-		for (uint64_t i(0); i < MAX_SIEVE_WORKERS; ++i)
+		for (uint64_t i(0); i < _parameters.sieveWorkers; ++i)
 			offset_stack[i] = new uint64_t[OFFSET_STACK_SIZE];
 	}
 	uint64_t precompLimit = _parameters.modPrecompute.size()/4;
