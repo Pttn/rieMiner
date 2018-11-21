@@ -286,7 +286,7 @@ class Options {
 		_testTime = 0;
 		_test2t   = 50000;
 		_pn       = 40; // Primorial Number
-		_pOff     = {16057, 19417, 43777, 1091257, 1615837, 1954357, 2822707, 2839927}; // Primorial Offsets
+		_pOff     = {4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull, 7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull}; // Primorial Offsets
 		_maxMem   = 0;
 		_sieveBits = 25;
 		_consType = {0, 4, 2, 4, 2, 4}; // What type of constellations are we mining (offsets)

@@ -22,7 +22,7 @@ void Miner::init() {
 	_parameters.primorialOffset  = _manager->options().pOff();
 	_parameters.sieveWorkers = _manager->options().sieveWorkers();
 	if (_parameters.sieveWorkers == 0) {
-		_parameters.sieveWorkers = std::max(1, _manager->options().threads()/5);
+		_parameters.sieveWorkers = (_manager->options().threads()+7)/8;
 	}
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, MAX_SIEVE_WORKERS);
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, int(_parameters.primorialOffset.size()));
@@ -245,7 +245,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 
 		// Compute the index, using precomputation speed up if available.
 		uint64_t index;
-		uint64_t cnt, ps(0);
+		uint64_t cnt(0), ps(0);
 		if (i < precompLimit) {
 			cnt = _parameters.modPrecompute[i*4 + 3] >> 57;
 			ps = p << cnt;
@@ -280,24 +280,26 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		invert[3] = invert[1] + invert[2];
 		if (invert[3] >= p) invert[3] -= p;
 
+		uint64_t r(0);
 		for (int j(0) ; j < _parameters.sieveWorkers ; j++) {
 			if (j != 0) {
-				uint64_t r;
-				if (i < precompLimit && _primorialOffsetDiff[j-1] < p) {
-					uint64_t nh, nl;
-					uint64_t os(_primorialOffsetDiff[j-1] << cnt);
-					umul_ppmm(nh, nl, os, invert[0]);
-					udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i*4]);
-					r >>= cnt;
-					//if (r != (_primorialOffsetDiff[j-1]*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); }
-				}
-				else if (p < 0x100000000ull) {
-					r = (_primorialOffsetDiff[j-1]*invert[0]) % p;
-				}
-				else {
-					uint64_t q, nh, nl;
-					umul_ppmm(nh, nl, _primorialOffsetDiff[j-1], invert[0]);
-					udiv_qrnnd(q, r, nh, nl, p);
+				if (j == 1 || _primorialOffsetDiff[j-1] != _primorialOffsetDiff[j-2]) {
+					if (i < precompLimit && _primorialOffsetDiff[j-1] < p) {
+						uint64_t nh, nl;
+						uint64_t os(_primorialOffsetDiff[j-1] << cnt);
+						umul_ppmm(nh, nl, os, invert[0]);
+						udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i*4]);
+						r >>= cnt;
+						//if (r != (_primorialOffsetDiff[j-1]*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); }
+					}
+					else if (p < 0x100000000ull) {
+						r = (_primorialOffsetDiff[j-1]*invert[0]) % p;
+					}
+					else {
+						uint64_t q, nh, nl;
+						umul_ppmm(nh, nl, _primorialOffsetDiff[j-1], invert[0]);
+						udiv_qrnnd(q, r, nh, nl, p);
+					}
 				}
 				if (index < r) index += p;
 				index -= r;

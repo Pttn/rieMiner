@@ -47,7 +47,7 @@ struct MinerParameters {
 		sieveWords      = sieveSize/64;
 		maxIncrements   = (1ULL << 29),
 		maxIter         = maxIncrements/sieveSize;
-		primorialOffset = {16057, 19417, 43777, 1091257, 1615837, 1954357, 2822707, 2839927};
+		primorialOffset = {4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull, 7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull};
 		denseLimit      = 16384;
 		primeTupleOffset = {0, 4, 2, 4, 2, 4};
 	}
