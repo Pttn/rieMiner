@@ -650,7 +650,7 @@ void Miner::process(WorkData block) {
 		while (_workData[workDataIndex].outstandingTests > 0)
 			_workData[_workDoneQueue.pop_front()].outstandingTests--;
 
-		std::cout << "Block timing: " << _modTime.count() << ", " << _sieveTime.count() << ", " << _verifyTime.count() << "  Tests out: " << _workData[0].outstandingTests << ", " << _workData[1].outstandingTests << std::endl;
+		//std::cout << "Block timing: " << _modTime.count() << ", " << _sieveTime.count() << ", " << _verifyTime.count() << "  Tests out: " << _workData[0].outstandingTests << ", " << _workData[1].outstandingTests << std::endl;
 
 	} while (_manager->getWork(_workData[workDataIndex].verifyBlock));
 
@@ -732,7 +732,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex) {
 		minWorkOut = std::min(minWorkOut, _verifyWorkQueue.size());
 	}
 
-	std::cout << "Min work outstanding during sieving: " << minWorkOut << std::endl;
+	//std::cout << "Min work outstanding during sieving: " << minWorkOut << std::endl;
 	if (curWorkOut > _maxWorkOut - _parameters.threads*2) {
 		// If we are acheiving our work target, then adjust it towards the amount
 		// required to maintain a healthy minimum work queue length.
@@ -766,7 +766,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex) {
 		}
 	}
 	_maxWorkOut = std::min(_maxWorkOut, _workDoneQueue.size() - 256);
-	std::cout << "Work target before starting next block now: " << _maxWorkOut << std::endl;
+	//std::cout << "Work target before starting next block now: " << _maxWorkOut << std::endl;
 
 	mpz_clears(z_target, z_temp, z_remainderPrimorial, NULL);
 }
