@@ -229,7 +229,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 	const uint64_t tupleSize(_parameters.primeTupleOffset.size());
 	if (offset_stack == NULL) {
 		offset_stack = new uint64_t*[MAX_SIEVE_WORKERS];
-		for (uint64_t i(0); i < _parameters.sieveWorkers; ++i)
+		for (int i(0); i < _parameters.sieveWorkers; ++i)
 			offset_stack[i] = new uint64_t[OFFSET_STACK_SIZE];
 	}
 	uint64_t precompLimit = _parameters.modPrecompute.size()/4;
