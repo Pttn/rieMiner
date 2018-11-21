@@ -26,6 +26,10 @@ void Miner::init() {
 	}
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, MAX_SIEVE_WORKERS);
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, int(_parameters.primorialOffset.size()));
+	_parameters.sieveBits = _manager->options().sieveBits();
+	_parameters.sieveSize = 1 << _parameters.sieveBits;
+	_parameters.sieveWords = _parameters.sieveSize / 64;
+	_parameters.maxIter = _parameters.maxIncrements / _parameters.sieveSize;
 	_parameters.solo = !(_manager->options().protocol() == "Stratum");
 	_parameters.tuples = _manager->options().tuples();
 	_parameters.sieve = _manager->options().sieve();
@@ -193,6 +197,9 @@ void Miner::init() {
 		std::cerr << "Unable to allocate memory for the _segmentHits :|..." << std::endl;
 		exit(-1);
 	}
+
+	// Initial guess at a value for maxWorkOut
+	_maxWorkOut = std::min(_parameters.threads*32*_parameters.sieveWorkers, 8192);
 
 	_inited = true;
 }
@@ -626,7 +633,6 @@ void Miner::process(WorkData block) {
 		return;
 	}
 	
-	uint32_t maxWorkOut(std::min(_parameters.threads*32*_parameters.sieveWorkers, 8192));
 	uint32_t workDataIndex(0);
 	_workData[workDataIndex].verifyBlock = block;
 
@@ -637,7 +643,7 @@ void Miner::process(WorkData block) {
 
 		_processOneBlock(workDataIndex);
 
-		while (_workData[workDataIndex].outstandingTests > maxWorkOut)
+		while (_workData[workDataIndex].outstandingTests > _maxWorkOut)
 			_workData[_workDoneQueue.pop_front()].outstandingTests--;
 
 		workDataIndex = (workDataIndex + 1) % WORK_DATAS;
@@ -682,18 +688,17 @@ void Miner::_processOneBlock(uint32_t workDataIndex) {
 	int n_modWorkers(0);
 	int n_lowModWorkers(0);
 	
-	bool busy(false);
+	uint32_t curWorkOut = _verifyWorkQueue.size();
 	uint64_t incr(_nPrimes/(_parameters.threads*4));
-	if (_verifyWorkQueue.size() != 0) {
+	if (curWorkOut != 0) {
 		// Just use half the threads to reduce lock contention and allow other threads to keep processing verify tests.
-		busy = true;
 		incr = _nPrimes/(_parameters.threads/2);
 	}
 	for (auto base(_startingPrimeIndex) ; base < _nPrimes ; base += incr) {
 		uint64_t lim(std::min(_nPrimes, base + incr));
 		wi.modWork.start = base;
 		wi.modWork.end = lim;
-		if (!busy) _verifyWorkQueue.push_back(wi);
+		if (curWorkOut == 0) _verifyWorkQueue.push_back(wi);
 		else _verifyWorkQueue.push_front(wi);
 		if (wi.modWork.start < _startingPrimeIndex + _nDense + _nSparse) n_lowModWorkers++;
 		else n_modWorkers++;
@@ -719,11 +724,49 @@ void Miner::_processOneBlock(uint32_t workDataIndex) {
 		_sieves[i].modLock.unlock();
 	}
 
+	uint32_t minWorkOut = std::min(curWorkOut, _verifyWorkQueue.size());
 	while (n_sieveWorkers > 0) {
 		int workId = _workDoneQueue.pop_front();
 		if (workId == -1) n_sieveWorkers--;
 		else _workData[workId].outstandingTests--;
+		minWorkOut = std::min(minWorkOut, _verifyWorkQueue.size());
 	}
+
+	std::cout << "Min work outstanding during sieving: " << minWorkOut << std::endl;
+	if (curWorkOut > _maxWorkOut - _parameters.threads*2) {
+		// If we are acheiving our work target, then adjust it towards the amount
+		// required to maintain a healthy minimum work queue length.
+		if (minWorkOut == 0) {
+			// Need more, but don't know how much, try adding some.
+			_maxWorkOut += 4*_parameters.threads*_parameters.sieveWorkers;
+		}
+		else {
+			// Adjust towards target of min work = 4 * threads
+			uint32_t targetMaxWork = (_maxWorkOut - minWorkOut) + 4*_parameters.threads;
+			_maxWorkOut = (_maxWorkOut + targetMaxWork) / 2;
+		}
+	}
+	else if (minWorkOut > 4u*_parameters.threads) {
+		// Didn't make the target, but also didn't run out of work.  Can still adjust target.
+		uint32_t targetMaxWork = (curWorkOut - minWorkOut) + 6*_parameters.threads;
+		_maxWorkOut = (_maxWorkOut + targetMaxWork) / 2;
+	}
+	else if (minWorkOut == 0 && curWorkOut > 0) {
+		// Warn the user they may need to change their configuration
+		static int allowedFails = 5;
+		static bool first = true;
+		if (--allowedFails == 0) {
+			allowedFails = 5;
+			std::cout << "WARNING: Unable to generate enough verification work to keep threads busy." << std::endl;
+			if (first) {
+				std::cout << "If you see the above message frequently consider reducing Sieve Max or increasing Sieve Workers" << std::endl;
+				std::cout << "Current Sieve max = " << _parameters.sieve << "   Sieve Workers = " << _parameters.sieveWorkers << std::endl;
+				first = false;
+			}
+		}
+	}
+	_maxWorkOut = std::min(_maxWorkOut, _workDoneQueue.size() - 256);
+	std::cout << "Work target before starting next block now: " << _maxWorkOut << std::endl;
 
 	mpz_clears(z_target, z_temp, z_remainderPrimorial, NULL);
 }

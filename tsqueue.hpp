@@ -57,7 +57,7 @@ template<class T, int maxSize> class ts_queue {
 			return s;
 		}
 
-		int size() {
+		uint32_t size() {
 			std::unique_lock<std::mutex> lock(_m);
 			auto s(_q.size());
 			return s;

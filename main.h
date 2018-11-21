@@ -259,7 +259,7 @@ class Stats {
 
 class Options {
 	std::string _host, _user, _pass, _protocol, _address, _tcFile;
-	uint8_t _tuples;
+	uint8_t _tuples, _sieveBits;
 	uint16_t _port, _threads, _sieveWorkers;
 	uint32_t _refresh, _testDiff, _testTime, _test2t;
 	uint64_t _sieve, _pn;
@@ -288,6 +288,7 @@ class Options {
 		_pn       = 40; // Primorial Number
 		_pOff     = {16057, 19417, 43777, 1091257, 1615837, 1954357, 2822707, 2839927}; // Primorial Offsets
 		_maxMem   = 0;
+		_sieveBits = 25;
 		_consType = {0, 4, 2, 4, 2, 4}; // What type of constellations are we mining (offsets)
 	}
 	
@@ -312,6 +313,7 @@ class Options {
 	uint64_t pn() const {return _pn;}
 	std::vector<uint64_t> pOff() const {return _pOff;}
 	uint64_t maxMem() const {return _maxMem;}
+	uint8_t sieveBits() const {return _sieveBits;}
 	std::vector<uint64_t> consType() const {return _consType;}
 };
 

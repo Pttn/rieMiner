@@ -369,6 +369,10 @@ void Options::loadConf() {
 					catch (...) {_maxMem = 0;}
 					_maxMem *= 1048576;
 				}
+				else if (key == "SieveBits") {
+					try {_sieveBits = std::stoi(value);}
+					catch (...) {_sieveBits = 25;}
+				}
 				else if (key == "ConsType") {
 					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
 					std::stringstream offsets(value);

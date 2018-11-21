@@ -109,6 +109,7 @@ class Miner {
 
 	uint64_t _curWorkDataIndex;
 	MinerWorkData _workData[WORK_DATAS];
+	uint32_t _maxWorkOut;
 
 	void _initPending(uint32_t pending[PENDING_SIZE]) {
 		for (int i(0) ; i < PENDING_SIZE; i++) pending[i] = 0;
