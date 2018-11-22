@@ -233,9 +233,8 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 			offset_stack[i] = new uint64_t[OFFSET_STACK_SIZE];
 	}
 	uint64_t precompLimit = _parameters.modPrecompute.size()/4;
-	bool stopLooping = false;
 
-	for (uint64_t i(start_i) ; !stopLooping && i < end_i ; i++) {
+	for (uint64_t i(start_i) ; i < end_i ; i++) {
 		uint64_t p(_parameters.primes[i]);
 
 		// Also update the offsets unless once only
@@ -281,64 +280,65 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		invert[3] = invert[1] + invert[2];
 		if (invert[3] >= p) invert[3] -= p;
 
-		auto addToOffsets = [&](const int j) {
-			if (!onceOnly) {
-				uint32_t* offsets = &_sieves[j].offsets[tupleSize*i];
-				offsets[0] = index;
-				for (std::vector<uint64_t>::size_type f(1) ; f < _halfPrimeTupleOffset.size() ; f++) {
-					if (index < invert[_halfPrimeTupleOffset[f]]) index += p;
-					index -= invert[_halfPrimeTupleOffset[f]];
-					offsets[f] = index;
-				}
-			}
-			else {
-				if (n_offsets[j] + _halfPrimeTupleOffset.size() >= OFFSET_STACK_SIZE) {
-					if (_workData[workDataIndex].verifyBlock.height != _currentHeight) {
-						stopLooping = true;
-						return;
-					}
-					_putOffsetsInSegments(_sieves[j], offset_stack[j], n_offsets[j]);
-					n_offsets[j] = 0;
-				}
-				if (index < _parameters.maxIncrements) offset_stack[j][n_offsets[j]++] = index;
-				for (std::vector<uint64_t>::size_type f(1) ; f < _halfPrimeTupleOffset.size() ; f++) {
-					if (index < invert[_halfPrimeTupleOffset[f]]) index += p;
-					index -= invert[_halfPrimeTupleOffset[f]];
-					if (index < _parameters.maxIncrements) offset_stack[j][n_offsets[j]++] = index;
-				}
-			}
+		// We use a macro here to ensure the compiler inlines the code, and also make it easier to early
+		// out of the function completely if the current height has changed.
+#define addToOffsets(j) { \
+			if (!onceOnly) { \
+				uint32_t* offsets = &_sieves[j].offsets[tupleSize*i]; \
+				offsets[0] = index; \
+				for (std::vector<uint64_t>::size_type f(1) ; f < _halfPrimeTupleOffset.size() ; f++) { \
+					if (index < invert[_halfPrimeTupleOffset[f]]) index += p; \
+					index -= invert[_halfPrimeTupleOffset[f]]; \
+					offsets[f] = index; \
+				} \
+			} \
+			else { \
+				if (n_offsets[j] + _halfPrimeTupleOffset.size() >= OFFSET_STACK_SIZE) { \
+					if (_workData[workDataIndex].verifyBlock.height != _currentHeight) { \
+						mpz_clear(tar); \
+						return; \
+					} \
+					_putOffsetsInSegments(_sieves[j], offset_stack[j], n_offsets[j]); \
+					n_offsets[j] = 0; \
+				} \
+				if (index < _parameters.maxIncrements) offset_stack[j][n_offsets[j]++] = index; \
+				for (std::vector<uint64_t>::size_type f(1) ; f < _halfPrimeTupleOffset.size() ; f++) { \
+					if (index < invert[_halfPrimeTupleOffset[f]]) index += p; \
+					index -= invert[_halfPrimeTupleOffset[f]]; \
+					if (index < _parameters.maxIncrements) offset_stack[j][n_offsets[j]++] = index; \
+				} \
+			} \
 		};
 		addToOffsets(0);
 		if (_parameters.sieveWorkers == 1) continue;
 
-		auto recomputeRemainder = [&](const int j) {
-			uint64_t r;
-			if (i < precompLimit && _primorialOffsetDiff[j-1] < p) {
-				uint64_t nh, nl;
-				uint64_t os(_primorialOffsetDiff[j-1] << cnt);
-				umul_ppmm(nh, nl, os, invert[0]);
-				udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i*4]);
-				r >>= cnt;
-				//if (r != (_primorialOffsetDiff[j-1]*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); }
-			}
-			else if (p < 0x100000000ull) {
-				r = (_primorialOffsetDiff[j-1]*invert[0]) % p;
-			}
-			else {
-				uint64_t q, nh, nl;
-				umul_ppmm(nh, nl, _primorialOffsetDiff[j-1], invert[0]);
-				udiv_qrnnd(q, r, nh, nl, p);
-			}
-			return r;
-		};
-		uint64_t r = recomputeRemainder(1);
+		uint64_t r;
+#define recomputeRemainder(j) { \
+			if (i < precompLimit && _primorialOffsetDiff[j-1] < p) { \
+				uint64_t nh, nl; \
+				uint64_t os(_primorialOffsetDiff[j-1] << cnt); \
+				umul_ppmm(nh, nl, os, invert[0]); \
+				udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i*4]); \
+				r >>= cnt; \
+				/* if (r != (_primorialOffsetDiff[j-1]*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); } */ \
+			} \
+			else if (p < 0x100000000ull) { \
+				r = (_primorialOffsetDiff[j-1]*invert[0]) % p; \
+			} \
+			else { \
+				uint64_t q, nh, nl; \
+				umul_ppmm(nh, nl, _primorialOffsetDiff[j-1], invert[0]); \
+				udiv_qrnnd(q, r, nh, nl, p); \
+			} \
+		}
+		recomputeRemainder(1);
 		if (index < r) index += p;
 		index -= r;
 		addToOffsets(1);
 
 		for (int j(2) ; j < _parameters.sieveWorkers ; j++) {
 			if (_primorialOffsetDiff[j-1] != _primorialOffsetDiff[j-2]) {
-				r = recomputeRemainder(j);
+				recomputeRemainder(j);
 			}
 			if (index < r) index += p;
 			index -= r;
@@ -346,12 +346,10 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		}
 	}
 
-	if (!stopLooping) {
-		for (int j(0) ; j < _parameters.sieveWorkers ; j++) {
-			if (n_offsets[j] > 0) {
-				_putOffsetsInSegments(_sieves[j], offset_stack[j], n_offsets[j]);
-				n_offsets[j] = 0;
-			}
+	for (int j(0) ; j < _parameters.sieveWorkers ; j++) {
+		if (n_offsets[j] > 0) {
+			_putOffsetsInSegments(_sieves[j], offset_stack[j], n_offsets[j]);
+			n_offsets[j] = 0;
 		}
 	}
 
