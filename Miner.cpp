@@ -280,31 +280,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		invert[3] = invert[1] + invert[2];
 		if (invert[3] >= p) invert[3] -= p;
 
-		uint64_t r(0);
-		for (int j(0) ; j < _parameters.sieveWorkers ; j++) {
-			if (j != 0) {
-				if (j == 1 || _primorialOffsetDiff[j-1] != _primorialOffsetDiff[j-2]) {
-					if (i < precompLimit && _primorialOffsetDiff[j-1] < p) {
-						uint64_t nh, nl;
-						uint64_t os(_primorialOffsetDiff[j-1] << cnt);
-						umul_ppmm(nh, nl, os, invert[0]);
-						udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i*4]);
-						r >>= cnt;
-						//if (r != (_primorialOffsetDiff[j-1]*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); }
-					}
-					else if (p < 0x100000000ull) {
-						r = (_primorialOffsetDiff[j-1]*invert[0]) % p;
-					}
-					else {
-						uint64_t q, nh, nl;
-						umul_ppmm(nh, nl, _primorialOffsetDiff[j-1], invert[0]);
-						udiv_qrnnd(q, r, nh, nl, p);
-					}
-				}
-				if (index < r) index += p;
-				index -= r;
-			}
-
+		auto addToOffsets = [&](const int j) {
 			if (!onceOnly) {
 				uint32_t* offsets = &_sieves[j].offsets[tupleSize*i];
 				offsets[0] = index;
@@ -330,14 +306,52 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 					if (index < _parameters.maxIncrements) offset_stack[j][n_offsets[j]++] = index;
 				}
 			}
+		};
+		addToOffsets(0);
+		if (_parameters.sieveWorkers == 1) continue;
+
+		auto recomputeRemainder = [&](const int j) {
+			uint64_t r;
+			if (i < precompLimit && _primorialOffsetDiff[j-1] < p) {
+				uint64_t nh, nl;
+				uint64_t os(_primorialOffsetDiff[j-1] << cnt);
+				umul_ppmm(nh, nl, os, invert[0]);
+				udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i*4]);
+				r >>= cnt;
+				//if (r != (_primorialOffsetDiff[j-1]*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); }
+			}
+			else if (p < 0x100000000ull) {
+				r = (_primorialOffsetDiff[j-1]*invert[0]) % p;
+			}
+			else {
+				uint64_t q, nh, nl;
+				umul_ppmm(nh, nl, _primorialOffsetDiff[j-1], invert[0]);
+				udiv_qrnnd(q, r, nh, nl, p);
+			}
+			return r;
+		};
+		uint64_t r = recomputeRemainder(1);
+		if (index < r) index += p;
+		index -= r;
+		addToOffsets(1);
+
+		for (int j(2) ; j < _parameters.sieveWorkers ; j++) {
+			if (_primorialOffsetDiff[j-1] != _primorialOffsetDiff[j-2]) {
+				r = recomputeRemainder(j);
+			}
+			if (index < r) index += p;
+			index -= r;
+			addToOffsets(j);
 		}
 	}
+
 	for (int j(0) ; j < _parameters.sieveWorkers ; j++) {
 		if (n_offsets[j] > 0) {
 			_putOffsetsInSegments(_sieves[j], offset_stack[j], n_offsets[j]);
 			n_offsets[j] = 0;
 		}
 	}
+
 	mpz_clear(tar);
 }
 
