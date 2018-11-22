@@ -2,7 +2,7 @@
 (c) 2017-2018 Pttn (refactoring and porting to modern C++) (https://ric.pttn.me/)
 (c) 2018 Michael Bell/Rockhawk (assembly optimizations, improvement of work management between threads, and some more) (https://github.com/MichaelBell/) */
 
-#include "miner.h"
+#include "Miner.hpp"
 #include "external/gmp_util.h"
 
 thread_local bool isMaster(false);

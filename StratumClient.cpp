@@ -1,9 +1,10 @@
 // (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#include "main.h"
-#include "stratumclient.h"
+#include "main.hpp"
+#include "StratumClient.hpp"
+#include "WorkManager.hpp"
 
-#define USER_AGENT "rieMiner/0.9b3"
+#define USER_AGENT "rieMiner/0.9"
 
 void StratumData::merkleRootGen() {
 	std::vector<uint8_t> coinbase;
@@ -272,7 +273,6 @@ void StratumClient::getSentShareResponse() {
 	else {
 		json_t *jsonRes(json_object_get(jsonObj, "result")),
 		       *jsonErr(json_object_get(jsonObj, "error"));
-		_manager->incShares();
 		if (jsonRes == NULL || json_is_null(jsonRes) || !json_is_null(jsonErr)) {
 			std::cout << "Share rejected :| - ";
 			_manager->incRejectedShares();
@@ -291,11 +291,10 @@ void StratumClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 	
 	std::ostringstream oss;
 	uint32_t nonce[8];
-	wdToSend.bh.curtime = be32dec(&wdToSend.bh.curtime);
+	wdToSend.bh.curtime = toBEnd32(wdToSend.bh.curtime);
 	wdToSend.bh.curtime <<= 32;
 	
-	for (uint32_t i(0) ; i < 8 ; i++)
-		nonce[i] = swab32(*(((uint32_t *) wdToSend.bh.nOffset) + 8 - 1 - i));
+	for (uint32_t i(0) ; i < 8 ; i++) nonce[i] = invEnd32(((uint32_t*) wdToSend.bh.nOffset)[8 - 1 - i]);
 	
 	oss << "{\"method\": \"mining.submit\", \"params\": [\""
 	    << _manager->options().user() << "\", \""
@@ -358,15 +357,15 @@ WorkData StratumClient::workData() const {
 	WorkData wd;
 	wd.height = sd.height;
 	memcpy(&wd.bh, &sd.bh, 128);
-	wd.bh.bits        = swab32(wd.bh.bits);
+	wd.bh.bits        = invEnd32(wd.bh.bits);
 	wd.targetCompact  = getCompact(wd.bh.bits);
 	wd.extraNonce1    = sd.extraNonce1;
 	wd.extraNonce2    = sd.extraNonce2;
 	wd.jobId          = sd.jobId;
 	// Change endianness for mining (will revert back when submit share)
-	for (uint8_t i(0) ; i < 8 ; i++) ((uint32_t*) wd.bh.previousblockhash)[i] = be32dec(&((uint32_t*) wd.bh.previousblockhash)[i]);
-	wd.bh.curtime = be32dec(&wd.bh.curtime);
-	wd.bh.version = swab32(wd.bh.version);
+	for (uint8_t i(0) ; i < 8 ; i++) ((uint32_t*) wd.bh.previousblockhash)[i] = toBEnd32(((uint32_t*) wd.bh.previousblockhash)[i]);
+	wd.bh.curtime = toBEnd32(wd.bh.curtime);
+	wd.bh.version = invEnd32(wd.bh.version);
 	
 	return wd;
 }

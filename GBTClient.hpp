@@ -1,10 +1,10 @@
 // (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#ifndef HEADER_GBTCLIENT_H
-#define HEADER_GBTCLIENT_H
+#ifndef HEADER_GBTClient_hpp
+#define HEADER_GBTClient_hpp
 
-#include "client.h"
-#include "tools.h"
+#include "Client.hpp"
+#include "tools.hpp"
 
 struct GetBlockTemplateData {
 	BlockHeader bh;

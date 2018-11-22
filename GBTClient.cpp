@@ -1,7 +1,8 @@
 // (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#include "main.h"
-#include "gbtclient.h"
+#include "main.hpp"
+#include "GBTClient.hpp"
+#include "WorkManager.hpp"
 
 bool GBTClient::connect() {
 	if (_connected) return false;
@@ -163,7 +164,7 @@ WorkData GBTClient::workData() const {
 	WorkData wd;
 	memcpy(&wd.bh, &gbtd.bh, 128);
 	if (gbtd.height != 0) wd.height = gbtd.height - 1;
-	wd.bh.bits       = swab32(wd.bh.bits);
+	wd.bh.bits       = invEnd32(wd.bh.bits);
 	wd.targetCompact = getCompact(wd.bh.bits);
 	wd.transactions  = gbtd.transactions;
 	wd.txCount       = gbtd.txHashes.size();

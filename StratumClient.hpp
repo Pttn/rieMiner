@@ -1,20 +1,17 @@
 // (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#ifndef HEADER_STRATUMCLIENT_H
-#define HEADER_STRATUMCLIENT_H
+#ifndef HEADER_StratumClient_hpp
+#define HEADER_StratumClient_hpp
 
-#include "client.h"
+#include "Client.hpp"
+#include <fcntl.h>
 
 #ifdef _WIN32
 	#include <winsock2.h>
 #else
-	#include <sys/socket.h>
-	#include <netinet/in.h>
 	#include <arpa/inet.h>
 	#include <netdb.h>
 #endif
-#include <unistd.h>
-#include <fcntl.h>
 
 struct StratumData {
 	BlockHeader bh;

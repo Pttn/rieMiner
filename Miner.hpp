@@ -1,17 +1,15 @@
 // (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#ifndef HEADER_MINER_H
-#define HEADER_MINER_H
+#ifndef HEADER_Miner_hpp
+#define HEADER_Miner_hpp
 
-#include <assert.h>
-#include <math.h>
-#include <immintrin.h>
-#include <chrono>
+#include <cassert>
 #include <atomic>
-#include "main.h"
-#include "client.h"
-#include "tools.h"
-#include "tsqueue.hpp"
+#include "WorkManager.hpp"
+#include "tsQueue.hpp"
+
+class WorkManager;
+struct WorkData;
 
 union xmmreg_t {
 	uint32_t v[4];
@@ -39,7 +37,7 @@ struct MinerParameters {
 		primorialNumber = 40;
 		threads         = 8;
 		tuples          = 6;
-		sieve           = 2147483648;
+		sieve           = 1073741824;
 		sieveWorkers    = 2;
 		solo            = true;
 		sieveBits       = 25;
@@ -94,9 +92,9 @@ class Miner {
 	volatile uint32_t _currentHeight;
 	MinerParameters _parameters;
 	
-	ts_queue<primeTestWork, 4096> _verifyWorkQueue;
-	ts_queue<uint64_t, 1024> _modDoneQueue;
-	ts_queue<int, 9216> _workDoneQueue;
+	tsQueue<primeTestWork, 4096> _verifyWorkQueue;
+	tsQueue<uint64_t, 1024> _modDoneQueue;
+	tsQueue<int, 9216> _workDoneQueue;
 	mpz_t _primorial;
 	uint64_t _nPrimes, _entriesPerSegment, _primeTestStoreOffsetsSize, _startingPrimeIndex, _nDense, _nSparse;
 	std::vector<uint64_t> _halfPrimeTupleOffset, _primorialOffsetDiff, _primorialOffsetDiffToFirst;
