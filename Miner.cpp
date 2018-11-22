@@ -264,13 +264,8 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 			uint64_t remainder(mpz_tdiv_ui(tar, p)),
 			         pa(p - remainder),
 			         q, nh, nl;
-			if (p < 0x100000000ull) {
-				index = (pa*invert[0]) % p;
-			}
-			else {
-				umul_ppmm(nh, nl, pa, invert[0]);
-				udiv_qrnnd(q, index, nh, nl, p);
-			}
+			umul_ppmm(nh, nl, pa, invert[0]);
+			udiv_qrnnd(q, index, nh, nl, p);
 		}
 
 		invert[1] = (invert[0] << 1);
@@ -321,9 +316,6 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 				udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i*4]); \
 				r >>= cnt; \
 				/* if (r != (_primorialOffsetDiff[j-1]*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); } */ \
-			} \
-			else if (p < 0x100000000ull) { \
-				r = (_primorialOffsetDiff[j-1]*invert[0]) % p; \
 			} \
 			else { \
 				uint64_t q, nh, nl; \
