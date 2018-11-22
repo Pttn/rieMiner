@@ -233,8 +233,9 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 			offset_stack[i] = new uint64_t[OFFSET_STACK_SIZE];
 	}
 	uint64_t precompLimit = _parameters.modPrecompute.size()/4;
+	bool stopLooping = false;
 
-	for (uint64_t i(start_i) ; i < end_i ; i++) {
+	for (uint64_t i(start_i) ; !stopLooping && i < end_i ; i++) {
 		uint64_t p(_parameters.primes[i]);
 
 		// Also update the offsets unless once only
@@ -293,7 +294,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 			else {
 				if (n_offsets[j] + _halfPrimeTupleOffset.size() >= OFFSET_STACK_SIZE) {
 					if (_workData[workDataIndex].verifyBlock.height != _currentHeight) {
-						mpz_clear(tar);
+						stopLooping = true;
 						return;
 					}
 					_putOffsetsInSegments(_sieves[j], offset_stack[j], n_offsets[j]);
@@ -345,10 +346,12 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		}
 	}
 
-	for (int j(0) ; j < _parameters.sieveWorkers ; j++) {
-		if (n_offsets[j] > 0) {
-			_putOffsetsInSegments(_sieves[j], offset_stack[j], n_offsets[j]);
-			n_offsets[j] = 0;
+	if (!stopLooping) {
+		for (int j(0) ; j < _parameters.sieveWorkers ; j++) {
+			if (n_offsets[j] > 0) {
+				_putOffsetsInSegments(_sieves[j], offset_stack[j], n_offsets[j]);
+				n_offsets[j] = 0;
+			}
 		}
 	}
 
