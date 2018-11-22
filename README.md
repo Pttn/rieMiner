@@ -113,9 +113,11 @@ It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; a
 * Address : custom payout address for solo mining (GetBlockTemplate only). Default: a donation address;
 * Threads : number of threads used for mining. Default: 8;
 * Sieve : size of the sieve table used for mining. Use a bigger number if you have more RAM, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^30;
+* SieveWorkers : the number of threads to use for sieving. Default: 0, which means choose automatically based on number of threads.  If you see warnings about not being able to generate enough work, try increasing it (though note that increasing it will use more memory).
 * Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6;
 * Refresh : refresh rate of the stats in seconds. 0 to disable them: will only notify when a k-tuple or share (k >= Tuples option value if solo mining) is found, or when the network finds a block. Default: 30;
 * MaxMem : set an approximate limit on amount of memory to use in MiB. 0 for no limit. Default: 0;
+* SieveBits : size of the segment sieve is 2^SieveBits bits, e.g. 25 means the segment sieve size is 4MiB. Choose this so that SieveWorkers&ast;SieveBits fits in your L3 cache. Default: 25
 * TestDiff : only for Benchmark, sets the testing difficulty (must be from 265 to 32767). Default: 1600;
 * TestTime : only for Benchmark, sets the testing duration in s. 0 for no time limit. Default: 0;
 * Test2t : only for Benchmark, stops testing after finding this number of 2-tuples. 0 for no limit. Default: 50000;
@@ -134,7 +136,7 @@ It is also possible to use custom configuration file paths, examples:
 Normally, you should never need to change them, but they can be useful for developing purposes, or maybe some further optimizations.
 
 * PN : Primorial Number for the Wheel Factorization. Default: 40;
-* POff : Primorial Offset for the Wheel Factorization. Default: 16057;
+* POff : List of offsets from the Primorial for the first number in the prime tuple. Default: 4209995887, 4209999247, 4210002607, 4210005967, 7452755407, 7452758767, 7452762127, 7452765487
 * ConsType : set your Constellation Type, i. e. the primes tuple offsets, each separated by a comma. Default: 0, 4, 2, 4, 2, 4 (values for Riecoin mining).
 
 Some possible constellations types (format: (type) -> offsets to put in the config file ; 3 first constellations (n + 0) which can be used as offsets, though some might not work)
