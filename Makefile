@@ -23,10 +23,10 @@ debug: rieMiner
 rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o WorkManager.cpp Stats.cpp tools.o mod_1_4.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
-main.o: main.cpp main.hpp Miner.hpp StratumClient.hpp GBTClient.hpp Client.hpp WorkManager.hpp Stats.hpp tools.hpp
+main.o: main.cpp main.hpp Miner.hpp StratumClient.hpp GBTClient.hpp Client.hpp WorkManager.hpp Stats.hpp tools.hpp tsQueue.hpp
 	$(CXX) $(CFLAGS) -c -o main.o main.cpp
 
-Miner.o: Miner.cpp Miner.hpp
+Miner.o: Miner.cpp Miner.hpp tsQueue.hpp
 	$(CXX) $(CFLAGS) -c -o Miner.o Miner.cpp
 
 StratumClient.o: StratumClient.cpp
