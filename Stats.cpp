@@ -29,11 +29,11 @@ void Stats::updateHeight(const uint32_t height) {
 	if (_inited()) {
 		printTime();
 		if (height - _heightAtDiffChange != 0) {
-			std::cout << " Blockheight = " << height << ", average "
+			std::cout << " Blockheight " << height << ", average "
 				      << FIXED(1) << timeSince(_lastDiffChangeTp)/(height - _heightAtDiffChange)
-				      << " s, difficulty = " << _difficulty << std::endl;
+				      << " s, difficulty " << _difficulty << std::endl;
 		}
-		else std::cout << " Blockheight = " << height << ", new difficulty = " << _difficulty << std::endl;
+		else std::cout << " Blockheight " << height << ", new difficulty " << _difficulty << std::endl;
 	}
 }
 
@@ -58,11 +58,13 @@ void Stats::updateTotalTuplesCounts() {
 }
 
 void Stats::updateDifficulty(const uint32_t newDifficulty, const uint32_t height) {
-	printTuplesStats();
-	updateTotalTuplesCounts();
-	_difficulty = newDifficulty;
-	_heightAtDiffChange = height;
-	_lastDiffChangeTp = std::chrono::system_clock::now();
+	if (_difficulty != newDifficulty) {
+		printTuplesStats();
+		updateTotalTuplesCounts();
+		_difficulty = newDifficulty;
+		_heightAtDiffChange = height;
+		_lastDiffChangeTp = std::chrono::system_clock::now();
+	}
 }
 
 void Stats::printTime() const {
@@ -96,25 +98,30 @@ void Stats::printTuplesStats() const {
 	if (_inited()) {
 		const std::vector<uint64_t> t(_tuplesSinceLastDiff);
 		const double elapsedSecs(timeSince(_lastDiffChangeTp));
-		std::cout << "Tuples found for diff " << _difficulty <<  ": (";
-		for (uint32_t i(1) ; i < _tuples.size() ; i++) {
-			std::cout << t[i];
-			if (i != _tuples.size() - 1) std::cout << " ";
+		if (_solo) {
+			std::cout << "Tuples found for diff " << _difficulty <<  ": (";
+			for (uint32_t i(1) ; i < _tuples.size() ; i++) {
+				std::cout << t[i];
+				if (i != _tuples.size() - 1) std::cout << " ";
+			}
+			std::cout << ") during " << FIXED(3) << elapsedSecs << " s" << std::endl;
+			std::cout << "Tuples/s: (" << FIXED(6);
+			for (uint32_t i(1) ; i < _tuples.size() ; i++) {
+				std::cout << t[i]/elapsedSecs;
+				if (i != _tuples.size() - 1) std::cout << " ";
+			}
+			std::cout << ")" << std::endl;
+			std::cout << "Ratios: (" << FIXED(1);
+			for (uint32_t i(2) ; i < _tuples.size() ; i++) {
+				if (t[i] != 0) std::cout << ((double) t[i - 1])/((double) t[i]);
+				else std::cout << "inf";
+				if (i != _tuples.size() - 1) std::cout << " ";
+			}
+			std::cout << ")" << std::endl;
 		}
-		std::cout << ") during " << FIXED(3) << elapsedSecs << " s" << std::endl;
-		std::cout << "Tuples/s: (" << FIXED(6);
-		for (uint32_t i(1) ; i < _tuples.size() ; i++) {
-			std::cout << t[i]/elapsedSecs;
-			if (i != _tuples.size() - 1) std::cout << " ";
+		else {
+			std::cout << t[4] << " shares found for diff " << _difficulty << " during " << FIXED(3) << elapsedSecs << " s -> " << FIXED(1) << 60.*((double) t[4])/elapsedSecs << " sh/min" << std::endl;
 		}
-		std::cout << ")" << std::endl;
-		std::cout << "Ratios: (" << FIXED(1);
-		for (uint32_t i(2) ; i < _tuples.size() ; i++) {
-			if (t[i] != 0) std::cout << ((double) t[i - 1])/((double) t[i]);
-			else std::cout << "inf";
-			if (i != _tuples.size() - 1) std::cout << " ";
-		}
-		std::cout << ")" << std::endl;
 	}
 }
 

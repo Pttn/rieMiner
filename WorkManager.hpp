@@ -18,7 +18,7 @@ class WorkManager : public std::enable_shared_from_this<WorkManager> {
 	std::unique_ptr<Miner> _miner;
 	std::mutex _clientMutex;
 	std::vector<std::thread> _threads;
-	bool _inited, _miningStarted;
+	bool _inited;
 	uint16_t _waitReconnect; // Time in s to wait before reconnecting after disconnect
 	uint16_t _workRefresh;   // Time in ms for each fetch work cycle
 	

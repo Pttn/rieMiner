@@ -15,6 +15,8 @@
 	#include <winsock2.h>
 #endif
 
+bool DEBUG(false);
+
 std::shared_ptr<WorkManager> manager;
 static std::string confPath("rieMiner.conf");
 
@@ -165,7 +167,13 @@ void Options::loadConf() {
 		while (std::getline(file, line)) {
 			if (line.size() != 0) {
 				parseLine(line, key, value);
-				if (key == "Host") _host = value;
+				if (key == "Debug") {
+					uint64_t tmp;
+					try {tmp = std::stoll(value);}
+					catch (...) {tmp = 0;}
+					_debug = (tmp == 1);
+				}
+				else if (key == "Host") _host = value;
 				else if (key == "Port") {
 					try {_port = std::stoi(value);}
 					catch (...) {_port = 28332;}
@@ -268,6 +276,8 @@ void Options::loadConf() {
 		askConf();
 	}
 	
+	DEBUG = _debug;
+	DBG(std::cout << "Debug Mode enabled" << std::endl;);
 	if (_protocol == "Benchmark") {
 		std::cout << "Benchmark Mode at difficulty " << _testDiff << std::endl;
 		if (_testTime != 0) std::cout << "Will stop after " << _testTime << " s" << std::endl;
@@ -332,7 +342,7 @@ int main(int argc, char** argv) {
 	sigaction(SIGINT, &SIGINTHandler, NULL);
 #endif
 	
-	std::cout << minerVersionString << ", Riecoin miner by Pttn and contributors" << std::endl;
+	std::cout << versionString << ", Riecoin miner by Pttn and contributors" << std::endl;
 	std::cout << "Project page: https://github.com/Pttn/rieMiner" << std::endl;
 	std::cout << "Go to project page or open README.md for usage information" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;

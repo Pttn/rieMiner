@@ -341,7 +341,7 @@ bool StratumClient::process() {
 	
 	_lastDataRecvTp = std::chrono::system_clock::now();
 	_result.append(_buffer.cbegin(), _buffer.cbegin() + n);
-	// std::cout << "Result = " << _result << std::endl; // Main line for Stratum debugging
+	DBG(std::cout << "Result = " << _result << std::endl;);
 	
 	if      (_state == SUBSCRIBE_SENT) getSubscribeInfo();
 	else if (_state == AUTHORIZE_SENT) _state = READY;

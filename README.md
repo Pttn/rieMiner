@@ -144,7 +144,7 @@ It is also possible to use custom configuration file paths, examples:
 * Test2t : only for Benchmark, stops testing after finding this number of 2-tuples. 0 for no limit. Default: 50000;
 * TCFile : Tuples Counts filename, in which rieMiner will save for each difficulty the number of tuples found. Note that there must never be more than one rieMiner instance using the same file, and you should also use different files if you use different Sieve sizes to not skew the stats (ratios). Default: None (special value that disables this feature).
 
-### Advanced/Tweaking options
+### Advanced/Tweaking/Dev options
 
 They can be useful to get better performance depending on your computer.
 
@@ -155,7 +155,8 @@ These ones should never be modified outside developing purposes and research for
 
 * ConsType : set your Constellation Type, i. e. the primes tuple offsets, each separated by a comma. Default: 0, 4, 2, 4, 2, 4 (values for Riecoin mining);
 * PN : Primorial Number for the Wheel Factorization. Default: 40;
-* POff : list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConsType. Default: 4209995887, 4209999247, 4210002607, 4210005967, 7452755407, 7452758767, 7452762127, 7452765487.
+* POff : list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConsType. Default: 4209995887, 4209999247, 4210002607, 4210005967, 7452755407, 7452758767, 7452762127, 7452765487;
+* Debug : activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, any other value do disable. Default : disabled.
 
 Some possible constellations types (format: (type) -> offsets to put for ConsType ; 3 first constellations (n + 0) which can be used for POff, though some might not work)
 

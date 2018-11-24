@@ -88,7 +88,7 @@ struct SieveInstance {
 
 class Miner {
 	std::shared_ptr<WorkManager> _manager;
-	bool _inited;
+	bool _inited, _running;
 	volatile uint32_t _currentHeight;
 	MinerParameters _parameters;
 	
@@ -154,7 +154,8 @@ class Miner {
 	public:
 	Miner(const std::shared_ptr<WorkManager> &manager) {
 		_manager = manager;
-		_inited = false;
+		_inited  = false;
+		_running = false;
 		_currentHeight = 0;
 		_parameters = MinerParameters();
 		_nPrimes = 0;
@@ -169,6 +170,14 @@ class Miner {
 	void init();
 	void process(WorkData block);
 	bool inited() {return _inited;}
+	void pause() {
+		_running = false;
+		_currentHeight = 0;
+	}
+	void start() {
+		_running = true;
+	}
+	bool running() {return _running;}
 	void updateHeight(uint32_t height) {_currentHeight = height;}
 };
 

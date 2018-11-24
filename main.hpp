@@ -3,7 +3,7 @@
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
 
-#define minerVersionString	"rieMiner 0.9RC2"
+#define versionString	"rieMiner 0.9RC2a"
 
 #include <unistd.h>
 #include <string>
@@ -19,8 +19,13 @@
 
 #define leading0s(x) std::setw(x) << std::setfill('0')
 #define FIXED(x) std::fixed << std::setprecision(x)
+#define FIXED(x) std::fixed << std::setprecision(x)
+
+extern bool DEBUG;
+#define DBG(x) if (DEBUG) {x;};
 
 class Options {
+	bool _debug;
 	std::string _host, _user, _pass, _protocol, _address, _tcFile;
 	uint16_t  _tuples, _sieveBits, _port, _threads, _sieveWorkers;
 	uint32_t _refresh, _testDiff, _testTime, _test2t;
@@ -32,6 +37,7 @@ class Options {
 	
 	public:
 	Options() { // Default options: Standard Benchmark with 8 threads
+		_debug     = false;
 		_user      = "";
 		_pass      = "";
 		_host      = "127.0.0.1";
