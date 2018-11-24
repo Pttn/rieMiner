@@ -1,9 +1,7 @@
 // (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
 
-#ifndef HEADER_WorkManager_h
-#define HEADER_WorkManager_h
-
-#define minerVersionString	"rieMiner 0.9-RC1"
+#ifndef HEADER_WorkManager_hpp
+#define HEADER_WorkManager_hpp
 
 #include "main.hpp"
 #include "Stats.hpp"

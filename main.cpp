@@ -297,8 +297,8 @@ void Options::loadConf() {
 	else std::cout << "Will submit 4-shares" << std::endl;
 	std::cout << "Stats refresh rate = " << _refresh << " s" << std::endl;
 	if (_tcFile != "None") std::cout << "Tuple Count File = " << _tcFile << std::endl;
-	std::cout << "Primorial Number = " << _pn << std::endl;
-	std::cout << "Primorial Offset = " << "(";
+	std::cout << "Primorial Number  = " << _pn << std::endl;
+	std::cout << "Primorial Offsets = " << "(";
 	for (std::vector<uint64_t>::size_type i(0) ; i < _pOff.size() ; i++) {
 		std::cout << _pOff[i];
 		if (i != _pOff.size() - 1) std::cout << ", ";
@@ -313,6 +313,7 @@ void Options::loadConf() {
 		if (i != _consType.size() - 1) std::cout << ", ";
 	}
 	std::cout << "), length " << _consType.size() << std::endl;
+	std::cout << "Sieve bits = " <<  _sieveBits << std::endl;
 }
 
 void signalHandler(int signum) {

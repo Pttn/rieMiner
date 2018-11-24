@@ -1,10 +1,8 @@
-# rieMiner 0.9RC1
+# rieMiner 0.9RC2
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
 Solo mining is done using the GetBlockTemplate protocol, while pooled mining is via the Stratum protocol. A benchmark mode is also proposed to compare more easily the performance between different computers.
-
-It is recommended to use a recent enough CPU with at least 4 cores and 8 GB of RAM to mine efficiently enough.
 
 Direct link to the latest official [Windows x64 standalone executable](https://ric.pttn.me/file.php?d=rieMinerWin64).
 
@@ -14,9 +12,23 @@ The Riecoin community thanks you for your participation, you will be a contribut
 
 ![rieMiner just found a block](https://ric.pttn.me/file.php?d=rieMiner)
 
-## Compile this program
+I provide a Profitability Calculator [here](https://ric.pttn.me/page.php?n=ProfitabilityCalculator).
+
+## Minimum requirements
 
 Only x64 systems with SSE are supported since version 0.9β2.4.
+
+* Windows 7 or later, or recent enough Linux;
+* x64 CPU with SSE instruction set;
+* 1 GB of RAM (Sieve size must be manually set at a very low value in the options).
+
+Recommended:
+
+* Windows 10 or Debian 9;
+* Intel Core i7 6700 or better, AMD Ryzen R5 1600 or better;
+* 8 GB of RAM.
+
+## Compile this program
 
 ### In Debian/Ubuntu x64
 
@@ -103,7 +115,7 @@ Alternatively, you can create or edit this "rieMiner.conf" file next to the exec
 Option type = Option value
 ```
 
-It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; at the end or use other delimiters than =** for each line, and **do not confuse rieMiner.conf with riecoin.conf**! If an option is missing, the default value(s) will be used. If there are duplicate lines, the last one will be used. The available options are:
+It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; at the end or use other delimiters than =** for each line, and **do not confuse rieMiner.conf with riecoin.conf**! If an option is missing, the default value(s) will be used. If there are duplicate lines, the last one will be used. The main available options are:
 
 * Host : IP of the Riecoin wallet/server or pool. Default: 127.0.0.1 (your computer);
 * Port : port of the Riecoin wallet/server or pool. Default: 28332 (default port for Riecoin-Qt);
@@ -112,16 +124,9 @@ It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; a
 * Protocol : protocol to use: GetBlockTemplate for solo mining, Stratum for pooled mining, Benchmark for testing. Default: Benchmark;
 * Address : custom payout address for solo mining (GetBlockTemplate only). Default: a donation address;
 * Threads : number of threads used for mining. Default: 8;
-* Sieve : size of the sieve table used for mining. Use a bigger number if you have more RAM, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^30;
-* SieveWorkers : the number of threads to use for sieving. Default: 0, which means choose automatically based on number of threads.  If you see warnings about not being able to generate enough work, try increasing it (though note that increasing it will use more memory).
-* Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6;
-* Refresh : refresh rate of the stats in seconds. 0 to disable them: will only notify when a k-tuple or share (k >= Tuples option value if solo mining) is found, or when the network finds a block. Default: 30;
+* Sieve : size of the sieve table used for mining. Use a bigger number if you have 16 GiB of RAM or more, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. Reduce if you have less than 8 GiB of RAM. It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^30;
 * MaxMem : set an approximate limit on amount of memory to use in MiB. 0 for no limit. Default: 0;
-* SieveBits : size of the segment sieve is 2^SieveBits bits, e.g. 25 means the segment sieve size is 4MiB. Choose this so that SieveWorkers&ast;SieveBits fits in your L3 cache. Default: 25
-* TestDiff : only for Benchmark, sets the testing difficulty (must be from 265 to 32767). Default: 1600;
-* TestTime : only for Benchmark, sets the testing duration in s. 0 for no time limit. Default: 0;
-* Test2t : only for Benchmark, stops testing after finding this number of 2-tuples. 0 for no limit. Default: 50000;
-* TCFile : Tuples Counts filename, in which rieMiner will save for each difficulty the number of tuples found. Note that there must never be more than one rieMiner instance using the same file. Default: None (special value that disables this feature).
+* Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6.
 
 It is also possible to use custom configuration file paths, examples:
 
@@ -131,15 +136,28 @@ It is also possible to use custom configuration file paths, examples:
 ./rieMiner /home/user/rieMiner/rieMiner.conf
 ```
 
-### Advanced options
+### Statistics and benchmarking options
 
-Normally, you should never need to change them, but they can be useful for developing purposes, or maybe some further optimizations.
+* Refresh : refresh rate of the stats in seconds. 0 to disable them: will only notify when a k-tuple or share (k >= Tuples option value if solo mining) is found, or when the network finds a block. Default: 30;
+* TestDiff : only for Benchmark, sets the testing difficulty (must be from 265 to 32767). Default: 1600;
+* TestTime : only for Benchmark, sets the testing duration in s. 0 for no time limit. Default: 0;
+* Test2t : only for Benchmark, stops testing after finding this number of 2-tuples. 0 for no limit. Default: 50000;
+* TCFile : Tuples Counts filename, in which rieMiner will save for each difficulty the number of tuples found. Note that there must never be more than one rieMiner instance using the same file, and you should also use different files if you use different Sieve sizes to not skew the stats (ratios). Default: None (special value that disables this feature).
 
+### Advanced/Tweaking options
+
+They can be useful to get better performance depending on your computer.
+
+* SieveBits : size of the segment sieve is 2^SieveBits bits, e.g. 25 means the segment sieve size is 4 MiB. Choose this so that SieveWorkers*SieveBits fits in your L3 cache. Default: 25;
+* SieveWorkers : the number of threads to use for sieving. Default: 0, which means choose automatically based on number of threads. If you see warnings about not being able to generate enough work, try increasing it (though note that increasing it will use more memory).
+
+These ones should never be modified outside developing purposes and research for now.
+
+* ConsType : set your Constellation Type, i. e. the primes tuple offsets, each separated by a comma. Default: 0, 4, 2, 4, 2, 4 (values for Riecoin mining);
 * PN : Primorial Number for the Wheel Factorization. Default: 40;
-* POff : List of offsets from the Primorial for the first number in the prime tuple. Default: 4209995887, 4209999247, 4210002607, 4210005967, 7452755407, 7452758767, 7452762127, 7452765487
-* ConsType : set your Constellation Type, i. e. the primes tuple offsets, each separated by a comma. Default: 0, 4, 2, 4, 2, 4 (values for Riecoin mining).
+* POff : list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConsType. Default: 4209995887, 4209999247, 4210002607, 4210005967, 7452755407, 7452758767, 7452762127, 7452765487.
 
-Some possible constellations types (format: (type) -> offsets to put in the config file ; 3 first constellations (n + 0) which can be used as offsets, though some might not work)
+Some possible constellations types (format: (type) -> offsets to put for ConsType ; 3 first constellations (n + 0) which can be used for POff, though some might not work)
 
 * 5-tuples
   * (0, 2, 6,  8, 12) -> 0, 2, 4, 2, 4 ; 5, 11, 101,...
@@ -156,7 +174,7 @@ Some possible constellations types (format: (type) -> offsets to put in the conf
 
 Also see the constellationsGen tool in my rieTools repository (https://github.com/Pttn/rieTools).
 
-Note that you must use different tuples counts files if you use different constellations types, and you should also if you use different Sieve sizes, to not skew the stats.
+Note that you must use different tuples counts files if you use different constellations types.
 
 ### Memory problems
 
@@ -253,7 +271,7 @@ The miner will disconnect if it did not receive anything during 3 minutes (time 
 
 ## Benchmarking
 
-rieMiner provides a way to test the performance of a computer, and compare with others. This feature can also be used to appreciate the improvements when trying to improve the miner algorithm. When sharing benchmark results, you must always communicate the difficulty, the sieve size, the test duration, the CPU model, the memory speeds (frequency and CL), the miner version, and the OS.
+rieMiner provides a way to test the performance of a computer, and compare with others. This feature can also be used to appreciate the improvements when trying to improve the miner algorithm. When sharing benchmark results, you must always communicate the difficulty, the sieve size, the test duration, the CPU model, the memory speeds (frequency and CL), the miner version, and the OS. Also, do not forget to precise if you changed other options, like the SieveWorkers or Bits.
 
 To compare two different platforms, you must absolutely test with the same difficulty, during enough time. The proposed parameters, conditions and interpretations for serious benchmarking are:
 

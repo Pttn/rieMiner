@@ -3,7 +3,7 @@
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
 
-#define minerVersionString	"rieMiner 0.9-RC1"
+#define minerVersionString	"rieMiner 0.9RC2"
 
 #include <unistd.h>
 #include <string>
@@ -22,8 +22,7 @@
 
 class Options {
 	std::string _host, _user, _pass, _protocol, _address, _tcFile;
-	uint8_t _tuples, _sieveBits;
-	uint16_t _port, _threads, _sieveWorkers;
+	uint16_t  _tuples, _sieveBits, _port, _threads, _sieveWorkers;
 	uint32_t _refresh, _testDiff, _testTime, _test2t;
 	uint64_t _sieve, _pn;
 	uint64_t _maxMem;

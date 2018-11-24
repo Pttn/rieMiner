@@ -1,6 +1,6 @@
 /* (c) 2014-2017 dave-andersen (base code) (http://www.cs.cmu.edu/~dga/)
 (c) 2017-2018 Pttn (refactoring and porting to modern C++) (https://ric.pttn.me/)
-(c) 2018 Michael Bell/Rockhawk (assembly optimizations, improvement of work management between threads, and some more) (https://github.com/MichaelBell/) */
+(c) 2018 Michael Bell/Rockhawk (assembly optimizations, improvements of work management between threads, and some more) (https://github.com/MichaelBell/) */
 
 #include "Miner.hpp"
 #include "external/gmp_util.h"
@@ -24,12 +24,13 @@ void Miner::init() {
 	if (_parameters.sieveWorkers == 0) {
 		_parameters.sieveWorkers = std::max(_manager->options().threads()/5, 1);
 	}
+	std::cout << "Sieve Workers = " << _parameters.sieveWorkers << std::endl;
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, MAX_SIEVE_WORKERS);
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, int(_parameters.primorialOffset.size()));
 	_parameters.sieveBits = _manager->options().sieveBits();
 	_parameters.sieveSize = 1 << _parameters.sieveBits;
-	_parameters.sieveWords = _parameters.sieveSize / 64;
-	_parameters.maxIter = _parameters.maxIncrements / _parameters.sieveSize;
+	_parameters.sieveWords = _parameters.sieveSize/64;
+	_parameters.maxIter = _parameters.maxIncrements/_parameters.sieveSize;
 	_parameters.solo = !(_manager->options().protocol() == "Stratum");
 	_parameters.tuples = _manager->options().tuples();
 	_parameters.sieve = _manager->options().sieve();
@@ -104,7 +105,7 @@ void Miner::init() {
 	_parameters.modPrecompute.resize(precompPrimes*4);
 	
 	_startingPrimeIndex = _parameters.primorialNumber;
-	uint64_t blockSize((_nPrimes - _startingPrimeIndex + _parameters.threads - 1) / _parameters.threads);
+	uint64_t blockSize((_nPrimes - _startingPrimeIndex + _parameters.threads - 1)/_parameters.threads);
 	std::thread threads[_parameters.threads];
 	for (int16_t j(0) ; j < _parameters.threads ; j++) {
 		threads[j] = std::thread([&, j]() {
@@ -232,7 +233,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		for (int i(0); i < _parameters.sieveWorkers; ++i)
 			offset_stack[i] = new uint64_t[OFFSET_STACK_SIZE];
 	}
-	uint64_t precompLimit = _parameters.modPrecompute.size()/4;
+	uint64_t precompLimit(_parameters.modPrecompute.size()/4);
 
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
 		uint64_t p(_parameters.primes[i]);
@@ -536,13 +537,13 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 		if (job.type == TYPE_SIEVE) {
 			_runSieve(_sieves[job.sieveWork.sieveId], job.workDataIndex);
 			_workDoneQueue.push_back(-1);
-			auto myTime = std::chrono::duration_cast<decltype(_sieveTime)>(std::chrono::high_resolution_clock::now() - startTime);
-			//std::cout << "Sieve " << job.sieveWork.sieveId << " Time: " << myTime.count() << std::endl;
-			_sieveTime += myTime;
+			auto dt(std::chrono::duration_cast<decltype(_sieveTime)>(std::chrono::high_resolution_clock::now() - startTime));
+			//std::cout << "Sieve " << job.sieveWork.sieveId << " Time: " << dt.count() << std::endl;
+			_sieveTime += dt;
 			continue;
 		}
-		// fallthrough:	job.type == TYPE_CHECK
-		if (job.type == TYPE_CHECK) {
+		
+		if (job.type == TYPE_CHECK) { // fallthrough: job.type == TYPE_CHECK
 			mpz_mul_ui(z_ploop, _primorial, job.testWork.loop*_parameters.sieveSize);
 			mpz_add(z_ploop, z_ploop, _workData[job.workDataIndex].z_verifyRemainderPrimorial);
 			mpz_add(z_ploop, z_ploop, _workData[job.workDataIndex].z_verifyTarget);
@@ -713,7 +714,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex) {
 		else n_modWorkers++;
 	}
 	while (n_lowModWorkers > 0) {
-		uint64_t i = _modDoneQueue.pop_front();
+		uint64_t i(_modDoneQueue.pop_front());
 		if (i < _startingPrimeIndex + _nDense + _nSparse) n_lowModWorkers--;
 		else n_modWorkers--;
 	}
@@ -735,7 +736,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex) {
 
 	uint32_t minWorkOut = std::min(curWorkOut, _verifyWorkQueue.size());
 	while (n_sieveWorkers > 0) {
-		int workId = _workDoneQueue.pop_front();
+		int workId(_workDoneQueue.pop_front());
 		if (workId == -1) n_sieveWorkers--;
 		else _workData[workId].outstandingTests--;
 		minWorkOut = std::min(minWorkOut, _verifyWorkQueue.size());
@@ -751,26 +752,26 @@ void Miner::_processOneBlock(uint32_t workDataIndex) {
 				_maxWorkOut += 4*_parameters.threads*_parameters.sieveWorkers;
 			}
 			else {
-				// Adjust towards target of min work = 4 * threads
-				uint32_t targetMaxWork = (_maxWorkOut - minWorkOut) + 4*_parameters.threads;
-				_maxWorkOut = (_maxWorkOut + targetMaxWork) / 2;
+				// Adjust towards target of min work = 4*threads
+				uint32_t targetMaxWork((_maxWorkOut - minWorkOut) + 4*_parameters.threads);
+				_maxWorkOut = (_maxWorkOut + targetMaxWork)/2;
 			}
 		}
 		else if (minWorkOut > 4u*_parameters.threads) {
 			// Didn't make the target, but also didn't run out of work.  Can still adjust target.
-			uint32_t targetMaxWork = (curWorkOut - minWorkOut) + 6*_parameters.threads;
-			_maxWorkOut = (_maxWorkOut + targetMaxWork) / 2;
+			uint32_t targetMaxWork((curWorkOut - minWorkOut) + 6*_parameters.threads);
+			_maxWorkOut = (_maxWorkOut + targetMaxWork)/2;
 		}
 		else if (minWorkOut == 0 && curWorkOut > 0) {
 			// Warn the user they may need to change their configuration
-			static int allowedFails = 5;
-			static bool first = true;
+			static int allowedFails(5);
+			static bool first(true);
 			if (--allowedFails == 0) {
 				allowedFails = 5;
-				std::cout << "WARNING: Unable to generate enough verification work to keep threads busy." << std::endl;
+				std::cout << "Unable to generate enough verification work to keep threads busy." << std::endl;
 				if (first) {
-					std::cout << "If you see the above message frequently consider reducing Sieve Max or increasing Sieve Workers" << std::endl;
-					std::cout << "Current Sieve max = " << _parameters.sieve << "   Sieve Workers = " << _parameters.sieveWorkers << std::endl;
+					std::cout << "If you see this message frequently, consider reducing Sieve Max or increasing Sieve Workers via the configuration file. If it only appears once a while (at most 2-3 times a hour), it is fine." << std::endl;
+					std::cout << "Current values: Sieve = " << _parameters.sieve << ", SieveWorkers = " << _parameters.sieveWorkers << std::endl;
 					first = false;
 				}
 			}
