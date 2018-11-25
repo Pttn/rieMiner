@@ -5,10 +5,10 @@ CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native
 
 msys_version := $(if $(findstring Msys, $(shell uname -o)),$(word 1, $(subst ., ,$(shell uname -r))),0)
 ifneq ($(msys_version), 0)
-LIBS   = -pthread -ljansson -lcurl -lcrypto -lgmp -lgmpxx -lws2_32
+LIBS   = -pthread -ljansson -lcurl -lcrypto -lgmpxx -lgmp -lws2_32
 MOD_1_4_ASM = mod_1_4_win.asm
 else
-LIBS   = -pthread -ljansson -lcurl -lcrypto -Wl,-Bstatic -lgmp -lgmpxx -Wl,-Bdynamic
+LIBS   = -pthread -ljansson -lcurl -lcrypto -Wl,-Bstatic -lgmpxx -lgmp -Wl,-Bdynamic
 MOD_1_4_ASM = mod_1_4.asm
 endif
 

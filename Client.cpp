@@ -117,7 +117,21 @@ void BMClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 	WorkData wdToSend(share.first);
 	uint8_t k(share.second);
 	_manager->printTime();
-	std::cout << " " << (uint16_t) k << "-tuple found" << std::endl;
+	std::cout << " " << (uint16_t) k << "-tuple found: ";
+	
+	std::string bhStr(binToHexStr(&wdToSend, 112));
+	uint32_t diff(getCompact(invEnd32(strtol(bhStr.substr(136, 8).c_str(), NULL, 16))));
+	std::vector<uint8_t> SV8(32), XV8, tmp(sha256sha256(hexStrToV8(bhStr.substr(0, 160)).data(), 80));
+	for (uint64_t i(0) ; i < 256 ; i++) SV8[i/8] |= (((tmp[i/8] >> (i % 8)) & 1) << (7 - (i % 8)));
+	mpz_class S(v8ToHexStr(SV8).c_str(), 16), target(1);
+	mpz_mul_2exp(S.get_mpz_t(), S.get_mpz_t(), diff - 265);
+	mpz_mul_2exp(target.get_mpz_t(), target.get_mpz_t(), diff - 1);
+	target += S;
+	tmp = hexStrToV8(bhStr.substr(160, 64));
+	for (uint8_t i(0) ; i < tmp.size() ; i++) XV8.push_back(tmp[tmp.size() - i - 1]);
+	mpz_class X(v8ToHexStr(XV8).c_str(), 16);
+	std::cout << "n = " << target + X << std::endl;
+	DBG(std::cout << "Dummy block header: " << bhStr << std::endl;);
 }
 
 WorkData BMClient::workData() const {

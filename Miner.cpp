@@ -619,9 +619,9 @@ void Miner::_getTargetFromBlock(mpz_t z_target, const WorkData &block) {
 			std::cout << ", difficulty " << difficulty << std::endl;
 			save = false;
 		}
+		_manager->updateDifficulty(difficulty, block.height);
 		if (save) _manager->saveTuplesCounts();
 	}
-	_manager->updateDifficulty(difficulty, block.height);
 }
 
 void Miner::process(WorkData block) {

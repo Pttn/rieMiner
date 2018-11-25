@@ -20,13 +20,13 @@ Only x64 systems with SSE are supported since version 0.9β2.4.
 
 * Windows 7 or later, or recent enough Linux;
 * x64 CPU with SSE instruction set;
-* 1 GB of RAM (Sieve size must be manually set at a very low value in the options).
+* 1 GiB of RAM (Sieve size must be manually set at a very low value in the options).
 
 Recommended:
 
 * Windows 10 or Debian 9;
 * Intel Core i7 6700 or better, AMD Ryzen R5 1600 or better;
-* 8 GB of RAM.
+* 8 GiB of RAM.
 
 ## Compile this program
 
@@ -126,7 +126,7 @@ It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; a
 * Threads : number of threads used for mining. Default: 8;
 * Sieve : size of the sieve table used for mining. Use a bigger number if you have 16 GiB of RAM or more, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. Reduce if you have less than 8 GiB of RAM. It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^30;
 * MaxMem : set an approximate limit on amount of memory to use in MiB. 0 for no limit. Default: 0;
-* Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Its use will be explained later. Default: 6.
+* Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Additionally, the base prime of such tuple will be shown in the Benchmark Mode. Default: 6.
 
 It is also possible to use custom configuration file paths, examples:
 
