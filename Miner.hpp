@@ -7,6 +7,7 @@
 #include <atomic>
 #include "WorkManager.hpp"
 #include "tsQueue.hpp"
+#include "CpuID.hpp"
 
 class WorkManager;
 struct WorkData;
@@ -91,6 +92,7 @@ class Miner {
 	bool _inited, _running;
 	volatile uint32_t _currentHeight;
 	MinerParameters _parameters;
+	CpuID _cpuInfo;
 	
 	tsQueue<primeTestWork, 4096> _verifyWorkQueue;
 	tsQueue<uint64_t, 1024> _modDoneQueue;

@@ -13,8 +13,8 @@ thread_local uint64_t** offset_stack(NULL);
 #define	zeroesBeforeHashInPrime	8
 
 extern "C" {
-	void rie_mod_1s_4p_cps(uint64_t cps[4], uint64_t b);
-	mp_limb_t rie_mod_1s_4p(mp_srcptr ap, mp_size_t n, uint64_t b, const uint64_t cps[4]);
+	void rie_mod_1s_4p_cps(uint64_t *cps, uint64_t p);
+	mp_limb_t rie_mod_1s_4p(mp_srcptr ap, mp_size_t n, uint64_t ps, uint64_t cnt, uint64_t* cps);
 }
 
 void Miner::init() {
@@ -27,6 +27,12 @@ void Miner::init() {
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, MAX_SIEVE_WORKERS);
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, int(_parameters.primorialOffset.size()));
 	std::cout << "Sieve Workers = " << _parameters.sieveWorkers << std::endl;
+	std::cout << "Best SIMD instructions supported:";
+	if (_cpuInfo.hasAVX512()) std::cout << " AVX-512";
+	else if (_cpuInfo.hasAVX2()) std::cout << " AVX2";
+	else if (_cpuInfo.hasAVX()) std::cout << " AVX";
+	else std::cout << " AVX not suppported!";
+	std::cout << std::endl;
 	_parameters.sieveBits = _manager->options().sieveBits();
 	_parameters.sieveSize = 1 << _parameters.sieveBits;
 	_parameters.sieveWords = _parameters.sieveSize/64;
@@ -94,7 +100,7 @@ void Miner::init() {
 			precompPrimes = 0;
 		}
 		else
-			precompPrimes = std::min(_nPrimes, (maxMemory - _nPrimes*primeMult)/32);
+			precompPrimes = std::min(_nPrimes, (maxMemory - _nPrimes*primeMult)/8);
 	}
 
 	// Precomputation only works up to p = 2^37
@@ -102,7 +108,7 @@ void Miner::init() {
 
 	std::cout << "Precomputing division data for first " << precompPrimes << " primes." << std::endl;
 	_parameters.inverts.resize(_nPrimes);
-	_parameters.modPrecompute.resize(precompPrimes*4);
+	_parameters.modPrecompute.resize(precompPrimes);
 	
 	_startingPrimeIndex = _parameters.primorialNumber;
 	uint64_t blockSize((_nPrimes - _startingPrimeIndex + _parameters.threads - 1)/_parameters.threads);
@@ -117,7 +123,7 @@ void Miner::init() {
 				mpz_set_ui(z_p, _parameters.primes[i]);
 				mpz_invert(z_tmp, _primorial, z_p);
 				_parameters.inverts[i] = mpz_get_ui(z_tmp);
-				if (i < precompPrimes) rie_mod_1s_4p_cps(&_parameters.modPrecompute[i*4], _parameters.primes[i]);
+				if (i < precompPrimes) rie_mod_1s_4p_cps(&_parameters.modPrecompute[i], _parameters.primes[i]);
 			}
 			mpz_clear(z_p);
 			mpz_clear(z_tmp);
@@ -233,7 +239,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		for (int i(0); i < _parameters.sieveWorkers; ++i)
 			offset_stack[i] = new uint64_t[OFFSET_STACK_SIZE];
 	}
-	uint64_t precompLimit(_parameters.modPrecompute.size()/4);
+	uint64_t precompLimit(_parameters.modPrecompute.size());
 
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
 		uint64_t p(_parameters.primes[i]);
@@ -248,15 +254,15 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		uint64_t index;
 		uint64_t cnt(0), ps(0);
 		if (i < precompLimit) {
-			cnt = _parameters.modPrecompute[i*4 + 3] >> 57;
+			cnt = __builtin_clzll(p);
 			ps = p << cnt;
-			uint64_t remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, &_parameters.modPrecompute[i*4]));
+			uint64_t remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, cnt, &_parameters.modPrecompute[i]));
 			//if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail\n"); exit(-1); }
 			{
 				uint64_t pa(ps - remainder);
 				uint64_t r, nh, nl;
 				umul_ppmm(nh, nl, pa, invert[0]);
-				udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i*4]);
+				udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i]);
 				index = r >> cnt;
 				//if ((r >> cnt) != ((pa >> cnt)*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); }
 			}
@@ -314,7 +320,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 				uint64_t nh, nl; \
 				uint64_t os(_primorialOffsetDiff[j-1] << cnt); \
 				umul_ppmm(nh, nl, os, invert[0]); \
-				udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i*4]); \
+				udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i]); \
 				r >>= cnt; \
 				/* if (r != (_primorialOffsetDiff[j-1]*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); } */ \
 			} \

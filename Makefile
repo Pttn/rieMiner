@@ -20,7 +20,7 @@ release: rieMiner
 debug: CFLAGS += -g
 debug: rieMiner
 
-rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o WorkManager.cpp Stats.cpp tools.o mod_1_4.o
+rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o WorkManager.cpp Stats.cpp tools.o CpuID.o mod_1_4.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
 main.o: main.cpp main.hpp Miner.hpp StratumClient.hpp GBTClient.hpp Client.hpp WorkManager.hpp Stats.hpp tools.hpp tsQueue.hpp
@@ -46,6 +46,9 @@ WorkManager.o: WorkManager.cpp
 
 tools.o: tools.cpp
 	$(CXX) $(CFLAGS) -c -o tools.o tools.cpp
+
+CpuID.o: CpuID.cpp
+	$(CXX) $(CFLAGS) -c -o CpuID.o CpuID.cpp
 
 mod_1_4.o: external/$(MOD_1_4_ASM)
 	$(M4) external/$(MOD_1_4_ASM) >mod_1_4.s
