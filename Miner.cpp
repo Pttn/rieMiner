@@ -534,7 +534,6 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 			_runSieve(_sieves[job.sieveWork.sieveId], job.workDataIndex);
 			_workDoneQueue.push_back(-1);
 			const auto dt(std::chrono::duration_cast<decltype(_sieveTime)>(std::chrono::high_resolution_clock::now() - startTime));
-			DBG(std::cout << "Sieve " << job.sieveWork.sieveId << " Time: " << dt.count() << std::endl;);
 			_sieveTime += dt;
 			continue;
 		}
