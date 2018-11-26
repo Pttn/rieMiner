@@ -758,15 +758,10 @@ void Miner::_processOneBlock(uint32_t workDataIndex) {
 			else if (minWorkOut == 0 && curWorkOut > 0) {
 				// Warn the user they may need to change their configuration
 				static int allowedFails(5);
-				static bool first(true);
 				if (--allowedFails == 0) {
 					allowedFails = 5;
-					std::cout << "Unable to generate enough verification work to keep threads busy." << std::endl;
-					if (first) {
-						std::cout << "If you see this message frequently, consider reducing Sieve Max or increasing Sieve Workers via the configuration file. If it only appears once a while (at most 2-3 times a hour), it is fine." << std::endl;
-						std::cout << "Current values: Sieve = " << _parameters.sieve << ", SieveWorkers = " << _parameters.sieveWorkers << std::endl;
-						first = false;
-					}
+					DBG(std::cout << "Unable to generate enough verification work to keep threads busy." << std::endl;
+					    std::cout << "Sieve = " << _parameters.sieve << ", SieveWorkers = " << _parameters.sieveWorkers << std::endl;);
 				}
 			}
 			_maxWorkOut = std::min(_maxWorkOut, _workDoneQueue.size() - 256);

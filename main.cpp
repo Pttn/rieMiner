@@ -296,6 +296,10 @@ void Options::loadConf() {
 	}
 	if (_protocol == "GetBlockTemplate")
 		std::cout << "Payout address = " << _address << std::endl;
+	if (_threads < 2) {
+		std::cout << "At least 2 threads are needed, overriding." << std::endl;
+		_threads = 2;
+	}
 	std::cout << "Threads = " << _threads << std::endl;
 	std::cout << "Sieve max = " << _sieve << std::endl;
 	if (_maxMem != 0)
