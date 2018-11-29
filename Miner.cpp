@@ -15,6 +15,7 @@ thread_local uint64_t** offset_stack(NULL);
 extern "C" {
 	void rie_mod_1s_4p_cps(uint64_t *cps, uint64_t p);
 	mp_limb_t rie_mod_1s_4p(mp_srcptr ap, mp_size_t n, uint64_t ps, uint64_t cnt, uint64_t* cps);
+	mp_limb_t rie_mod_1s_4p_4times(mp_srcptr ap, mp_size_t n, uint32_t* ps, uint32_t cnt, uint64_t* cps);
 }
 
 void Miner::init() {
@@ -254,10 +255,25 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		uint64_t index;
 		uint64_t cnt(0), ps(0);
 		if (i < precompLimit) {
-			cnt = __builtin_clzll(p);
-			ps = p << cnt;
-			uint64_t remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, cnt, &_parameters.modPrecompute[i]));
-			//if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail\n"); exit(-1); }
+			uint64_t remainder;
+#if 0
+			if (p < 0x100000000ull && i + 3 < end_i) {
+				uint32_t ps32[4];
+				cnt = __builtin_clz((uint32_t)p);
+				ps32[0] = ps32[1] = ps32[2] = ps32[3] = (uint32_t)p << cnt;
+				remainder = rie_mod_1s_4p_4times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i]);
+				if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail\n"); exit(-1); }
+				remainder <<= 32;
+				cnt += 32;
+			}
+			else
+#endif
+			{
+				cnt = __builtin_clzll(p);
+				ps = p << cnt;
+				remainder = rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, cnt, &_parameters.modPrecompute[i]);
+				//if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail\n"); exit(-1); }
+			}
 			{
 				uint64_t pa(ps - remainder);
 				uint64_t r, nh, nl;

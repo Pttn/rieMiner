@@ -8,8 +8,9 @@ ifneq ($(msys_version), 0)
 LIBS   = -pthread -ljansson -lcurl -lcrypto -lgmpxx -lgmp -lws2_32
 MOD_1_4_ASM = mod_1_4_win.asm
 else
-LIBS   = -pthread -ljansson -lcurl -lcrypto -Wl,-Bstatic -lgmpxx -lgmp -Wl,-Bdynamic
+LIBS   = -L/usr/local/lib -pthread -ljansson -lcurl -lcrypto -Wl,-Bstatic -lgmpxx -lgmp -Wl,-Bdynamic
 MOD_1_4_ASM = mod_1_4.asm
+MOD_1_4_AVX_ASM = mod_1_4_avx.asm
 endif
 
 all: rieMiner
@@ -20,7 +21,7 @@ release: rieMiner
 debug: CFLAGS += -g
 debug: rieMiner
 
-rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o WorkManager.cpp Stats.cpp tools.o CpuID.o mod_1_4.o
+rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o WorkManager.cpp Stats.cpp tools.o CpuID.o mod_1_4.o mod_1_4_avx.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
 main.o: main.cpp main.hpp Miner.hpp StratumClient.hpp GBTClient.hpp Client.hpp WorkManager.hpp Stats.hpp tools.hpp tsQueue.hpp
@@ -54,6 +55,11 @@ mod_1_4.o: external/$(MOD_1_4_ASM)
 	$(M4) external/$(MOD_1_4_ASM) >mod_1_4.s
 	$(AS) mod_1_4.s -o mod_1_4.o
 	rm mod_1_4.s
+
+mod_1_4_avx.o: external/$(MOD_1_4_AVX_ASM)
+	$(M4) external/$(MOD_1_4_AVX_ASM) >mod_1_4_avx.s
+	$(AS) mod_1_4_avx.s -o mod_1_4_avx.o
+	rm mod_1_4_avx.s
 
 clean:
 	rm -rf rieMiner *.o
