@@ -139,47 +139,41 @@ C xmm6, xmm7: B1modb
 C xmm8, xmm9: Q
 C xmm15: all 1s
 
+	vmovdqu		(%rdx), %xmm0
 	vpmuludq	%xmm2, %xmm6, %xmm8
 	vpmuludq	%xmm3, %xmm7, %xmm9
-	vpsrlq		$32, %xmm8, %xmm5
-	vpsrlq		$32, %xmm9, %xmm14
+	vshufps		$0xDD, %xmm9, %xmm8, %xmm5
+	vshufps		$0x88, %xmm7, %xmm6, %xmm6
+	vshufps		$0x88, %xmm9, %xmm8, %xmm8
 	vpaddd		%xmm6, %xmm5, %xmm5
-	vpaddd		%xmm7, %xmm14, %xmm14
 	vpxor		%xmm15, %xmm5, %xmm5
-	vpxor		%xmm15, %xmm14, %xmm14
 	vpmulld		%xmm0, %xmm5, %xmm5
-	vpmulld		%xmm1, %xmm14, %xmm14
 	vpmaxud		%xmm8, %xmm5, %xmm6
-	vpmaxud		%xmm9, %xmm14, %xmm7
 	vpcmpeqd	%xmm5, %xmm6, %xmm6
-	vpcmpeqd	%xmm14, %xmm7, %xmm7
 	vpand		%xmm0, %xmm6, %xmm6
-	vpand		%xmm1, %xmm7, %xmm7
 	vpaddd		%xmm6, %xmm5, %xmm6   C B2modb
-	vpaddd		%xmm7, %xmm14, %xmm7
-	vpsrld		%xmm4, %xmm6, %xmm12
-	vpsrld		%xmm4, %xmm7, %xmm13
+	vpsrldq		$8, %xmm6, %xmm7
+	vpmovzxdq	%xmm6, %xmm12
+	vpmovzxdq	%xmm7, %xmm13
 
-	vpmuludq	%xmm2, %xmm6, %xmm8
-	vpmuludq	%xmm3, %xmm7, %xmm9
-	vpsrlq		$32, %xmm8, %xmm5
-	vpsrlq		$32, %xmm9, %xmm14
+	vpmuludq	%xmm2, %xmm12, %xmm8
+	vpmuludq	%xmm3, %xmm13, %xmm9
+	vpsrld		%xmm4, %xmm12, %xmm12
+	vpsrld		%xmm4, %xmm13, %xmm13
+
+	vshufps		$0xDD, %xmm9, %xmm8, %xmm5
+	vshufps		$0x88, %xmm9, %xmm8, %xmm8
 	vpaddd		%xmm6, %xmm5, %xmm5
-	vpaddd		%xmm7, %xmm14, %xmm14
 	vpxor		%xmm15, %xmm5, %xmm5
-	vpxor		%xmm15, %xmm14, %xmm14
 	vpmulld		%xmm0, %xmm5, %xmm5
-	vpmulld		%xmm1, %xmm14, %xmm14
 	vpmaxud		%xmm8, %xmm5, %xmm6
-	vpmaxud		%xmm9, %xmm14, %xmm7
 	vpcmpeqd	%xmm5, %xmm6, %xmm6
-	vpcmpeqd	%xmm14, %xmm7, %xmm7
 	vpand		%xmm0, %xmm6, %xmm6
-	vpand		%xmm1, %xmm7, %xmm7
-	vpaddd		%xmm6, %xmm5, %xmm6
-	vpaddd		%xmm7, %xmm14, %xmm7
-	vpsrld		%xmm4, %xmm6, %xmm14 C B3modb
-	vpsrld		%xmm4, %xmm7, %xmm15
+	vpaddd		%xmm6, %xmm5, %xmm6   C B3modb
+	vpsrld		%xmm4, %xmm6, %xmm14
+	vpsrldq		$8, %xmm14, %xmm15
+	vpmovzxdq	%xmm14, %xmm14
+	vpmovzxdq	%xmm15, %xmm15
 
 	test	$1, R8(%rsi)
 	je      L(b0)
@@ -277,33 +271,23 @@ L(end):	vpsrlq		$32, %xmm4, %xmm0
 	vpaddq		%xmm4, %xmm2, %xmm2
 	vpaddq		%xmm5, %xmm3, %xmm3
 
-	vpsrlq		$32, %xmm2, %xmm6
-	vpsrlq		$32, %xmm3, %xmm7
-	vpmovzxdq	(%rdx), %xmm0
-	vpmovzxdq	8(%rdx), %xmm1
+	vshufps		$0xDD, %xmm3, %xmm2, %xmm6
+	vshufps		$0x88, %xmm3, %xmm2, %xmm2
+	vshufps		$0x88, %xmm5, %xmm4, %xmm4
+	vmovdqu		(%rdx), %xmm0
 	vpmulld		%xmm0, %xmm6, %xmm6
-	vpmulld		%xmm1, %xmm7, %xmm7
 	vpsubd		%xmm6, %xmm4, %xmm4
-	vpsubd		%xmm7, %xmm5, %xmm5
 	vpmaxud		%xmm2, %xmm4, %xmm6
-	vpmaxud		%xmm3, %xmm5, %xmm7
 	vpcmpeqd	%xmm4, %xmm6, %xmm6
-	vpcmpeqd	%xmm5, %xmm7, %xmm7
 	vpand		%xmm0, %xmm6, %xmm6
-	vpand		%xmm1, %xmm7, %xmm7
 	vpaddd		%xmm6, %xmm4, %xmm4
-	vpaddd		%xmm7, %xmm5, %xmm5
 	vpmaxud		%xmm4, %xmm0, %xmm6
-	vpmaxud		%xmm5, %xmm1, %xmm7
 	vpcmpeqd	%xmm0, %xmm6, %xmm6
-	vpcmpeqd	%xmm1, %xmm7, %xmm7
 	vpandn		%xmm0, %xmm6, %xmm6
-	vpandn		%xmm1, %xmm7, %xmm7
 	vpsubd		%xmm6, %xmm4, %xmm4
-	vpsubd		%xmm7, %xmm5, %xmm5
-
-	vpsllq		$32, %xmm4, %xmm4
-	vpsllq		$32, %xmm5, %xmm5
+	vpxor		%xmm1, %xmm1, %xmm1
+	vpunpckhdq	%xmm4, %xmm1, %xmm5
+	vpunpckldq	%xmm4, %xmm1, %xmm4
 	vmovdqu		%xmm4, (%r9)
 	vmovdqu		%xmm5, 16(%r9)
 	ret
