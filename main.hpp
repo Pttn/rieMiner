@@ -3,7 +3,7 @@
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
 
-#define versionString	"rieMiner 0.9RC2b"
+#define versionString	"rieMiner 0.9RC2c"
 
 #include <unistd.h>
 #include <string>

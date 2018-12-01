@@ -132,7 +132,7 @@ void Stats::printEstimatedTimeToBlock() const {
 			if (_tuplesSinceLastDiff[3] > 0) {
 				const double r12(((double) _tuplesSinceLastDiff[1])/((double) _tuplesSinceLastDiff[2])),
 				             s1(((double) _tuplesSinceLastDiff[1])/elapsedSecs),
-				             t(r12*r12*r12*r12*r12/(86400.*s1));
+				             t(std::pow(r12, _tuples.size() - 2)/(86400.*s1));
 				if (t < 1./1440.) std::cout << FIXED(1 + (86400.*t < 10.)) << " | " << 86400.*t << " s";
 				else if (t < 1./24.) std::cout << FIXED(1 + (1440.*t < 10.)) << " | " << 1440.*t << " min";
 				else if (t < 1.) std::cout << FIXED(1 + (24.*t < 10.)) << " | " << 24.*t << " h";
@@ -149,7 +149,7 @@ void Stats::printBenchmarkResults() const {
 	if (_tuplesSinceLastDiff[2] > 0) {
 		const double r12(((double) _tuplesSinceLastDiff[1])/((double) _tuplesSinceLastDiff[2])),
 		             s1(((double) _tuplesSinceLastDiff[1])/elapsedSecs),
-		             bpd(86400.*s1/(r12*r12*r12*r12*r12));
+		             bpd(86400.*s1/std::pow(r12, _tuples.size() - 2));
 		std::cout << "BENCHMARK RESULTS: " << FIXED(6) << s1 << " primes/s with ratio " << r12 << " -> " << bpd << " block(s)/day" << std::endl;
 	}
 }
