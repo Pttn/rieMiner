@@ -87,7 +87,7 @@ C rsi: uint64_t  n (length of a in 64-bit limbs)
 C rdx: uint32_t* ps (array of 4 p values, each shifted left by clz(p))
 C rcx: uint32_t  cnt (the shift amount referenced above, which must be the same for each p)
 C r8:  uint64_t* cps (array of 4 precomputed invert_limb values correspeonding to each p)
-C r9:  uint64_t* remainder (array of 4 remainder results, returned in upper half of each 64 bit value)
+C r9:  uint64_t* inverts in/indexes out (array of 4 inverts to multiply remainder results by to get indexes to return)
 C
 C During operation:
 C xmm10, xmm11: B1modb
@@ -310,13 +310,13 @@ L(end):	vpshufd         $0xF5, %xmm4, %xmm0
 	vpshufd         $0xF5, %xmm4, %xmm6 C xmm4/xmm5 have rl << cnt
 	vpshufd         $0xF5, %xmm5, %xmm7 C xmm6/xmm7 have r
 
-	vmovdqu		(%r8), %xmm2
-	vmovdqu		16(%r8), %xmm3
-	vpshufd		$0xF5, %xmm2, %xmm2
-	vpshufd		$0xF5, %xmm3, %xmm3
+	vmovdqu		(%r8), %xmm8
+	vmovdqu		16(%r8), %xmm9
+	vpshufd		$0xF5, %xmm8, %xmm8
+	vpshufd		$0xF5, %xmm9, %xmm9
 
-	vpmuludq	%xmm6, %xmm2, %xmm2
-	vpmuludq	%xmm7, %xmm3, %xmm3 C xmm2/xmm3 have qh/ql
+	vpmuludq	%xmm6, %xmm8, %xmm2
+	vpmuludq	%xmm7, %xmm9, %xmm3 C xmm2/xmm3 have qh/ql
 
 	vpaddd		%xmm14, %xmm4, %xmm4
 	vpaddd		%xmm14, %xmm5, %xmm5
@@ -337,9 +337,43 @@ L(end):	vpshufd         $0xF5, %xmm4, %xmm0
 	vpcmpeqd	%xmm0, %xmm6, %xmm6
 	vpandn		%xmm0, %xmm6, %xmm6
 	vpsubd		%xmm6, %xmm4, %xmm4
+
 	vpxor		%xmm1, %xmm1, %xmm1
-	vpunpckhdq	%xmm4, %xmm1, %xmm5
-	vpunpckldq	%xmm4, %xmm1, %xmm4
+	vpsubd		%xmm4, %xmm0, %xmm4
+	vpunpckhdq	%xmm1, %xmm4, %xmm5
+	vpunpckldq	%xmm1, %xmm4, %xmm4
+
+	vpmuludq	(%r9), %xmm4, %xmm4
+	vpmuludq	16(%r9), %xmm5, %xmm5
+
+	vpshufd		$0xF5, %xmm4, %xmm6
+	vpshufd		$0xF5, %xmm5, %xmm7
+	vpmuludq	%xmm6, %xmm8, %xmm2
+	vpmuludq	%xmm7, %xmm9, %xmm3 C xmm2/xmm3 have qh/ql
+
+	vpaddd		%xmm14, %xmm4, %xmm4
+	vpaddd		%xmm14, %xmm5, %xmm5
+	vpaddq		%xmm4, %xmm2, %xmm2
+	vpaddq		%xmm5, %xmm3, %xmm3
+
+	vshufps		$0xDD, %xmm3, %xmm2, %xmm6 C xmm6 = qh
+	vshufps		$0x88, %xmm3, %xmm2, %xmm2 C xmm2 = ql
+	vshufps		$0x88, %xmm5, %xmm4, %xmm4 C xmm4 = nl
+	vpmulld		%xmm0, %xmm6, %xmm6
+	vpsubd		%xmm6, %xmm4, %xmm4
+	vpmaxud		%xmm2, %xmm4, %xmm6
+	vpcmpeqd	%xmm4, %xmm6, %xmm6
+	vpand		%xmm0, %xmm6, %xmm6
+	vpaddd		%xmm6, %xmm4, %xmm4
+	vpmaxud		%xmm4, %xmm0, %xmm6
+	vpcmpeqd	%xmm0, %xmm6, %xmm6
+	vpandn		%xmm0, %xmm6, %xmm6
+	vpsubd		%xmm6, %xmm4, %xmm4
+
+	vmovq		%rcx, %xmm0
+	vpsrld		%xmm0, %xmm4, %xmm4
+	vpunpckhdq	%xmm1, %xmm4, %xmm5
+	vpunpckldq	%xmm1, %xmm4, %xmm4
 	vmovdqu		%xmm4, (%r9)
 	vmovdqu		%xmm5, 16(%r9)
 	ret

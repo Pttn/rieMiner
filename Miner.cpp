@@ -265,25 +265,24 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		uint64_t index;
 		uint64_t cnt(0), ps(0);
 		if (i < precompLimit) {
-			uint64_t remainder;
 			bool haveRemainder(false);
 			if (nextRemainderIdx < 4) {
-				remainder = nextRemainder[nextRemainderIdx++];
+				index = nextRemainder[nextRemainderIdx++];
 				cnt = __builtin_clzll(p);
 				ps = p << cnt;
 				haveRemainder = true;
 			}
 			else if (i < avxLimit) {
-				// TODO: Would be easy to move invert multiplication inside AVX remainder function.
 				cnt = __builtin_clz((uint32_t)p);
 				if (__builtin_clz((uint32_t)_parameters.primes[i+3]) == cnt) {
 					uint32_t ps32[4];
 					for (uint64_t j(0); j < 4; j++) {
 						ps32[j] = (uint32_t)_parameters.primes[i+j] << cnt;
+						nextRemainder[j] = _parameters.inverts[i+j];
 					}
 					rie_mod_1s_2p_4times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
 					haveRemainder = true;
-					remainder = nextRemainder[0];
+					index = nextRemainder[0];
 					nextRemainderIdx = 1;
 					cnt += 32;
 					ps = (uint64_t)ps32[0] << 32;
@@ -293,11 +292,9 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 			if (!haveRemainder) {
 				cnt = __builtin_clzll(p);
 				ps = p << cnt;
-				remainder = rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, cnt, &_parameters.modPrecompute[i]);
-			}
-			//if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail %lu != %lu\n", remainder >> cnt, mpz_tdiv_ui(tar, p)); abort(); }
+				uint64_t remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, cnt, &_parameters.modPrecompute[i]));
+				//if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail %lu != %lu\n", remainder >> cnt, mpz_tdiv_ui(tar, p)); abort(); }
 
-			{
 				uint64_t pa(ps - remainder);
 				uint64_t r, nh, nl;
 				umul_ppmm(nh, nl, pa, invert[0]);
@@ -305,6 +302,17 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 				index = r >> cnt;
 				//if ((r >> cnt) != ((pa >> cnt)*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); }
 			}
+#if 0
+			{
+				uint64_t remainder(mpz_tdiv_ui(tar, p)),
+				         pa(p - remainder),
+				         q, nh, nl, indexCheck;
+				
+				umul_ppmm(nh, nl, pa, invert[0]);
+				udiv_qrnnd(q, indexCheck, nh, nl, p);
+				if (index != indexCheck) { printf("Index check fail\n"); abort(); }
+			}
+#endif
 		}
 		else {
 			uint64_t remainder(mpz_tdiv_ui(tar, p)),
