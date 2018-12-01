@@ -246,7 +246,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 
 	uint64_t avxLimit(0);
 	if (_cpuInfo.hasAVX()) {
-		avxLimit = 105097566 - 4;  // Index of first prime > 2^31
+		avxLimit = 203280222 - 4;  // Index of first prime > 2^32
 		avxLimit -= (avxLimit - start_i) & 3;  // Must be at least 4 more primes in range to use AVX
 	}
 

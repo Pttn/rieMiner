@@ -92,7 +92,7 @@ C
 C During operation:
 C xmm10, xmm11: B1modb
 C xmm12, xmm13: B2modb
-C xmm14, xmm15: B3modb
+C xmm8, xmm9: B3modb
 
 	.text
 	ALIGN(16)
@@ -132,6 +132,7 @@ C xmm4: cnt
 C xmm5: 32-cnt
 C xmm6, xmm7: B1modb
 C xmm8, xmm9: Q
+C xmm14: {1,0,1,0}
 C xmm15: all 1s
 
 	vmovdqu		(%rdx), %xmm0
@@ -165,10 +166,10 @@ C xmm15: all 1s
 	vpcmpeqd	%xmm5, %xmm6, %xmm6
 	vpand		%xmm0, %xmm6, %xmm6
 	vpaddd		%xmm6, %xmm5, %xmm6   C B3modb
-	vpsrld		%xmm4, %xmm6, %xmm14
-	vpsrldq		$8, %xmm14, %xmm15
-	vpmovzxdq	%xmm14, %xmm14
-	vpmovzxdq	%xmm15, %xmm15
+	vpsrld		%xmm4, %xmm6, %xmm8
+	vpsrldq		$8, %xmm8, %xmm9
+	vpmovzxdq	%xmm8, %xmm8
+	vpmovzxdq	%xmm9, %xmm9
 
 	xor	%rax, %rax
 	cmp	%rax, -4(%rdi,%rsi,4)
@@ -184,8 +185,8 @@ L(b1):	lea	-12(%rdi,%rsi,4), %rdi
 	vmovd		(%rdi), %xmm2
 	vpshufd		$68, %xmm2, %xmm2
 	vmovdqa		%xmm2, %xmm3
-	vpaddq		%xmm0, %xmm2, %xmm6
-	vpaddq		%xmm1, %xmm3, %xmm7
+	vpaddq		%xmm0, %xmm2, %xmm2
+	vpaddq		%xmm1, %xmm3, %xmm3
 	
 	vmovd		8(%rdi), %xmm0
 	vpshufd		$0, %xmm0, %xmm0
@@ -193,6 +194,8 @@ L(b1):	lea	-12(%rdi,%rsi,4), %rdi
 	vpmuludq	%xmm0, %xmm12, %xmm0
 	vpmuludq	%xmm1, %xmm13, %xmm1
 	
+	test	%rcx, %rcx
+	jz	L(m2)
 	jmp	L(m0)
 
 	ALIGN(8)
@@ -200,6 +203,8 @@ L(b0):	lea	-8(%rdi,%rsi,4), %rdi
 	vmovq		(%rdi), %xmm2
 	vpshufd         $68, %xmm2, %xmm4
 	vmovdqa         %xmm4, %xmm5
+	test	%rcx, %rcx
+	jz	L(m3)
 	jmp	L(m1)
 
 C xmm6, xmm7: ph/pl
@@ -215,40 +220,91 @@ L(top):	vmovd		-4(%rdi), %xmm0
 	vmovd		-8(%rdi), %xmm2
 	vpshufd		$68, %xmm2, %xmm2
 	vmovdqa		%xmm2, %xmm3
-	vpaddq		%xmm0, %xmm2, %xmm6
-	vpaddq		%xmm1, %xmm3, %xmm7
+	vpaddq		%xmm0, %xmm2, %xmm2
+	vpaddq		%xmm1, %xmm3, %xmm3
 	
 	sub	$8, %rdi
 
 	vpmuludq	%xmm4, %xmm12, %xmm0
 	vpmuludq	%xmm5, %xmm13, %xmm1
-	vpaddq		%xmm0, %xmm6, %xmm6
-	vpaddq		%xmm1, %xmm7, %xmm7
+	vpaddq		%xmm0, %xmm2, %xmm2
+	vpaddq		%xmm1, %xmm3, %xmm3
 
 	vpshufd		$0xF5, %xmm4, %xmm0
 	vpshufd		$0xF5, %xmm5, %xmm1
-	vpmuludq	%xmm0, %xmm14, %xmm0
-	vpmuludq	%xmm1, %xmm15, %xmm1
+	vpmuludq	%xmm0, %xmm8, %xmm0
+	vpmuludq	%xmm1, %xmm9, %xmm1
 
-L(m0):	vpaddq		%xmm0, %xmm6, %xmm4
-	vpaddq		%xmm1, %xmm7, %xmm5
+L(m0):	vpaddq		%xmm0, %xmm2, %xmm4
+	vpaddq		%xmm1, %xmm3, %xmm5
 L(m1):	sub	$2, %rsi
 	ja	L(top)
+	jmp 	L(end)
+
+	ALIGN(16)
+L(top32): vmovd		-4(%rdi), %xmm0
+	vpshufd		$0, %xmm0, %xmm0
+	vmovdqa		%xmm0, %xmm1
+	vpmuludq	%xmm0, %xmm10, %xmm0
+	vpmuludq	%xmm1, %xmm11, %xmm1
+
+	vmovd		-8(%rdi), %xmm2
+	vpshufd		$68, %xmm2, %xmm2
+	vmovdqa		%xmm2, %xmm3
+	vpaddq		%xmm0, %xmm2, %xmm2
+	vpaddq		%xmm1, %xmm3, %xmm3
+
+	sub	$8, %rdi
+
+	vpmuludq	%xmm4, %xmm12, %xmm0
+	vpmuludq	%xmm5, %xmm13, %xmm1
+	vpaddq		%xmm0, %xmm2, %xmm2
+	vpaddq		%xmm1, %xmm3, %xmm3
+
+	vpmaxud		%xmm2, %xmm0, %xmm0
+	vpmaxud		%xmm3, %xmm1, %xmm1
+	vpcmpeqd	%xmm2, %xmm0, %xmm0
+	vpcmpeqd	%xmm3, %xmm1, %xmm1
+	vpshufd		$0xF5, %xmm0, %xmm0
+	vpshufd		$0xF5, %xmm1, %xmm1
+	vpandn		%xmm12, %xmm0, %xmm0
+	vpandn		%xmm13, %xmm1, %xmm1
+	vpaddq		%xmm0, %xmm2, %xmm2
+	vpaddq		%xmm1, %xmm3, %xmm3
+
+	vpshufd		$0xF5, %xmm4, %xmm0
+	vpshufd		$0xF5, %xmm5, %xmm1
+	vpmuludq	%xmm0, %xmm8, %xmm0
+	vpmuludq	%xmm1, %xmm9, %xmm1
+
+L(m2):	vpaddq		%xmm0, %xmm2, %xmm4
+	vpaddq		%xmm1, %xmm3, %xmm5
+
+	vpmaxud		%xmm4, %xmm0, %xmm0
+	vpmaxud		%xmm5, %xmm1, %xmm1
+	vpcmpeqd	%xmm4, %xmm0, %xmm0
+	vpcmpeqd	%xmm5, %xmm1, %xmm1
+	vpshufd		$0xF5, %xmm0, %xmm0
+	vpshufd		$0xF5, %xmm1, %xmm1
+	vpandn		%xmm12, %xmm0, %xmm0
+	vpandn		%xmm13, %xmm1, %xmm1
+	vpaddq		%xmm0, %xmm4, %xmm4
+	vpaddq		%xmm1, %xmm5, %xmm5
+
+L(m3):	sub	$2, %rsi
+	ja	L(top32)
 
 L(end):	vpshufd         $0xF5, %xmm4, %xmm0
 	vpshufd         $0xF5, %xmm5, %xmm1
 	vpmuludq	%xmm0, %xmm10, %xmm0
 	vpmuludq	%xmm1, %xmm11, %xmm1
-	vpcmpeqd	%xmm7, %xmm7, %xmm7
-	vpsrlq		$32, %xmm7, %xmm6
+	vpsrlq		$32, %xmm15, %xmm6
 	vpand		%xmm6, %xmm4, %xmm4
 	vpand		%xmm6, %xmm5, %xmm5
 	vpaddq		%xmm0, %xmm4, %xmm4
 	vpaddq		%xmm1, %xmm5, %xmm5
 
 	vmovq		%rcx, %xmm0
-	vpsrld		$31, %xmm7, %xmm1
-	vpsllq		$32, %xmm1, %xmm1
 	vpsllq		%xmm0, %xmm4, %xmm4
 	vpsllq		%xmm0, %xmm5, %xmm5
 	vpshufd         $0xF5, %xmm4, %xmm6 C xmm4/xmm5 have rl << cnt
@@ -262,8 +318,8 @@ L(end):	vpshufd         $0xF5, %xmm4, %xmm0
 	vpmuludq	%xmm6, %xmm2, %xmm2
 	vpmuludq	%xmm7, %xmm3, %xmm3 C xmm2/xmm3 have qh/ql
 
-	vpaddd		%xmm1, %xmm4, %xmm4
-	vpaddd		%xmm1, %xmm5, %xmm5
+	vpaddd		%xmm14, %xmm4, %xmm4
+	vpaddd		%xmm14, %xmm5, %xmm5
 	vpaddq		%xmm4, %xmm2, %xmm2
 	vpaddq		%xmm5, %xmm3, %xmm3
 
