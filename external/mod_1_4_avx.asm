@@ -95,16 +95,14 @@ C rsi: uint64_t  n (length of a in 64-bit limbs)
 C rdx: uint32_t* ps (array of 4 p values, each shifted left by clz(p))
 C rcx: uint32_t  cnt (the shift amount referenced above, which must be the same for each p)
 C r8:  uint64_t* cps (array of 4 precomputed invert_limb values correspeonding to each p)
+C r9:  uint64_t* remainder (array of 4 remainder results, returned in upper half of each 64 bit value)
 C
 C During operation:
-C r11, xmm11: B1modb
-C rbx, xmm12: B2modb
-C r10, xmm13: B3modb
-C r13, xmm14: B4modb
-C r12, xmm15: B5modb
-C xmm0, xmm1: ps
-C xmm2, xmm3: cps
-C xmm4: cnt
+C xmm11: B1modb
+C xmm12: B2modb
+C xmm13: B3modb
+C xmm14: B4modb
+C xmm15: B5modb
 
 	.text
 	ALIGN(16)
@@ -121,8 +119,8 @@ PROLOGUE(rie_mod_1s_4p_4times)
 	sub	$1, %rsi
 L(even):
 
-	mov	$32, %r9
-	sub	%rcx, %r9
+	mov	$32, %r10
+	sub	%rcx, %r10
 	vpmovzxdq	(%rdx), %xmm0
 	vpmovzxdq	8(%rdx), %xmm1
 	vmovdqu		(%r8), %xmm2
@@ -130,7 +128,7 @@ L(even):
 	vpsrlq		$32, %xmm2, %xmm2
 	vpsrlq		$32, %xmm3, %xmm3
 	vmovq		%rcx, %xmm4
-	vmovq		%r9, %xmm5
+	vmovq		%r10, %xmm5
 	vpor		%xmm14, %xmm2, %xmm6
 	vpor		%xmm14, %xmm3, %xmm7
 	vpsrlq		%xmm5, %xmm6, %xmm6	C ((bi >> (GMP_LIMB_BITS-cnt)) | (CNST_LIMB(1) << cnt));
@@ -143,6 +141,10 @@ L(even):
 	vshufps		$136, %xmm7, %xmm6, %xmm11  
 	vpsrld		%xmm4, %xmm11, %xmm11	C B1modb
 
+C xmm0, xmm1: ps
+C xmm2, xmm3: cps
+C xmm4: cnt
+C xmm5: 32-cnt
 C xmm6, xmm7: B1modb
 C xmm8, xmm9: Q
 C xmm15: all 1s
@@ -391,22 +393,19 @@ L(end):	vpmovzxdq	%xmm11, %xmm2
 	vpsrlq		$32, %xmm5, %xmm1
 	vpmuludq	%xmm0, %xmm2, %xmm0
 	vpmuludq	%xmm1, %xmm3, %xmm1
-	vpcmpeqd	%xmm2, %xmm2, %xmm2
-	vpsrlq		$32, %xmm2, %xmm2
-	vpand		%xmm2, %xmm1, %xmm3 C cl
-	vpand		%xmm2, %xmm0, %xmm2
-	vblendps	$10, %xmm0, %xmm4, %xmm4 C rh from multiplication result
-	vblendps	$10, %xmm1, %xmm5, %xmm5 C rl stays same as before
-	vpaddq		%xmm2, %xmm4, %xmm4
-	vpaddq		%xmm3, %xmm5, %xmm5
+	vpcmpeqd	%xmm7, %xmm7, %xmm7
+	vpsrlq		$32, %xmm7, %xmm6
+	vpand		%xmm6, %xmm4, %xmm4
+	vpand		%xmm6, %xmm5, %xmm5
+	vpaddq		%xmm0, %xmm4, %xmm4
+	vpaddq		%xmm1, %xmm5, %xmm5
 
 	vmovq		%rcx, %xmm0
-	vpcmpeqd	%xmm1, %xmm1, %xmm1
-	vpsrld		$31, %xmm1, %xmm1
+	vpsrld		$31, %xmm7, %xmm1
 	vpsllq		$32, %xmm1, %xmm1
 	vpsllq		%xmm0, %xmm4, %xmm4
 	vpsllq		%xmm0, %xmm5, %xmm5
-	vpsrlq		$32, %xmm4, %xmm6 C xmm4/xmm5 have rl
+	vpsrlq		$32, %xmm4, %xmm6 C xmm4/xmm5 have rl << cnt
 	vpsrlq		$32, %xmm5, %xmm7 C xmm6/xmm7 have r
 
 	vmovdqu		(%r8), %xmm2
@@ -447,5 +446,8 @@ L(end):	vpmovzxdq	%xmm11, %xmm2
 	vpsubd		%xmm6, %xmm4, %xmm4
 	vpsubd		%xmm7, %xmm5, %xmm5
 
-	vmovd		%xmm4, R32(%rax)
+	vpsllq		$32, %xmm4, %xmm4
+	vpsllq		$32, %xmm5, %xmm5
+	vmovdqu		%xmm4, (%r9)
+	vmovdqu		%xmm5, 16(%r9)
 	ret

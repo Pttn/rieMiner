@@ -15,7 +15,7 @@ thread_local uint64_t** offset_stack(NULL);
 extern "C" {
 	void rie_mod_1s_4p_cps(uint64_t *cps, uint64_t p);
 	mp_limb_t rie_mod_1s_4p(mp_srcptr ap, mp_size_t n, uint64_t ps, uint64_t cnt, uint64_t* cps);
-	mp_limb_t rie_mod_1s_4p_4times(mp_srcptr ap, mp_size_t n, uint32_t* ps, uint32_t cnt, uint64_t* cps);
+	mp_limb_t rie_mod_1s_4p_4times(mp_srcptr ap, mp_size_t n, uint32_t* ps, uint32_t cnt, uint64_t* cps, uint64_t* remainders);
 }
 
 void Miner::init() {
@@ -124,7 +124,9 @@ void Miner::init() {
 				mpz_set_ui(z_p, _parameters.primes[i]);
 				mpz_invert(z_tmp, _primorial, z_p);
 				_parameters.inverts[i] = mpz_get_ui(z_tmp);
-				if (i < precompPrimes) rie_mod_1s_4p_cps(&_parameters.modPrecompute[i], _parameters.primes[i]);
+				if (i < precompPrimes) {
+					rie_mod_1s_4p_cps(&_parameters.modPrecompute[i], _parameters.primes[i]);
+				}
 			}
 			mpz_clear(z_p);
 			mpz_clear(z_tmp);
@@ -242,6 +244,14 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 	}
 	uint64_t precompLimit(_parameters.modPrecompute.size());
 
+	uint64_t avxLimit(0);
+	if (_cpuInfo.hasAVX()) {
+		avxLimit = 54400028 - 4;  // Index of first prime > 2^30
+		avxLimit -= (avxLimit - start_i) & 3;  // Must be at least 4 more primes in range to use AVX
+	}
+
+	uint64_t nextRemainder[4];
+	uint64_t nextRemainderIdx(4);
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
 		uint64_t p(_parameters.primes[i]);
 
@@ -256,24 +266,37 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		uint64_t cnt(0), ps(0);
 		if (i < precompLimit) {
 			uint64_t remainder;
-#if 0
-			if (p < 0x100000000ull && i + 3 < end_i) {
-				uint32_t ps32[4];
-				cnt = __builtin_clz((uint32_t)p);
-				ps32[0] = ps32[1] = ps32[2] = ps32[3] = (uint32_t)p << cnt;
-				remainder = rie_mod_1s_4p_4times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i]);
-				if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail\n"); exit(-1); }
-				remainder <<= 32;
-				cnt += 32;
+			bool haveRemainder(false);
+			if (nextRemainderIdx < 4) {
+				remainder = nextRemainder[nextRemainderIdx++];
+				cnt = __builtin_clzll(p);
+				ps = p << cnt;
+				haveRemainder = true;
 			}
-			else
-#endif
-			{
+			else if (i < avxLimit) {
+				// TODO: Would be easy to move invert multiplication inside AVX remainder function.
+				cnt = __builtin_clz((uint32_t)p);
+				if (__builtin_clz((uint32_t)_parameters.primes[i+3]) == cnt) {
+					uint32_t ps32[4];
+					for (uint64_t j(0); j < 4; j++) {
+						ps32[j] = (uint32_t)_parameters.primes[i+j] << cnt;
+					}
+					rie_mod_1s_4p_4times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
+					haveRemainder = true;
+					remainder = nextRemainder[0];
+					nextRemainderIdx = 1;
+					cnt += 32;
+					ps = (uint64_t)ps32[0] << 32;
+				}
+			}
+			
+			if (!haveRemainder) {
 				cnt = __builtin_clzll(p);
 				ps = p << cnt;
 				remainder = rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, cnt, &_parameters.modPrecompute[i]);
-				//if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail\n"); exit(-1); }
 			}
+			//if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail %lu != %lu\n", remainder >> cnt, mpz_tdiv_ui(tar, p)); abort(); }
+
 			{
 				uint64_t pa(ps - remainder);
 				uint64_t r, nh, nl;
