@@ -1,6 +1,7 @@
 CXX    = g++
 M4     = m4
 AS     = as
+SED    = sed
 CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native
 
 msys_version := $(if $(findstring Msys, $(shell uname -o)),$(word 1, $(subst ., ,$(shell uname -r))),0)
@@ -10,7 +11,6 @@ MOD_1_4_ASM = mod_1_4_win.asm
 else
 LIBS   = -L/usr/local/lib -pthread -ljansson -lcurl -lcrypto -Wl,-Bstatic -lgmpxx -lgmp -Wl,-Bdynamic
 MOD_1_4_ASM = mod_1_4.asm
-MOD_1_2_AVX_ASM = mod_1_2_avx.asm
 endif
 
 all: rieMiner
@@ -56,10 +56,18 @@ mod_1_4.o: external/$(MOD_1_4_ASM)
 	$(AS) mod_1_4.s -o mod_1_4.o
 	rm mod_1_4.s
 
-mod_1_2_avx.o: external/$(MOD_1_2_AVX_ASM)
-	$(M4) external/$(MOD_1_2_AVX_ASM) >mod_1_2_avx.s
+ifneq ($(msys_version), 0)
+mod_1_2_avx.o: external/mod_1_2_avx.asm external/mod_1_2_avx_win.sed
+	$(SED) -f external/mod_1_2_avx_win.sed <external/mod_1_2_avx.asm >mod_1_2_avx.asm
+	$(M4) mod_1_2_avx.asm >mod_1_2_avx.s
+	$(AS) mod_1_2_avx.s -o mod_1_2_avx.o
+	rm mod_1_2_avx.s mod_1_2_avx.asm
+else
+mod_1_2_avx.o: external/mod_1_2_avx.asm
+	$(M4) external/mod_1_2_avx.asm >mod_1_2_avx.s
 	$(AS) mod_1_2_avx.s -o mod_1_2_avx.o
 	rm mod_1_2_avx.s
+endif
 
 clean:
 	rm -rf rieMiner *.o

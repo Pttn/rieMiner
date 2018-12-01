@@ -120,44 +120,72 @@ PROLOGUE(rie_mod_1s_4p)
 
         mov     %rcx, %rdi
         mov     %rdx, %rsi
+	mov	%r9, %rcx
 
+	mov	96(%rsp), %r14
 	push	%r8
-	mov	%r9, %r14
-	mov	8(%r9), R32(%r11)		C B1modb
-	mov	12(%r9), R32(%rbx)		C B2modb
-	mov	16(%r9), R32(%rbp)		C B3modb
-	mov	20(%r9), R32(%r13)		C B4modb
-	mov	24(%r9), R32(%r12)		C B5modb
 
-	mov	28(%r9), R32(%r8)
-	and	$0x1ffffff, R32(%r8)
-	jz	L(nohi)
+	mov	(%r14), %rax
+	mov	%r8, %rdx
 
-	mov	R32(%r8), R32(%rdx)
-	and	$0x1f, R32(%rdx)
-	shl	$32, %rdx
-	or	%rdx, %r11
+	neg	%r8
+	mov	%rdx, %r12
+	mov	%rax, %r9
+	mov	$1, R32(%r10)
+	shld	R8(%rcx), %rax, %r10
+	imul	%r8, %r10
+	mul	%r10
 
-	mov	R32(%r8), R32(%rdx)
-	and	$0x3e0, R32(%rdx)
-	shl	$27, %rdx
-	or	%rdx, %rbx
+	add	%r10, %rdx
+	shr	R8(%rcx), %r10
+	mov	%r10, %r11			C B1modb
 
-	mov	R32(%r8), R32(%rdx)
-	and	$0x7c00, R32(%rdx)
-	shl	$22, %rdx
-	or	%rdx, %rbp
+	not	%rdx
+	imul	%r12, %rdx
+	lea	(%rdx,%r12), %r10
+	cmp	%rdx, %rax
+	cmovnc	%rdx, %r10
+	mov	%r9, %rax
+	mul	%r10
 
-	mov	R32(%r8), R32(%rdx)
-	and	$0xf8000, R32(%rdx)
-	shl	$17, %rdx
-	or	%rdx, %r13
+	add	%r10, %rdx
+	shr	R8(%rcx), %r10
+	mov	%r10, %rbx			C B2modb
 
-	shl	$12, %r8
-	or	%r8, %r12
+	not	%rdx
+	imul	%r12, %rdx
+	lea	(%rdx,%r12), %r10
+	cmp	%rdx, %rax
+	cmovnc	%rdx, %r10
+	mov	%r9, %rax
+	mul	%r10
+
+	add	%r10, %rdx
+	shr	R8(%rcx), %r10
+	mov	%r10, %rbp			C B3modb
+
+	not	%rdx
+	imul	%r12, %rdx
+	lea	(%rdx,%r12), %r10
+	cmp	%rdx, %rax
+	cmovnc	%rdx, %r10
+	mov	%r9, %rax
+	mul	%r10
+
+	add	%r10, %rdx
+	shr	R8(%rcx), %r10
+	mov	%r10, %r13			C B4modb
+
+	not	%rdx
+	imul	%r12, %rdx
+	add	%rdx, %r12
+	cmp	%rdx, %rax
+	cmovnc	%rdx, %r12
+
+	shr	R8(%rcx), %r12			C B5modb
+	push	%rcx
 
 	xor	R32(%r8), R32(%r8)
-L(nohi):
 	mov	R32(%rsi), R32(%rdx)
 	and	$3, R32(%rdx)
 	je	L(b0)
@@ -230,8 +258,7 @@ L(m0):	add	%rax, %r9
 L(m1):	sub	$4, %rsi
 	ja	L(top)
 
-L(end):	mov	28(%r14), R32(%rsi)
-	shr	$25, R32(%rsi)
+L(end):	pop	%rsi
 	mov	%r8, %rax
 	mul	%r11
 	mov	%rax, %r8
@@ -279,21 +306,14 @@ forloop(i,256,512-1,dnl
 
 	ALIGN(16)
 PROLOGUE(rie_mod_1s_4p_cps)
+	push	%rbx
+	mov	%rcx, %rbx
+	bsr	%rdx, %rcx
 	push	%rdi
 	push	%rsi
-	mov	%rcx, %rdi
-	mov	%rdx, %rsi
-
-	push	%rbp
-	bsr	%rsi, %rcx
-	push	%rbx
-	mov	%rdi, %rbx
-	push	%r12
 	xor	$63, R32(%rcx)
-	mov	%rsi, %r12
-	mov	R32(%rcx), R32(%rbp)	C preserve cnt over call
-	sal	R8(%rcx), %r12		C b << cnt
-	mov	%r12, %rdi		C pass parameter
+	mov	%rdx, %rdi
+	sal	R8(%rcx), %rdi		C b << cnt
 dnl	ASSERT(nz, `test $15, %rsp')
 dnl	call	__gmpn_invert_limb
 
@@ -345,84 +365,9 @@ dnl	call	__gmpn_invert_limb
         sub     %rdx, %rax
 
 
-	mov	%r12, %r8
-	mov	%rax, %r11
 	mov	%rax, (%rbx)		C store bi
-	neg	%r8
-	mov	R32(%rbp), R32(%rcx)
-	shl     $25, R32(%rbp)
-	mov	$1, R32(%rsi)
-	shld	R8(%rcx), %rax, %rsi	C FIXME: Slow on Atom and Nano
-	imul	%r8, %rsi
-	mul	%rsi
 
-	add	%rsi, %rdx
-	shr	R8(%rcx), %rsi
-	mov	R32(%rsi), 8(%rbx)		C store B1modb
-	shr	$32, %rsi
-	or	R32(%rsi), R32(%rbp)
-
-	not	%rdx
-	imul	%r12, %rdx
-	lea	(%rdx,%r12), %rsi
-	cmp	%rdx, %rax
-	cmovnc	%rdx, %rsi
-	mov	%r11, %rax
-	mul	%rsi
-
-	add	%rsi, %rdx
-	shr	R8(%rcx), %rsi
-	mov	R32(%rsi), 12(%rbx)		C store B2modb
-	shr	$27, %rsi
-	and	$0x3e0, R32(%rsi)
-	or	R32(%rsi), R32(%rbp)
-
-	not	%rdx
-	imul	%r12, %rdx
-	lea	(%rdx,%r12), %rsi
-	cmp	%rdx, %rax
-	cmovnc	%rdx, %rsi
-	mov	%r11, %rax
-	mul	%rsi
-
-	add	%rsi, %rdx
-	shr	R8(%rcx), %rsi
-	mov	R32(%rsi), 16(%rbx)		C store B3modb
-	shr	$22, %rsi
-	and	$0x7c00, R32(%rsi)
-	or	R32(%rsi), R32(%rbp)
-
-	not	%rdx
-	imul	%r12, %rdx
-	lea	(%rdx,%r12), %rsi
-	cmp	%rdx, %rax
-	cmovnc	%rdx, %rsi
-	mov	%r11, %rax
-	mul	%rsi
-
-	add	%rsi, %rdx
-	shr	R8(%rcx), %rsi
-	mov	R32(%rsi), 20(%rbx)		C store B4modb
-	shr	$17, %rsi
-	and	$0xf8000, R32(%rsi)
-	or	R32(%rsi), R32(%rbp)
-
-	not	%rdx
-	imul	%r12, %rdx
-	add	%rdx, %r12
-	cmp	%rdx, %rax
-	cmovnc	%rdx, %r12
-
-	shr	R8(%rcx), %r12
-	mov	R32(%r12), 24(%rbx)		C store B5modb
-	shr	$12, %r12
-	and	$0x1f00000, R32(%r12)
-	or	R32(%r12), R32(%rbp)
-	mov	R32(%rbp), 28(%rbx)
-
-	pop	%r12
-	pop	%rbx
-	pop	%rbp
 	pop	%rsi
 	pop	%rdi
+	pop	%rbx
 	ret

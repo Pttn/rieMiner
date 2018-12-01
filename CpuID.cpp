@@ -15,7 +15,7 @@ CpuID::CpuID() {
 		__get_cpuid(1, &eax, &ebx, &ecx, &edx);
 		_avx = (ecx & (1 << 28)) != 0;
 
-		__get_cpuid(7, &eax, &ebx, &ecx, &edx);
+		__get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx);
 		_avx2 = (ebx & (1 << 5)) != 0;
 		_avx512 = (ebx & (1 << 16)) != 0;
 	}
