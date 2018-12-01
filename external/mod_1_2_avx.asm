@@ -103,11 +103,6 @@ PROLOGUE(rie_mod_1s_2p_4times)
 	vpsllq		$32, %xmm14, %xmm14
 
 	shl	$1, %rsi
-	xor	%rax, %rax
-	cmp	%rax, -4(%rdi,%rsi,4)
-	jnz	L(even)
-	sub	$1, %rsi
-L(even):
 
 	mov	$32, %r10
 	sub	%rcx, %r10
@@ -175,8 +170,9 @@ C xmm15: all 1s
 	vpmovzxdq	%xmm14, %xmm14
 	vpmovzxdq	%xmm15, %xmm15
 
-	test	$1, R8(%rsi)
-	je      L(b0)
+	xor	%rax, %rax
+	cmp	%rax, -4(%rdi,%rsi,4)
+	jnz	L(b0)
 
 L(b1):	lea	-12(%rdi,%rsi,4), %rdi
 	vmovd		4(%rdi), %xmm0
@@ -229,8 +225,8 @@ L(top):	vmovd		-4(%rdi), %xmm0
 	vpaddq		%xmm0, %xmm6, %xmm6
 	vpaddq		%xmm1, %xmm7, %xmm7
 
-	vpsrlq		$32, %xmm4, %xmm0
-	vpsrlq		$32, %xmm5, %xmm1
+	vpshufd		$0xF5, %xmm4, %xmm0
+	vpshufd		$0xF5, %xmm5, %xmm1
 	vpmuludq	%xmm0, %xmm14, %xmm0
 	vpmuludq	%xmm1, %xmm15, %xmm1
 
@@ -239,8 +235,8 @@ L(m0):	vpaddq		%xmm0, %xmm6, %xmm4
 L(m1):	sub	$2, %rsi
 	ja	L(top)
 
-L(end):	vpsrlq		$32, %xmm4, %xmm0
-	vpsrlq		$32, %xmm5, %xmm1
+L(end):	vpshufd         $0xF5, %xmm4, %xmm0
+	vpshufd         $0xF5, %xmm5, %xmm1
 	vpmuludq	%xmm0, %xmm10, %xmm0
 	vpmuludq	%xmm1, %xmm11, %xmm1
 	vpcmpeqd	%xmm7, %xmm7, %xmm7
@@ -255,17 +251,17 @@ L(end):	vpsrlq		$32, %xmm4, %xmm0
 	vpsllq		$32, %xmm1, %xmm1
 	vpsllq		%xmm0, %xmm4, %xmm4
 	vpsllq		%xmm0, %xmm5, %xmm5
-	vpsrlq		$32, %xmm4, %xmm6 C xmm4/xmm5 have rl << cnt
-	vpsrlq		$32, %xmm5, %xmm7 C xmm6/xmm7 have r
+	vpshufd         $0xF5, %xmm4, %xmm6 C xmm4/xmm5 have rl << cnt
+	vpshufd         $0xF5, %xmm5, %xmm7 C xmm6/xmm7 have r
 
 	vmovdqu		(%r8), %xmm2
 	vmovdqu		16(%r8), %xmm3
-	vpsrlq		$32, %xmm2, %xmm2
-	vpsrlq		$32, %xmm3, %xmm3
+	vpshufd		$0xF5, %xmm2, %xmm2
+	vpshufd		$0xF5, %xmm3, %xmm3
 
 	vpmuludq	%xmm6, %xmm2, %xmm2
 	vpmuludq	%xmm7, %xmm3, %xmm3 C xmm2/xmm3 have qh/ql
-	
+
 	vpaddd		%xmm1, %xmm4, %xmm4
 	vpaddd		%xmm1, %xmm5, %xmm5
 	vpaddq		%xmm4, %xmm2, %xmm2
