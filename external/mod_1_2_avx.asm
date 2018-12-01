@@ -1,8 +1,9 @@
-dnl  AMD64 mpn_mod_1s_4p
+dnl  AMD64 mpn_mod_1s_2p
 
 dnl  Contributed to the GNU project by Torbjorn Granlund.
 
 dnl  Copyright 2009-2012, 2014 Free Software Foundation, Inc.
+dnl  AVX implementation copyright 2018 Michael Bell
 
 dnl  This file is derived from the GNU MP Library.
 dnl
@@ -78,15 +79,6 @@ define(`L',
 define(ALIGN,
 `.align eval($1), 0x90')
 
-C	     cycles/limb
-C AMD K8,K9	 3
-C AMD K10	 3
-C Intel P4	15.5
-C Intel core2	 5
-C Intel corei	 4
-C Intel atom	23
-C VIA nano	 4.75
-
 C Compute a % p for 4 values of p, where a is arbitrary length > 2^256 and p < 2^32
 C
 C On entry:
@@ -98,11 +90,9 @@ C r8:  uint64_t* cps (array of 4 precomputed invert_limb values correspeonding t
 C r9:  uint64_t* remainder (array of 4 remainder results, returned in upper half of each 64 bit value)
 C
 C During operation:
-C xmm11: B1modb
-C xmm12: B2modb
-C xmm13: B3modb
-C xmm14: B4modb
-C xmm15: B5modb
+C xmm10, xmm11: B1modb
+C xmm12, xmm13: B2modb
+C xmm14, xmm15: B3modb
 
 	.text
 	ALIGN(16)
@@ -136,10 +126,10 @@ L(even):
 	vpxor		%xmm5, %xmm5, %xmm5
 	vpsubd		%xmm0, %xmm5, %xmm8	C -b
 	vpsubd		%xmm1, %xmm5, %xmm9
-	vpmulld		%xmm8, %xmm6, %xmm6
+	vpmulld		%xmm8, %xmm6, %xmm6   C B1modb
 	vpmulld		%xmm9, %xmm7, %xmm7
-	vshufps		$136, %xmm7, %xmm6, %xmm11  
-	vpsrld		%xmm4, %xmm11, %xmm11	C B1modb
+	vpsrld		%xmm4, %xmm6, %xmm10
+	vpsrld		%xmm4, %xmm7, %xmm11
 
 C xmm0, xmm1: ps
 C xmm2, xmm3: cps
@@ -152,44 +142,44 @@ C xmm15: all 1s
 	vpmuludq	%xmm2, %xmm6, %xmm8
 	vpmuludq	%xmm3, %xmm7, %xmm9
 	vpsrlq		$32, %xmm8, %xmm5
-	vpsrlq		$32, %xmm9, %xmm10
+	vpsrlq		$32, %xmm9, %xmm14
 	vpaddd		%xmm6, %xmm5, %xmm5
-	vpaddd		%xmm7, %xmm10, %xmm10
+	vpaddd		%xmm7, %xmm14, %xmm14
 	vpxor		%xmm15, %xmm5, %xmm5
-	vpxor		%xmm15, %xmm10, %xmm10
+	vpxor		%xmm15, %xmm14, %xmm14
 	vpmulld		%xmm0, %xmm5, %xmm5
-	vpmulld		%xmm1, %xmm10, %xmm10
+	vpmulld		%xmm1, %xmm14, %xmm14
 	vpmaxud		%xmm8, %xmm5, %xmm6
-	vpmaxud		%xmm9, %xmm10, %xmm7
+	vpmaxud		%xmm9, %xmm14, %xmm7
 	vpcmpeqd	%xmm5, %xmm6, %xmm6
-	vpcmpeqd	%xmm10, %xmm7, %xmm7
+	vpcmpeqd	%xmm14, %xmm7, %xmm7
 	vpand		%xmm0, %xmm6, %xmm6
 	vpand		%xmm1, %xmm7, %xmm7
-	vpaddd		%xmm6, %xmm5, %xmm6
-	vpaddd		%xmm7, %xmm10, %xmm7
-	vshufps		$136, %xmm7, %xmm6, %xmm12  
-	vpsrld		%xmm4, %xmm12, %xmm12	C B2modb
+	vpaddd		%xmm6, %xmm5, %xmm6   C B2modb
+	vpaddd		%xmm7, %xmm14, %xmm7
+	vpsrld		%xmm4, %xmm6, %xmm12
+	vpsrld		%xmm4, %xmm7, %xmm13
 
 	vpmuludq	%xmm2, %xmm6, %xmm8
 	vpmuludq	%xmm3, %xmm7, %xmm9
 	vpsrlq		$32, %xmm8, %xmm5
-	vpsrlq		$32, %xmm9, %xmm10
+	vpsrlq		$32, %xmm9, %xmm14
 	vpaddd		%xmm6, %xmm5, %xmm5
-	vpaddd		%xmm7, %xmm10, %xmm10
+	vpaddd		%xmm7, %xmm14, %xmm14
 	vpxor		%xmm15, %xmm5, %xmm5
-	vpxor		%xmm15, %xmm10, %xmm10
+	vpxor		%xmm15, %xmm14, %xmm14
 	vpmulld		%xmm0, %xmm5, %xmm5
-	vpmulld		%xmm1, %xmm10, %xmm10
+	vpmulld		%xmm1, %xmm14, %xmm14
 	vpmaxud		%xmm8, %xmm5, %xmm6
-	vpmaxud		%xmm9, %xmm10, %xmm7
+	vpmaxud		%xmm9, %xmm14, %xmm7
 	vpcmpeqd	%xmm5, %xmm6, %xmm6
-	vpcmpeqd	%xmm10, %xmm7, %xmm7
+	vpcmpeqd	%xmm14, %xmm7, %xmm7
 	vpand		%xmm0, %xmm6, %xmm6
 	vpand		%xmm1, %xmm7, %xmm7
 	vpaddd		%xmm6, %xmm5, %xmm6
-	vpaddd		%xmm7, %xmm10, %xmm7
-	vshufps		$136, %xmm7, %xmm6, %xmm13  
-	vpsrld		%xmm4, %xmm13, %xmm13	C B3modb
+	vpaddd		%xmm7, %xmm14, %xmm7
+	vpsrld		%xmm4, %xmm6, %xmm14 C B3modb
+	vpsrld		%xmm4, %xmm7, %xmm15
 
 	test	$1, R8(%rsi)
 	je      L(b0)
@@ -198,11 +188,8 @@ L(b1):	lea	-12(%rdi,%rsi,4), %rdi
 	vmovd		4(%rdi), %xmm0
 	vpshufd		$0, %xmm0, %xmm0
 	vmovdqa		%xmm0, %xmm1
-	vpmovzxdq	%xmm11, %xmm2
-	vpsrldq		$8, %xmm11, %xmm3
-	vpmovzxdq	%xmm3, %xmm3
-	vpmuludq	%xmm0, %xmm2, %xmm0
-	vpmuludq	%xmm1, %xmm3, %xmm1
+	vpmuludq	%xmm0, %xmm10, %xmm0
+	vpmuludq	%xmm1, %xmm11, %xmm1
 
 	vmovd		(%rdi), %xmm2
 	vpshufd		$68, %xmm2, %xmm2
@@ -213,11 +200,8 @@ L(b1):	lea	-12(%rdi,%rsi,4), %rdi
 	vmovd		8(%rdi), %xmm0
 	vpshufd		$0, %xmm0, %xmm0
 	vmovdqa		%xmm0, %xmm1
-	vpmovzxdq	%xmm12, %xmm2
-	vpsrldq		$8, %xmm12, %xmm3
-	vpmovzxdq	%xmm3, %xmm3
-	vpmuludq	%xmm0, %xmm2, %xmm0
-	vpmuludq	%xmm1, %xmm3, %xmm1
+	vpmuludq	%xmm0, %xmm12, %xmm0
+	vpmuludq	%xmm1, %xmm13, %xmm1
 	
 	jmp	L(m0)
 
@@ -235,11 +219,8 @@ C xmm4, xmm5: rh/rl
 L(top):	vmovd		-4(%rdi), %xmm0
 	vpshufd		$0, %xmm0, %xmm0
 	vmovdqa		%xmm0, %xmm1
-	vpmovzxdq	%xmm11, %xmm2
-	vpsrldq		$8, %xmm11, %xmm3
-	vpmovzxdq	%xmm3, %xmm3
-	vpmuludq	%xmm0, %xmm2, %xmm0
-	vpmuludq	%xmm1, %xmm3, %xmm1
+	vpmuludq	%xmm0, %xmm10, %xmm0
+	vpmuludq	%xmm1, %xmm11, %xmm1
 
 	vmovd		-8(%rdi), %xmm2
 	vpshufd		$68, %xmm2, %xmm2
@@ -249,34 +230,25 @@ L(top):	vmovd		-4(%rdi), %xmm0
 	
 	sub	$8, %rdi
 
-	vpmovzxdq	%xmm12, %xmm2
-	vpsrldq		$8, %xmm12, %xmm3
-	vpmovzxdq	%xmm3, %xmm3
-	vpmuludq	%xmm4, %xmm2, %xmm0
-	vpmuludq	%xmm5, %xmm3, %xmm1
+	vpmuludq	%xmm4, %xmm12, %xmm0
+	vpmuludq	%xmm5, %xmm13, %xmm1
 	vpaddq		%xmm0, %xmm6, %xmm6
 	vpaddq		%xmm1, %xmm7, %xmm7
 
-	vpmovzxdq	%xmm13, %xmm2
-	vpsrldq		$8, %xmm13, %xmm3
-	vpmovzxdq	%xmm3, %xmm3
 	vpsrlq		$32, %xmm4, %xmm0
 	vpsrlq		$32, %xmm5, %xmm1
-	vpmuludq	%xmm0, %xmm2, %xmm0
-	vpmuludq	%xmm1, %xmm3, %xmm1
+	vpmuludq	%xmm0, %xmm14, %xmm0
+	vpmuludq	%xmm1, %xmm15, %xmm1
 
 L(m0):	vpaddq		%xmm0, %xmm6, %xmm4
 	vpaddq		%xmm1, %xmm7, %xmm5
 L(m1):	sub	$2, %rsi
 	ja	L(top)
 
-L(end):	vpmovzxdq	%xmm11, %xmm2
-	vpsrldq		$8, %xmm11, %xmm3
-	vpmovzxdq	%xmm3, %xmm3
-	vpsrlq		$32, %xmm4, %xmm0
+L(end):	vpsrlq		$32, %xmm4, %xmm0
 	vpsrlq		$32, %xmm5, %xmm1
-	vpmuludq	%xmm0, %xmm2, %xmm0
-	vpmuludq	%xmm1, %xmm3, %xmm1
+	vpmuludq	%xmm0, %xmm10, %xmm0
+	vpmuludq	%xmm1, %xmm11, %xmm1
 	vpcmpeqd	%xmm7, %xmm7, %xmm7
 	vpsrlq		$32, %xmm7, %xmm6
 	vpand		%xmm6, %xmm4, %xmm4
