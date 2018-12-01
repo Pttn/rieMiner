@@ -310,7 +310,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 				
 				umul_ppmm(nh, nl, pa, invert[0]);
 				udiv_qrnnd(q, indexCheck, nh, nl, p);
-				if (index != indexCheck) { printf("Index check fail\n"); abort(); }
+				if (index != indexCheck) { printf("Index check fail, p=%ld, i=%ld, start_i=%ld\n", p, i, start_i); abort(); }
 			}
 #endif
 		}

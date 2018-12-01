@@ -175,7 +175,7 @@ C xmm15: all 1s
 	cmp	%rax, -4(%rdi,%rsi,4)
 	jnz	L(b0)
 
-L(b1):	lea	-12(%rdi,%rsi,4), %rdi
+L(b1):	lea	-16(%rdi,%rsi,4), %rdi
 	vmovd		4(%rdi), %xmm0
 	vpshufd		$0, %xmm0, %xmm0
 	vmovdqa		%xmm0, %xmm1
@@ -194,6 +194,7 @@ L(b1):	lea	-12(%rdi,%rsi,4), %rdi
 	vpmuludq	%xmm0, %xmm12, %xmm0
 	vpmuludq	%xmm1, %xmm13, %xmm1
 	
+	sub	$3, %rsi
 	test	%rcx, %rcx
 	jz	L(m2)
 	jmp	L(m0)
