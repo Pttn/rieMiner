@@ -77,14 +77,10 @@ static uint32_t setup_fermat(uint32_t N_Size, int num, const mp_limb_t* M, mp_li
 			mpn_lshift(mshifted, mp, mn, minv.shift);
 			mp = mshifted;
 		}
-		else
-		{
-			for (int i = 0; i < mn; ++i) mshifted[i] = mp[i];
-		}
 
-		for (int i = 0; i < mn; ++i) rp[i] = 0;
-		rp[mn] = 1 << minv.shift;
-		mpn_div_r_preinv_ns(rp, mn + 1, mp, mn, &minv);
+		for (int i = 0; i < mn+4; ++i) rp[i] = 0;
+		rp[mn+4] = 1 << minv.shift;
+		mpn_div_r_preinv_ns(rp, mn+5, mp, mn, &minv);
 
 		if (minv.shift > 0)
 		{
@@ -114,7 +110,7 @@ void fermatTest(int N_Size, int listSize, uint32_t* M, uint32_t* is_prime, bool 
 		inited = true;
 	}
 
-	if (N_Size < 3 || N_Size > MAX_N_SIZE)
+	if (N_Size < 6 || N_Size > MAX_N_SIZE)
 	{
 		printf("N Size out of bounds\n");
 		abort();
@@ -127,7 +123,7 @@ void fermatTest(int N_Size, int listSize, uint32_t* M, uint32_t* is_prime, bool 
 	}
 
 	uint32_t MI[MAX_N_SIZE];
-	uint32_t R[MAX_N_SIZE * JOB_SIZE + 1];
+	uint32_t R[MAX_N_SIZE * JOB_SIZE + 5];
 
 	while (listSize > 0)
 	{

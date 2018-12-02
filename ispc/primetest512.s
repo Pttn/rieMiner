@@ -1644,10 +1644,11 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	andq	$-128, %rsp
 	subq	$45568, %rsp            # imm = 0xB200
 	vmovdqa	%xmm0, %xmm12
+                                        # kill: def $r9d killed $r9d def $r9
 	movl	%r8d, %r11d
-	movq	%rcx, %r14
+	movq	%rcx, 72(%rsp)          # 8-byte Spill
 	testl	%r8d, %r8d
-	je	.LBB2_3
+	je	.LBB2_7
 # %bb.1:                                # %for_loop.lr.ph
 	vpbroadcastd	%r11d, %zmm0
 	vpmulld	.LCPI2_0(%rip), %zmm0, %zmm0
@@ -1656,31 +1657,20 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpternlogq	$15, %zmm1, %zmm1, %zmm1
 	vpmovsxbd	%xmm1, %zmm1
 	vptestmd	%zmm1, %zmm1, %k1
-	movl	%r11d, %r10d
-	andl	$1, %r10d
 	cmpl	$1, %r11d
-	movq	%r14, 72(%rsp)          # 8-byte Spill
-	movl	%r9d, 60(%rsp)          # 4-byte Spill
-	movl	%r10d, 64(%rsp)         # 4-byte Spill
-	jne	.LBB2_4
+	jne	.LBB2_3
 # %bb.2:
 	xorl	%eax, %eax
-	jmp	.LBB2_7
-.LBB2_3:                                # %for_test186.preheader.thread
-	vpxor	%xmm0, %xmm0, %xmm0
-	vpcmpeqb	%xmm0, %xmm12, %xmm0
-	vpternlogq	$15, %zmm0, %zmm0, %zmm0
-	vpmovsxbd	%xmm0, %zmm0
-	vptestmd	%zmm0, %zmm0, %k4
-	kxorw	%k0, %k0, %k1
-	jmp	.LBB2_66
-.LBB2_4:                                # %for_loop.lr.ph.new
+	jmp	.LBB2_6
+.LBB2_3:                                # %for_loop.lr.ph.new
 	movl	%r11d, %r8d
-	subl	%r10d, %r8d
-	movl	$64, %ebx
+	andl	$1, %r8d
+	movl	%r11d, %r10d
+	subl	%r8d, %r10d
+	movl	$64, %ecx
 	xorl	%eax, %eax
 	.p2align	4, 0x90
-.LBB2_5:                                # %for_loop
+.LBB2_4:                                # %for_loop
                                         # =>This Inner Loop Header: Depth=1
 	vpbroadcastd	%eax, %zmm1
 	vpaddd	%zmm0, %zmm1, %zmm1
@@ -1688,39 +1678,39 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	kmovw	%k1, %k2
 	vpxor	%xmm2, %xmm2, %xmm2
 	vpgatherdd	(%rdi,%zmm1), %zmm2 {%k2}
-	vmovdqa64	%zmm2, 8512(%rsp,%rbx)
+	vmovdqa64	%zmm2, 8512(%rsp,%rcx)
 	kmovw	%k1, %k2
 	vpxor	%xmm2, %xmm2, %xmm2
 	vpgatherdd	(%rdx,%zmm1), %zmm2 {%k2}
 	vextracti64x4	$1, %zmm2, %ymm1
 	vpmovzxdq	%ymm1, %zmm1    # zmm1 = ymm1[0],zero,ymm1[1],zero,ymm1[2],zero,ymm1[3],zero,ymm1[4],zero,ymm1[5],zero,ymm1[6],zero,ymm1[7],zero
-	vmovdqa64	%zmm1, 320(%rsp,%rbx,2)
+	vmovdqa64	%zmm1, 320(%rsp,%rcx,2)
 	vpmovzxdq	%ymm2, %zmm1    # zmm1 = ymm2[0],zero,ymm2[1],zero,ymm2[2],zero,ymm2[3],zero,ymm2[4],zero,ymm2[5],zero,ymm2[6],zero,ymm2[7],zero
-	vmovdqa64	%zmm1, 256(%rsp,%rbx,2)
-	leal	1(%rax), %ecx
-	vpbroadcastd	%ecx, %zmm1
+	vmovdqa64	%zmm1, 256(%rsp,%rcx,2)
+	leal	1(%rax), %ebx
+	vpbroadcastd	%ebx, %zmm1
 	vpaddd	%zmm0, %zmm1, %zmm1
 	vpslld	$2, %zmm1, %zmm1
 	kmovw	%k1, %k2
 	vpxor	%xmm2, %xmm2, %xmm2
 	vpgatherdd	(%rdi,%zmm1), %zmm2 {%k2}
-	vmovdqa64	%zmm2, 8576(%rsp,%rbx)
+	vmovdqa64	%zmm2, 8576(%rsp,%rcx)
 	kmovw	%k1, %k2
 	vpxor	%xmm2, %xmm2, %xmm2
 	vpgatherdd	(%rdx,%zmm1), %zmm2 {%k2}
 	vpmovzxdq	%ymm2, %zmm1    # zmm1 = ymm2[0],zero,ymm2[1],zero,ymm2[2],zero,ymm2[3],zero,ymm2[4],zero,ymm2[5],zero,ymm2[6],zero,ymm2[7],zero
 	vextracti64x4	$1, %zmm2, %ymm2
 	vpmovzxdq	%ymm2, %zmm2    # zmm2 = ymm2[0],zero,ymm2[1],zero,ymm2[2],zero,ymm2[3],zero,ymm2[4],zero,ymm2[5],zero,ymm2[6],zero,ymm2[7],zero
-	vmovdqa64	%zmm2, 448(%rsp,%rbx,2)
-	vmovdqa64	%zmm1, 384(%rsp,%rbx,2)
+	vmovdqa64	%zmm2, 448(%rsp,%rcx,2)
+	vmovdqa64	%zmm1, 384(%rsp,%rcx,2)
 	addq	$2, %rax
-	subq	$-128, %rbx
-	cmpl	%eax, %r8d
-	jne	.LBB2_5
-# %bb.6:                                # %for_test.for_exit_crit_edge.unr-lcssa
-	testl	%r10d, %r10d
-	je	.LBB2_8
-.LBB2_7:                                # %for_loop.epil.preheader
+	subq	$-128, %rcx
+	cmpl	%eax, %r10d
+	jne	.LBB2_4
+# %bb.5:                                # %for_test.for_exit_crit_edge.unr-lcssa
+	testl	%r8d, %r8d
+	je	.LBB2_7
+.LBB2_6:                                # %for_loop.epil.preheader
 	movq	%rax, %rcx
 	shlq	$6, %rcx
 	vpbroadcastd	%eax, %zmm1
@@ -1738,84 +1728,110 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpmovzxdq	%ymm1, %zmm1    # zmm1 = ymm1[0],zero,ymm1[1],zero,ymm1[2],zero,ymm1[3],zero,ymm1[4],zero,ymm1[5],zero,ymm1[6],zero,ymm1[7],zero
 	vmovdqa64	%zmm1, 448(%rsp,%rax)
 	vmovdqa64	%zmm0, 384(%rsp,%rax)
-.LBB2_8:                                # %for_exit
+.LBB2_7:                                # %for_exit
+	xorl	%ecx, %ecx
+	movq	%r9, 80(%rsp)           # 8-byte Spill
+	cmpl	$23, %r9d
+	seta	%cl
+	movl	%r11d, %eax
+	subl	%ecx, %eax
 	vpxor	%xmm0, %xmm0, %xmm0
 	vpcmpeqb	%xmm0, %xmm12, %xmm0
 	vpternlogq	$15, %zmm0, %zmm0, %zmm0
 	vpmovsxbd	%xmm0, %zmm0
-	vptestmd	%zmm0, %zmm0, %k4
-	vmovdqu32	(%rsi), %zmm0 {%k4}{z}
+	vptestmd	%zmm0, %zmm0, %k1
+	vmovdqu32	(%rsi), %zmm0 {%k1}{z}
 	vmovdqa64	%zmm0, 128(%rsp) # 64-byte Spill
-	testl	%r11d, %r11d
-	jle	.LBB2_38
-# %bb.9:                                # %for_loop32.lr.ph
-	movabsq	$8589934592, %r15       # imm = 0x200000000
-	movabsq	$4294967296, %r14       # imm = 0x100000000
-	movl	$-2147483648, %eax      # imm = 0x80000000
-	movl	60(%rsp), %ecx          # 4-byte Reload
-	shrxl	%ecx, %eax, %r8d
-	vpbroadcastd	%ecx, %zmm14
-	movl	$32, %eax
-	subl	%ecx, %eax
-	vpbroadcastd	%eax, %zmm15
-	leal	-1(%r11), %r13d
-	movslq	%r11d, %rcx
+	testl	%eax, %eax
+	jle	.LBB2_42
+# %bb.8:                                # %for_loop36.lr.ph
+	movq	80(%rsp), %rsi          # 8-byte Reload
+	cmpl	$24, %esi
+	setb	%cl
+	movabsq	$8589934592, %r14       # imm = 0x200000000
+	movabsq	$4294967296, %r15       # imm = 0x100000000
+	shlb	$5, %cl
+	movzbl	%cl, %ecx
+	leal	(%rcx,%rsi), %ecx
+	addl	$-24, %ecx
+	movl	$-2147483648, %edx      # imm = 0x80000000
+	shrxl	%ecx, %edx, %r8d
+	vpbroadcastd	%esi, %zmm14
+	movl	$32, %ecx
+	subl	%esi, %ecx
+	vpbroadcastd	%ecx, %zmm15
+	movl	%r11d, %r9d
+	leal	-1(%r11), %r10d
+	movslq	%eax, %rcx
+	movl	%r11d, %eax
+	andl	$1, %eax
 	movl	%r11d, %ebx
-	subl	64(%rsp), %ebx          # 4-byte Folded Reload
-	leal	1(%r11), %edi
-	movw	$-21846, %r12w          # imm = 0xAAAA
+	subl	%eax, %ebx
+	leal	1(%r11), %eax
+	movq	%rax, 96(%rsp)          # 8-byte Spill
+	movw	$-21846, %r13w          # imm = 0xAAAA
 	vmovdqa	%xmm12, 112(%rsp)       # 16-byte Spill
-	movq	%r11, 104(%rsp)         # 8-byte Spill
-	kmovw	%k4, 70(%rsp)           # 2-byte Spill
 	vmovdqa64	%zmm14, 256(%rsp) # 64-byte Spill
 	vmovdqa64	%zmm15, 192(%rsp) # 64-byte Spill
-	movq	%rdi, 96(%rsp)          # 8-byte Spill
+	movq	%r9, 104(%rsp)          # 8-byte Spill
+	movl	%r10d, 68(%rsp)         # 4-byte Spill
 	.p2align	4, 0x90
-.LBB2_10:                               # %for_loop32
+.LBB2_9:                                # %for_loop36
                                         # =>This Loop Header: Depth=1
-                                        #     Child Loop BB2_13 Depth 2
+                                        #     Child Loop BB2_12 Depth 2
                                         #       Child Loop BB2_14 Depth 3
                                         #         Child Loop BB2_16 Depth 4
-                                        #       Child Loop BB2_23 Depth 3
-                                        #       Child Loop BB2_29 Depth 3
-                                        #         Child Loop BB2_32 Depth 4
+                                        #       Child Loop BB2_24 Depth 3
+                                        #       Child Loop BB2_32 Depth 3
+                                        #         Child Loop BB2_34 Depth 4
+                                        #       Child Loop BB2_39 Depth 3
 	addq	$-1, %rcx
 	movq	%rcx, %rax
 	shlq	$6, %rax
 	movq	%rcx, 88(%rsp)          # 8-byte Spill
 	testq	%rcx, %rcx
 	vpternlogd	$255, %zmm0, %zmm0, %zmm0
-	je	.LBB2_12
-# %bb.11:                               # %for_loop32
-                                        #   in Loop: Header=BB2_10 Depth=1
+	je	.LBB2_11
+# %bb.10:                               # %for_loop36
+                                        #   in Loop: Header=BB2_9 Depth=1
 	vpxor	%xmm0, %xmm0, %xmm0
-.LBB2_12:                               # %for_loop32
-                                        #   in Loop: Header=BB2_10 Depth=1
+.LBB2_11:                               # %for_loop36
+                                        #   in Loop: Header=BB2_9 Depth=1
 	vpaddd	8576(%rsp,%rax), %zmm0, %zmm0
 	vmovdqa64	%zmm0, 320(%rsp) # 64-byte Spill
 	.p2align	4, 0x90
-.LBB2_13:                               # %for_loop49.lr.ph.split.us
-                                        #   Parent Loop BB2_10 Depth=1
+.LBB2_12:                               # %do_loop
+                                        #   Parent Loop BB2_9 Depth=1
                                         # =>  This Loop Header: Depth=2
                                         #       Child Loop BB2_14 Depth 3
                                         #         Child Loop BB2_16 Depth 4
-                                        #       Child Loop BB2_23 Depth 3
-                                        #       Child Loop BB2_29 Depth 3
-                                        #         Child Loop BB2_32 Depth 4
-	movl	%r8d, 84(%rsp)          # 4-byte Spill
+                                        #       Child Loop BB2_24 Depth 3
+                                        #       Child Loop BB2_32 Depth 3
+                                        #         Child Loop BB2_34 Depth 4
+                                        #       Child Loop BB2_39 Depth 3
+	movl	%r8d, 64(%rsp)          # 4-byte Spill
 	leaq	29056(%rsp), %rdi
 	leaq	384(%rsp), %rsi
 	movl	%r11d, %edx
+	movq	%r11, %r12
 	callq	toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu
-	leaq	8640(%rsp), %r9
-	movq	104(%rsp), %r11         # 8-byte Reload
+	movq	%r12, %r11
+	testl	%r11d, %r11d
+	je	.LBB2_26
+# %bb.13:                               # %for_loop68.lr.ph.us.preheader
+                                        #   in Loop: Header=BB2_12 Depth=2
 	movl	$1, %eax
 	xorl	%ecx, %ecx
 	vmovdqa64	128(%rsp), %zmm6 # 64-byte Reload
+	vmovdqa64	256(%rsp), %zmm14 # 64-byte Reload
+	vmovdqa64	192(%rsp), %zmm15 # 64-byte Reload
+	movq	104(%rsp), %r9          # 8-byte Reload
+	movl	68(%rsp), %r10d         # 4-byte Reload
+	leaq	8640(%rsp), %r12
 	.p2align	4, 0x90
-.LBB2_14:                               # %for_loop60.lr.ph.us
-                                        #   Parent Loop BB2_10 Depth=1
-                                        #     Parent Loop BB2_13 Depth=2
+.LBB2_14:                               # %for_loop68.lr.ph.us
+                                        #   Parent Loop BB2_9 Depth=1
+                                        #     Parent Loop BB2_12 Depth=2
                                         # =>    This Loop Header: Depth=3
                                         #         Child Loop BB2_16 Depth 4
 	movq	%rcx, %r8
@@ -1830,17 +1846,17 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpmovzxdq	%ymm0, %zmm0    # zmm0 = ymm0[0],zero,ymm0[1],zero,ymm0[2],zero,ymm0[3],zero,ymm0[4],zero,ymm0[5],zero,ymm0[6],zero,ymm0[7],zero
 	vpmovzxdq	%ymm1, %zmm1    # zmm1 = ymm1[0],zero,ymm1[1],zero,ymm1[2],zero,ymm1[3],zero,ymm1[4],zero,ymm1[5],zero,ymm1[6],zero,ymm1[7],zero
 	vpxor	%xmm2, %xmm2, %xmm2
-	testl	%r13d, %r13d
+	testl	%r10d, %r10d
 	je	.LBB2_18
-# %bb.15:                               # %for_loop60.lr.ph.us.new
+# %bb.15:                               # %for_loop68.lr.ph.us.new
                                         #   in Loop: Header=BB2_14 Depth=3
-	movq	%r9, %rdi
+	movq	%r12, %rdi
 	xorl	%esi, %esi
 	vpxor	%xmm3, %xmm3, %xmm3
 	.p2align	4, 0x90
-.LBB2_16:                               # %for_loop60.us
-                                        #   Parent Loop BB2_10 Depth=1
-                                        #     Parent Loop BB2_13 Depth=2
+.LBB2_16:                               # %for_loop68.us
+                                        #   Parent Loop BB2_9 Depth=1
+                                        #     Parent Loop BB2_12 Depth=2
                                         #       Parent Loop BB2_14 Depth=3
                                         # =>      This Inner Loop Header: Depth=4
 	vpmovzxdq	-64(%rdi), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
@@ -1852,7 +1868,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpmuludq	%zmm1, %zmm4, %zmm4
 	vpaddq	%zmm5, %zmm3, %zmm3
 	vpaddq	29056(%rsp,%rdx), %zmm2, %zmm2
-	kmovw	%r12d, %k0
+	kmovw	%r13d, %k0
 	knotw	%k0, %k1
 	vmovdqa32	%zmm3, %zmm5 {%k1}{z}
 	vmovdqa64	%zmm5, 29120(%rsp,%rdx)
@@ -1881,7 +1897,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	subq	$-128, %rdi
 	cmpl	%esi, %ebx
 	jne	.LBB2_16
-# %bb.17:                               # %for_test58.for_exit61_crit_edge.us.unr-lcssa
+# %bb.17:                               # %for_test66.for_exit69_crit_edge.us.unr-lcssa
                                         #   in Loop: Header=BB2_14 Depth=3
 	testb	$1, %r11b
 	jne	.LBB2_19
@@ -1890,7 +1906,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 .LBB2_18:                               #   in Loop: Header=BB2_14 Depth=3
 	vpxor	%xmm3, %xmm3, %xmm3
 	xorl	%esi, %esi
-.LBB2_19:                               # %for_loop60.us.epil.preheader
+.LBB2_19:                               # %for_loop68.us.epil.preheader
                                         #   in Loop: Header=BB2_14 Depth=3
 	movq	%rsi, %rdx
 	shlq	$6, %rdx
@@ -1904,7 +1920,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	%zmm1, %zmm2, %zmm1
 	vpaddq	29120(%rsp,%rsi), %zmm3, %zmm2
 	vpaddq	%zmm0, %zmm2, %zmm0
-	kmovw	%r12d, %k0
+	kmovw	%r13d, %k0
 	knotw	%k0, %k1
 	vmovdqa32	%zmm1, %zmm2 {%k1}{z}
 	vmovdqa32	%zmm0, %zmm3 {%k1}{z}
@@ -1912,18 +1928,23 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vmovdqa64	%zmm2, 29056(%rsp,%rsi)
 	vpsrlq	$32, %zmm0, %zmm3
 	vpsrlq	$32, %zmm1, %zmm2
-.LBB2_20:                               # %for_exit61.us
+.LBB2_20:                               # %for_exit69.us
                                         #   in Loop: Header=BB2_14 Depth=3
 	vmovdqa64	%zmm3, 448(%rsp,%r8)
 	vmovdqa64	%zmm2, 384(%rsp,%r8)
 	addq	$1, %rcx
-	movl	%r11d, %edx
 	addq	$1, %rax
-	cmpq	%rdx, %rcx
+	cmpq	%r9, %rcx
 	jne	.LBB2_14
-# %bb.21:                               # %for_loop90.lr.ph
-                                        #   in Loop: Header=BB2_13 Depth=2
-	movl	84(%rsp), %r8d          # 4-byte Reload
+# %bb.21:                               # %for_test96.preheader
+                                        #   in Loop: Header=BB2_12 Depth=2
+	testl	%r11d, %r11d
+	vmovdqa	112(%rsp), %xmm12       # 16-byte Reload
+	vpxor	%xmm13, %xmm13, %xmm13
+	je	.LBB2_27
+# %bb.22:                               # %for_loop98.lr.ph
+                                        #   in Loop: Header=BB2_12 Depth=2
+	movl	64(%rsp), %r8d          # 4-byte Reload
 	vpbroadcastd	%r8d, %zmm0
 	vptestmd	320(%rsp), %zmm0, %k1 # 64-byte Folded Reload
 	vpternlogq	$255, %zmm0, %zmm0, %zmm0 {%k1}{z}
@@ -1931,23 +1952,18 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	kshiftrw	$8, %k1, %k1
 	vpternlogq	$255, %zmm0, %zmm0, %zmm0 {%k1}{z}
 	vpsrlq	$63, %zmm0, %zmm3
-	testl	%r13d, %r13d
-	vmovdqa	112(%rsp), %xmm12       # 16-byte Reload
-	kmovw	70(%rsp), %k4           # 2-byte Reload
-	vpxor	%xmm13, %xmm13, %xmm13
-	vmovdqa64	256(%rsp), %zmm14 # 64-byte Reload
-	vmovdqa64	192(%rsp), %zmm15 # 64-byte Reload
-	movq	96(%rsp), %rdi          # 8-byte Reload
 	vpxor	%xmm0, %xmm0, %xmm0
-	je	.LBB2_25
-# %bb.22:                               # %for_loop90.lr.ph.new
-                                        #   in Loop: Header=BB2_13 Depth=2
 	xorl	%eax, %eax
 	vpxor	%xmm1, %xmm1, %xmm1
+	testl	%r10d, %r10d
+	je	.LBB2_28
+# %bb.23:                               # %for_loop98.lr.ph.new
+                                        #   in Loop: Header=BB2_12 Depth=2
+	movq	96(%rsp), %rdi          # 8-byte Reload
 	.p2align	4, 0x90
-.LBB2_23:                               # %for_loop90
-                                        #   Parent Loop BB2_10 Depth=1
-                                        #     Parent Loop BB2_13 Depth=2
+.LBB2_24:                               # %for_loop98
+                                        #   Parent Loop BB2_9 Depth=1
+                                        #     Parent Loop BB2_12 Depth=2
                                         # =>    This Inner Loop Header: Depth=3
 	movl	%eax, %ecx
 	cltq
@@ -1965,7 +1981,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	%zmm1, %zmm5, %zmm1
 	vpaddq	%zmm0, %zmm4, %zmm0
 	shlq	$7, %rcx
-	kmovw	%r12d, %k0
+	kmovw	%r13d, %k0
 	knotw	%k0, %k1
 	vmovdqa32	%zmm1, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 448(%rsp,%rcx)
@@ -1996,20 +2012,36 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpsrlq	$32, %zmm0, %zmm0
 	addl	$2, %eax
 	cmpl	%eax, %ebx
-	jne	.LBB2_23
-# %bb.24:                               # %for_test88.for_test124.preheader_crit_edge.unr-lcssa
-                                        #   in Loop: Header=BB2_13 Depth=2
+	jne	.LBB2_24
+# %bb.25:                               # %for_test96.for_test132.preheader_crit_edge.unr-lcssa
+                                        #   in Loop: Header=BB2_12 Depth=2
 	testb	$1, %r11b
-	leaq	512(%rsp), %r9
-	jne	.LBB2_26
-	jmp	.LBB2_27
+	leaq	512(%rsp), %rdi
+	jne	.LBB2_29
+	jmp	.LBB2_30
 	.p2align	4, 0x90
-.LBB2_25:                               #   in Loop: Header=BB2_13 Depth=2
-	xorl	%eax, %eax
+.LBB2_26:                               #   in Loop: Header=BB2_12 Depth=2
+	vpxor	%xmm0, %xmm0, %xmm0
 	vpxor	%xmm1, %xmm1, %xmm1
-	leaq	512(%rsp), %r9
-.LBB2_26:                               # %for_loop90.epil.preheader
-                                        #   in Loop: Header=BB2_13 Depth=2
+	vmovdqa	112(%rsp), %xmm12       # 16-byte Reload
+	vpxor	%xmm13, %xmm13, %xmm13
+	vmovdqa64	256(%rsp), %zmm14 # 64-byte Reload
+	movl	64(%rsp), %r8d          # 4-byte Reload
+	vmovdqa64	192(%rsp), %zmm15 # 64-byte Reload
+	movl	68(%rsp), %r10d         # 4-byte Reload
+	leaq	512(%rsp), %rdi
+	jmp	.LBB2_30
+	.p2align	4, 0x90
+.LBB2_27:                               #   in Loop: Header=BB2_12 Depth=2
+	vpxor	%xmm0, %xmm0, %xmm0
+	vpxor	%xmm1, %xmm1, %xmm1
+	movl	64(%rsp), %r8d          # 4-byte Reload
+	leaq	512(%rsp), %rdi
+	jmp	.LBB2_30
+.LBB2_28:                               #   in Loop: Header=BB2_12 Depth=2
+	leaq	512(%rsp), %rdi
+.LBB2_29:                               # %for_loop98.epil.preheader
+                                        #   in Loop: Header=BB2_12 Depth=2
 	movslq	%eax, %rcx
 	movq	%rcx, %rdx
 	shlq	$7, %rdx
@@ -2026,7 +2058,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	%zmm0, %zmm2, %zmm0
 	vpaddq	%zmm1, %zmm3, %zmm1
 	shlq	$7, %rax
-	kmovw	%r12d, %k0
+	kmovw	%r13d, %k0
 	knotw	%k0, %k1
 	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
 	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
@@ -2034,62 +2066,45 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vmovdqa64	%zmm2, 384(%rsp,%rax)
 	vpsrlq	$32, %zmm1, %zmm1
 	vpsrlq	$32, %zmm0, %zmm0
-.LBB2_27:                               # %for_test124.preheader
-                                        #   in Loop: Header=BB2_13 Depth=2
+.LBB2_30:                               # %for_test132.preheader
+                                        #   in Loop: Header=BB2_12 Depth=2
 	vptestmq	%zmm0, %zmm0, %k0
 	vptestmq	%zmm1, %zmm1, %k1
 	kunpckbw	%k0, %k1, %k1
 	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1}{z}
 	vpmovdb	%zmm2, %xmm2
-	jmp	.LBB2_29
-	.p2align	4, 0x90
-.LBB2_28:                               # %for_exit141.us
-                                        #   in Loop: Header=BB2_29 Depth=3
-	vpcmpeqb	%xmm13, %xmm2, %xmm5
-	vpmovsxbd	%xmm5, %zmm5
-	vptestmd	%zmm5, %zmm5, %k0
-	knotw	%k0, %k1
-	vmovdqa64	%zmm4, %zmm4 {%k1}{z}
-	vpaddq	%zmm0, %zmm4, %zmm0
-	kshiftrw	$8, %k0, %k0
-	knotw	%k0, %k1
-	vmovdqa64	%zmm3, %zmm3 {%k1}{z}
-	vpaddq	%zmm1, %zmm3, %zmm1
-	vptestnmq	%zmm0, %zmm0, %k0
-	vptestnmq	%zmm1, %zmm1, %k1
-	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm3, %zmm3, %zmm3 {%k1}{z}
-	vpmovdb	%zmm3, %xmm3
-	vpandn	%xmm2, %xmm3, %xmm2
-.LBB2_29:                               # %for_test124.preheader
-                                        #   Parent Loop BB2_10 Depth=1
-                                        #     Parent Loop BB2_13 Depth=2
-                                        # =>    This Loop Header: Depth=3
-                                        #         Child Loop BB2_32 Depth 4
 	vpand	%xmm12, %xmm2, %xmm3
 	vpcmpeqb	%xmm13, %xmm3, %xmm3
 	vpternlogq	$15, %zmm3, %zmm3, %zmm3
 	vpmovsxbd	%xmm3, %zmm3
 	vptestmd	%zmm3, %zmm3, %k0
 	kortestw	%k0, %k0
+	je	.LBB2_40
+# %bb.31:                               # %for_test146.preheader.lr.ph
+                                        #   in Loop: Header=BB2_12 Depth=2
+	testl	%r11d, %r11d
+	je	.LBB2_39
+	.p2align	4, 0x90
+.LBB2_32:                               # %for_loop148.lr.ph.us
+                                        #   Parent Loop BB2_9 Depth=1
+                                        #     Parent Loop BB2_12 Depth=2
+                                        # =>    This Loop Header: Depth=3
+                                        #         Child Loop BB2_34 Depth 4
+	testl	%r10d, %r10d
 	je	.LBB2_36
-# %bb.30:                               # %for_loop140.lr.ph.us
-                                        #   in Loop: Header=BB2_29 Depth=3
-	testl	%r13d, %r13d
-	je	.LBB2_34
-# %bb.31:                               # %for_loop140.lr.ph.us.new
-                                        #   in Loop: Header=BB2_29 Depth=3
+# %bb.33:                               # %for_loop148.lr.ph.us.new
+                                        #   in Loop: Header=BB2_32 Depth=3
 	vpxor	%xmm5, %xmm5, %xmm5
 	xorl	%ecx, %ecx
-	movq	%r9, %rdx
+	movq	%rdi, %rdx
 	xorl	%eax, %eax
 	vpxor	%xmm4, %xmm4, %xmm4
 	vpxor	%xmm3, %xmm3, %xmm3
 	.p2align	4, 0x90
-.LBB2_32:                               # %for_loop140.us
-                                        #   Parent Loop BB2_10 Depth=1
-                                        #     Parent Loop BB2_13 Depth=2
-                                        #       Parent Loop BB2_29 Depth=3
+.LBB2_34:                               # %for_loop148.us
+                                        #   Parent Loop BB2_9 Depth=1
+                                        #     Parent Loop BB2_12 Depth=2
+                                        #       Parent Loop BB2_32 Depth=3
                                         # =>      This Inner Loop Header: Depth=4
 	vpcmpeqb	%xmm13, %xmm2, %xmm6
 	movq	%rcx, %rsi
@@ -2111,7 +2126,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	%zmm4, %zmm5, %zmm4
 	vpsubq	%zmm6, %zmm9, %zmm5
 	vpaddq	%zmm3, %zmm5, %zmm3
-	kmovw	%r12d, %k0
+	kmovw	%r13d, %k0
 	knotw	%k0, %k2
 	vmovdqa32	%zmm4, %zmm5 {%k2}{z}
 	kshiftrw	$8, %k1, %k3
@@ -2122,7 +2137,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vmovdqa64	%zmm5, -128(%rdx)
 	vpsraq	$32, %zmm3, %zmm3
 	vpsraq	$32, %zmm4, %zmm4
-	leaq	(%rcx,%r14), %rsi
+	leaq	(%rcx,%r15), %rsi
 	sarq	$26, %rsi
 	vmovdqa64	8576(%rsp,%rsi), %zmm5
 	vpsllvd	%zmm14, %zmm5, %zmm6
@@ -2145,22 +2160,22 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpsraq	$32, %zmm4, %zmm4
 	addq	$2, %rax
 	addq	$256, %rdx              # imm = 0x100
-	addq	%r15, %rcx
+	addq	%r14, %rcx
 	cmpl	%eax, %ebx
-	jne	.LBB2_32
-# %bb.33:                               # %for_test138.for_exit141_crit_edge.us.unr-lcssa
-                                        #   in Loop: Header=BB2_29 Depth=3
+	jne	.LBB2_34
+# %bb.35:                               # %for_test146.for_exit149_crit_edge.us.unr-lcssa
+                                        #   in Loop: Header=BB2_32 Depth=3
 	testb	$1, %r11b
-	je	.LBB2_28
-	jmp	.LBB2_35
+	jne	.LBB2_37
+	jmp	.LBB2_38
 	.p2align	4, 0x90
-.LBB2_34:                               #   in Loop: Header=BB2_29 Depth=3
+.LBB2_36:                               #   in Loop: Header=BB2_32 Depth=3
 	vpxor	%xmm4, %xmm4, %xmm4
 	vpxor	%xmm3, %xmm3, %xmm3
 	vpxor	%xmm5, %xmm5, %xmm5
 	xorl	%eax, %eax
-.LBB2_35:                               # %for_loop140.us.epil.preheader
-                                        #   in Loop: Header=BB2_29 Depth=3
+.LBB2_37:                               # %for_loop148.us.epil.preheader
+                                        #   in Loop: Header=BB2_32 Depth=3
 	vpcmpeqb	%xmm13, %xmm2, %xmm6
 	vpmovsxbd	%xmm6, %zmm6
 	vptestmd	%zmm6, %zmm6, %k1
@@ -2180,7 +2195,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	%zmm3, %zmm5, %zmm3
 	vpsubq	%zmm8, %zmm6, %zmm5
 	vpaddq	%zmm4, %zmm5, %zmm4
-	kmovw	%r12d, %k0
+	kmovw	%r13d, %k0
 	knotw	%k0, %k2
 	vmovdqa32	%zmm3, %zmm5 {%k2}{z}
 	vmovdqa32	%zmm4, %zmm8 {%k2}{z}
@@ -2191,48 +2206,85 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vmovdqa64	%zmm8, 384(%rsp,%rcx)
 	vpsraq	$32, %zmm3, %zmm3
 	vpsraq	$32, %zmm4, %zmm4
-	jmp	.LBB2_28
+.LBB2_38:                               # %for_exit149.us
+                                        #   in Loop: Header=BB2_32 Depth=3
+	vpcmpeqb	%xmm13, %xmm2, %xmm5
+	vpmovsxbd	%xmm5, %zmm5
+	vptestmd	%zmm5, %zmm5, %k0
+	knotw	%k0, %k1
+	vmovdqa64	%zmm4, %zmm4 {%k1}{z}
+	vpaddq	%zmm0, %zmm4, %zmm0
+	kshiftrw	$8, %k0, %k0
+	knotw	%k0, %k1
+	vmovdqa64	%zmm3, %zmm3 {%k1}{z}
+	vpaddq	%zmm1, %zmm3, %zmm1
+	vptestnmq	%zmm0, %zmm0, %k0
+	vptestnmq	%zmm1, %zmm1, %k1
+	kunpckbw	%k0, %k1, %k1
+	vpternlogd	$255, %zmm3, %zmm3, %zmm3 {%k1}{z}
+	vpmovdb	%zmm3, %xmm3
+	vpandn	%xmm2, %xmm3, %xmm2
+	vpand	%xmm12, %xmm2, %xmm3
+	vpcmpeqb	%xmm13, %xmm3, %xmm3
+	vpternlogq	$15, %zmm3, %zmm3, %zmm3
+	vpmovsxbd	%xmm3, %zmm3
+	vptestmd	%zmm3, %zmm3, %k0
+	kortestw	%k0, %k0
+	jne	.LBB2_32
+	jmp	.LBB2_40
 	.p2align	4, 0x90
-.LBB2_36:                               # %for_exit127
-                                        #   in Loop: Header=BB2_13 Depth=2
+.LBB2_39:                               # %for_exit149
+                                        #   Parent Loop BB2_9 Depth=1
+                                        #     Parent Loop BB2_12 Depth=2
+                                        # =>    This Inner Loop Header: Depth=3
+	vptestnmq	%zmm0, %zmm0, %k0
+	vptestnmq	%zmm1, %zmm1, %k1
+	kunpckbw	%k0, %k1, %k1
+	vpternlogd	$255, %zmm3, %zmm3, %zmm3 {%k1}{z}
+	vpmovdb	%zmm3, %xmm3
+	vpandn	%xmm2, %xmm3, %xmm2
+	vpand	%xmm12, %xmm2, %xmm3
+	vpcmpeqb	%xmm13, %xmm3, %xmm3
+	vpternlogq	$15, %zmm3, %zmm3, %zmm3
+	vpmovsxbd	%xmm3, %zmm3
+	vptestmd	%zmm3, %zmm3, %k0
+	kortestw	%k0, %k0
+	jne	.LBB2_39
+.LBB2_40:                               # %for_exit135
+                                        #   in Loop: Header=BB2_12 Depth=2
 	shrl	%r8d
-	jne	.LBB2_13
-# %bb.37:                               # %for_test30.loopexit
-                                        #   in Loop: Header=BB2_10 Depth=1
+	jne	.LBB2_12
+# %bb.41:                               # %for_test34.loopexit
+                                        #   in Loop: Header=BB2_9 Depth=1
 	movl	$-2147483648, %r8d      # imm = 0x80000000
 	movq	88(%rsp), %rcx          # 8-byte Reload
 	testq	%rcx, %rcx
-	jg	.LBB2_10
-.LBB2_38:                               # %for_test186.preheader
+	jg	.LBB2_9
+.LBB2_42:                               # %for_test194.preheader
 	kxorw	%k0, %k0, %k1
 	testl	%r11d, %r11d
-	je	.LBB2_41
-# %bb.39:                               # %for_loop188.lr.ph
+	je	.LBB2_45
+# %bb.43:                               # %for_loop196.lr.ph
 	leal	-1(%r11), %ecx
 	movl	%r11d, %eax
 	andl	$3, %eax
 	cmpl	$3, %ecx
-	jae	.LBB2_42
-# %bb.40:
+	jae	.LBB2_46
+# %bb.44:
 	xorl	%ecx, %ecx
-	movq	72(%rsp), %r14          # 8-byte Reload
-	movl	64(%rsp), %r12d         # 4-byte Reload
-	jmp	.LBB2_44
-.LBB2_41:
-	movq	72(%rsp), %r14          # 8-byte Reload
-	movl	60(%rsp), %r9d          # 4-byte Reload
-	jmp	.LBB2_66
-.LBB2_42:                               # %for_loop188.lr.ph.new
+	jmp	.LBB2_48
+.LBB2_45:
+	movq	80(%rsp), %r12          # 8-byte Reload
+	jmp	.LBB2_68
+.LBB2_46:                               # %for_loop196.lr.ph.new
 	movl	%r11d, %edx
 	subl	%eax, %edx
 	movl	%r11d, %r8d
 	movl	$384, %edi              # imm = 0x180
 	xorl	%ecx, %ecx
 	vpxor	%xmm0, %xmm0, %xmm0
-	movq	72(%rsp), %r14          # 8-byte Reload
-	movl	64(%rsp), %r12d         # 4-byte Reload
 	.p2align	4, 0x90
-.LBB2_43:                               # %for_loop188
+.LBB2_47:                               # %for_loop196
                                         # =>This Inner Loop Header: Depth=1
 	vmovaps	(%rsp,%rdi), %zmm1
 	vmovaps	64(%rsp,%rdi), %zmm2
@@ -2270,18 +2322,18 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	addq	$4, %rcx
 	addq	$512, %rdi              # imm = 0x200
 	cmpl	%ecx, %edx
-	jne	.LBB2_43
-.LBB2_44:                               # %for_test186.for_test204.preheader_crit_edge.unr-lcssa
+	jne	.LBB2_47
+.LBB2_48:                               # %for_test194.for_test212.preheader_crit_edge.unr-lcssa
 	testl	%eax, %eax
-	vmovdqa64	128(%rsp), %zmm6 # 64-byte Reload
-	je	.LBB2_47
-# %bb.45:                               # %for_loop188.epil.preheader
+	movq	80(%rsp), %r12          # 8-byte Reload
+	je	.LBB2_51
+# %bb.49:                               # %for_loop196.epil.preheader
 	leal	(%r11,%rcx), %edx
 	shlq	$7, %rcx
 	negl	%eax
 	vpxor	%xmm0, %xmm0, %xmm0
 	.p2align	4, 0x90
-.LBB2_46:                               # %for_loop188.epil
+.LBB2_50:                               # %for_loop196.epil
                                         # =>This Inner Loop Header: Depth=1
 	vmovdqa64	384(%rsp,%rcx), %zmm1
 	vmovdqa64	448(%rsp,%rcx), %zmm2
@@ -2294,152 +2346,150 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	addl	$1, %edx
 	subq	$-128, %rcx
 	addl	$1, %eax
-	jne	.LBB2_46
-.LBB2_47:                               # %for_test204.preheader
+	jne	.LBB2_50
+.LBB2_51:                               # %for_test212.preheader
 	testl	%r11d, %r11d
-	je	.LBB2_60
-# %bb.48:                               # %for_loop222.lr.ph.us.preheader
-	leaq	8640(%rsp), %r8
-	movl	%r11d, %eax
-	subl	%r12d, %eax
-	movl	$1, %edx
-	xorl	%esi, %esi
-	movq	%r11, %rcx
-	movw	$-21846, %r11w          # imm = 0xAAAA
-	movq	%rcx, %r15
-	movl	%ecx, %r9d
+	je	.LBB2_68
+# %bb.52:                               # %for_loop230.lr.ph.us.preheader
+	leaq	8640(%rsp), %r9
+	movl	%r11d, %r8d
+	andl	$1, %r8d
+	movl	%r11d, %ecx
+	subl	%r8d, %ecx
+	movl	$1, %esi
+	xorl	%edi, %edi
+	movw	$-21846, %r14w          # imm = 0xAAAA
+	movq	%r11, %r15
+	movl	%r11d, %r10d
 	.p2align	4, 0x90
-.LBB2_49:                               # %for_loop222.lr.ph.us
+.LBB2_53:                               # %for_loop230.lr.ph.us
                                         # =>This Loop Header: Depth=1
-                                        #     Child Loop BB2_52 Depth 2
-	movq	%rsi, %r10
-	shlq	$7, %r10
-	vmovdqa64	12672(%rsp,%r10), %zmm0
-	vmovdqa64	12736(%rsp,%r10), %zmm1
+                                        #     Child Loop BB2_56 Depth 2
+	movq	%rdi, %r11
+	shlq	$7, %r11
+	vmovdqa64	12672(%rsp,%r11), %zmm0
+	vmovdqa64	12736(%rsp,%r11), %zmm1
 	vpmovqd	%zmm0, %ymm0
 	vpmovqd	%zmm1, %ymm1
 	vinserti64x4	$1, %ymm1, %zmm0, %zmm0
-	vpmulld	%zmm0, %zmm6, %zmm1
+	vpmulld	128(%rsp), %zmm0, %zmm1 # 64-byte Folded Reload
 	vextracti64x4	$1, %zmm1, %ymm0
 	vpmovzxdq	%ymm0, %zmm0    # zmm0 = ymm0[0],zero,ymm0[1],zero,ymm0[2],zero,ymm0[3],zero,ymm0[4],zero,ymm0[5],zero,ymm0[6],zero,ymm0[7],zero
 	vpmovzxdq	%ymm1, %zmm1    # zmm1 = ymm1[0],zero,ymm1[1],zero,ymm1[2],zero,ymm1[3],zero,ymm1[4],zero,ymm1[5],zero,ymm1[6],zero,ymm1[7],zero
 	vpxor	%xmm2, %xmm2, %xmm2
 	cmpl	$1, %r15d
-	jne	.LBB2_51
-# %bb.50:                               #   in Loop: Header=BB2_49 Depth=1
+	jne	.LBB2_55
+# %bb.54:                               #   in Loop: Header=BB2_53 Depth=1
 	vpxor	%xmm3, %xmm3, %xmm3
-	xorl	%ebx, %ebx
-	jmp	.LBB2_54
+	xorl	%eax, %eax
+	jmp	.LBB2_58
 	.p2align	4, 0x90
-.LBB2_51:                               # %for_loop222.lr.ph.us.new
-                                        #   in Loop: Header=BB2_49 Depth=1
-	movq	%r8, %rcx
-	xorl	%ebx, %ebx
+.LBB2_55:                               # %for_loop230.lr.ph.us.new
+                                        #   in Loop: Header=BB2_53 Depth=1
+	movq	%r9, %rdx
+	xorl	%eax, %eax
 	vpxor	%xmm3, %xmm3, %xmm3
 	.p2align	4, 0x90
-.LBB2_52:                               # %for_loop222.us
-                                        #   Parent Loop BB2_49 Depth=1
+.LBB2_56:                               # %for_loop230.us
+                                        #   Parent Loop BB2_53 Depth=1
                                         # =>  This Inner Loop Header: Depth=2
-	vpmovzxdq	-64(%rcx), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
-	vpmovzxdq	-32(%rcx), %zmm5 # zmm5 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
+	vpmovzxdq	-64(%rdx), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
+	vpmovzxdq	-32(%rdx), %zmm5 # zmm5 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
 	vpmuludq	%zmm0, %zmm5, %zmm5
-	leal	(%rsi,%rbx), %edi
-	shlq	$7, %rdi
-	vpaddq	12736(%rsp,%rdi), %zmm3, %zmm3
+	leal	(%rdi,%rax), %ebx
+	shlq	$7, %rbx
+	vpaddq	12736(%rsp,%rbx), %zmm3, %zmm3
 	vpmuludq	%zmm1, %zmm4, %zmm4
 	vpaddq	%zmm5, %zmm3, %zmm3
-	vpaddq	12672(%rsp,%rdi), %zmm2, %zmm2
-	kmovw	%r11d, %k0
+	vpaddq	12672(%rsp,%rbx), %zmm2, %zmm2
+	kmovw	%r14d, %k0
 	knotw	%k0, %k2
 	vmovdqa32	%zmm3, %zmm5 {%k2}{z}
-	vmovdqa64	%zmm5, 12736(%rsp,%rdi)
+	vmovdqa64	%zmm5, 12736(%rsp,%rbx)
 	vpaddq	%zmm4, %zmm2, %zmm2
 	vmovdqa32	%zmm2, %zmm4 {%k2}{z}
-	vmovdqa64	%zmm4, 12672(%rsp,%rdi)
+	vmovdqa64	%zmm4, 12672(%rsp,%rbx)
 	vpsrlq	$32, %zmm3, %zmm3
-	vpmovzxdq	32(%rcx), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
+	vpmovzxdq	32(%rdx), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
 	vpsrlq	$32, %zmm2, %zmm2
-	vpmovzxdq	(%rcx), %zmm5   # zmm5 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
+	vpmovzxdq	(%rdx), %zmm5   # zmm5 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
 	vpmuludq	%zmm1, %zmm5, %zmm5
-	leal	(%rdx,%rbx), %edi
-	shlq	$7, %rdi
-	vpaddq	12672(%rsp,%rdi), %zmm2, %zmm2
-	vpmuludq	%zmm0, %zmm4, %zmm4
-	vpaddq	%zmm5, %zmm2, %zmm2
-	vpaddq	12736(%rsp,%rdi), %zmm3, %zmm3
-	vpaddq	%zmm4, %zmm3, %zmm3
-	vmovdqa32	%zmm3, %zmm4 {%k2}{z}
-	vmovdqa64	%zmm4, 12736(%rsp,%rdi)
-	vmovdqa32	%zmm2, %zmm4 {%k2}{z}
-	vmovdqa64	%zmm4, 12672(%rsp,%rdi)
-	vpsrlq	$32, %zmm3, %zmm3
-	vpsrlq	$32, %zmm2, %zmm2
-	addq	$2, %rbx
-	subq	$-128, %rcx
-	cmpl	%ebx, %eax
-	jne	.LBB2_52
-# %bb.53:                               # %for_test220.for_exit223_crit_edge.us.unr-lcssa
-                                        #   in Loop: Header=BB2_49 Depth=1
-	testb	$1, %r15b
-	je	.LBB2_55
-.LBB2_54:                               # %for_loop222.us.epil.preheader
-                                        #   in Loop: Header=BB2_49 Depth=1
-	movq	%rbx, %rcx
-	shlq	$6, %rcx
-	vpmovzxdq	8608(%rsp,%rcx), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
-	vpmovzxdq	8576(%rsp,%rcx), %zmm5 # zmm5 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
-	vpmuludq	%zmm1, %zmm5, %zmm1
-	vpmuludq	%zmm0, %zmm4, %zmm0
-	addl	%esi, %ebx
+	leal	(%rsi,%rax), %ebx
 	shlq	$7, %rbx
 	vpaddq	12672(%rsp,%rbx), %zmm2, %zmm2
+	vpmuludq	%zmm0, %zmm4, %zmm4
+	vpaddq	%zmm5, %zmm2, %zmm2
+	vpaddq	12736(%rsp,%rbx), %zmm3, %zmm3
+	vpaddq	%zmm4, %zmm3, %zmm3
+	vmovdqa32	%zmm3, %zmm4 {%k2}{z}
+	vmovdqa64	%zmm4, 12736(%rsp,%rbx)
+	vmovdqa32	%zmm2, %zmm4 {%k2}{z}
+	vmovdqa64	%zmm4, 12672(%rsp,%rbx)
+	vpsrlq	$32, %zmm3, %zmm3
+	vpsrlq	$32, %zmm2, %zmm2
+	addq	$2, %rax
+	subq	$-128, %rdx
+	cmpl	%eax, %ecx
+	jne	.LBB2_56
+# %bb.57:                               # %for_test228.for_exit231_crit_edge.us.unr-lcssa
+                                        #   in Loop: Header=BB2_53 Depth=1
+	testb	$1, %r15b
+	je	.LBB2_59
+.LBB2_58:                               # %for_loop230.us.epil.preheader
+                                        #   in Loop: Header=BB2_53 Depth=1
+	movq	%rax, %rdx
+	shlq	$6, %rdx
+	vpmovzxdq	8608(%rsp,%rdx), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
+	vpmovzxdq	8576(%rsp,%rdx), %zmm5 # zmm5 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
+	vpmuludq	%zmm1, %zmm5, %zmm1
+	vpmuludq	%zmm0, %zmm4, %zmm0
+	addl	%edi, %eax
+	shlq	$7, %rax
+	vpaddq	12672(%rsp,%rax), %zmm2, %zmm2
 	vpaddq	%zmm1, %zmm2, %zmm1
-	vpaddq	12736(%rsp,%rbx), %zmm3, %zmm2
+	vpaddq	12736(%rsp,%rax), %zmm3, %zmm2
 	vpaddq	%zmm0, %zmm2, %zmm0
-	kmovw	%r11d, %k0
+	kmovw	%r14d, %k0
 	knotw	%k0, %k2
 	vmovdqa32	%zmm1, %zmm2 {%k2}{z}
 	vmovdqa32	%zmm0, %zmm3 {%k2}{z}
-	vmovdqa64	%zmm3, 12736(%rsp,%rbx)
-	vmovdqa64	%zmm2, 12672(%rsp,%rbx)
+	vmovdqa64	%zmm3, 12736(%rsp,%rax)
+	vmovdqa64	%zmm2, 12672(%rsp,%rax)
 	vpsrlq	$32, %zmm0, %zmm3
 	vpsrlq	$32, %zmm1, %zmm2
-.LBB2_55:                               # %for_exit223.us
-                                        #   in Loop: Header=BB2_49 Depth=1
-	vmovdqa64	%zmm3, 448(%rsp,%r10)
-	vmovdqa64	%zmm2, 384(%rsp,%r10)
+.LBB2_59:                               # %for_exit231.us
+                                        #   in Loop: Header=BB2_53 Depth=1
+	vmovdqa64	%zmm3, 448(%rsp,%r11)
+	vmovdqa64	%zmm2, 384(%rsp,%r11)
+	addq	$1, %rdi
 	addq	$1, %rsi
-	addq	$1, %rdx
-	cmpq	%r9, %rsi
-	jne	.LBB2_49
-# %bb.56:                               # %for_test253.preheader
+	cmpq	%r10, %rdi
+	jne	.LBB2_53
+# %bb.60:                               # %for_test261.preheader
 	movq	%r15, %r11
 	testl	%r11d, %r11d
-	je	.LBB2_60
-# %bb.57:                               # %for_loop255.lr.ph
+	je	.LBB2_68
+# %bb.61:                               # %for_loop263.lr.ph
 	cmpl	$1, %r11d
-	movl	60(%rsp), %r9d          # 4-byte Reload
-	jne	.LBB2_61
-# %bb.58:
+	jne	.LBB2_63
+# %bb.62:
 	vpxor	%xmm0, %xmm0, %xmm0
-	xorl	%ecx, %ecx
+	xorl	%eax, %eax
 	vpxor	%xmm1, %xmm1, %xmm1
-	jmp	.LBB2_64
-.LBB2_60:
-	movl	60(%rsp), %r9d          # 4-byte Reload
 	jmp	.LBB2_66
-.LBB2_61:                               # %for_loop255.lr.ph.new
-	movabsq	$8589934592, %r8        # imm = 0x200000000
-	movabsq	$4294967296, %r15       # imm = 0x100000000
+.LBB2_63:                               # %for_loop263.lr.ph.new
+	movabsq	$8589934592, %r9        # imm = 0x200000000
+	movabsq	$4294967296, %r10       # imm = 0x100000000
 	leaq	512(%rsp), %rdi
 	vpxor	%xmm0, %xmm0, %xmm0
 	xorl	%edx, %edx
-	movw	$-21846, %r10w          # imm = 0xAAAA
-	movl	%r11d, %esi
-	xorl	%ecx, %ecx
+	movq	%r11, %rsi
+	movw	$-21846, %r11w          # imm = 0xAAAA
+                                        # kill: def $esi killed $esi killed $rsi def $rsi
+	xorl	%eax, %eax
 	vpxor	%xmm1, %xmm1, %xmm1
 	.p2align	4, 0x90
-.LBB2_62:                               # %for_loop255
+.LBB2_64:                               # %for_loop263
                                         # =>This Inner Loop Header: Depth=1
 	movq	%rdx, %rbx
 	sarq	$25, %rbx
@@ -2449,7 +2499,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	shlq	$7, %rbx
 	vpaddq	12736(%rsp,%rbx), %zmm1, %zmm1
 	vpaddq	12672(%rsp,%rbx), %zmm0, %zmm0
-	kmovw	%r10d, %k0
+	kmovw	%r11d, %k0
 	knotw	%k0, %k1
 	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
 	vmovdqa64	%zmm2, -128(%rdi)
@@ -2457,7 +2507,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vmovdqa64	%zmm2, -64(%rdi)
 	vpsrlq	$32, %zmm1, %zmm1
 	vpsrlq	$32, %zmm0, %zmm0
-	leaq	(%rdx,%r15), %rbx
+	leaq	(%rdx,%r10), %rbx
 	sarq	$25, %rbx
 	vpaddq	384(%rsp,%rbx), %zmm0, %zmm0
 	vpaddq	448(%rsp,%rbx), %zmm1, %zmm1
@@ -2471,60 +2521,65 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vmovdqa64	%zmm2, (%rdi)
 	vpsrlq	$32, %zmm1, %zmm1
 	vpsrlq	$32, %zmm0, %zmm0
-	addq	$2, %rcx
+	addq	$2, %rax
 	addl	$2, %esi
 	addq	$256, %rdi              # imm = 0x100
-	addq	%r8, %rdx
-	cmpl	%ecx, %eax
-	jne	.LBB2_62
-# %bb.63:                               # %for_test253.for_exit256_crit_edge.unr-lcssa
-	testl	%r12d, %r12d
-	je	.LBB2_65
-.LBB2_64:                               # %for_loop255.epil.preheader
-	movslq	%ecx, %rax
-	movq	%rax, %rdx
+	addq	%r9, %rdx
+	cmpl	%eax, %ecx
+	jne	.LBB2_64
+# %bb.65:                               # %for_test261.for_exit264_crit_edge.unr-lcssa
+	testl	%r8d, %r8d
+	movq	%r15, %r11
+	je	.LBB2_67
+.LBB2_66:                               # %for_loop263.epil.preheader
+	movslq	%eax, %rcx
+	movq	%rcx, %rdx
 	shlq	$7, %rdx
 	vpaddq	384(%rsp,%rdx), %zmm0, %zmm0
 	vpaddq	448(%rsp,%rdx), %zmm1, %zmm1
-	addl	%r11d, %eax
-	shlq	$7, %rax
-	vpaddq	12736(%rsp,%rax), %zmm1, %zmm1
-	vpaddq	12672(%rsp,%rax), %zmm0, %zmm0
+	addl	%r11d, %ecx
 	shlq	$7, %rcx
-	movw	$-21846, %ax            # imm = 0xAAAA
-	kmovw	%eax, %k0
+	vpaddq	12736(%rsp,%rcx), %zmm1, %zmm1
+	vpaddq	12672(%rsp,%rcx), %zmm0, %zmm0
+	shlq	$7, %rax
+	movw	$-21846, %cx            # imm = 0xAAAA
+	kmovw	%ecx, %k0
 	knotw	%k0, %k1
 	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
 	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
-	vmovdqa64	%zmm3, 448(%rsp,%rcx)
-	vmovdqa64	%zmm2, 384(%rsp,%rcx)
+	vmovdqa64	%zmm3, 448(%rsp,%rax)
+	vmovdqa64	%zmm2, 384(%rsp,%rax)
 	vpsrlq	$32, %zmm1, %zmm1
 	vpsrlq	$32, %zmm0, %zmm0
-.LBB2_65:                               # %for_test253.for_exit256_crit_edge
+.LBB2_67:                               # %for_test261.for_exit264_crit_edge
 	vptestmq	%zmm0, %zmm0, %k0
 	vptestmq	%zmm1, %zmm1, %k1
 	kunpckbw	%k0, %k1, %k1
-.LBB2_66:                               # %for_exit256
-	kandw	%k4, %k1, %k0
+.LBB2_68:                               # %for_exit264
+	vpxor	%xmm0, %xmm0, %xmm0
+	vpcmpeqb	%xmm0, %xmm12, %xmm1
+	vpternlogq	$15, %zmm1, %zmm1, %zmm1
+	vpmovsxbd	%xmm1, %zmm1
+	vptestmd	%zmm1, %zmm1, %k0 {%k1}
 	kortestw	%k0, %k0
-	je	.LBB2_74
-# %bb.67:                               # %for_exit256
+	je	.LBB2_76
+# %bb.69:                               # %for_exit264
 	testl	%r11d, %r11d
-	je	.LBB2_74
-# %bb.68:                               # %for_loop290.lr.ph
-	vpbroadcastd	%r9d, %zmm0
+	je	.LBB2_76
+# %bb.70:                               # %for_loop298.lr.ph
+	vpbroadcastd	%r12d, %zmm1
 	cmpl	$1, %r11d
-	jne	.LBB2_70
-# %bb.69:
-	vpxor	%xmm3, %xmm3, %xmm3
-	xorl	%eax, %eax
+	jne	.LBB2_72
+# %bb.71:
 	vpxor	%xmm4, %xmm4, %xmm4
-	vpxor	%xmm2, %xmm2, %xmm2
-	jmp	.LBB2_73
-.LBB2_70:                               # %for_loop290.lr.ph.new
+	xorl	%eax, %eax
+	vpxor	%xmm5, %xmm5, %xmm5
+	vpxor	%xmm3, %xmm3, %xmm3
+	jmp	.LBB2_75
+.LBB2_72:                               # %for_loop298.lr.ph.new
 	movl	$32, %eax
-	subl	%r9d, %eax
-	vpbroadcastd	%eax, %zmm1
+	subl	%r12d, %eax
+	vpbroadcastd	%eax, %zmm2
 	movl	%r11d, %r8d
 	andl	$1, %r8d
 	movabsq	$8589934592, %r9        # imm = 0x200000000
@@ -2532,226 +2587,160 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	movl	%r11d, %edi
 	subl	%r8d, %edi
 	leaq	512(%rsp), %rbx
-	vpxor	%xmm2, %xmm2, %xmm2
+	vpxor	%xmm3, %xmm3, %xmm3
 	xorl	%esi, %esi
 	movw	$-21846, %dx            # imm = 0xAAAA
 	kshiftrw	$8, %k1, %k2
 	xorl	%eax, %eax
-	vpxor	%xmm3, %xmm3, %xmm3
 	vpxor	%xmm4, %xmm4, %xmm4
+	vpxor	%xmm5, %xmm5, %xmm5
 	.p2align	4, 0x90
-.LBB2_71:                               # %for_loop290
+.LBB2_73:                               # %for_loop298
                                         # =>This Inner Loop Header: Depth=1
 	movq	%rsi, %rcx
 	sarq	$26, %rcx
-	vmovdqa64	8576(%rsp,%rcx), %zmm5
-	vpsllvd	%zmm0, %zmm5, %zmm6
-	vpord	%zmm2, %zmm6, %zmm2
-	vpsrlvd	%zmm1, %zmm5, %zmm5
-	vextracti64x4	$1, %zmm2, %ymm6
-	vpmovzxdq	%ymm6, %zmm6    # zmm6 = ymm6[0],zero,ymm6[1],zero,ymm6[2],zero,ymm6[3],zero,ymm6[4],zero,ymm6[5],zero,ymm6[6],zero,ymm6[7],zero
-	vpmovzxdq	%ymm2, %zmm2    # zmm2 = ymm2[0],zero,ymm2[1],zero,ymm2[2],zero,ymm2[3],zero,ymm2[4],zero,ymm2[5],zero,ymm2[6],zero,ymm2[7],zero
-	vmovdqa64	-128(%rbx), %zmm7
-	vmovdqa64	-64(%rbx), %zmm8
-	vmovdqa64	(%rbx), %zmm9
-	vmovdqa64	64(%rbx), %zmm10
-	vpsubq	%zmm2, %zmm7, %zmm2
-	vpaddq	%zmm3, %zmm2, %zmm2
-	vpsubq	%zmm6, %zmm8, %zmm3
+	vmovdqa64	8576(%rsp,%rcx), %zmm6
+	vpsllvd	%zmm1, %zmm6, %zmm7
+	vpord	%zmm3, %zmm7, %zmm3
+	vpsrlvd	%zmm2, %zmm6, %zmm6
+	vextracti64x4	$1, %zmm3, %ymm7
+	vpmovzxdq	%ymm7, %zmm7    # zmm7 = ymm7[0],zero,ymm7[1],zero,ymm7[2],zero,ymm7[3],zero,ymm7[4],zero,ymm7[5],zero,ymm7[6],zero,ymm7[7],zero
+	vpmovzxdq	%ymm3, %zmm3    # zmm3 = ymm3[0],zero,ymm3[1],zero,ymm3[2],zero,ymm3[3],zero,ymm3[4],zero,ymm3[5],zero,ymm3[6],zero,ymm3[7],zero
+	vmovdqa64	-128(%rbx), %zmm8
+	vmovdqa64	-64(%rbx), %zmm9
+	vmovdqa64	(%rbx), %zmm10
+	vmovdqa64	64(%rbx), %zmm11
+	vpsubq	%zmm3, %zmm8, %zmm3
 	vpaddq	%zmm4, %zmm3, %zmm3
+	vpsubq	%zmm7, %zmm9, %zmm4
+	vpaddq	%zmm5, %zmm4, %zmm4
 	kmovw	%edx, %k0
 	knotw	%k0, %k3
-	vmovdqa32	%zmm2, %zmm4 {%k3}{z}
-	vmovdqa32	%zmm3, %zmm6 {%k3}{z}
-	vmovdqa64	%zmm6, %zmm8 {%k2}
-	vmovdqa64	%zmm8, -64(%rbx)
-	vmovdqa64	%zmm4, %zmm7 {%k1}
-	vmovdqa64	%zmm7, -128(%rbx)
-	vpsraq	$32, %zmm3, %zmm3
-	vpsraq	$32, %zmm2, %zmm4
+	vmovdqa32	%zmm3, %zmm5 {%k3}{z}
+	vmovdqa32	%zmm4, %zmm7 {%k3}{z}
+	vmovdqa64	%zmm7, %zmm9 {%k2}
+	vmovdqa64	%zmm9, -64(%rbx)
+	vmovdqa64	%zmm5, %zmm8 {%k1}
+	vmovdqa64	%zmm8, -128(%rbx)
+	vpsraq	$32, %zmm4, %zmm4
+	vpsraq	$32, %zmm3, %zmm5
 	leaq	(%rsi,%r10), %rcx
 	sarq	$26, %rcx
-	vmovdqa64	8576(%rsp,%rcx), %zmm2
-	vpsllvd	%zmm0, %zmm2, %zmm6
-	vpord	%zmm5, %zmm6, %zmm5
-	vpsrlvd	%zmm1, %zmm2, %zmm2
-	vpmovzxdq	%ymm5, %zmm6    # zmm6 = ymm5[0],zero,ymm5[1],zero,ymm5[2],zero,ymm5[3],zero,ymm5[4],zero,ymm5[5],zero,ymm5[6],zero,ymm5[7],zero
-	vextracti64x4	$1, %zmm5, %ymm5
-	vpmovzxdq	%ymm5, %zmm5    # zmm5 = ymm5[0],zero,ymm5[1],zero,ymm5[2],zero,ymm5[3],zero,ymm5[4],zero,ymm5[5],zero,ymm5[6],zero,ymm5[7],zero
-	vpsubq	%zmm5, %zmm10, %zmm5
-	vpaddq	%zmm3, %zmm5, %zmm3
-	vpsubq	%zmm6, %zmm9, %zmm5
-	vpaddq	%zmm4, %zmm5, %zmm5
-	vmovdqa32	%zmm3, %zmm4 {%k3}{z}
-	vmovdqa32	%zmm5, %zmm6 {%k3}{z}
-	vmovdqa64	%zmm6, %zmm9 {%k1}
-	vmovdqa64	%zmm4, %zmm10 {%k2}
-	vmovdqa64	%zmm10, 64(%rbx)
-	vmovdqa64	%zmm9, (%rbx)
-	vpsraq	$32, %zmm3, %zmm4
-	vpsraq	$32, %zmm5, %zmm3
+	vmovdqa64	8576(%rsp,%rcx), %zmm3
+	vpsllvd	%zmm1, %zmm3, %zmm7
+	vpord	%zmm6, %zmm7, %zmm6
+	vpsrlvd	%zmm2, %zmm3, %zmm3
+	vpmovzxdq	%ymm6, %zmm7    # zmm7 = ymm6[0],zero,ymm6[1],zero,ymm6[2],zero,ymm6[3],zero,ymm6[4],zero,ymm6[5],zero,ymm6[6],zero,ymm6[7],zero
+	vextracti64x4	$1, %zmm6, %ymm6
+	vpmovzxdq	%ymm6, %zmm6    # zmm6 = ymm6[0],zero,ymm6[1],zero,ymm6[2],zero,ymm6[3],zero,ymm6[4],zero,ymm6[5],zero,ymm6[6],zero,ymm6[7],zero
+	vpsubq	%zmm6, %zmm11, %zmm6
+	vpaddq	%zmm4, %zmm6, %zmm4
+	vpsubq	%zmm7, %zmm10, %zmm6
+	vpaddq	%zmm5, %zmm6, %zmm6
+	vmovdqa32	%zmm4, %zmm5 {%k3}{z}
+	vmovdqa32	%zmm6, %zmm7 {%k3}{z}
+	vmovdqa64	%zmm7, %zmm10 {%k1}
+	vmovdqa64	%zmm5, %zmm11 {%k2}
+	vmovdqa64	%zmm11, 64(%rbx)
+	vmovdqa64	%zmm10, (%rbx)
+	vpsraq	$32, %zmm4, %zmm5
+	vpsraq	$32, %zmm6, %zmm4
 	addq	$2, %rax
 	addq	$256, %rbx              # imm = 0x100
 	addq	%r9, %rsi
 	cmpl	%eax, %edi
-	jne	.LBB2_71
-# %bb.72:                               # %for_test288.safe_if_after_true.loopexit_crit_edge.unr-lcssa
+	jne	.LBB2_73
+# %bb.74:                               # %for_test296.safe_if_after_true.loopexit_crit_edge.unr-lcssa
 	testl	%r8d, %r8d
-	je	.LBB2_74
-.LBB2_73:                               # %for_loop290.epil.preheader
+	je	.LBB2_76
+.LBB2_75:                               # %for_loop298.epil.preheader
 	movq	%rax, %rcx
 	shlq	$7, %rcx
-	vmovdqa64	384(%rsp,%rcx), %zmm1
+	vmovdqa64	384(%rsp,%rcx), %zmm2
 	cltq
 	shlq	$6, %rax
-	vmovdqa64	8576(%rsp,%rax), %zmm5
-	vpsllvd	%zmm0, %zmm5, %zmm0
-	vmovdqa64	448(%rsp,%rcx), %zmm5
-	vpord	%zmm2, %zmm0, %zmm0
-	vpmovzxdq	%ymm0, %zmm2    # zmm2 = ymm0[0],zero,ymm0[1],zero,ymm0[2],zero,ymm0[3],zero,ymm0[4],zero,ymm0[5],zero,ymm0[6],zero,ymm0[7],zero
-	vextracti64x4	$1, %zmm0, %ymm0
-	vpmovzxdq	%ymm0, %zmm0    # zmm0 = ymm0[0],zero,ymm0[1],zero,ymm0[2],zero,ymm0[3],zero,ymm0[4],zero,ymm0[5],zero,ymm0[6],zero,ymm0[7],zero
-	vpsubq	%zmm0, %zmm5, %zmm0
-	vpaddq	%zmm4, %zmm0, %zmm0
-	vpsubq	%zmm2, %zmm1, %zmm2
-	vpaddq	%zmm3, %zmm2, %zmm2
+	vmovdqa64	8576(%rsp,%rax), %zmm6
+	vpsllvd	%zmm1, %zmm6, %zmm1
+	vmovdqa64	448(%rsp,%rcx), %zmm6
+	vpord	%zmm3, %zmm1, %zmm1
+	vpmovzxdq	%ymm1, %zmm3    # zmm3 = ymm1[0],zero,ymm1[1],zero,ymm1[2],zero,ymm1[3],zero,ymm1[4],zero,ymm1[5],zero,ymm1[6],zero,ymm1[7],zero
+	vextracti64x4	$1, %zmm1, %ymm1
+	vpmovzxdq	%ymm1, %zmm1    # zmm1 = ymm1[0],zero,ymm1[1],zero,ymm1[2],zero,ymm1[3],zero,ymm1[4],zero,ymm1[5],zero,ymm1[6],zero,ymm1[7],zero
+	vpsubq	%zmm1, %zmm6, %zmm1
+	vpaddq	%zmm5, %zmm1, %zmm1
+	vpsubq	%zmm3, %zmm2, %zmm3
+	vpaddq	%zmm4, %zmm3, %zmm3
 	movw	$-21846, %ax            # imm = 0xAAAA
 	kmovw	%eax, %k0
 	knotw	%k0, %k2
-	vmovdqa32	%zmm0, %zmm0 {%k2}{z}
-	vmovdqa32	%zmm2, %zmm2 {%k2}{z}
-	vmovdqa64	%zmm2, %zmm1 {%k1}
+	vmovdqa32	%zmm1, %zmm1 {%k2}{z}
+	vmovdqa32	%zmm3, %zmm3 {%k2}{z}
+	vmovdqa64	%zmm3, %zmm2 {%k1}
 	kshiftrw	$8, %k1, %k1
-	vmovdqa64	%zmm0, %zmm5 {%k1}
-	vmovdqa64	%zmm5, 448(%rsp,%rcx)
-	vmovdqa64	%zmm1, 384(%rsp,%rcx)
-.LBB2_74:                               # %safe_if_after_true
+	vmovdqa64	%zmm1, %zmm6 {%k1}
+	vmovdqa64	%zmm6, 448(%rsp,%rcx)
+	vmovdqa64	%zmm2, 384(%rsp,%rcx)
+.LBB2_76:                               # %safe_if_after_true
 	leal	-1(%r11), %eax
 	shlq	$7, %rax
-	vmovdqa64	384(%rsp,%rax), %zmm0
-	vmovdqa64	448(%rsp,%rax), %zmm1
-	vptestmq	%zmm0, %zmm0, %k0
-	vptestmq	%zmm1, %zmm1, %k1
+	vmovdqa64	384(%rsp,%rax), %zmm1
+	vmovdqa64	448(%rsp,%rax), %zmm2
+	vptestmq	%zmm1, %zmm1, %k0
+	vptestmq	%zmm2, %zmm2, %k1
 	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm0, %zmm0, %zmm0 {%k1}{z}
-	vpmovdb	%zmm0, %xmm1
-	vpand	%xmm12, %xmm1, %xmm0
-	vpxor	%xmm8, %xmm8, %xmm8
-	vpcmpeqb	%xmm8, %xmm0, %xmm0
+	vpternlogd	$255, %zmm1, %zmm1, %zmm1 {%k1}{z}
+	vpmovdb	%zmm1, %xmm1
+	vpand	%xmm12, %xmm1, %xmm2
+	vpcmpeqb	%xmm0, %xmm2, %xmm0
 	vpternlogq	$15, %zmm0, %zmm0, %zmm0
 	vpmovsxbd	%xmm0, %zmm0
 	vptestmd	%zmm0, %zmm0, %k0
 	vpcmpeqd	%xmm0, %xmm0, %xmm0
 	kortestw	%k0, %k0
-	je	.LBB2_78
-# %bb.75:                               # %for_test347.preheader
+	je	.LBB2_80
+# %bb.77:                               # %for_test355.preheader
 	movl	%r11d, %eax
 	negl	%eax
 	sbbb	%al, %al
-	vmovd	%eax, %xmm3
-	vpbroadcastb	%xmm3, %xmm3
-	vpand	%xmm1, %xmm3, %xmm3
-	vpand	%xmm12, %xmm3, %xmm4
-	vpcmpeqb	%xmm8, %xmm4, %xmm4
+	vmovd	%eax, %xmm2
+	vpbroadcastb	%xmm2, %xmm2
+	vpand	%xmm1, %xmm2, %xmm2
+	vpand	%xmm12, %xmm2, %xmm4
+	vpxor	%xmm3, %xmm3, %xmm3
+	vpcmpeqb	%xmm3, %xmm4, %xmm4
 	vpternlogq	$15, %zmm4, %zmm4, %zmm4
 	vpmovsxbd	%xmm4, %zmm4
 	vptestmd	%zmm4, %zmm4, %k0
 	kortestw	%k0, %k0
-	je	.LBB2_78
-# %bb.76:                               # %for_loop349.preheader
+	je	.LBB2_80
+# %bb.78:                               # %for_loop357.preheader
 	vpcmpeqd	%xmm0, %xmm0, %xmm0
-	vpbroadcastd	.LCPI2_1(%rip), %zmm5 # zmm5 = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+	vpbroadcastd	.LCPI2_1(%rip), %zmm4 # zmm4 = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 	xorl	%eax, %eax
-	vpxor	%xmm4, %xmm4, %xmm4
 	.p2align	4, 0x90
-.LBB2_77:                               # %for_loop349
+.LBB2_79:                               # %for_loop357
                                         # =>This Inner Loop Header: Depth=1
 	movl	%eax, %ecx
 	cltq
 	movq	%rax, %rdx
 	shlq	$6, %rdx
-	vpaddd	8576(%rsp,%rdx), %zmm5, %zmm6
+	vpaddd	8576(%rsp,%rdx), %zmm4, %zmm5
 	movq	%rcx, %rdx
 	shlq	$6, %rdx
-	vpcmpltud	8576(%rsp,%rdx), %zmm6, %k1
-	vpternlogd	$255, %zmm7, %zmm7, %zmm7 {%k1}{z}
-	vpsrld	$31, %zmm7, %zmm7
-	vpcmpeqb	%xmm4, %xmm3, %xmm2
-	vpmovsxbd	%xmm2, %zmm2
-	vptestmd	%zmm2, %zmm2, %k1
-	vmovdqa32	%zmm5, %zmm7 {%k1}
+	vpcmpltud	8576(%rsp,%rdx), %zmm5, %k1
+	vpternlogd	$255, %zmm6, %zmm6, %zmm6 {%k1}{z}
+	vpsrld	$31, %zmm6, %zmm6
+	vpcmpeqb	%xmm3, %xmm2, %xmm7
+	vpmovsxbd	%xmm7, %zmm7
+	vptestmd	%zmm7, %zmm7, %k1
+	vmovdqa32	%zmm4, %zmm6 {%k1}
 	shlq	$7, %rcx
-	vextracti64x4	$1, %zmm6, %ymm2
-	vpmovzxdq	%ymm6, %zmm5    # zmm5 = ymm6[0],zero,ymm6[1],zero,ymm6[2],zero,ymm6[3],zero,ymm6[4],zero,ymm6[5],zero,ymm6[6],zero,ymm6[7],zero
+	vextracti64x4	$1, %zmm5, %ymm4
+	vpmovzxdq	%ymm5, %zmm5    # zmm5 = ymm5[0],zero,ymm5[1],zero,ymm5[2],zero,ymm5[3],zero,ymm5[4],zero,ymm5[5],zero,ymm5[6],zero,ymm5[7],zero
 	vpcmpeqq	384(%rsp,%rcx), %zmm5, %k0
-	vpmovzxdq	%ymm2, %zmm2    # zmm2 = ymm2[0],zero,ymm2[1],zero,ymm2[2],zero,ymm2[3],zero,ymm2[4],zero,ymm2[5],zero,ymm2[6],zero,ymm2[7],zero
-	vpcmpeqq	448(%rsp,%rcx), %zmm2, %k2
+	vpmovzxdq	%ymm4, %zmm4    # zmm4 = ymm4[0],zero,ymm4[1],zero,ymm4[2],zero,ymm4[3],zero,ymm4[4],zero,ymm4[5],zero,ymm4[6],zero,ymm4[7],zero
+	vpcmpeqq	448(%rsp,%rcx), %zmm4, %k2
 	kunpckbw	%k0, %k2, %k0
-	korw	%k1, %k0, %k1
-	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1}{z}
-	vpmovdb	%zmm2, %xmm2
-	vpand	%xmm0, %xmm2, %xmm0
-	addl	$1, %eax
-	cmpl	%r11d, %eax
-	sbbb	%cl, %cl
-	vmovd	%ecx, %xmm2
-	vpbroadcastb	%xmm2, %xmm2
-	vpand	%xmm2, %xmm3, %xmm2
-	vpand	%xmm2, %xmm0, %xmm3
-	vpand	%xmm12, %xmm3, %xmm2
-	vpcmpeqb	%xmm4, %xmm2, %xmm2
-	vpternlogq	$15, %zmm2, %zmm2, %zmm2
-	vpmovsxbd	%xmm2, %zmm2
-	vptestmd	%zmm2, %zmm2, %k0
-	kortestw	%k0, %k0
-	vmovdqa64	%zmm7, %zmm5
-	jne	.LBB2_77
-.LBB2_78:                               # %safe_if_after_true339
-	vpandn	%xmm12, %xmm1, %xmm3
-	vpcmpeqb	%xmm8, %xmm3, %xmm2
-	vpternlogq	$15, %zmm2, %zmm2, %zmm2
-	vpmovsxbd	%xmm2, %zmm2
-	vptestmd	%zmm2, %zmm2, %k0
-	kortestw	%k0, %k0
-	je	.LBB2_82
-# %bb.79:                               # %safe_if_run_false405
-	vpbroadcastq	.LCPI2_2(%rip), %zmm2 # zmm2 = [1,1,1,1,1,1,1,1]
-	vpcmpeqq	384(%rsp), %zmm2, %k0
-	vpcmpeqq	448(%rsp), %zmm2, %k1
-	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1}{z}
-	vpmovdb	%zmm2, %xmm2
-	vpblendvb	%xmm1, %xmm0, %xmm2, %xmm0
-	cmpl	$1, %r11d
-	seta	%al
-	vpternlogq	$15, %zmm1, %zmm1, %zmm1
-	negb	%al
-	vmovd	%eax, %xmm2
-	vpbroadcastb	%xmm2, %xmm2
-	vpand	%xmm1, %xmm0, %xmm1
-	vpand	%xmm2, %xmm1, %xmm1
-	vpand	%xmm12, %xmm1, %xmm3
-	vpxor	%xmm2, %xmm2, %xmm2
-	vpcmpeqb	%xmm2, %xmm3, %xmm3
-	vpternlogq	$15, %zmm3, %zmm3, %zmm3
-	vpmovsxbd	%xmm3, %zmm3
-	vptestmd	%zmm3, %zmm3, %k0
-	kortestw	%k0, %k0
-	je	.LBB2_82
-# %bb.80:                               # %for_loop417.preheader
-	movl	$1, %eax
-	vpxor	%xmm3, %xmm3, %xmm3
-	.p2align	4, 0x90
-.LBB2_81:                               # %for_loop417
-                                        # =>This Inner Loop Header: Depth=1
-	movl	%eax, %ecx
-	shlq	$7, %rcx
-	vpcmpeqq	384(%rsp,%rcx), %zmm3, %k0
-	vpcmpeqq	448(%rsp,%rcx), %zmm3, %k1
-	kunpckbw	%k0, %k1, %k0
-	vpcmpeqb	%xmm2, %xmm1, %xmm4
-	vpmovsxbd	%xmm4, %zmm4
-	vptestmd	%zmm4, %zmm4, %k1
 	korw	%k1, %k0, %k1
 	vpternlogd	$255, %zmm4, %zmm4, %zmm4 {%k1}{z}
 	vpmovdb	%zmm4, %xmm4
@@ -2761,19 +2750,94 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	sbbb	%cl, %cl
 	vmovd	%ecx, %xmm4
 	vpbroadcastb	%xmm4, %xmm4
-	vpand	%xmm4, %xmm1, %xmm1
-	vpand	%xmm1, %xmm0, %xmm1
-	vpand	%xmm12, %xmm1, %xmm4
-	vpcmpeqb	%xmm2, %xmm4, %xmm4
+	vpand	%xmm4, %xmm2, %xmm2
+	vpand	%xmm2, %xmm0, %xmm2
+	vpand	%xmm12, %xmm2, %xmm4
+	vpcmpeqb	%xmm3, %xmm4, %xmm4
 	vpternlogq	$15, %zmm4, %zmm4, %zmm4
 	vpmovsxbd	%xmm4, %zmm4
 	vptestmd	%zmm4, %zmm4, %k0
 	kortestw	%k0, %k0
-	jne	.LBB2_81
-.LBB2_82:                               # %if_done338
+	vmovdqa64	%zmm6, %zmm4
+	jne	.LBB2_79
+.LBB2_80:                               # %safe_if_after_true347
+	vpandn	%xmm12, %xmm1, %xmm3
+	vpxor	%xmm2, %xmm2, %xmm2
+	vpcmpeqb	%xmm2, %xmm3, %xmm3
+	vpternlogq	$15, %zmm3, %zmm3, %zmm3
+	vpmovsxbd	%xmm3, %zmm3
+	vptestmd	%zmm3, %zmm3, %k0
+	kortestw	%k0, %k0
+	je	.LBB2_85
+# %bb.81:                               # %safe_if_run_false413
+	vmovdqa64	%zmm1, %zmm3
+	vpternlogq	$15, %zmm1, %zmm1, %zmm3
+	vpbroadcastq	.LCPI2_2(%rip), %zmm4 # zmm4 = [1,1,1,1,1,1,1,1]
+	vpcmpeqq	384(%rsp), %zmm4, %k0
+	vpcmpeqq	448(%rsp), %zmm4, %k1
+	kunpckbw	%k0, %k1, %k1
+	vpternlogd	$255, %zmm4, %zmm4, %zmm4 {%k1}{z}
+	vpmovdb	%zmm4, %xmm4
+	vpblendvb	%xmm1, %xmm0, %xmm4, %xmm0
+	cmpl	$1, %r11d
+	seta	%al
+	negb	%al
+	vmovd	%eax, %xmm1
+	vpbroadcastb	%xmm1, %xmm1
+	vpand	%xmm3, %xmm0, %xmm3
+	vpand	%xmm1, %xmm3, %xmm1
+	vpand	%xmm12, %xmm1, %xmm3
+	vpcmpeqb	%xmm2, %xmm3, %xmm3
+	vpternlogq	$15, %zmm3, %zmm3, %zmm3
+	vpmovsxbd	%xmm3, %zmm3
+	vptestmd	%zmm3, %zmm3, %k0
+	kortestw	%k0, %k0
+	je	.LBB2_85
+# %bb.82:                               # %for_loop425.preheader
+	movl	$1, %eax
+	vpxor	%xmm3, %xmm3, %xmm3
+	vpxor	%xmm4, %xmm4, %xmm4
+	movq	72(%rsp), %rdx          # 8-byte Reload
+	.p2align	4, 0x90
+.LBB2_83:                               # %for_loop425
+                                        # =>This Inner Loop Header: Depth=1
+	movl	%eax, %ecx
+	shlq	$7, %rcx
+	vpcmpeqq	384(%rsp,%rcx), %zmm3, %k0
+	vpcmpeqq	448(%rsp,%rcx), %zmm3, %k1
+	kunpckbw	%k0, %k1, %k0
+	vpcmpeqb	%xmm4, %xmm1, %xmm5
+	vpmovsxbd	%xmm5, %zmm5
+	vptestmd	%zmm5, %zmm5, %k1
+	korw	%k1, %k0, %k1
+	vpternlogd	$255, %zmm5, %zmm5, %zmm5 {%k1}{z}
+	vpmovdb	%zmm5, %xmm5
+	vpand	%xmm0, %xmm5, %xmm0
+	addl	$1, %eax
+	cmpl	%r11d, %eax
+	sbbb	%cl, %cl
+	vmovd	%ecx, %xmm5
+	vpbroadcastb	%xmm5, %xmm5
+	vpand	%xmm5, %xmm1, %xmm1
+	vpand	%xmm1, %xmm0, %xmm1
+	vpand	%xmm12, %xmm1, %xmm5
+	vpcmpeqb	%xmm4, %xmm5, %xmm5
+	vpternlogq	$15, %zmm5, %zmm5, %zmm5
+	vpmovsxbd	%xmm5, %zmm5
+	vptestmd	%zmm5, %zmm5, %k0
+	kortestw	%k0, %k0
+	jne	.LBB2_83
+	jmp	.LBB2_86
+.LBB2_85:
+	movq	72(%rsp), %rdx          # 8-byte Reload
+.LBB2_86:                               # %if_done346
+	vpcmpeqb	%xmm2, %xmm12, %xmm1
+	vpternlogq	$15, %zmm1, %zmm1, %zmm1
+	vpmovsxbd	%xmm1, %zmm1
 	vpand	.LCPI2_3(%rip), %xmm0, %xmm0
+	vptestmd	%zmm1, %zmm1, %k1
 	vpmovzxbd	%xmm0, %zmm0    # zmm0 = xmm0[0],zero,zero,zero,xmm0[1],zero,zero,zero,xmm0[2],zero,zero,zero,xmm0[3],zero,zero,zero,xmm0[4],zero,zero,zero,xmm0[5],zero,zero,zero,xmm0[6],zero,zero,zero,xmm0[7],zero,zero,zero,xmm0[8],zero,zero,zero,xmm0[9],zero,zero,zero,xmm0[10],zero,zero,zero,xmm0[11],zero,zero,zero,xmm0[12],zero,zero,zero,xmm0[13],zero,zero,zero,xmm0[14],zero,zero,zero,xmm0[15],zero,zero,zero
-	vmovdqu32	%zmm0, (%r14) {%k4}
+	vmovdqu32	%zmm0, (%rdx) {%k1}
 	leaq	-40(%rbp), %rsp
 	popq	%rbx
 	popq	%r12
@@ -2831,28 +2895,25 @@ fermat_test512:                            # @fermat_test512
 	pushq	%rbx
 	andq	$-128, %rsp
 	subq	$45568, %rsp            # imm = 0xB200
+                                        # kill: def $r9d killed $r9d def $r9
 	movl	%r8d, %r11d
-	movq	%rcx, %r14
-	kxorw	%k0, %k0, %k1
+	movq	%rcx, 88(%rsp)          # 8-byte Spill
 	testl	%r8d, %r8d
-	je	.LBB3_64
+	je	.LBB3_7
 # %bb.1:                                # %for_loop.lr.ph
 	vpbroadcastd	%r11d, %zmm0
 	vpmulld	.LCPI3_0(%rip), %zmm0, %zmm0
-	movl	%r11d, %r10d
-	andl	$1, %r10d
 	cmpl	$1, %r11d
-	movq	%r14, 88(%rsp)          # 8-byte Spill
-	movl	%r9d, 80(%rsp)          # 4-byte Spill
-	movl	%r10d, 84(%rsp)         # 4-byte Spill
 	jne	.LBB3_3
 # %bb.2:
 	xorl	%eax, %eax
 	jmp	.LBB3_6
 .LBB3_3:                                # %for_loop.lr.ph.new
 	movl	%r11d, %r8d
-	subl	%r10d, %r8d
-	movl	$64, %ebx
+	andl	$1, %r8d
+	movl	%r11d, %r10d
+	subl	%r8d, %r10d
+	movl	$64, %ecx
 	xorl	%eax, %eax
 	.p2align	4, 0x90
 .LBB3_4:                                # %for_loop
@@ -2863,37 +2924,37 @@ fermat_test512:                            # @fermat_test512
 	kxnorw	%k0, %k0, %k1
 	vpxor	%xmm2, %xmm2, %xmm2
 	vpgatherdd	(%rdi,%zmm1), %zmm2 {%k1}
-	vmovdqa64	%zmm2, 8512(%rsp,%rbx)
+	vmovdqa64	%zmm2, 8512(%rsp,%rcx)
 	kxnorw	%k0, %k0, %k1
 	vpxor	%xmm2, %xmm2, %xmm2
 	vpgatherdd	(%rdx,%zmm1), %zmm2 {%k1}
 	vpmovzxdq	%ymm2, %zmm1    # zmm1 = ymm2[0],zero,ymm2[1],zero,ymm2[2],zero,ymm2[3],zero,ymm2[4],zero,ymm2[5],zero,ymm2[6],zero,ymm2[7],zero
 	vextracti64x4	$1, %zmm2, %ymm2
 	vpmovzxdq	%ymm2, %zmm2    # zmm2 = ymm2[0],zero,ymm2[1],zero,ymm2[2],zero,ymm2[3],zero,ymm2[4],zero,ymm2[5],zero,ymm2[6],zero,ymm2[7],zero
-	vmovdqa64	%zmm2, 320(%rsp,%rbx,2)
-	vmovdqa64	%zmm1, 256(%rsp,%rbx,2)
-	leal	1(%rax), %ecx
-	vpbroadcastd	%ecx, %zmm1
+	vmovdqa64	%zmm2, 320(%rsp,%rcx,2)
+	vmovdqa64	%zmm1, 256(%rsp,%rcx,2)
+	leal	1(%rax), %ebx
+	vpbroadcastd	%ebx, %zmm1
 	vpaddd	%zmm0, %zmm1, %zmm1
 	vpslld	$2, %zmm1, %zmm1
 	kxnorw	%k0, %k0, %k1
 	vpxor	%xmm2, %xmm2, %xmm2
 	vpgatherdd	(%rdi,%zmm1), %zmm2 {%k1}
-	vmovdqa64	%zmm2, 8576(%rsp,%rbx)
+	vmovdqa64	%zmm2, 8576(%rsp,%rcx)
 	kxnorw	%k0, %k0, %k1
 	vpxor	%xmm2, %xmm2, %xmm2
 	vpgatherdd	(%rdx,%zmm1), %zmm2 {%k1}
 	vpmovzxdq	%ymm2, %zmm1    # zmm1 = ymm2[0],zero,ymm2[1],zero,ymm2[2],zero,ymm2[3],zero,ymm2[4],zero,ymm2[5],zero,ymm2[6],zero,ymm2[7],zero
 	vextracti64x4	$1, %zmm2, %ymm2
 	vpmovzxdq	%ymm2, %zmm2    # zmm2 = ymm2[0],zero,ymm2[1],zero,ymm2[2],zero,ymm2[3],zero,ymm2[4],zero,ymm2[5],zero,ymm2[6],zero,ymm2[7],zero
-	vmovdqa64	%zmm2, 448(%rsp,%rbx,2)
-	vmovdqa64	%zmm1, 384(%rsp,%rbx,2)
+	vmovdqa64	%zmm2, 448(%rsp,%rcx,2)
+	vmovdqa64	%zmm1, 384(%rsp,%rcx,2)
 	addq	$2, %rax
-	subq	$-128, %rbx
-	cmpl	%eax, %r8d
+	subq	$-128, %rcx
+	cmpl	%eax, %r10d
 	jne	.LBB3_4
 # %bb.5:                                # %for_test.for_exit_crit_edge.unr-lcssa
-	testl	%r10d, %r10d
+	testl	%r8d, %r8d
 	je	.LBB3_7
 .LBB3_6:                                # %for_loop.epil.preheader
 	movq	%rax, %rcx
@@ -2903,8 +2964,8 @@ fermat_test512:                            # @fermat_test512
 	vpslld	$2, %zmm0, %zmm0
 	kxnorw	%k0, %k0, %k1
 	vpxor	%xmm1, %xmm1, %xmm1
-	vpxor	%xmm2, %xmm2, %xmm2
 	kxnorw	%k0, %k0, %k2
+	vpxor	%xmm2, %xmm2, %xmm2
 	vpgatherdd	(%rdi,%zmm0), %zmm2 {%k2}
 	vmovdqa64	%zmm2, 8576(%rsp,%rcx)
 	shlq	$7, %rax
@@ -2915,39 +2976,56 @@ fermat_test512:                            # @fermat_test512
 	vmovdqa64	%zmm1, 448(%rsp,%rax)
 	vmovdqa64	%zmm0, 384(%rsp,%rax)
 .LBB3_7:                                # %for_exit
-	vmovdqu64	(%rsi), %zmm0
-	vmovdqa64	%zmm0, 128(%rsp) # 64-byte Spill
-	testl	%r11d, %r11d
-	jle	.LBB3_16
-# %bb.8:                                # %for_loop32.lr.ph
-	movabsq	$8589934592, %r15       # imm = 0x200000000
-	movabsq	$4294967296, %r14       # imm = 0x100000000
-	movl	$-2147483648, %eax      # imm = 0x80000000
-	movl	80(%rsp), %ecx          # 4-byte Reload
-	shrxl	%ecx, %eax, %r8d
-	vpbroadcastd	%ecx, %zmm12
-	movl	$32, %eax
+	xorl	%ecx, %ecx
+	movq	%r9, 96(%rsp)           # 8-byte Spill
+	cmpl	$23, %r9d
+	seta	%cl
+	movl	%r11d, %eax
 	subl	%ecx, %eax
-	vpbroadcastd	%eax, %zmm13
-	leal	-1(%r11), %r13d
-	movslq	%r11d, %rcx
+	vmovdqu64	(%rsi), %zmm12
+	testl	%eax, %eax
+	jle	.LBB3_42
+# %bb.8:                                # %for_loop36.lr.ph
+	movq	96(%rsp), %rsi          # 8-byte Reload
+	cmpl	$24, %esi
+	setb	%cl
+	movabsq	$8589934592, %r14       # imm = 0x200000000
+	movabsq	$4294967296, %r15       # imm = 0x100000000
+	shlb	$5, %cl
+	movzbl	%cl, %ecx
+	leal	(%rcx,%rsi), %ecx
+	addl	$-24, %ecx
+	movl	$-2147483648, %edx      # imm = 0x80000000
+	shrxl	%ecx, %edx, %r8d
+	vpbroadcastd	%esi, %zmm13
+	movl	$32, %ecx
+	subl	%esi, %ecx
+	vpbroadcastd	%ecx, %zmm14
+	movl	%r11d, %r9d
+	leal	-1(%r11), %r10d
+	movslq	%eax, %rcx
+	movl	%r11d, %eax
+	andl	$1, %eax
 	movl	%r11d, %ebx
-	subl	84(%rsp), %ebx          # 4-byte Folded Reload
-	leal	1(%r11), %edi
-	movw	$-21846, %r12w          # imm = 0xAAAA
-	movq	%r11, 120(%rsp)         # 8-byte Spill
+	subl	%eax, %ebx
+	leal	1(%r11), %eax
+	movq	%rax, 112(%rsp)         # 8-byte Spill
+	movw	$-21846, %r13w          # imm = 0xAAAA
 	vmovdqa64	%zmm12, 256(%rsp) # 64-byte Spill
 	vmovdqa64	%zmm13, 192(%rsp) # 64-byte Spill
-	movq	%rdi, 112(%rsp)         # 8-byte Spill
+	vmovdqa64	%zmm14, 128(%rsp) # 64-byte Spill
+	movq	%r9, 120(%rsp)          # 8-byte Spill
+	movl	%r10d, 84(%rsp)         # 4-byte Spill
 	.p2align	4, 0x90
-.LBB3_9:                                # %for_loop32
+.LBB3_9:                                # %for_loop36
                                         # =>This Loop Header: Depth=1
                                         #     Child Loop BB3_12 Depth 2
-                                        #       Child Loop BB3_13 Depth 3
-                                        #         Child Loop BB3_26 Depth 4
-                                        #       Child Loop BB3_45 Depth 3
-                                        #       Child Loop BB3_36 Depth 3
-                                        #         Child Loop BB3_39 Depth 4
+                                        #       Child Loop BB3_14 Depth 3
+                                        #         Child Loop BB3_16 Depth 4
+                                        #       Child Loop BB3_24 Depth 3
+                                        #       Child Loop BB3_32 Depth 3
+                                        #         Child Loop BB3_34 Depth 4
+                                        #       Child Loop BB3_39 Depth 3
 	addq	$-1, %rcx
 	movq	%rcx, %rax
 	shlq	$6, %rax
@@ -2955,38 +3033,49 @@ fermat_test512:                            # @fermat_test512
 	testq	%rcx, %rcx
 	vpternlogd	$255, %zmm0, %zmm0, %zmm0
 	je	.LBB3_11
-# %bb.10:                               # %for_loop32
+# %bb.10:                               # %for_loop36
                                         #   in Loop: Header=BB3_9 Depth=1
 	vpxor	%xmm0, %xmm0, %xmm0
-.LBB3_11:                               # %for_loop32
+.LBB3_11:                               # %for_loop36
                                         #   in Loop: Header=BB3_9 Depth=1
 	vpaddd	8576(%rsp,%rax), %zmm0, %zmm0
 	vmovdqa64	%zmm0, 320(%rsp) # 64-byte Spill
 	.p2align	4, 0x90
-.LBB3_12:                               # %for_loop49.lr.ph.split.us
+.LBB3_12:                               # %do_loop
                                         #   Parent Loop BB3_9 Depth=1
                                         # =>  This Loop Header: Depth=2
-                                        #       Child Loop BB3_13 Depth 3
-                                        #         Child Loop BB3_26 Depth 4
-                                        #       Child Loop BB3_45 Depth 3
-                                        #       Child Loop BB3_36 Depth 3
-                                        #         Child Loop BB3_39 Depth 4
-	movl	%r8d, 100(%rsp)         # 4-byte Spill
+                                        #       Child Loop BB3_14 Depth 3
+                                        #         Child Loop BB3_16 Depth 4
+                                        #       Child Loop BB3_24 Depth 3
+                                        #       Child Loop BB3_32 Depth 3
+                                        #         Child Loop BB3_34 Depth 4
+                                        #       Child Loop BB3_39 Depth 3
+	movl	%r8d, 80(%rsp)          # 4-byte Spill
 	leaq	29056(%rsp), %rdi
 	leaq	384(%rsp), %rsi
 	movl	%r11d, %edx
+	movq	%r11, %r12
 	callq	toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu
-	leaq	8640(%rsp), %r9
-	movq	120(%rsp), %r11         # 8-byte Reload
+	movq	%r12, %r11
+	testl	%r11d, %r11d
+	je	.LBB3_26
+# %bb.13:                               # %for_loop68.lr.ph.us.preheader
+                                        #   in Loop: Header=BB3_12 Depth=2
 	movl	$1, %eax
 	xorl	%ecx, %ecx
-	vmovdqa64	128(%rsp), %zmm6 # 64-byte Reload
+	vmovdqa64	256(%rsp), %zmm12 # 64-byte Reload
+	vmovdqa64	192(%rsp), %zmm13 # 64-byte Reload
+	vmovdqa64	128(%rsp), %zmm14 # 64-byte Reload
+	movq	120(%rsp), %r9          # 8-byte Reload
+	movl	84(%rsp), %r10d         # 4-byte Reload
+	leaq	8640(%rsp), %r12
+	vpxor	%xmm15, %xmm15, %xmm15
 	.p2align	4, 0x90
-.LBB3_13:                               # %for_loop60.lr.ph.us
+.LBB3_14:                               # %for_loop68.lr.ph.us
                                         #   Parent Loop BB3_9 Depth=1
                                         #     Parent Loop BB3_12 Depth=2
                                         # =>    This Loop Header: Depth=3
-                                        #         Child Loop BB3_26 Depth 4
+                                        #         Child Loop BB3_16 Depth 4
 	movq	%rcx, %r8
 	shlq	$7, %r8
 	vmovdqa64	29056(%rsp,%r8), %zmm0
@@ -2994,23 +3083,23 @@ fermat_test512:                            # @fermat_test512
 	vpmovqd	%zmm0, %ymm0
 	vpmovqd	%zmm1, %ymm1
 	vinserti64x4	$1, %ymm1, %zmm0, %zmm0
-	vpmulld	%zmm0, %zmm6, %zmm1
+	vpmulld	%zmm0, %zmm12, %zmm1
 	vextracti64x4	$1, %zmm1, %ymm0
 	vpmovzxdq	%ymm0, %zmm0    # zmm0 = ymm0[0],zero,ymm0[1],zero,ymm0[2],zero,ymm0[3],zero,ymm0[4],zero,ymm0[5],zero,ymm0[6],zero,ymm0[7],zero
 	vpmovzxdq	%ymm1, %zmm1    # zmm1 = ymm1[0],zero,ymm1[1],zero,ymm1[2],zero,ymm1[3],zero,ymm1[4],zero,ymm1[5],zero,ymm1[6],zero,ymm1[7],zero
 	vpxor	%xmm2, %xmm2, %xmm2
-	testl	%r13d, %r13d
-	je	.LBB3_14
-# %bb.25:                               # %for_loop60.lr.ph.us.new
-                                        #   in Loop: Header=BB3_13 Depth=3
-	movq	%r9, %rdi
+	testl	%r10d, %r10d
+	je	.LBB3_18
+# %bb.15:                               # %for_loop68.lr.ph.us.new
+                                        #   in Loop: Header=BB3_14 Depth=3
+	movq	%r12, %rdi
 	xorl	%esi, %esi
 	vpxor	%xmm3, %xmm3, %xmm3
 	.p2align	4, 0x90
-.LBB3_26:                               # %for_loop60.us
+.LBB3_16:                               # %for_loop68.us
                                         #   Parent Loop BB3_9 Depth=1
                                         #     Parent Loop BB3_12 Depth=2
-                                        #       Parent Loop BB3_13 Depth=3
+                                        #       Parent Loop BB3_14 Depth=3
                                         # =>      This Inner Loop Header: Depth=4
 	vpmovzxdq	-64(%rdi), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
 	vpmovzxdq	-32(%rdi), %zmm5 # zmm5 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
@@ -3021,7 +3110,7 @@ fermat_test512:                            # @fermat_test512
 	vpmuludq	%zmm1, %zmm4, %zmm4
 	vpaddq	%zmm5, %zmm3, %zmm3
 	vpaddq	29056(%rsp,%rdx), %zmm2, %zmm2
-	kmovw	%r12d, %k0
+	kmovw	%r13d, %k0
 	knotw	%k0, %k1
 	vmovdqa32	%zmm3, %zmm5 {%k1}{z}
 	vmovdqa64	%zmm5, 29120(%rsp,%rdx)
@@ -3049,18 +3138,18 @@ fermat_test512:                            # @fermat_test512
 	addq	$2, %rsi
 	subq	$-128, %rdi
 	cmpl	%esi, %ebx
-	jne	.LBB3_26
-# %bb.27:                               # %for_test58.for_exit61_crit_edge.us.unr-lcssa
-                                        #   in Loop: Header=BB3_13 Depth=3
+	jne	.LBB3_16
+# %bb.17:                               # %for_test66.for_exit69_crit_edge.us.unr-lcssa
+                                        #   in Loop: Header=BB3_14 Depth=3
 	testb	$1, %r11b
-	jne	.LBB3_28
-	jmp	.LBB3_29
+	jne	.LBB3_19
+	jmp	.LBB3_20
 	.p2align	4, 0x90
-.LBB3_14:                               #   in Loop: Header=BB3_13 Depth=3
+.LBB3_18:                               #   in Loop: Header=BB3_14 Depth=3
 	vpxor	%xmm3, %xmm3, %xmm3
 	xorl	%esi, %esi
-.LBB3_28:                               # %for_loop60.us.epil.preheader
-                                        #   in Loop: Header=BB3_13 Depth=3
+.LBB3_19:                               # %for_loop68.us.epil.preheader
+                                        #   in Loop: Header=BB3_14 Depth=3
 	movq	%rsi, %rdx
 	shlq	$6, %rdx
 	vpmovzxdq	8608(%rsp,%rdx), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
@@ -3073,7 +3162,7 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm1, %zmm2, %zmm1
 	vpaddq	29120(%rsp,%rsi), %zmm3, %zmm2
 	vpaddq	%zmm0, %zmm2, %zmm0
-	kmovw	%r12d, %k0
+	kmovw	%r13d, %k0
 	knotw	%k0, %k1
 	vmovdqa32	%zmm1, %zmm2 {%k1}{z}
 	vmovdqa32	%zmm0, %zmm3 {%k1}{z}
@@ -3081,18 +3170,21 @@ fermat_test512:                            # @fermat_test512
 	vmovdqa64	%zmm2, 29056(%rsp,%rsi)
 	vpsrlq	$32, %zmm0, %zmm3
 	vpsrlq	$32, %zmm1, %zmm2
-.LBB3_29:                               # %for_exit61.us
-                                        #   in Loop: Header=BB3_13 Depth=3
+.LBB3_20:                               # %for_exit69.us
+                                        #   in Loop: Header=BB3_14 Depth=3
 	vmovdqa64	%zmm3, 448(%rsp,%r8)
 	vmovdqa64	%zmm2, 384(%rsp,%r8)
 	addq	$1, %rcx
-	movl	%r11d, %edx
 	addq	$1, %rax
-	cmpq	%rdx, %rcx
-	jne	.LBB3_13
-# %bb.30:                               # %for_loop90.lr.ph
+	cmpq	%r9, %rcx
+	jne	.LBB3_14
+# %bb.21:                               # %for_test96.preheader
                                         #   in Loop: Header=BB3_12 Depth=2
-	movl	100(%rsp), %r8d         # 4-byte Reload
+	testl	%r11d, %r11d
+	je	.LBB3_27
+# %bb.22:                               # %for_loop98.lr.ph
+                                        #   in Loop: Header=BB3_12 Depth=2
+	movl	80(%rsp), %r8d          # 4-byte Reload
 	vpbroadcastd	%r8d, %zmm0
 	vptestmd	320(%rsp), %zmm0, %k1 # 64-byte Folded Reload
 	vpternlogq	$255, %zmm0, %zmm0, %zmm0 {%k1}{z}
@@ -3100,19 +3192,16 @@ fermat_test512:                            # @fermat_test512
 	kshiftrw	$8, %k1, %k1
 	vpternlogq	$255, %zmm0, %zmm0, %zmm0 {%k1}{z}
 	vpsrlq	$63, %zmm0, %zmm3
-	testl	%r13d, %r13d
-	vmovdqa64	256(%rsp), %zmm12 # 64-byte Reload
-	vmovdqa64	192(%rsp), %zmm13 # 64-byte Reload
-	movq	112(%rsp), %rdi         # 8-byte Reload
-	vpxor	%xmm14, %xmm14, %xmm14
 	vpxor	%xmm0, %xmm0, %xmm0
-	je	.LBB3_31
-# %bb.44:                               # %for_loop90.lr.ph.new
-                                        #   in Loop: Header=BB3_12 Depth=2
 	xorl	%eax, %eax
 	vpxor	%xmm1, %xmm1, %xmm1
+	testl	%r10d, %r10d
+	je	.LBB3_28
+# %bb.23:                               # %for_loop98.lr.ph.new
+                                        #   in Loop: Header=BB3_12 Depth=2
+	movq	112(%rsp), %rdi         # 8-byte Reload
 	.p2align	4, 0x90
-.LBB3_45:                               # %for_loop90
+.LBB3_24:                               # %for_loop98
                                         #   Parent Loop BB3_9 Depth=1
                                         #     Parent Loop BB3_12 Depth=2
                                         # =>    This Inner Loop Header: Depth=3
@@ -3132,7 +3221,7 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm1, %zmm5, %zmm1
 	vpaddq	%zmm0, %zmm4, %zmm0
 	shlq	$7, %rcx
-	kmovw	%r12d, %k0
+	kmovw	%r13d, %k0
 	knotw	%k0, %k1
 	vmovdqa32	%zmm1, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 448(%rsp,%rcx)
@@ -3163,19 +3252,35 @@ fermat_test512:                            # @fermat_test512
 	vpsrlq	$32, %zmm0, %zmm0
 	addl	$2, %eax
 	cmpl	%eax, %ebx
-	jne	.LBB3_45
-# %bb.32:                               # %for_test88.for_test124.preheader_crit_edge.unr-lcssa
+	jne	.LBB3_24
+# %bb.25:                               # %for_test96.for_test132.preheader_crit_edge.unr-lcssa
                                         #   in Loop: Header=BB3_12 Depth=2
 	testb	$1, %r11b
-	leaq	512(%rsp), %r9
-	jne	.LBB3_33
-	jmp	.LBB3_34
+	leaq	512(%rsp), %rdi
+	jne	.LBB3_29
+	jmp	.LBB3_30
 	.p2align	4, 0x90
-.LBB3_31:                               #   in Loop: Header=BB3_12 Depth=2
-	xorl	%eax, %eax
+.LBB3_26:                               #   in Loop: Header=BB3_12 Depth=2
+	vpxor	%xmm0, %xmm0, %xmm0
 	vpxor	%xmm1, %xmm1, %xmm1
-	leaq	512(%rsp), %r9
-.LBB3_33:                               # %for_loop90.epil.preheader
+	vmovdqa64	256(%rsp), %zmm12 # 64-byte Reload
+	vmovdqa64	192(%rsp), %zmm13 # 64-byte Reload
+	movl	80(%rsp), %r8d          # 4-byte Reload
+	vmovdqa64	128(%rsp), %zmm14 # 64-byte Reload
+	movl	84(%rsp), %r10d         # 4-byte Reload
+	leaq	512(%rsp), %rdi
+	vpxor	%xmm15, %xmm15, %xmm15
+	jmp	.LBB3_30
+	.p2align	4, 0x90
+.LBB3_27:                               #   in Loop: Header=BB3_12 Depth=2
+	vpxor	%xmm0, %xmm0, %xmm0
+	vpxor	%xmm1, %xmm1, %xmm1
+	movl	80(%rsp), %r8d          # 4-byte Reload
+	leaq	512(%rsp), %rdi
+	jmp	.LBB3_30
+.LBB3_28:                               #   in Loop: Header=BB3_12 Depth=2
+	leaq	512(%rsp), %rdi
+.LBB3_29:                               # %for_loop98.epil.preheader
                                         #   in Loop: Header=BB3_12 Depth=2
 	movslq	%eax, %rcx
 	movq	%rcx, %rdx
@@ -3193,7 +3298,7 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm0, %zmm2, %zmm0
 	vpaddq	%zmm1, %zmm3, %zmm1
 	shlq	$7, %rax
-	kmovw	%r12d, %k0
+	kmovw	%r13d, %k0
 	knotw	%k0, %k1
 	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
 	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
@@ -3201,45 +3306,48 @@ fermat_test512:                            # @fermat_test512
 	vmovdqa64	%zmm2, 384(%rsp,%rax)
 	vpsrlq	$32, %zmm1, %zmm1
 	vpsrlq	$32, %zmm0, %zmm0
-.LBB3_34:                               # %for_test124.preheader
+.LBB3_30:                               # %for_test132.preheader
                                         #   in Loop: Header=BB3_12 Depth=2
 	vptestmq	%zmm0, %zmm0, %k0
 	vptestmq	%zmm1, %zmm1, %k1
 	kunpckbw	%k0, %k1, %k1
 	kortestw	%k1, %k1
-	je	.LBB3_43
-# %bb.35:                               #   in Loop: Header=BB3_12 Depth=2
+	je	.LBB3_40
+# %bb.31:                               # %for_test146.preheader.lr.ph
+                                        #   in Loop: Header=BB3_12 Depth=2
 	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1}{z}
 	vpmovdb	%zmm2, %xmm2
+	testl	%r11d, %r11d
+	je	.LBB3_39
 	.p2align	4, 0x90
-.LBB3_36:                               # %for_loop140.lr.ph.us
+.LBB3_32:                               # %for_loop148.lr.ph.us
                                         #   Parent Loop BB3_9 Depth=1
                                         #     Parent Loop BB3_12 Depth=2
                                         # =>    This Loop Header: Depth=3
-                                        #         Child Loop BB3_39 Depth 4
-	testl	%r13d, %r13d
-	je	.LBB3_37
-# %bb.38:                               # %for_loop140.lr.ph.us.new
-                                        #   in Loop: Header=BB3_36 Depth=3
+                                        #         Child Loop BB3_34 Depth 4
+	testl	%r10d, %r10d
+	je	.LBB3_36
+# %bb.33:                               # %for_loop148.lr.ph.us.new
+                                        #   in Loop: Header=BB3_32 Depth=3
 	vpxor	%xmm5, %xmm5, %xmm5
 	xorl	%ecx, %ecx
-	movq	%r9, %rdx
+	movq	%rdi, %rdx
 	xorl	%eax, %eax
 	vpxor	%xmm4, %xmm4, %xmm4
 	vpxor	%xmm3, %xmm3, %xmm3
 	.p2align	4, 0x90
-.LBB3_39:                               # %for_loop140.us
+.LBB3_34:                               # %for_loop148.us
                                         #   Parent Loop BB3_9 Depth=1
                                         #     Parent Loop BB3_12 Depth=2
-                                        #       Parent Loop BB3_36 Depth=3
+                                        #       Parent Loop BB3_32 Depth=3
                                         # =>      This Inner Loop Header: Depth=4
-	vpcmpeqb	%xmm14, %xmm2, %xmm6
+	vpcmpeqb	%xmm15, %xmm2, %xmm6
 	movq	%rcx, %rsi
 	sarq	$26, %rsi
 	vmovdqa64	8576(%rsp,%rsi), %zmm7
-	vpsllvd	%zmm12, %zmm7, %zmm8
+	vpsllvd	%zmm13, %zmm7, %zmm8
 	vpmovsxbd	%xmm6, %zmm6
-	vpsrlvd	%zmm13, %zmm7, %zmm7
+	vpsrlvd	%zmm14, %zmm7, %zmm7
 	vptestmd	%zmm6, %zmm6, %k1
 	vpord	%zmm5, %zmm8, %zmm5
 	vextracti64x4	$1, %zmm5, %ymm6
@@ -3253,7 +3361,7 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm4, %zmm5, %zmm4
 	vpsubq	%zmm6, %zmm9, %zmm5
 	vpaddq	%zmm3, %zmm5, %zmm3
-	kmovw	%r12d, %k0
+	kmovw	%r13d, %k0
 	knotw	%k0, %k2
 	vmovdqa32	%zmm4, %zmm5 {%k2}{z}
 	kshiftrw	$8, %k1, %k3
@@ -3264,12 +3372,12 @@ fermat_test512:                            # @fermat_test512
 	vmovdqa64	%zmm5, -128(%rdx)
 	vpsraq	$32, %zmm3, %zmm3
 	vpsraq	$32, %zmm4, %zmm4
-	leaq	(%rcx,%r14), %rsi
+	leaq	(%rcx,%r15), %rsi
 	sarq	$26, %rsi
 	vmovdqa64	8576(%rsp,%rsi), %zmm5
-	vpsllvd	%zmm12, %zmm5, %zmm6
+	vpsllvd	%zmm13, %zmm5, %zmm6
 	vpord	%zmm7, %zmm6, %zmm6
-	vpsrlvd	%zmm13, %zmm5, %zmm5
+	vpsrlvd	%zmm14, %zmm5, %zmm5
 	vpmovzxdq	%ymm6, %zmm7    # zmm7 = ymm6[0],zero,ymm6[1],zero,ymm6[2],zero,ymm6[3],zero,ymm6[4],zero,ymm6[5],zero,ymm6[6],zero,ymm6[7],zero
 	vextracti64x4	$1, %zmm6, %ymm6
 	vpmovzxdq	%ymm6, %zmm6    # zmm6 = ymm6[0],zero,ymm6[1],zero,ymm6[2],zero,ymm6[3],zero,ymm6[4],zero,ymm6[5],zero,ymm6[6],zero,ymm6[7],zero
@@ -3287,23 +3395,23 @@ fermat_test512:                            # @fermat_test512
 	vpsraq	$32, %zmm4, %zmm4
 	addq	$2, %rax
 	addq	$256, %rdx              # imm = 0x100
-	addq	%r15, %rcx
+	addq	%r14, %rcx
 	cmpl	%eax, %ebx
-	jne	.LBB3_39
-# %bb.40:                               # %for_test138.for_exit141_crit_edge.us.unr-lcssa
-                                        #   in Loop: Header=BB3_36 Depth=3
+	jne	.LBB3_34
+# %bb.35:                               # %for_test146.for_exit149_crit_edge.us.unr-lcssa
+                                        #   in Loop: Header=BB3_32 Depth=3
 	testb	$1, %r11b
-	jne	.LBB3_41
-	jmp	.LBB3_42
+	jne	.LBB3_37
+	jmp	.LBB3_38
 	.p2align	4, 0x90
-.LBB3_37:                               #   in Loop: Header=BB3_36 Depth=3
+.LBB3_36:                               #   in Loop: Header=BB3_32 Depth=3
 	vpxor	%xmm4, %xmm4, %xmm4
 	vpxor	%xmm3, %xmm3, %xmm3
 	vpxor	%xmm5, %xmm5, %xmm5
 	xorl	%eax, %eax
-.LBB3_41:                               # %for_loop140.us.epil.preheader
-                                        #   in Loop: Header=BB3_36 Depth=3
-	vpcmpeqb	%xmm14, %xmm2, %xmm6
+.LBB3_37:                               # %for_loop148.us.epil.preheader
+                                        #   in Loop: Header=BB3_32 Depth=3
+	vpcmpeqb	%xmm15, %xmm2, %xmm6
 	vpmovsxbd	%xmm6, %zmm6
 	vptestmd	%zmm6, %zmm6, %k1
 	movq	%rax, %rcx
@@ -3313,7 +3421,7 @@ fermat_test512:                            # @fermat_test512
 	cltq
 	shlq	$6, %rax
 	vmovdqa64	8576(%rsp,%rax), %zmm8
-	vpsllvd	%zmm12, %zmm8, %zmm8
+	vpsllvd	%zmm13, %zmm8, %zmm8
 	vpord	%zmm5, %zmm8, %zmm5
 	vpmovzxdq	%ymm5, %zmm8    # zmm8 = ymm5[0],zero,ymm5[1],zero,ymm5[2],zero,ymm5[3],zero,ymm5[4],zero,ymm5[5],zero,ymm5[6],zero,ymm5[7],zero
 	vextracti64x4	$1, %zmm5, %ymm5
@@ -3322,7 +3430,7 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm3, %zmm5, %zmm3
 	vpsubq	%zmm8, %zmm6, %zmm5
 	vpaddq	%zmm4, %zmm5, %zmm4
-	kmovw	%r12d, %k0
+	kmovw	%r13d, %k0
 	knotw	%k0, %k2
 	vmovdqa32	%zmm3, %zmm5 {%k2}{z}
 	vmovdqa32	%zmm4, %zmm8 {%k2}{z}
@@ -3333,9 +3441,9 @@ fermat_test512:                            # @fermat_test512
 	vmovdqa64	%zmm8, 384(%rsp,%rcx)
 	vpsraq	$32, %zmm3, %zmm3
 	vpsraq	$32, %zmm4, %zmm4
-.LBB3_42:                               # %for_exit141.us
-                                        #   in Loop: Header=BB3_36 Depth=3
-	vpcmpeqb	%xmm14, %xmm2, %xmm5
+.LBB3_38:                               # %for_exit149.us
+                                        #   in Loop: Header=BB3_32 Depth=3
+	vpcmpeqb	%xmm15, %xmm2, %xmm5
 	vpmovsxbd	%xmm5, %zmm5
 	vptestmd	%zmm5, %zmm5, %k0
 	knotw	%k0, %k1
@@ -3351,56 +3459,79 @@ fermat_test512:                            # @fermat_test512
 	vpternlogd	$255, %zmm3, %zmm3, %zmm3 {%k1}{z}
 	vpmovdb	%zmm3, %xmm3
 	vpandn	%xmm2, %xmm3, %xmm2
-	vpcmpeqb	%xmm14, %xmm2, %xmm3
+	vpcmpeqb	%xmm15, %xmm2, %xmm3
 	vpternlogq	$15, %zmm3, %zmm3, %zmm3
 	vpmovsxbd	%xmm3, %zmm3
 	vptestmd	%zmm3, %zmm3, %k0
 	kortestw	%k0, %k0
-	jne	.LBB3_36
-.LBB3_43:                               # %for_exit127
+	jne	.LBB3_32
+	jmp	.LBB3_40
+	.p2align	4, 0x90
+.LBB3_39:                               # %for_exit149
+                                        #   Parent Loop BB3_9 Depth=1
+                                        #     Parent Loop BB3_12 Depth=2
+                                        # =>    This Inner Loop Header: Depth=3
+	vptestnmq	%zmm0, %zmm0, %k0
+	vptestnmq	%zmm1, %zmm1, %k1
+	kunpckbw	%k0, %k1, %k1
+	vpternlogd	$255, %zmm3, %zmm3, %zmm3 {%k1}{z}
+	vpmovdb	%zmm3, %xmm3
+	vpandn	%xmm2, %xmm3, %xmm2
+	vpcmpeqb	%xmm15, %xmm2, %xmm3
+	vpternlogq	$15, %zmm3, %zmm3, %zmm3
+	vpmovsxbd	%xmm3, %zmm3
+	vptestmd	%zmm3, %zmm3, %k0
+	kortestw	%k0, %k0
+	jne	.LBB3_39
+.LBB3_40:                               # %for_exit135
                                         #   in Loop: Header=BB3_12 Depth=2
 	shrl	%r8d
 	jne	.LBB3_12
-# %bb.15:                               # %for_test30.loopexit
+# %bb.41:                               # %for_test34.loopexit
                                         #   in Loop: Header=BB3_9 Depth=1
 	movl	$-2147483648, %r8d      # imm = 0x80000000
 	movq	104(%rsp), %rcx         # 8-byte Reload
 	testq	%rcx, %rcx
 	jg	.LBB3_9
-.LBB3_16:                               # %for_test186.preheader
+.LBB3_42:                               # %for_test194.preheader
+	kxorw	%k0, %k0, %k1
 	testl	%r11d, %r11d
-	je	.LBB3_17
-# %bb.18:                               # %for_loop188.lr.ph
+	je	.LBB3_45
+# %bb.43:                               # %for_loop196.lr.ph
 	leal	-1(%r11), %ecx
 	movl	%r11d, %eax
 	andl	$3, %eax
 	cmpl	$3, %ecx
-	jae	.LBB3_57
-# %bb.19:
+	jae	.LBB3_46
+# %bb.44:
 	xorl	%ecx, %ecx
-	movq	88(%rsp), %r14          # 8-byte Reload
-	kxorw	%k0, %k0, %k1
-	movl	84(%rsp), %r12d         # 4-byte Reload
-	jmp	.LBB3_20
-.LBB3_17:
-	movq	88(%rsp), %r14          # 8-byte Reload
-	kxorw	%k0, %k0, %k1
-	movl	80(%rsp), %r9d          # 4-byte Reload
+	jmp	.LBB3_48
+.LBB3_45:
+	movq	96(%rsp), %r12          # 8-byte Reload
 	kortestw	%k1, %k1
-	jne	.LBB3_65
-	jmp	.LBB3_70
-.LBB3_57:                               # %for_loop188.lr.ph.new
+	je	.LBB3_76
+.LBB3_69:                               # %for_exit264
+	testl	%r11d, %r11d
+	je	.LBB3_76
+# %bb.70:                               # %for_loop298.lr.ph
+	vpbroadcastd	%r12d, %zmm0
+	cmpl	$1, %r11d
+	jne	.LBB3_72
+# %bb.71:
+	vpxor	%xmm3, %xmm3, %xmm3
+	xorl	%eax, %eax
+	vpxor	%xmm4, %xmm4, %xmm4
+	vpxor	%xmm2, %xmm2, %xmm2
+	jmp	.LBB3_75
+.LBB3_46:                               # %for_loop196.lr.ph.new
 	movl	%r11d, %edx
 	subl	%eax, %edx
 	movl	%r11d, %r8d
 	movl	$384, %edi              # imm = 0x180
 	xorl	%ecx, %ecx
 	vpxor	%xmm0, %xmm0, %xmm0
-	movq	88(%rsp), %r14          # 8-byte Reload
-	kxorw	%k0, %k0, %k1
-	movl	84(%rsp), %r12d         # 4-byte Reload
 	.p2align	4, 0x90
-.LBB3_58:                               # %for_loop188
+.LBB3_47:                               # %for_loop196
                                         # =>This Inner Loop Header: Depth=1
 	vmovaps	(%rsp,%rdi), %zmm1
 	vmovaps	64(%rsp,%rdi), %zmm2
@@ -3438,18 +3569,18 @@ fermat_test512:                            # @fermat_test512
 	addq	$4, %rcx
 	addq	$512, %rdi              # imm = 0x200
 	cmpl	%ecx, %edx
-	jne	.LBB3_58
-.LBB3_20:                               # %for_test186.for_test204.preheader_crit_edge.unr-lcssa
+	jne	.LBB3_47
+.LBB3_48:                               # %for_test194.for_test212.preheader_crit_edge.unr-lcssa
 	testl	%eax, %eax
-	vmovdqa64	128(%rsp), %zmm6 # 64-byte Reload
-	je	.LBB3_23
-# %bb.21:                               # %for_loop188.epil.preheader
+	movq	96(%rsp), %r12          # 8-byte Reload
+	je	.LBB3_51
+# %bb.49:                               # %for_loop196.epil.preheader
 	leal	(%r11,%rcx), %edx
 	shlq	$7, %rcx
 	negl	%eax
 	vpxor	%xmm0, %xmm0, %xmm0
 	.p2align	4, 0x90
-.LBB3_22:                               # %for_loop188.epil
+.LBB3_50:                               # %for_loop196.epil
                                         # =>This Inner Loop Header: Depth=1
 	vmovdqa64	384(%rsp,%rcx), %zmm1
 	vmovdqa64	448(%rsp,%rcx), %zmm2
@@ -3462,159 +3593,140 @@ fermat_test512:                            # @fermat_test512
 	addl	$1, %edx
 	subq	$-128, %rcx
 	addl	$1, %eax
-	jne	.LBB3_22
-.LBB3_23:                               # %for_test204.preheader
+	jne	.LBB3_50
+.LBB3_51:                               # %for_test212.preheader
 	testl	%r11d, %r11d
-	je	.LBB3_24
-# %bb.46:                               # %for_loop222.lr.ph.us.preheader
-	leaq	8640(%rsp), %r8
-	movl	%r11d, %eax
-	subl	%r12d, %eax
-	movl	$1, %edx
-	xorl	%esi, %esi
-	movq	%r11, %rcx
-	movw	$-21846, %r11w          # imm = 0xAAAA
-	movq	%rcx, %r15
-	movl	%ecx, %r9d
+	je	.LBB3_68
+# %bb.52:                               # %for_loop230.lr.ph.us.preheader
+	leaq	8640(%rsp), %r9
+	movl	%r11d, %r8d
+	andl	$1, %r8d
+	movl	%r11d, %ecx
+	subl	%r8d, %ecx
+	movl	$1, %esi
+	xorl	%edi, %edi
+	movw	$-21846, %r14w          # imm = 0xAAAA
+	movq	%r11, %r15
+	movl	%r11d, %r10d
 	.p2align	4, 0x90
-.LBB3_47:                               # %for_loop222.lr.ph.us
+.LBB3_53:                               # %for_loop230.lr.ph.us
                                         # =>This Loop Header: Depth=1
-                                        #     Child Loop BB3_50 Depth 2
-	movq	%rsi, %r10
-	shlq	$7, %r10
-	vmovdqa64	12672(%rsp,%r10), %zmm0
-	vmovdqa64	12736(%rsp,%r10), %zmm1
+                                        #     Child Loop BB3_56 Depth 2
+	movq	%rdi, %r11
+	shlq	$7, %r11
+	vmovdqa64	12672(%rsp,%r11), %zmm0
+	vmovdqa64	12736(%rsp,%r11), %zmm1
 	vpmovqd	%zmm0, %ymm0
 	vpmovqd	%zmm1, %ymm1
 	vinserti64x4	$1, %ymm1, %zmm0, %zmm0
-	vpmulld	%zmm0, %zmm6, %zmm1
+	vpmulld	%zmm0, %zmm12, %zmm1
 	vextracti64x4	$1, %zmm1, %ymm0
 	vpmovzxdq	%ymm0, %zmm0    # zmm0 = ymm0[0],zero,ymm0[1],zero,ymm0[2],zero,ymm0[3],zero,ymm0[4],zero,ymm0[5],zero,ymm0[6],zero,ymm0[7],zero
 	vpmovzxdq	%ymm1, %zmm1    # zmm1 = ymm1[0],zero,ymm1[1],zero,ymm1[2],zero,ymm1[3],zero,ymm1[4],zero,ymm1[5],zero,ymm1[6],zero,ymm1[7],zero
 	vpxor	%xmm2, %xmm2, %xmm2
 	cmpl	$1, %r15d
-	jne	.LBB3_49
-# %bb.48:                               #   in Loop: Header=BB3_47 Depth=1
-	vpxor	%xmm3, %xmm3, %xmm3
-	xorl	%ebx, %ebx
-	jmp	.LBB3_52
-	.p2align	4, 0x90
-.LBB3_49:                               # %for_loop222.lr.ph.us.new
-                                        #   in Loop: Header=BB3_47 Depth=1
-	movq	%r8, %rcx
-	xorl	%ebx, %ebx
-	vpxor	%xmm3, %xmm3, %xmm3
-	.p2align	4, 0x90
-.LBB3_50:                               # %for_loop222.us
-                                        #   Parent Loop BB3_47 Depth=1
-                                        # =>  This Inner Loop Header: Depth=2
-	vpmovzxdq	-64(%rcx), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
-	vpmovzxdq	-32(%rcx), %zmm5 # zmm5 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
-	vpmuludq	%zmm0, %zmm5, %zmm5
-	leal	(%rsi,%rbx), %edi
-	shlq	$7, %rdi
-	vpaddq	12736(%rsp,%rdi), %zmm3, %zmm3
-	vpmuludq	%zmm1, %zmm4, %zmm4
-	vpaddq	%zmm5, %zmm3, %zmm3
-	vpaddq	12672(%rsp,%rdi), %zmm2, %zmm2
-	kmovw	%r11d, %k0
-	knotw	%k0, %k1
-	vmovdqa32	%zmm3, %zmm5 {%k1}{z}
-	vmovdqa64	%zmm5, 12736(%rsp,%rdi)
-	vpaddq	%zmm4, %zmm2, %zmm2
-	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
-	vmovdqa64	%zmm4, 12672(%rsp,%rdi)
-	vpsrlq	$32, %zmm3, %zmm3
-	vpmovzxdq	32(%rcx), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
-	vpsrlq	$32, %zmm2, %zmm2
-	vpmovzxdq	(%rcx), %zmm5   # zmm5 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
-	vpmuludq	%zmm1, %zmm5, %zmm5
-	leal	(%rdx,%rbx), %edi
-	shlq	$7, %rdi
-	vpaddq	12672(%rsp,%rdi), %zmm2, %zmm2
-	vpmuludq	%zmm0, %zmm4, %zmm4
-	vpaddq	%zmm5, %zmm2, %zmm2
-	vpaddq	12736(%rsp,%rdi), %zmm3, %zmm3
-	vpaddq	%zmm4, %zmm3, %zmm3
-	vmovdqa32	%zmm3, %zmm4 {%k1}{z}
-	vmovdqa64	%zmm4, 12736(%rsp,%rdi)
-	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
-	vmovdqa64	%zmm4, 12672(%rsp,%rdi)
-	vpsrlq	$32, %zmm3, %zmm3
-	vpsrlq	$32, %zmm2, %zmm2
-	addq	$2, %rbx
-	subq	$-128, %rcx
-	cmpl	%ebx, %eax
-	jne	.LBB3_50
-# %bb.51:                               # %for_test220.for_exit223_crit_edge.us.unr-lcssa
-                                        #   in Loop: Header=BB3_47 Depth=1
-	testb	$1, %r15b
-	je	.LBB3_53
-.LBB3_52:                               # %for_loop222.us.epil.preheader
-                                        #   in Loop: Header=BB3_47 Depth=1
-	movq	%rbx, %rcx
-	shlq	$6, %rcx
-	vpmovzxdq	8608(%rsp,%rcx), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
-	vpmovzxdq	8576(%rsp,%rcx), %zmm5 # zmm5 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
-	vpmuludq	%zmm1, %zmm5, %zmm1
-	vpmuludq	%zmm0, %zmm4, %zmm0
-	addl	%esi, %ebx
-	shlq	$7, %rbx
-	vpaddq	12672(%rsp,%rbx), %zmm2, %zmm2
-	vpaddq	%zmm1, %zmm2, %zmm1
-	vpaddq	12736(%rsp,%rbx), %zmm3, %zmm2
-	vpaddq	%zmm0, %zmm2, %zmm0
-	kmovw	%r11d, %k0
-	knotw	%k0, %k1
-	vmovdqa32	%zmm1, %zmm2 {%k1}{z}
-	vmovdqa32	%zmm0, %zmm3 {%k1}{z}
-	vmovdqa64	%zmm3, 12736(%rsp,%rbx)
-	vmovdqa64	%zmm2, 12672(%rsp,%rbx)
-	vpsrlq	$32, %zmm0, %zmm3
-	vpsrlq	$32, %zmm1, %zmm2
-.LBB3_53:                               # %for_exit223.us
-                                        #   in Loop: Header=BB3_47 Depth=1
-	vmovdqa64	%zmm3, 448(%rsp,%r10)
-	vmovdqa64	%zmm2, 384(%rsp,%r10)
-	addq	$1, %rsi
-	addq	$1, %rdx
-	cmpq	%r9, %rsi
-	kxorw	%k0, %k0, %k1
-	jne	.LBB3_47
-# %bb.54:                               # %for_test253.preheader
-	movq	%r15, %r11
-	testl	%r11d, %r11d
-	movl	80(%rsp), %r9d          # 4-byte Reload
-	je	.LBB3_64
-# %bb.55:                               # %for_loop255.lr.ph
-	cmpl	$1, %r11d
-	jne	.LBB3_59
-# %bb.56:
-	vpxor	%xmm0, %xmm0, %xmm0
-	xorl	%ecx, %ecx
-	vpxor	%xmm1, %xmm1, %xmm1
-	jmp	.LBB3_62
-.LBB3_24:
-	movl	80(%rsp), %r9d          # 4-byte Reload
-.LBB3_64:                               # %for_exit256
-	kortestw	%k1, %k1
-	je	.LBB3_70
-.LBB3_65:                               # %for_exit256
-	testl	%r11d, %r11d
-	je	.LBB3_70
-# %bb.66:                               # %for_loop290.lr.ph
-	vpbroadcastd	%r9d, %zmm0
-	cmpl	$1, %r11d
-	jne	.LBB3_79
-# %bb.67:
+	jne	.LBB3_55
+# %bb.54:                               #   in Loop: Header=BB3_53 Depth=1
 	vpxor	%xmm3, %xmm3, %xmm3
 	xorl	%eax, %eax
-	vpxor	%xmm4, %xmm4, %xmm4
-	vpxor	%xmm2, %xmm2, %xmm2
-	jmp	.LBB3_69
-.LBB3_79:                               # %for_loop290.lr.ph.new
+	jmp	.LBB3_58
+	.p2align	4, 0x90
+.LBB3_55:                               # %for_loop230.lr.ph.us.new
+                                        #   in Loop: Header=BB3_53 Depth=1
+	movq	%r9, %rdx
+	xorl	%eax, %eax
+	vpxor	%xmm3, %xmm3, %xmm3
+	.p2align	4, 0x90
+.LBB3_56:                               # %for_loop230.us
+                                        #   Parent Loop BB3_53 Depth=1
+                                        # =>  This Inner Loop Header: Depth=2
+	vpmovzxdq	-64(%rdx), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
+	vpmovzxdq	-32(%rdx), %zmm5 # zmm5 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
+	vpmuludq	%zmm0, %zmm5, %zmm5
+	leal	(%rdi,%rax), %ebx
+	shlq	$7, %rbx
+	vpaddq	12736(%rsp,%rbx), %zmm3, %zmm3
+	vpmuludq	%zmm1, %zmm4, %zmm4
+	vpaddq	%zmm5, %zmm3, %zmm3
+	vpaddq	12672(%rsp,%rbx), %zmm2, %zmm2
+	kmovw	%r14d, %k0
+	knotw	%k0, %k2
+	vmovdqa32	%zmm3, %zmm5 {%k2}{z}
+	vmovdqa64	%zmm5, 12736(%rsp,%rbx)
+	vpaddq	%zmm4, %zmm2, %zmm2
+	vmovdqa32	%zmm2, %zmm4 {%k2}{z}
+	vmovdqa64	%zmm4, 12672(%rsp,%rbx)
+	vpsrlq	$32, %zmm3, %zmm3
+	vpmovzxdq	32(%rdx), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
+	vpsrlq	$32, %zmm2, %zmm2
+	vpmovzxdq	(%rdx), %zmm5   # zmm5 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
+	vpmuludq	%zmm1, %zmm5, %zmm5
+	leal	(%rsi,%rax), %ebx
+	shlq	$7, %rbx
+	vpaddq	12672(%rsp,%rbx), %zmm2, %zmm2
+	vpmuludq	%zmm0, %zmm4, %zmm4
+	vpaddq	%zmm5, %zmm2, %zmm2
+	vpaddq	12736(%rsp,%rbx), %zmm3, %zmm3
+	vpaddq	%zmm4, %zmm3, %zmm3
+	vmovdqa32	%zmm3, %zmm4 {%k2}{z}
+	vmovdqa64	%zmm4, 12736(%rsp,%rbx)
+	vmovdqa32	%zmm2, %zmm4 {%k2}{z}
+	vmovdqa64	%zmm4, 12672(%rsp,%rbx)
+	vpsrlq	$32, %zmm3, %zmm3
+	vpsrlq	$32, %zmm2, %zmm2
+	addq	$2, %rax
+	subq	$-128, %rdx
+	cmpl	%eax, %ecx
+	jne	.LBB3_56
+# %bb.57:                               # %for_test228.for_exit231_crit_edge.us.unr-lcssa
+                                        #   in Loop: Header=BB3_53 Depth=1
+	testb	$1, %r15b
+	je	.LBB3_59
+.LBB3_58:                               # %for_loop230.us.epil.preheader
+                                        #   in Loop: Header=BB3_53 Depth=1
+	movq	%rax, %rdx
+	shlq	$6, %rdx
+	vpmovzxdq	8608(%rsp,%rdx), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
+	vpmovzxdq	8576(%rsp,%rdx), %zmm5 # zmm5 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
+	vpmuludq	%zmm1, %zmm5, %zmm1
+	vpmuludq	%zmm0, %zmm4, %zmm0
+	addl	%edi, %eax
+	shlq	$7, %rax
+	vpaddq	12672(%rsp,%rax), %zmm2, %zmm2
+	vpaddq	%zmm1, %zmm2, %zmm1
+	vpaddq	12736(%rsp,%rax), %zmm3, %zmm2
+	vpaddq	%zmm0, %zmm2, %zmm0
+	kmovw	%r14d, %k0
+	knotw	%k0, %k2
+	vmovdqa32	%zmm1, %zmm2 {%k2}{z}
+	vmovdqa32	%zmm0, %zmm3 {%k2}{z}
+	vmovdqa64	%zmm3, 12736(%rsp,%rax)
+	vmovdqa64	%zmm2, 12672(%rsp,%rax)
+	vpsrlq	$32, %zmm0, %zmm3
+	vpsrlq	$32, %zmm1, %zmm2
+.LBB3_59:                               # %for_exit231.us
+                                        #   in Loop: Header=BB3_53 Depth=1
+	vmovdqa64	%zmm3, 448(%rsp,%r11)
+	vmovdqa64	%zmm2, 384(%rsp,%r11)
+	addq	$1, %rdi
+	addq	$1, %rsi
+	cmpq	%r10, %rdi
+	jne	.LBB3_53
+# %bb.60:                               # %for_test261.preheader
+	movq	%r15, %r11
+	testl	%r11d, %r11d
+	je	.LBB3_68
+# %bb.61:                               # %for_loop263.lr.ph
+	cmpl	$1, %r11d
+	jne	.LBB3_63
+# %bb.62:
+	vpxor	%xmm0, %xmm0, %xmm0
+	xorl	%eax, %eax
+	vpxor	%xmm1, %xmm1, %xmm1
+	jmp	.LBB3_66
+.LBB3_72:                               # %for_loop298.lr.ph.new
 	movl	$32, %eax
-	subl	%r9d, %eax
+	subl	%r12d, %eax
 	vpbroadcastd	%eax, %zmm1
 	movl	%r11d, %r8d
 	andl	$1, %r8d
@@ -3626,13 +3738,12 @@ fermat_test512:                            # @fermat_test512
 	vpxor	%xmm2, %xmm2, %xmm2
 	xorl	%esi, %esi
 	movw	$-21846, %dx            # imm = 0xAAAA
-	kmovw	%k1, %k3
-	kshiftrw	$8, %k1, %k1
+	kshiftrw	$8, %k1, %k2
 	xorl	%eax, %eax
 	vpxor	%xmm3, %xmm3, %xmm3
 	vpxor	%xmm4, %xmm4, %xmm4
 	.p2align	4, 0x90
-.LBB3_80:                               # %for_loop290
+.LBB3_73:                               # %for_loop298
                                         # =>This Inner Loop Header: Depth=1
 	movq	%rsi, %rcx
 	sarq	$26, %rcx
@@ -3652,12 +3763,12 @@ fermat_test512:                            # @fermat_test512
 	vpsubq	%zmm6, %zmm8, %zmm3
 	vpaddq	%zmm4, %zmm3, %zmm3
 	kmovw	%edx, %k0
-	knotw	%k0, %k2
-	vmovdqa32	%zmm2, %zmm4 {%k2}{z}
-	vmovdqa32	%zmm3, %zmm6 {%k2}{z}
-	vmovdqa64	%zmm6, %zmm8 {%k1}
+	knotw	%k0, %k3
+	vmovdqa32	%zmm2, %zmm4 {%k3}{z}
+	vmovdqa32	%zmm3, %zmm6 {%k3}{z}
+	vmovdqa64	%zmm6, %zmm8 {%k2}
 	vmovdqa64	%zmm8, -64(%rbx)
-	vmovdqa64	%zmm4, %zmm7 {%k3}
+	vmovdqa64	%zmm4, %zmm7 {%k1}
 	vmovdqa64	%zmm7, -128(%rbx)
 	vpsraq	$32, %zmm3, %zmm3
 	vpsraq	$32, %zmm2, %zmm4
@@ -3674,10 +3785,10 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm3, %zmm5, %zmm3
 	vpsubq	%zmm6, %zmm9, %zmm5
 	vpaddq	%zmm4, %zmm5, %zmm5
-	vmovdqa32	%zmm3, %zmm4 {%k2}{z}
-	vmovdqa32	%zmm5, %zmm6 {%k2}{z}
-	vmovdqa64	%zmm6, %zmm9 {%k3}
-	vmovdqa64	%zmm4, %zmm10 {%k1}
+	vmovdqa32	%zmm3, %zmm4 {%k3}{z}
+	vmovdqa32	%zmm5, %zmm6 {%k3}{z}
+	vmovdqa64	%zmm6, %zmm9 {%k1}
+	vmovdqa64	%zmm4, %zmm10 {%k2}
 	vmovdqa64	%zmm10, 64(%rbx)
 	vmovdqa64	%zmm9, (%rbx)
 	vpsraq	$32, %zmm3, %zmm4
@@ -3686,12 +3797,11 @@ fermat_test512:                            # @fermat_test512
 	addq	$256, %rbx              # imm = 0x100
 	addq	%r9, %rsi
 	cmpl	%eax, %edi
-	jne	.LBB3_80
-# %bb.68:                               # %for_test288.safe_if_after_true.loopexit_crit_edge.unr-lcssa
+	jne	.LBB3_73
+# %bb.74:                               # %for_test296.safe_if_after_true.loopexit_crit_edge.unr-lcssa
 	testl	%r8d, %r8d
-	kmovw	%k3, %k1
-	je	.LBB3_70
-.LBB3_69:                               # %for_loop290.epil.preheader
+	je	.LBB3_76
+.LBB3_75:                               # %for_loop298.epil.preheader
 	movq	%rax, %rcx
 	shlq	$7, %rcx
 	vmovdqa64	384(%rsp,%rcx), %zmm1
@@ -3710,16 +3820,97 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm3, %zmm2, %zmm2
 	movw	$-21846, %ax            # imm = 0xAAAA
 	kmovw	%eax, %k0
-	kmovw	%k1, %k2
-	knotw	%k0, %k1
-	vmovdqa32	%zmm0, %zmm0 {%k1}{z}
-	vmovdqa32	%zmm2, %zmm2 {%k1}{z}
-	vmovdqa64	%zmm2, %zmm1 {%k2}
-	kshiftrw	$8, %k2, %k1
+	knotw	%k0, %k2
+	vmovdqa32	%zmm0, %zmm0 {%k2}{z}
+	vmovdqa32	%zmm2, %zmm2 {%k2}{z}
+	vmovdqa64	%zmm2, %zmm1 {%k1}
+	kshiftrw	$8, %k1, %k1
 	vmovdqa64	%zmm0, %zmm5 {%k1}
 	vmovdqa64	%zmm5, 448(%rsp,%rcx)
 	vmovdqa64	%zmm1, 384(%rsp,%rcx)
-.LBB3_70:                               # %safe_if_after_true
+	jmp	.LBB3_76
+.LBB3_63:                               # %for_loop263.lr.ph.new
+	movabsq	$8589934592, %r9        # imm = 0x200000000
+	movabsq	$4294967296, %r10       # imm = 0x100000000
+	leaq	512(%rsp), %rdi
+	vpxor	%xmm0, %xmm0, %xmm0
+	xorl	%edx, %edx
+	movq	%r11, %rsi
+	movw	$-21846, %r11w          # imm = 0xAAAA
+                                        # kill: def $esi killed $esi killed $rsi def $rsi
+	xorl	%eax, %eax
+	vpxor	%xmm1, %xmm1, %xmm1
+	.p2align	4, 0x90
+.LBB3_64:                               # %for_loop263
+                                        # =>This Inner Loop Header: Depth=1
+	movq	%rdx, %rbx
+	sarq	$25, %rbx
+	vpaddq	384(%rsp,%rbx), %zmm0, %zmm0
+	vpaddq	448(%rsp,%rbx), %zmm1, %zmm1
+	movl	%esi, %ebx
+	shlq	$7, %rbx
+	vpaddq	12736(%rsp,%rbx), %zmm1, %zmm1
+	vpaddq	12672(%rsp,%rbx), %zmm0, %zmm0
+	kmovw	%r11d, %k0
+	knotw	%k0, %k1
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
+	vmovdqa64	%zmm2, -128(%rdi)
+	vmovdqa32	%zmm1, %zmm2 {%k1}{z}
+	vmovdqa64	%zmm2, -64(%rdi)
+	vpsrlq	$32, %zmm1, %zmm1
+	vpsrlq	$32, %zmm0, %zmm0
+	leaq	(%rdx,%r10), %rbx
+	sarq	$25, %rbx
+	vpaddq	384(%rsp,%rbx), %zmm0, %zmm0
+	vpaddq	448(%rsp,%rbx), %zmm1, %zmm1
+	leal	1(%rsi), %ebx
+	shlq	$7, %rbx
+	vpaddq	12736(%rsp,%rbx), %zmm1, %zmm1
+	vpaddq	12672(%rsp,%rbx), %zmm0, %zmm0
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
+	vmovdqa64	%zmm3, 64(%rdi)
+	vmovdqa64	%zmm2, (%rdi)
+	vpsrlq	$32, %zmm1, %zmm1
+	vpsrlq	$32, %zmm0, %zmm0
+	addq	$2, %rax
+	addl	$2, %esi
+	addq	$256, %rdi              # imm = 0x100
+	addq	%r9, %rdx
+	cmpl	%eax, %ecx
+	jne	.LBB3_64
+# %bb.65:                               # %for_test261.for_exit264_crit_edge.unr-lcssa
+	testl	%r8d, %r8d
+	movq	%r15, %r11
+	je	.LBB3_67
+.LBB3_66:                               # %for_loop263.epil.preheader
+	movslq	%eax, %rcx
+	movq	%rcx, %rdx
+	shlq	$7, %rdx
+	vpaddq	384(%rsp,%rdx), %zmm0, %zmm0
+	vpaddq	448(%rsp,%rdx), %zmm1, %zmm1
+	addl	%r11d, %ecx
+	shlq	$7, %rcx
+	vpaddq	12736(%rsp,%rcx), %zmm1, %zmm1
+	vpaddq	12672(%rsp,%rcx), %zmm0, %zmm0
+	shlq	$7, %rax
+	movw	$-21846, %cx            # imm = 0xAAAA
+	kmovw	%ecx, %k0
+	knotw	%k0, %k1
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
+	vmovdqa64	%zmm3, 448(%rsp,%rax)
+	vmovdqa64	%zmm2, 384(%rsp,%rax)
+	vpsrlq	$32, %zmm1, %zmm1
+	vpsrlq	$32, %zmm0, %zmm0
+.LBB3_67:                               # %for_test261.for_exit264_crit_edge
+	vptestmq	%zmm0, %zmm0, %k0
+	vptestmq	%zmm1, %zmm1, %k1
+	kunpckbw	%k0, %k1, %k1
+.LBB3_68:                               # %for_exit264
+	kortestw	%k1, %k1
+	jne	.LBB3_69
+.LBB3_76:                               # %safe_if_after_true
 	leal	-1(%r11), %eax
 	shlq	$7, %rax
 	vmovdqa64	384(%rsp,%rax), %zmm0
@@ -3731,8 +3922,8 @@ fermat_test512:                            # @fermat_test512
 	vpmovdb	%zmm0, %xmm1
 	vpcmpeqd	%xmm0, %xmm0, %xmm0
 	kortestw	%k1, %k1
-	je	.LBB3_74
-# %bb.71:                               # %for_test347.preheader
+	je	.LBB3_80
+# %bb.77:                               # %for_test355.preheader
 	movl	%r11d, %eax
 	negl	%eax
 	sbbb	%al, %al
@@ -3745,13 +3936,13 @@ fermat_test512:                            # @fermat_test512
 	vpmovsxbd	%xmm4, %zmm4
 	vptestmd	%zmm4, %zmm4, %k0
 	kortestw	%k0, %k0
-	je	.LBB3_74
-# %bb.72:                               # %for_loop349.preheader
+	je	.LBB3_80
+# %bb.78:                               # %for_loop357.preheader
 	vpcmpeqd	%xmm0, %xmm0, %xmm0
 	vpbroadcastd	.LCPI3_1(%rip), %zmm4 # zmm4 = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 	xorl	%eax, %eax
 	.p2align	4, 0x90
-.LBB3_73:                               # %for_loop349
+.LBB3_79:                               # %for_loop357
                                         # =>This Inner Loop Header: Depth=1
 	movl	%eax, %ecx
 	cltq
@@ -3791,11 +3982,11 @@ fermat_test512:                            # @fermat_test512
 	vptestmd	%zmm4, %zmm4, %k0
 	kortestw	%k0, %k0
 	vmovdqa64	%zmm6, %zmm4
-	jne	.LBB3_73
-.LBB3_74:                               # %safe_if_after_true339
+	jne	.LBB3_79
+.LBB3_80:                               # %safe_if_after_true347
 	kortestw	%k1, %k1
-	jb	.LBB3_78
-# %bb.75:                               # %safe_if_run_false405
+	jb	.LBB3_85
+# %bb.81:                               # %safe_if_run_false413
 	vpbroadcastq	.LCPI3_2(%rip), %zmm2 # zmm2 = [1,1,1,1,1,1,1,1]
 	vpcmpeqq	384(%rsp), %zmm2, %k0
 	vpcmpeqq	448(%rsp), %zmm2, %k1
@@ -3816,12 +4007,13 @@ fermat_test512:                            # @fermat_test512
 	vpmovsxbd	%xmm3, %zmm3
 	vptestmd	%zmm3, %zmm3, %k0
 	kortestw	%k0, %k0
-	je	.LBB3_78
-# %bb.76:                               # %for_loop417.preheader
+	je	.LBB3_85
+# %bb.82:                               # %for_loop425.preheader
 	movl	$1, %eax
 	vpxor	%xmm3, %xmm3, %xmm3
+	movq	88(%rsp), %rdx          # 8-byte Reload
 	.p2align	4, 0x90
-.LBB3_77:                               # %for_loop417
+.LBB3_83:                               # %for_loop425
                                         # =>This Inner Loop Header: Depth=1
 	movl	%eax, %ecx
 	shlq	$7, %rcx
@@ -3847,11 +4039,14 @@ fermat_test512:                            # @fermat_test512
 	vpmovsxbd	%xmm4, %zmm4
 	vptestmd	%zmm4, %zmm4, %k0
 	kortestw	%k0, %k0
-	jne	.LBB3_77
-.LBB3_78:                               # %if_done338
+	jne	.LBB3_83
+	jmp	.LBB3_86
+.LBB3_85:
+	movq	88(%rsp), %rdx          # 8-byte Reload
+.LBB3_86:                               # %if_done346
 	vpand	.LCPI3_3(%rip), %xmm0, %xmm0
 	vpmovzxbd	%xmm0, %zmm0    # zmm0 = xmm0[0],zero,zero,zero,xmm0[1],zero,zero,zero,xmm0[2],zero,zero,zero,xmm0[3],zero,zero,zero,xmm0[4],zero,zero,zero,xmm0[5],zero,zero,zero,xmm0[6],zero,zero,zero,xmm0[7],zero,zero,zero,xmm0[8],zero,zero,zero,xmm0[9],zero,zero,zero,xmm0[10],zero,zero,zero,xmm0[11],zero,zero,zero,xmm0[12],zero,zero,zero,xmm0[13],zero,zero,zero,xmm0[14],zero,zero,zero,xmm0[15],zero,zero,zero
-	vmovdqu64	%zmm0, (%r14)
+	vmovdqu64	%zmm0, (%rdx)
 	leaq	-40(%rbp), %rsp
 	popq	%rbx
 	popq	%r12
@@ -3860,85 +4055,6 @@ fermat_test512:                            # @fermat_test512
 	popq	%r15
 	popq	%rbp
 	retq
-.LBB3_59:                               # %for_loop255.lr.ph.new
-	movabsq	$8589934592, %r8        # imm = 0x200000000
-	movabsq	$4294967296, %r15       # imm = 0x100000000
-	leaq	512(%rsp), %rdi
-	vpxor	%xmm0, %xmm0, %xmm0
-	xorl	%edx, %edx
-	movw	$-21846, %r10w          # imm = 0xAAAA
-	movl	%r11d, %esi
-	xorl	%ecx, %ecx
-	vpxor	%xmm1, %xmm1, %xmm1
-	.p2align	4, 0x90
-.LBB3_60:                               # %for_loop255
-                                        # =>This Inner Loop Header: Depth=1
-	movq	%rdx, %rbx
-	sarq	$25, %rbx
-	vpaddq	384(%rsp,%rbx), %zmm0, %zmm0
-	vpaddq	448(%rsp,%rbx), %zmm1, %zmm1
-	movl	%esi, %ebx
-	shlq	$7, %rbx
-	vpaddq	12736(%rsp,%rbx), %zmm1, %zmm1
-	vpaddq	12672(%rsp,%rbx), %zmm0, %zmm0
-	kmovw	%r10d, %k0
-	knotw	%k0, %k1
-	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
-	vmovdqa64	%zmm2, -128(%rdi)
-	vmovdqa32	%zmm1, %zmm2 {%k1}{z}
-	vmovdqa64	%zmm2, -64(%rdi)
-	vpsrlq	$32, %zmm1, %zmm1
-	vpsrlq	$32, %zmm0, %zmm0
-	leaq	(%rdx,%r15), %rbx
-	sarq	$25, %rbx
-	vpaddq	384(%rsp,%rbx), %zmm0, %zmm0
-	vpaddq	448(%rsp,%rbx), %zmm1, %zmm1
-	leal	1(%rsi), %ebx
-	shlq	$7, %rbx
-	vpaddq	12736(%rsp,%rbx), %zmm1, %zmm1
-	vpaddq	12672(%rsp,%rbx), %zmm0, %zmm0
-	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
-	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
-	vmovdqa64	%zmm3, 64(%rdi)
-	vmovdqa64	%zmm2, (%rdi)
-	vpsrlq	$32, %zmm1, %zmm1
-	vpsrlq	$32, %zmm0, %zmm0
-	addq	$2, %rcx
-	addl	$2, %esi
-	addq	$256, %rdi              # imm = 0x100
-	addq	%r8, %rdx
-	cmpl	%ecx, %eax
-	jne	.LBB3_60
-# %bb.61:                               # %for_test253.for_exit256_crit_edge.unr-lcssa
-	testl	%r12d, %r12d
-	je	.LBB3_63
-.LBB3_62:                               # %for_loop255.epil.preheader
-	movslq	%ecx, %rax
-	movq	%rax, %rdx
-	shlq	$7, %rdx
-	vpaddq	384(%rsp,%rdx), %zmm0, %zmm0
-	vpaddq	448(%rsp,%rdx), %zmm1, %zmm1
-	addl	%r11d, %eax
-	shlq	$7, %rax
-	vpaddq	12736(%rsp,%rax), %zmm1, %zmm1
-	vpaddq	12672(%rsp,%rax), %zmm0, %zmm0
-	shlq	$7, %rcx
-	movw	$-21846, %ax            # imm = 0xAAAA
-	kmovw	%eax, %k0
-	knotw	%k0, %k1
-	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
-	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
-	vmovdqa64	%zmm3, 448(%rsp,%rcx)
-	vmovdqa64	%zmm2, 384(%rsp,%rcx)
-	vpsrlq	$32, %zmm1, %zmm1
-	vpsrlq	$32, %zmm0, %zmm0
-.LBB3_63:                               # %for_test253.for_exit256_crit_edge
-	vptestmq	%zmm0, %zmm0, %k0
-	vptestmq	%zmm1, %zmm1, %k1
-	kunpckbw	%k0, %k1, %k1
-	kortestw	%k1, %k1
-	jne	.LBB3_65
-	jmp	.LBB3_70
 .Lfunc_end3:
 	.size	fermat_test512, .Lfunc_end3-fermat_test512
                                         # -- End function
