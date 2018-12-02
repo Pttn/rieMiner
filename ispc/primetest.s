@@ -226,10 +226,14 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	subl	%r12d, %ebx
 	movq	%r13, %rax
 	shlq	$7, %rax
-	vpblendd	$85, -32(%rsi,%rax), %ymm0, %ymm1 # ymm1 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
-	vpblendd	$85, -64(%rsi,%rax), %ymm0, %ymm2 # ymm2 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
-	vpblendd	$85, -96(%rsi,%rax), %ymm0, %ymm3 # ymm3 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
-	vpblendd	$85, -128(%rsi,%rax), %ymm0, %ymm4 # ymm4 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
+#	vpblendd	$85, -32(%rsi,%rax), %ymm0, %ymm1 # ymm1 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
+#	vpblendd	$85, -64(%rsi,%rax), %ymm0, %ymm2 # ymm2 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
+#	vpblendd	$85, -96(%rsi,%rax), %ymm0, %ymm3 # ymm3 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
+#	vpblendd	$85, -128(%rsi,%rax), %ymm0, %ymm4 # ymm4 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
+    vmovdqa -32(%rsi,%rax), %ymm1
+    vmovdqa -64(%rsi,%rax), %ymm2
+    vmovdqa -96(%rsi,%rax), %ymm3
+    vmovdqa -128(%rsi,%rax), %ymm4
 	leaq	-2(%r13), %rcx
 	testb	$1, %bl
 	jne	.LBB0_13
@@ -305,8 +309,12 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vmovdqa	%ymm9, 128(%rsp,%r10)
 	vpsrlq	$32, %ymm6, %ymm6
 	vpsrlq	$32, %ymm5, %ymm5
-	vpsrlq	$32, %ymm7, %ymm7
-	vpsrlq	$32, %ymm8, %ymm8
+#	vpsrlq	$32, %ymm7, %ymm7
+#	vpsrlq	$32, %ymm8, %ymm8
+	vpsrldq	$4, %ymm7, %ymm7
+	vpsrldq	$4, %ymm8, %ymm8
+	vpblendd	$170, %ymm0, %ymm7, %ymm7
+	vpblendd	$170, %ymm0, %ymm8, %ymm8
 	vpmuludq	(%rbx), %ymm4, %ymm9
 	vpmuludq	32(%rbx), %ymm3, %ymm10
 	vpmuludq	96(%rbx), %ymm1, %ymm11
@@ -331,8 +339,12 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vmovdqa	%ymm9, 128(%rsp,%rdx)
 	vpsrlq	$32, %ymm5, %ymm5
 	vpsrlq	$32, %ymm6, %ymm6
-	vpsrlq	$32, %ymm7, %ymm7
-	vpsrlq	$32, %ymm8, %ymm8
+#	vpsrlq	$32, %ymm7, %ymm7
+#	vpsrlq	$32, %ymm8, %ymm8
+	vpsrldq	$4, %ymm7, %ymm7
+	vpsrldq	$4, %ymm8, %ymm8
+	vpblendd	$170, %ymm0, %ymm7, %ymm7
+	vpblendd	$170, %ymm0, %ymm8, %ymm8
 	addq	$2, %r8
 	addq	$256, %rbx              # imm = 0x100
 	addq	$-2, %rax
@@ -397,17 +409,21 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vpaddq	%ymm6, %ymm1, %ymm1
 	vpsrlq	$32, %ymm2, %ymm2
 	vpaddq	%ymm8, %ymm2, %ymm2
-	vpaddq	%ymm13, %ymm13, %ymm6
-	vpaddq	%ymm11, %ymm11, %ymm7
-	vpaddq	%ymm10, %ymm10, %ymm8
-	vpaddq	%ymm12, %ymm12, %ymm9
-	vpand	%ymm5, %ymm9, %ymm9
+#	vpaddq	%ymm13, %ymm13, %ymm6
+#	vpaddq	%ymm11, %ymm11, %ymm7
+#	vpaddq	%ymm10, %ymm10, %ymm8
+#	vpaddq	%ymm12, %ymm12, %ymm9
+	vpaddd	%ymm13, %ymm13, %ymm6
+	vpaddd	%ymm11, %ymm11, %ymm7
+	vpaddd	%ymm10, %ymm10, %ymm8
+	vpaddd	%ymm12, %ymm12, %ymm9
+#	vpand	%ymm5, %ymm9, %ymm9
 	vpaddq	%ymm9, %ymm2, %ymm2
-	vpand	%ymm5, %ymm8, %ymm8
+#	vpand	%ymm5, %ymm8, %ymm8
 	vpaddq	%ymm8, %ymm1, %ymm1
-	vpand	%ymm5, %ymm7, %ymm7
+#	vpand	%ymm5, %ymm7, %ymm7
 	vpaddq	%ymm7, %ymm3, %ymm3
-	vpand	%ymm5, %ymm6, %ymm6
+#	vpand	%ymm5, %ymm6, %ymm6
 	vpaddq	%ymm6, %ymm0, %ymm0
 	leal	1(%rax), %ecx
 	shlq	$7, %rcx
@@ -419,22 +435,30 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vmovdqu	%ymm6, (%rdi,%rcx)
 	vpblendd	$170, %ymm4, %ymm2, %ymm6 # ymm6 = ymm2[0],ymm4[1],ymm2[2],ymm4[3],ymm2[4],ymm4[5],ymm2[6],ymm4[7]
 	vmovdqu	%ymm6, 64(%rdi,%rcx)
-	vpsrlq	$31, %ymm10, %ymm6
-	vpsrlq	$31, %ymm11, %ymm7
-	vpsrlq	$31, %ymm12, %ymm8
-	vpsrlq	$31, %ymm13, %ymm9
-	vpsrlq	$32, %ymm1, %ymm1
-	vpaddq	%ymm6, %ymm1, %ymm10
-	vpsrlq	$32, %ymm3, %ymm1
-	vpaddq	%ymm7, %ymm1, %ymm11
-	vpsrlq	$32, %ymm2, %ymm1
-	vpaddq	%ymm8, %ymm1, %ymm12
-	vpsrlq	$32, %ymm0, %ymm0
-	vpblendd	$85, 96(%rsi), %ymm4, %ymm6 # ymm6 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
-	vpblendd	$85, 64(%rsi), %ymm4, %ymm2 # ymm2 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
-	vpblendd	$85, 32(%rsi), %ymm4, %ymm3 # ymm3 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
-	vpaddq	%ymm9, %ymm0, %ymm13
-	vpblendd	$85, (%rsi), %ymm4, %ymm0 # ymm0 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
+	vpsllq	$1, %ymm10, %ymm6
+	vpsllq	$1, %ymm11, %ymm7
+	vpsllq	$1, %ymm12, %ymm8
+	vpsllq	$1, %ymm13, %ymm9
+	vpaddd	%ymm6, %ymm1, %ymm6
+	vpaddd	%ymm7, %ymm3, %ymm7
+	vpaddd	%ymm8, %ymm2, %ymm8
+	vpaddd	%ymm9, %ymm0, %ymm9
+	vpsrlq	$32, %ymm6, %ymm10
+	vpsrlq	$32, %ymm7, %ymm11
+#	vpsrlq	$32, %ymm8, %ymm12
+#	vpsrlq	$32, %ymm9, %ymm13
+	vpsrldq	$4, %ymm8, %ymm12
+	vpsrldq	$4, %ymm9, %ymm13
+	vpblendd	$170, %ymm4, %ymm12, %ymm12
+	vpblendd	$170, %ymm4, %ymm13, %ymm13
+#	vpblendd	$85, 96(%rsi), %ymm4, %ymm6 # ymm6 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
+#	vpblendd	$85, 64(%rsi), %ymm4, %ymm2 # ymm2 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
+#	vpblendd	$85, 32(%rsi), %ymm4, %ymm3 # ymm3 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
+#	vpblendd	$85, (%rsi), %ymm4, %ymm0 # ymm0 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
+    vmovdqa  (%rsi), %ymm0
+    vmovdqa  32(%rsi), %ymm3
+    vmovdqa  64(%rsi), %ymm2
+    vmovdqa  96(%rsi), %ymm6
 	vpmuludq	%ymm0, %ymm0, %ymm1
 	vpmuludq	%ymm3, %ymm3, %ymm3
 	vpmuludq	%ymm2, %ymm2, %ymm2
@@ -443,21 +467,17 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vmovdqa	160(%rsp,%rcx), %ymm7
 	vmovdqa	192(%rsp,%rcx), %ymm8
 	vmovdqa	224(%rsp,%rcx), %ymm9
-	vpaddq	%ymm6, %ymm6, %ymm14
-	vpand	%ymm5, %ymm14, %ymm14
+	vpaddd	%ymm6, %ymm6, %ymm14
 	vpaddq	%ymm14, %ymm10, %ymm10
 	vpblendd	$170, %ymm4, %ymm1, %ymm14 # ymm14 = ymm1[0],ymm4[1],ymm1[2],ymm4[3],ymm1[4],ymm4[5],ymm1[6],ymm4[7]
 	vpaddq	%ymm10, %ymm14, %ymm10
-	vpaddq	%ymm7, %ymm7, %ymm14
-	vpand	%ymm5, %ymm14, %ymm14
+	vpaddd	%ymm7, %ymm7, %ymm14
 	vpaddq	%ymm14, %ymm11, %ymm11
 	vpblendd	$170, %ymm4, %ymm3, %ymm14 # ymm14 = ymm3[0],ymm4[1],ymm3[2],ymm4[3],ymm3[4],ymm4[5],ymm3[6],ymm4[7]
 	vpaddq	%ymm11, %ymm14, %ymm11
-	vpaddq	%ymm8, %ymm8, %ymm14
-	vpand	%ymm5, %ymm14, %ymm14
+	vpaddd	%ymm8, %ymm8, %ymm14
 	vpaddq	%ymm14, %ymm12, %ymm12
-	vpaddq	%ymm9, %ymm9, %ymm14
-	vpand	%ymm5, %ymm14, %ymm14
+	vpaddd	%ymm9, %ymm9, %ymm14
 	vpaddq	%ymm14, %ymm13, %ymm13
 	vpblendd	$170, %ymm4, %ymm0, %ymm14 # ymm14 = ymm0[0],ymm4[1],ymm0[2],ymm4[3],ymm0[4],ymm4[5],ymm0[6],ymm4[7]
 	vpaddq	%ymm13, %ymm14, %ymm13
@@ -474,18 +494,22 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vmovdqu	%ymm14, 32(%rdi,%rcx)
 	vpblendd	$170, %ymm4, %ymm10, %ymm14 # ymm14 = ymm10[0],ymm4[1],ymm10[2],ymm4[3],ymm10[4],ymm4[5],ymm10[6],ymm4[7]
 	vmovdqu	%ymm14, (%rdi,%rcx)
-	vpsrlq	$31, %ymm6, %ymm6
-	vpsrlq	$32, %ymm10, %ymm10
-	vpaddq	%ymm6, %ymm10, %ymm6
-	vpsrlq	$31, %ymm7, %ymm7
-	vpsrlq	$32, %ymm11, %ymm10
-	vpaddq	%ymm7, %ymm10, %ymm7
-	vpsrlq	$31, %ymm8, %ymm8
-	vpsrlq	$32, %ymm12, %ymm10
-	vpaddq	%ymm8, %ymm10, %ymm8
-	vpsrlq	$31, %ymm9, %ymm9
-	vpsrlq	$32, %ymm13, %ymm10
-	vpaddq	%ymm9, %ymm10, %ymm9
+	vpsllq	$1, %ymm6, %ymm6
+	vpsllq	$1, %ymm7, %ymm7
+	vpsllq	$1, %ymm8, %ymm8
+	vpsllq	$1, %ymm9, %ymm9
+	vpaddd	%ymm6, %ymm10, %ymm6
+	vpaddd	%ymm7, %ymm11, %ymm7
+	vpaddd	%ymm8, %ymm12, %ymm8
+	vpaddd	%ymm9, %ymm13, %ymm9
+	vpsrlq	$32, %ymm6, %ymm6
+	vpsrlq	$32, %ymm7, %ymm7
+#	vpsrlq	$32, %ymm8, %ymm8
+#	vpsrlq	$32, %ymm9, %ymm9
+	vpsrldq	$4, %ymm8, %ymm8
+	vpsrldq	$4, %ymm9, %ymm9
+	vpblendd	$170, %ymm4, %ymm8, %ymm8
+	vpblendd	$170, %ymm4, %ymm9, %ymm9
 	subq	$-128, %rsi
 	cmpq	%rax, %r9
 	jne	.LBB0_21
