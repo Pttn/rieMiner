@@ -3,8 +3,6 @@
 	.section	.rodata.cst8,"aM",@progbits,8
 	.p2align	3               # -- Begin function squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu
 .LCPI0_0:
-	.quad	1                       # 0x1
-.LCPI0_1:
 	.quad	4294967294              # 0xfffffffe
 	.text
 	.p2align	4, 0x90
@@ -441,87 +439,82 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vmovdqu64	%zmm1, 64(%rdi,%rax)
 	vmovdqu64	%zmm0, (%rdi,%rax)
 .LBB0_23:                               # %for_test107.preheader
-	vpxor	%xmm2, %xmm2, %xmm2
+	vpxor	%xmm1, %xmm1, %xmm1
 	testl	%r11d, %r11d
 	je	.LBB0_24
 # %bb.27:                               # %for_loop109.preheader
 	movl	$1, %eax
-	vpbroadcastq	.LCPI0_0(%rip), %zmm0 # zmm0 = [1,1,1,1,1,1,1,1]
-	vpbroadcastq	.LCPI0_1(%rip), %zmm1 # zmm1 = [4294967294,4294967294,4294967294,4294967294,4294967294,4294967294,4294967294,4294967294]
+	vpbroadcastq	.LCPI0_0(%rip), %zmm0 # zmm0 = [4294967294,4294967294,4294967294,4294967294,4294967294,4294967294,4294967294,4294967294]
 	movw	$-21846, %cx            # imm = 0xAAAA
-	vpxor	%xmm3, %xmm3, %xmm3
+	vpxor	%xmm2, %xmm2, %xmm2
 	.p2align	4, 0x90
 .LBB0_28:                               # %for_loop109
                                         # =>This Inner Loop Header: Depth=1
 	leal	-1(%rax), %esi
 	shlq	$7, %rsi
-	vmovdqa64	128(%rsp,%rsi), %zmm4
-	vmovdqa64	192(%rsp,%rsi), %zmm5
+	vmovdqa64	128(%rsp,%rsi), %zmm3
+	vmovdqa64	192(%rsp,%rsi), %zmm4
 	movl	%eax, %ebx
 	cltq
 	movq	%rax, %rsi
 	shlq	$7, %rsi
-	vpaddq	64(%rdi,%rsi), %zmm3, %zmm3
-	vpaddq	(%rdi,%rsi), %zmm2, %zmm2
+	vpaddq	64(%rdi,%rsi), %zmm2, %zmm2
+	vpaddq	(%rdi,%rsi), %zmm1, %zmm1
+	vpaddq	%zmm3, %zmm3, %zmm5
 	vpaddq	%zmm4, %zmm4, %zmm6
-	vpaddq	%zmm5, %zmm5, %zmm7
-	vpandq	%zmm1, %zmm7, %zmm7
-	vpaddq	%zmm7, %zmm3, %zmm3
-	vpandq	%zmm1, %zmm6, %zmm6
+	vpandq	%zmm0, %zmm6, %zmm6
+	vpaddq	%zmm6, %zmm2, %zmm2
+	vpandq	%zmm0, %zmm5, %zmm5
 	shlq	$7, %rbx
 	kmovw	%ecx, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm3, %zmm7 {%k1}{z}
-	vmovdqu64	%zmm7, 64(%rdi,%rbx)
-	vpaddq	%zmm6, %zmm2, %zmm2
 	vmovdqa32	%zmm2, %zmm6 {%k1}{z}
-	vmovdqu64	%zmm6, (%rdi,%rbx)
-	vpsrlq	$31, %zmm5, %zmm5
+	vmovdqu64	%zmm6, 64(%rdi,%rbx)
+	vpaddq	%zmm5, %zmm1, %zmm1
+	vmovdqa32	%zmm1, %zmm5 {%k1}{z}
+	vmovdqu64	%zmm5, (%rdi,%rbx)
+	vpsrlq	$31, %zmm3, %zmm3
 	vpsrlq	$31, %zmm4, %zmm4
-	vpandq	%zmm0, %zmm4, %zmm4
-	vpandq	%zmm0, %zmm5, %zmm5
-	vpsrlq	$32, %zmm3, %zmm3
 	vpsrlq	$32, %zmm2, %zmm2
-	vmovdqa64	128(%rsp,%rbx), %zmm6
-	vmovdqa64	192(%rsp,%rbx), %zmm7
+	vpsrlq	$32, %zmm1, %zmm1
+	vmovdqa64	128(%rsp,%rbx), %zmm5
+	vmovdqa64	192(%rsp,%rbx), %zmm6
 	leal	1(%rax), %ebx
 	movslq	%ebx, %rsi
 	shlq	$7, %rsi
-	vpaddq	%zmm7, %zmm7, %zmm8
-	vpaddq	%zmm6, %zmm6, %zmm9
-	vpandq	%zmm1, %zmm9, %zmm9
-	vpaddq	%zmm9, %zmm2, %zmm2
-	vpandq	%zmm1, %zmm8, %zmm8
-	vpaddq	%zmm8, %zmm3, %zmm3
-	vpaddq	64(%rdi,%rsi), %zmm5, %zmm5
-	vpaddq	%zmm3, %zmm5, %zmm3
-	vpaddq	(%rdi,%rsi), %zmm4, %zmm4
+	vpaddq	%zmm6, %zmm6, %zmm7
+	vpaddq	%zmm5, %zmm5, %zmm8
+	vpandq	%zmm0, %zmm8, %zmm8
+	vpaddq	%zmm8, %zmm1, %zmm1
+	vpandq	%zmm0, %zmm7, %zmm7
+	vpaddq	64(%rdi,%rsi), %zmm4, %zmm4
+	vpaddq	%zmm7, %zmm2, %zmm2
 	vpaddq	%zmm2, %zmm4, %zmm2
+	vpaddq	(%rdi,%rsi), %zmm3, %zmm3
+	vpaddq	%zmm1, %zmm3, %zmm1
 	shlq	$7, %rbx
+	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
 	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
-	vmovdqa32	%zmm3, %zmm5 {%k1}{z}
-	vmovdqu64	%zmm5, 64(%rdi,%rbx)
-	vmovdqu64	%zmm4, (%rdi,%rbx)
-	vpsrlq	$31, %zmm7, %zmm4
-	vpsrlq	$31, %zmm6, %zmm5
-	vpandq	%zmm0, %zmm5, %zmm5
-	vpandq	%zmm0, %zmm4, %zmm4
+	vmovdqu64	%zmm4, 64(%rdi,%rbx)
+	vmovdqu64	%zmm3, (%rdi,%rbx)
+	vpsrlq	$31, %zmm5, %zmm3
+	vpsrlq	$31, %zmm6, %zmm4
+	vpsrlq	$32, %zmm1, %zmm1
+	vpaddq	%zmm3, %zmm1, %zmm1
 	vpsrlq	$32, %zmm2, %zmm2
-	vpaddq	%zmm5, %zmm2, %zmm2
-	vpsrlq	$32, %zmm3, %zmm3
-	vpaddq	%zmm4, %zmm3, %zmm3
+	vpaddq	%zmm4, %zmm2, %zmm2
 	addl	$2, %eax
 	addq	$-1, %r15
 	jne	.LBB0_28
 	jmp	.LBB0_29
 .LBB0_24:
-	vpxor	%xmm3, %xmm3, %xmm3
+	vpxor	%xmm2, %xmm2, %xmm2
 .LBB0_29:                               # %for_exit110
 	leal	(%rdx,%rdx), %eax
 	addl	$-1, %eax
 	shlq	$7, %rax
-	vpaddq	(%rdi,%rax), %zmm2, %zmm0
-	vpaddq	64(%rdi,%rax), %zmm3, %zmm1
+	vpaddq	(%rdi,%rax), %zmm1, %zmm0
+	vpaddq	64(%rdi,%rax), %zmm2, %zmm1
 	vmovdqu64	%zmm1, 64(%rdi,%rax)
 	vmovdqu64	%zmm0, (%rdi,%rax)
 	leaq	-40(%rbp), %rsp

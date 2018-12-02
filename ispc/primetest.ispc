@@ -6,8 +6,6 @@ typedef int64 long;
 
 static unmasked void squareSimple(varying ulong* uniform P, varying const ulong* uniform R, uniform uint N_Size)
 {
-	const ulong highbit = ((ulong)1) << 31;
-
 	ulong T[(MAX_N_SIZE - 1) * 2];
 
 	{
@@ -47,15 +45,15 @@ static unmasked void squareSimple(varying ulong* uniform P, varying const ulong*
 	ulong cy = 0;
 	for (uniform uint i = 0; i < N_Size - 1; ++i)
 	{
-		ulong t = T[2 * i] & highbit;
+		ulong t = T[2 * i];
 		ulong a = P[2 * i + 1] + cy;
-		a += (uint)T[2 * i] << 1;
+		a += (uint)t << 1;
 		P[2 * i + 1] = (uint)a;
 		cy = (t >> 31) + (a >> 32);
 
-		t = T[2 * i + 1] & highbit;
+		t = T[2 * i + 1];
 		a = P[2 * i + 2] + cy;
-		a += (uint)T[2 * i + 1] << 1;
+		a += (uint)t << 1;
 		P[2 * i + 2] = (uint)a;
 		cy = (t >> 31) + (a >> 32);
 	}
@@ -265,7 +263,6 @@ export void fermat_test(uniform uint M_in[], uniform uint Mi_in[], uniform uint 
 		{
 			{
 				ulong P[MAX_N_SIZE * 2];
-				uint PInt[MAX_N_SIZE * 2];
 				//mpn_sqr(pp, rp, mn);
 				//squareSimple(P, R, N_Size);
 				toom2SquareFull(P, R, N_Size);
