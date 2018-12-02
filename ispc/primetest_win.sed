@@ -3,7 +3,7 @@
 /^\t\.size/s/.*//
 /^\t\.section\t\"/s/.*//
 /^\t\.section\t.rodata/s/.*/\t\.section\t\.rodata/
-/^fermat_test:/s/\(.*\)/\1\
+/^fermat_test\(512\)\?:/s/\(.*\)/\1\
 	push	%rdi\
 	push	%rsi\
 	mov	%rcx, %rdi\
