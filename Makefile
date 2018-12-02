@@ -1,4 +1,4 @@
-CXX    = g++
+cxx    = G++
 M4     = m4
 AS     = as
 SED    = sed
@@ -21,7 +21,7 @@ release: rieMiner
 debug: CFLAGS += -g
 debug: rieMiner
 
-rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o WorkManager.cpp Stats.cpp tools.o CpuID.o mod_1_4.o mod_1_2_avx.o fermat.o primetest.o
+rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o WorkManager.cpp Stats.cpp tools.o CpuID.o mod_1_4.o mod_1_2_avx.o fermat.o primetest.o primetest512.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
 main.o: main.cpp main.hpp Miner.hpp StratumClient.hpp GBTClient.hpp Client.hpp WorkManager.hpp Stats.hpp tools.hpp tsQueue.hpp
@@ -77,9 +77,17 @@ primetest.o: ispc/primetest.s ispc/primetest_win.sed
 	$(SED) -f ispc/primetest_win.sed <ispc/primetest.s >primetest_win.s
 	$(AS) primetest_win.s -o primetest.o
 	rm primetest_win.s
+
+primetest512.o: ispc/primetest512.s ispc/primetest_win.sed
+	$(SED) -f ispc/primetest_win.sed <ispc/primetest512.s >primetest512_win.s
+	$(AS) primetest512_win.s -o primetest512.o
+	rm primetest512_win.s
 else
 primetest.o: ispc/primetest.s
 	$(AS) ispc/primetest.s -o primetest.o
+
+primetest512.o: ispc/primetest512.s
+	$(AS) ispc/primetest512.s -o primetest512.o
 endif
 
 clean:

@@ -5,6 +5,7 @@
 #include <limits.h>
 
 #include "primetest.h"
+#include "primetest512.h"
 
 #include "prime-gmp.h"
 
@@ -104,7 +105,7 @@ static uint32_t setup_fermat(uint32_t N_Size, int num, const mp_limb_t* M, mp_li
 #define DPRINTF(fmt, ...) do { } while(0)
 #endif
 
-void fermatTest(int N_Size, int listSize, uint32_t* M, uint32_t* is_prime)
+void fermatTest(int N_Size, int listSize, uint32_t* M, uint32_t* is_prime, bool use_avx512)
 {
 	// Because of the way the ISPC code uses the stack, we must ensure
 	// enough stack is paged in before running the test.
@@ -131,7 +132,8 @@ void fermatTest(int N_Size, int listSize, uint32_t* M, uint32_t* is_prime)
 	while (listSize > 0)
 	{
 		uint32_t shift = setup_fermat(N_Size, JOB_SIZE, M, MI, R);
-		ispc::fermat_test(M, MI, R, is_prime, N_Size, shift);
+		if (use_avx512) ispc::fermat_test512(M, MI, R, is_prime, N_Size, shift);
+		else ispc::fermat_test(M, MI, R, is_prime, N_Size, shift);
 		M += JOB_SIZE*N_Size;
 		is_prime += JOB_SIZE;
 		listSize -= JOB_SIZE;

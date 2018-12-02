@@ -586,7 +586,7 @@ bool Miner::_testPrimesIspc(uint32_t indexes[WORK_INDEXES], uint32_t is_prime[WO
 		mp += N_Size;
 	}
 
-	fermatTest(N_Size, WORK_INDEXES, M, is_prime);
+	fermatTest(N_Size, WORK_INDEXES, M, is_prime, _cpuInfo.hasAVX512());
 	return true;
 }
 
