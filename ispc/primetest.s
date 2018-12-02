@@ -19,184 +19,196 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	andq	$-128, %rsp
 	subq	$16384, %rsp            # imm = 0x4000
                                         # kill: def $edx killed $edx def $rdx
-	movl	%edx, %r11d
-	addl	$-1, %r11d
+	movl	%edx, %r8d
+	addl	$-1, %r8d
 	je	.LBB0_1
-# %bb.3:                                # %for_loop.lr.ph
+# %bb.2:                                # %for_loop.lr.ph
 	vpxor	%xmm4, %xmm4, %xmm4
 	vpblendd	$85, 96(%rsi), %ymm4, %ymm0 # ymm0 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
 	vpblendd	$85, 64(%rsi), %ymm4, %ymm1 # ymm1 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
 	vpblendd	$85, 32(%rsi), %ymm4, %ymm2 # ymm2 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
 	vpblendd	$85, (%rsi), %ymm4, %ymm3 # ymm3 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
-	leal	-2(%rdx), %r14d
-	movl	%r11d, %ecx
-	andl	$3, %ecx
-	cmpl	$3, %r14d
-	jae	.LBB0_5
-# %bb.4:
-	xorl	%eax, %eax
+	leal	-2(%rdx), %r15d
+	movl	%r8d, %eax
+	andl	$3, %eax
+	cmpl	$3, %r15d
+	jae	.LBB0_4
+# %bb.3:
+	xorl	%ebx, %ebx
 	vpxor	%xmm6, %xmm6, %xmm6
 	vpxor	%xmm7, %xmm7, %xmm7
 	vpxor	%xmm8, %xmm8, %xmm8
-	testl	%ecx, %ecx
-	jne	.LBB0_8
-	jmp	.LBB0_10
-.LBB0_1:                                # %for_loop75.lr.ph.thread
-	movl	%r11d, %eax
+	testl	%eax, %eax
+	jne	.LBB0_7
+	jmp	.LBB0_9
+.LBB0_1:                                # %for_exit24.thread
+	movl	%r8d, %eax
 	shlq	$7, %rax
-	vpxor	%xmm0, %xmm0, %xmm0
-	vmovdqa	%ymm0, 224(%rsp,%rax)
-	vmovdqa	%ymm0, 192(%rsp,%rax)
-	vmovdqa	%ymm0, 160(%rsp,%rax)
-	vmovdqa	%ymm0, 128(%rsp,%rax)
-	movl	%edx, %r8d
-	andl	$1, %r8d
-	xorl	%r15d, %r15d
-	xorl	%r10d, %r10d
-	jmp	.LBB0_2
-.LBB0_5:                                # %for_loop.lr.ph.new
-	movl	%r11d, %r9d
-	subl	%ecx, %r9d
+	vpxor	%xmm6, %xmm6, %xmm6
+	vmovdqa	%ymm6, 224(%rsp,%rax)
+	vmovdqa	%ymm6, 192(%rsp,%rax)
+	vmovdqa	%ymm6, 160(%rsp,%rax)
+	vmovdqa	%ymm6, 128(%rsp,%rax)
+	vpblendd	$85, (%rsi), %ymm6, %ymm1 # ymm1 = mem[0],ymm6[1],mem[2],ymm6[3],mem[4],ymm6[5],mem[6],ymm6[7]
+	vpblendd	$85, 32(%rsi), %ymm6, %ymm3 # ymm3 = mem[0],ymm6[1],mem[2],ymm6[3],mem[4],ymm6[5],mem[6],ymm6[7]
+	vpblendd	$85, 64(%rsi), %ymm6, %ymm2 # ymm2 = mem[0],ymm6[1],mem[2],ymm6[3],mem[4],ymm6[5],mem[6],ymm6[7]
+	vpblendd	$85, 96(%rsi), %ymm6, %ymm0 # ymm0 = mem[0],ymm6[1],mem[2],ymm6[3],mem[4],ymm6[5],mem[6],ymm6[7]
+	vpmuludq	%ymm0, %ymm0, %ymm0
+	vpmuludq	%ymm2, %ymm2, %ymm2
+	vpmuludq	%ymm3, %ymm3, %ymm3
+	vpmuludq	%ymm1, %ymm1, %ymm1
+	vpblendd	$170, %ymm6, %ymm1, %ymm4 # ymm4 = ymm1[0],ymm6[1],ymm1[2],ymm6[3],ymm1[4],ymm6[5],ymm1[6],ymm6[7]
+	vpblendd	$170, %ymm6, %ymm3, %ymm5 # ymm5 = ymm3[0],ymm6[1],ymm3[2],ymm6[3],ymm3[4],ymm6[5],ymm3[6],ymm6[7]
+	vpblendd	$170, %ymm6, %ymm2, %ymm7 # ymm7 = ymm2[0],ymm6[1],ymm2[2],ymm6[3],ymm2[4],ymm6[5],ymm2[6],ymm6[7]
+	vpblendd	$170, %ymm6, %ymm0, %ymm8 # ymm8 = ymm0[0],ymm6[1],ymm0[2],ymm6[3],ymm0[4],ymm6[5],ymm0[6],ymm6[7]
+	vmovdqu	%ymm8, 96(%rdi)
+	vmovdqu	%ymm7, 64(%rdi)
+	vmovdqu	%ymm5, 32(%rdi)
+	vmovdqu	%ymm4, (%rdi)
+	jmp	.LBB0_19
+.LBB0_4:                                # %for_loop.lr.ph.new
+	movl	%r8d, %r9d
+	subl	%eax, %r9d
 	vpxor	%xmm5, %xmm5, %xmm5
-	movl	$384, %ebx              # imm = 0x180
-	xorl	%eax, %eax
+	movl	$384, %ecx              # imm = 0x180
+	xorl	%ebx, %ebx
 	vpxor	%xmm4, %xmm4, %xmm4
 	vpxor	%xmm6, %xmm6, %xmm6
 	vpxor	%xmm7, %xmm7, %xmm7
 	vpxor	%xmm8, %xmm8, %xmm8
 	.p2align	4, 0x90
-.LBB0_6:                                # %for_loop
+.LBB0_5:                                # %for_loop
                                         # =>This Inner Loop Header: Depth=1
-	vpmuludq	-160(%rsi,%rbx), %ymm0, %ymm9
-	vpmuludq	-192(%rsi,%rbx), %ymm1, %ymm10
+	vpmuludq	-160(%rsi,%rcx), %ymm0, %ymm9
+	vpmuludq	-192(%rsi,%rcx), %ymm1, %ymm10
 	vpaddq	%ymm8, %ymm9, %ymm8
 	vpaddq	%ymm7, %ymm10, %ymm7
-	vpmuludq	-256(%rsi,%rbx), %ymm3, %ymm9
+	vpmuludq	-256(%rsi,%rcx), %ymm3, %ymm9
 	vpaddq	%ymm4, %ymm9, %ymm4
-	vpmuludq	-224(%rsi,%rbx), %ymm2, %ymm9
+	vpmuludq	-224(%rsi,%rcx), %ymm2, %ymm9
 	vpaddq	%ymm6, %ymm9, %ymm6
 	vpblendd	$170, %ymm5, %ymm8, %ymm9 # ymm9 = ymm8[0],ymm5[1],ymm8[2],ymm5[3],ymm8[4],ymm5[5],ymm8[6],ymm5[7]
 	vpblendd	$170, %ymm5, %ymm7, %ymm10 # ymm10 = ymm7[0],ymm5[1],ymm7[2],ymm5[3],ymm7[4],ymm5[5],ymm7[6],ymm5[7]
 	vpblendd	$170, %ymm5, %ymm4, %ymm11 # ymm11 = ymm4[0],ymm5[1],ymm4[2],ymm5[3],ymm4[4],ymm5[5],ymm4[6],ymm5[7]
 	vpblendd	$170, %ymm5, %ymm6, %ymm12 # ymm12 = ymm6[0],ymm5[1],ymm6[2],ymm5[3],ymm6[4],ymm5[5],ymm6[6],ymm5[7]
-	vmovdqa	%ymm12, -224(%rsp,%rbx)
-	vmovdqa	%ymm11, -256(%rsp,%rbx)
-	vmovdqa	%ymm10, -192(%rsp,%rbx)
-	vmovdqa	%ymm9, -160(%rsp,%rbx)
+	vmovdqa	%ymm12, -224(%rsp,%rcx)
+	vmovdqa	%ymm11, -256(%rsp,%rcx)
+	vmovdqa	%ymm10, -192(%rsp,%rcx)
+	vmovdqa	%ymm9, -160(%rsp,%rcx)
 	vpsrlq	$32, %ymm7, %ymm7
 	vpsrlq	$32, %ymm4, %ymm4
 	vpsrlq	$32, %ymm6, %ymm6
 	vpsrlq	$32, %ymm8, %ymm8
-	vpmuludq	-64(%rsi,%rbx), %ymm1, %ymm9
-	vpmuludq	-128(%rsi,%rbx), %ymm3, %ymm10
+	vpmuludq	-64(%rsi,%rcx), %ymm1, %ymm9
+	vpmuludq	-128(%rsi,%rcx), %ymm3, %ymm10
 	vpaddq	%ymm7, %ymm9, %ymm7
 	vpaddq	%ymm4, %ymm10, %ymm4
-	vpmuludq	-96(%rsi,%rbx), %ymm2, %ymm9
+	vpmuludq	-96(%rsi,%rcx), %ymm2, %ymm9
 	vpaddq	%ymm6, %ymm9, %ymm6
-	vpmuludq	-32(%rsi,%rbx), %ymm0, %ymm9
+	vpmuludq	-32(%rsi,%rcx), %ymm0, %ymm9
 	vpaddq	%ymm8, %ymm9, %ymm8
 	vpblendd	$170, %ymm5, %ymm7, %ymm9 # ymm9 = ymm7[0],ymm5[1],ymm7[2],ymm5[3],ymm7[4],ymm5[5],ymm7[6],ymm5[7]
 	vpblendd	$170, %ymm5, %ymm4, %ymm10 # ymm10 = ymm4[0],ymm5[1],ymm4[2],ymm5[3],ymm4[4],ymm5[5],ymm4[6],ymm5[7]
 	vpblendd	$170, %ymm5, %ymm6, %ymm11 # ymm11 = ymm6[0],ymm5[1],ymm6[2],ymm5[3],ymm6[4],ymm5[5],ymm6[6],ymm5[7]
 	vpblendd	$170, %ymm5, %ymm8, %ymm12 # ymm12 = ymm8[0],ymm5[1],ymm8[2],ymm5[3],ymm8[4],ymm5[5],ymm8[6],ymm5[7]
-	vmovdqa	%ymm12, -32(%rsp,%rbx)
-	vmovdqa	%ymm11, -96(%rsp,%rbx)
-	vmovdqa	%ymm10, -128(%rsp,%rbx)
-	vmovdqa	%ymm9, -64(%rsp,%rbx)
+	vmovdqa	%ymm12, -32(%rsp,%rcx)
+	vmovdqa	%ymm11, -96(%rsp,%rcx)
+	vmovdqa	%ymm10, -128(%rsp,%rcx)
+	vmovdqa	%ymm9, -64(%rsp,%rcx)
 	vpsrlq	$32, %ymm8, %ymm8
 	vpsrlq	$32, %ymm7, %ymm7
 	vpsrlq	$32, %ymm4, %ymm4
 	vpsrlq	$32, %ymm6, %ymm6
-	vpmuludq	96(%rsi,%rbx), %ymm0, %ymm9
-	vpmuludq	64(%rsi,%rbx), %ymm1, %ymm10
+	vpmuludq	96(%rsi,%rcx), %ymm0, %ymm9
+	vpmuludq	64(%rsi,%rcx), %ymm1, %ymm10
 	vpaddq	%ymm8, %ymm9, %ymm8
 	vpaddq	%ymm7, %ymm10, %ymm7
-	vpmuludq	(%rsi,%rbx), %ymm3, %ymm9
+	vpmuludq	(%rsi,%rcx), %ymm3, %ymm9
 	vpaddq	%ymm4, %ymm9, %ymm4
-	vpmuludq	32(%rsi,%rbx), %ymm2, %ymm9
+	vpmuludq	32(%rsi,%rcx), %ymm2, %ymm9
 	vpaddq	%ymm6, %ymm9, %ymm6
 	vpblendd	$170, %ymm5, %ymm8, %ymm9 # ymm9 = ymm8[0],ymm5[1],ymm8[2],ymm5[3],ymm8[4],ymm5[5],ymm8[6],ymm5[7]
 	vpblendd	$170, %ymm5, %ymm7, %ymm10 # ymm10 = ymm7[0],ymm5[1],ymm7[2],ymm5[3],ymm7[4],ymm5[5],ymm7[6],ymm5[7]
 	vpblendd	$170, %ymm5, %ymm4, %ymm11 # ymm11 = ymm4[0],ymm5[1],ymm4[2],ymm5[3],ymm4[4],ymm5[5],ymm4[6],ymm5[7]
 	vpblendd	$170, %ymm5, %ymm6, %ymm12 # ymm12 = ymm6[0],ymm5[1],ymm6[2],ymm5[3],ymm6[4],ymm5[5],ymm6[6],ymm5[7]
-	vmovdqa	%ymm12, 32(%rsp,%rbx)
-	vmovdqa	%ymm11, (%rsp,%rbx)
-	vmovdqa	%ymm10, 64(%rsp,%rbx)
-	vmovdqa	%ymm9, 96(%rsp,%rbx)
+	vmovdqa	%ymm12, 32(%rsp,%rcx)
+	vmovdqa	%ymm11, (%rsp,%rcx)
+	vmovdqa	%ymm10, 64(%rsp,%rcx)
+	vmovdqa	%ymm9, 96(%rsp,%rcx)
 	vpsrlq	$32, %ymm7, %ymm7
 	vpsrlq	$32, %ymm4, %ymm4
 	vpsrlq	$32, %ymm6, %ymm6
 	vpsrlq	$32, %ymm8, %ymm8
-	addq	$4, %rax
-	vpmuludq	192(%rsi,%rbx), %ymm1, %ymm9
+	addq	$4, %rbx
+	vpmuludq	192(%rsi,%rcx), %ymm1, %ymm9
 	vpaddq	%ymm7, %ymm9, %ymm7
-	vpmuludq	128(%rsi,%rbx), %ymm3, %ymm9
+	vpmuludq	128(%rsi,%rcx), %ymm3, %ymm9
 	vpaddq	%ymm4, %ymm9, %ymm4
-	vpmuludq	160(%rsi,%rbx), %ymm2, %ymm9
-	vpmuludq	224(%rsi,%rbx), %ymm0, %ymm10
+	vpmuludq	160(%rsi,%rcx), %ymm2, %ymm9
+	vpmuludq	224(%rsi,%rcx), %ymm0, %ymm10
 	vpaddq	%ymm6, %ymm9, %ymm6
 	vpaddq	%ymm8, %ymm10, %ymm8
 	vpblendd	$170, %ymm5, %ymm7, %ymm9 # ymm9 = ymm7[0],ymm5[1],ymm7[2],ymm5[3],ymm7[4],ymm5[5],ymm7[6],ymm5[7]
 	vpblendd	$170, %ymm5, %ymm4, %ymm10 # ymm10 = ymm4[0],ymm5[1],ymm4[2],ymm5[3],ymm4[4],ymm5[5],ymm4[6],ymm5[7]
 	vpblendd	$170, %ymm5, %ymm6, %ymm11 # ymm11 = ymm6[0],ymm5[1],ymm6[2],ymm5[3],ymm6[4],ymm5[5],ymm6[6],ymm5[7]
 	vpblendd	$170, %ymm5, %ymm8, %ymm12 # ymm12 = ymm8[0],ymm5[1],ymm8[2],ymm5[3],ymm8[4],ymm5[5],ymm8[6],ymm5[7]
-	vmovdqa	%ymm12, 224(%rsp,%rbx)
-	vmovdqa	%ymm11, 160(%rsp,%rbx)
-	vmovdqa	%ymm10, 128(%rsp,%rbx)
-	vmovdqa	%ymm9, 192(%rsp,%rbx)
+	vmovdqa	%ymm12, 224(%rsp,%rcx)
+	vmovdqa	%ymm11, 160(%rsp,%rcx)
+	vmovdqa	%ymm10, 128(%rsp,%rcx)
+	vmovdqa	%ymm9, 192(%rsp,%rcx)
 	vpsrlq	$32, %ymm8, %ymm8
 	vpsrlq	$32, %ymm7, %ymm7
 	vpsrlq	$32, %ymm6, %ymm6
 	vpsrlq	$32, %ymm4, %ymm4
-	addq	$512, %rbx              # imm = 0x200
-	cmpl	%eax, %r9d
-	jne	.LBB0_6
-# %bb.7:                                # %for_test.for_exit_crit_edge.unr-lcssa
-	testl	%ecx, %ecx
-	je	.LBB0_10
-.LBB0_8:                                # %for_loop.epil.preheader
-	shlq	$7, %rax
-	negl	%ecx
+	addq	$512, %rcx              # imm = 0x200
+	cmpl	%ebx, %r9d
+	jne	.LBB0_5
+# %bb.6:                                # %for_test.for_exit_crit_edge.unr-lcssa
+	testl	%eax, %eax
+	je	.LBB0_9
+.LBB0_7:                                # %for_loop.epil.preheader
+	shlq	$7, %rbx
+	negl	%eax
 	vpxor	%xmm5, %xmm5, %xmm5
 	.p2align	4, 0x90
-.LBB0_9:                                # %for_loop.epil
+.LBB0_8:                                # %for_loop.epil
                                         # =>This Inner Loop Header: Depth=1
-	vpmuludq	224(%rsi,%rax), %ymm0, %ymm9
+	vpmuludq	224(%rsi,%rbx), %ymm0, %ymm9
 	vpaddq	%ymm8, %ymm9, %ymm8
-	vpmuludq	192(%rsi,%rax), %ymm1, %ymm9
+	vpmuludq	192(%rsi,%rbx), %ymm1, %ymm9
 	vpaddq	%ymm7, %ymm9, %ymm7
-	vpmuludq	128(%rsi,%rax), %ymm3, %ymm9
-	vpmuludq	160(%rsi,%rax), %ymm2, %ymm10
+	vpmuludq	128(%rsi,%rbx), %ymm3, %ymm9
+	vpmuludq	160(%rsi,%rbx), %ymm2, %ymm10
 	vpaddq	%ymm4, %ymm9, %ymm4
 	vpaddq	%ymm6, %ymm10, %ymm6
 	vpblendd	$170, %ymm5, %ymm8, %ymm9 # ymm9 = ymm8[0],ymm5[1],ymm8[2],ymm5[3],ymm8[4],ymm5[5],ymm8[6],ymm5[7]
 	vpblendd	$170, %ymm5, %ymm7, %ymm10 # ymm10 = ymm7[0],ymm5[1],ymm7[2],ymm5[3],ymm7[4],ymm5[5],ymm7[6],ymm5[7]
 	vpblendd	$170, %ymm5, %ymm4, %ymm11 # ymm11 = ymm4[0],ymm5[1],ymm4[2],ymm5[3],ymm4[4],ymm5[5],ymm4[6],ymm5[7]
 	vpblendd	$170, %ymm5, %ymm6, %ymm12 # ymm12 = ymm6[0],ymm5[1],ymm6[2],ymm5[3],ymm6[4],ymm5[5],ymm6[6],ymm5[7]
-	vmovdqa	%ymm12, 160(%rsp,%rax)
-	vmovdqa	%ymm11, 128(%rsp,%rax)
-	vmovdqa	%ymm10, 192(%rsp,%rax)
-	vmovdqa	%ymm9, 224(%rsp,%rax)
+	vmovdqa	%ymm12, 160(%rsp,%rbx)
+	vmovdqa	%ymm11, 128(%rsp,%rbx)
+	vmovdqa	%ymm10, 192(%rsp,%rbx)
+	vmovdqa	%ymm9, 224(%rsp,%rbx)
 	vpsrlq	$32, %ymm4, %ymm4
 	vpsrlq	$32, %ymm6, %ymm6
 	vpsrlq	$32, %ymm7, %ymm7
 	vpsrlq	$32, %ymm8, %ymm8
-	subq	$-128, %rax
-	addl	$1, %ecx
-	jne	.LBB0_9
-.LBB0_10:                               # %for_exit
-	movl	%r11d, 108(%rsp)        # 4-byte Spill
-	movl	%r11d, %r15d
-	movq	%r15, %rax
+	subq	$-128, %rbx
+	addl	$1, %eax
+	jne	.LBB0_8
+.LBB0_9:                                # %for_exit
+	movl	%r8d, 108(%rsp)         # 4-byte Spill
+	movl	%r8d, %r9d
+	movq	%r9, %rax
 	shlq	$7, %rax
 	vmovdqa	%ymm8, 224(%rsp,%rax)
 	vmovdqa	%ymm7, 192(%rsp,%rax)
 	vmovdqa	%ymm6, 160(%rsp,%rax)
 	vmovdqa	%ymm4, 128(%rsp,%rax)
 	cmpl	$3, %edx
-	jb	.LBB0_19
-# %bb.11:                               # %for_test30.preheader.lr.ph
-	leal	-3(%rdx), %r9d
+	jb	.LBB0_18
+# %bb.10:                               # %for_test30.preheader.lr.ph
+	leal	-3(%rdx), %r14d
 	movl	%edx, %eax
 	movq	%rax, 120(%rsp)         # 8-byte Spill
 	movq	%rsi, %rax
@@ -207,10 +219,10 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vpxor	%xmm0, %xmm0, %xmm0
 	movq	%rdx, %r11
 	.p2align	4, 0x90
-.LBB0_12:                               # %for_loop32.lr.ph
+.LBB0_11:                               # %for_loop32.lr.ph
                                         # =>This Loop Header: Depth=1
-                                        #     Child Loop BB0_17 Depth 2
-	movl	%r14d, %ebx
+                                        #     Child Loop BB0_16 Depth 2
+	movl	%r15d, %ebx
 	subl	%r12d, %ebx
 	movq	%r13, %rax
 	shlq	$7, %rax
@@ -220,19 +232,19 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vpblendd	$85, -128(%rsi,%rax), %ymm0, %ymm4 # ymm4 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
 	leaq	-2(%r13), %rcx
 	testb	$1, %bl
-	jne	.LBB0_14
-# %bb.13:                               #   in Loop: Header=BB0_12 Depth=1
+	jne	.LBB0_13
+# %bb.12:                               #   in Loop: Header=BB0_11 Depth=1
 	movq	%r13, %rbx
 	vpxor	%xmm8, %xmm8, %xmm8
 	vpxor	%xmm7, %xmm7, %xmm7
 	vpxor	%xmm6, %xmm6, %xmm6
 	vpxor	%xmm5, %xmm5, %xmm5
-	cmpl	%r12d, %r9d
-	jne	.LBB0_16
-	jmp	.LBB0_18
+	cmpl	%r12d, %r14d
+	jne	.LBB0_15
+	jmp	.LBB0_17
 	.p2align	4, 0x90
-.LBB0_14:                               # %for_loop32.prol.preheader
-                                        #   in Loop: Header=BB0_12 Depth=1
+.LBB0_13:                               # %for_loop32.prol.preheader
+                                        #   in Loop: Header=BB0_11 Depth=1
 	vpmuludq	(%rsi,%rax), %ymm4, %ymm5
 	vpmuludq	32(%rsi,%rax), %ymm3, %ymm6
 	vpmuludq	64(%rsi,%rax), %ymm2, %ymm7
@@ -256,18 +268,18 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vpsrlq	$32, %ymm9, %ymm7
 	vpsrlq	$32, %ymm10, %ymm8
 	leaq	1(%r13), %rbx
-	cmpl	%r12d, %r9d
-	je	.LBB0_18
-.LBB0_16:                               # %for_loop32.preheader
-                                        #   in Loop: Header=BB0_12 Depth=1
+	cmpl	%r12d, %r14d
+	je	.LBB0_17
+.LBB0_15:                               # %for_loop32.preheader
+                                        #   in Loop: Header=BB0_11 Depth=1
 	movq	120(%rsp), %rax         # 8-byte Reload
 	subq	%rbx, %rax
 	leaq	(%rbx,%r12), %r8
 	shlq	$7, %rbx
 	addq	112(%rsp), %rbx         # 8-byte Folded Reload
 	.p2align	4, 0x90
-.LBB0_17:                               # %for_loop32
-                                        #   Parent Loop BB0_12 Depth=1
+.LBB0_16:                               # %for_loop32
+                                        #   Parent Loop BB0_11 Depth=1
                                         # =>  This Inner Loop Header: Depth=2
 	vpmuludq	-128(%rbx), %ymm4, %ymm9
 	vpmuludq	-96(%rbx), %ymm3, %ymm10
@@ -324,9 +336,9 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	addq	$2, %r8
 	addq	$256, %rbx              # imm = 0x100
 	addq	$-2, %rax
-	jne	.LBB0_17
-.LBB0_18:                               # %for_exit33
-                                        #   in Loop: Header=BB0_12 Depth=1
+	jne	.LBB0_16
+.LBB0_17:                               # %for_exit33
+                                        #   in Loop: Header=BB0_11 Depth=1
 	movq	%r11, %rdx
 	addl	%edx, %ecx
 	shlq	$7, %rcx
@@ -336,260 +348,168 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vmovdqa	%ymm8, 128(%rsp,%rcx)
 	addq	$1, %r13
 	addq	$1, %r12
-	cmpl	%r14d, %r12d
-	jne	.LBB0_12
-.LBB0_19:                               # %for_test73.preheader
-	testl	%edx, %edx
-	je	.LBB0_20
-# %bb.21:                               # %for_loop75.lr.ph
-	movl	108(%rsp), %r11d        # 4-byte Reload
-	testl	%r11d, %r11d
-	je	.LBB0_22
-# %bb.26:                               # %for_loop75.lr.ph.new
-	movl	%edx, %r8d
-	andl	$1, %r8d
-	movl	%edx, %r9d
-	subl	%r8d, %r9d
-	movq	%rsi, %rcx
-	subq	$-128, %rcx
-	movl	$3, %ebx
-	xorl	%r10d, %r10d
-	vpxor	%xmm0, %xmm0, %xmm0
-	.p2align	4, 0x90
-.LBB0_27:                               # %for_loop75
-                                        # =>This Inner Loop Header: Depth=1
-	vpblendd	$85, -128(%rcx), %ymm0, %ymm1 # ymm1 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
-	vpblendd	$85, -96(%rcx), %ymm0, %ymm2 # ymm2 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
-	vpblendd	$85, -64(%rcx), %ymm0, %ymm3 # ymm3 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
-	vpblendd	$85, -32(%rcx), %ymm0, %ymm4 # ymm4 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
-	vpmuludq	%ymm4, %ymm4, %ymm4
-	vpmuludq	%ymm3, %ymm3, %ymm3
+	cmpl	%r15d, %r12d
+	jne	.LBB0_11
+.LBB0_18:                               # %for_exit24
+	vpxor	%xmm6, %xmm6, %xmm6
+	vpblendd	$85, (%rsi), %ymm6, %ymm1 # ymm1 = mem[0],ymm6[1],mem[2],ymm6[3],mem[4],ymm6[5],mem[6],ymm6[7]
+	vpblendd	$85, 32(%rsi), %ymm6, %ymm3 # ymm3 = mem[0],ymm6[1],mem[2],ymm6[3],mem[4],ymm6[5],mem[6],ymm6[7]
+	vpblendd	$85, 64(%rsi), %ymm6, %ymm2 # ymm2 = mem[0],ymm6[1],mem[2],ymm6[3],mem[4],ymm6[5],mem[6],ymm6[7]
+	vpblendd	$85, 96(%rsi), %ymm6, %ymm0 # ymm0 = mem[0],ymm6[1],mem[2],ymm6[3],mem[4],ymm6[5],mem[6],ymm6[7]
+	vpmuludq	%ymm0, %ymm0, %ymm0
 	vpmuludq	%ymm2, %ymm2, %ymm2
-	vpmuludq	%ymm1, %ymm1, %ymm1
-	leal	-3(%rbx), %eax
-	shlq	$7, %rax
-	vpblendd	$170, %ymm0, %ymm1, %ymm5 # ymm5 = ymm1[0],ymm0[1],ymm1[2],ymm0[3],ymm1[4],ymm0[5],ymm1[6],ymm0[7]
-	vpblendd	$170, %ymm0, %ymm2, %ymm6 # ymm6 = ymm2[0],ymm0[1],ymm2[2],ymm0[3],ymm2[4],ymm0[5],ymm2[6],ymm0[7]
-	vpblendd	$170, %ymm0, %ymm3, %ymm7 # ymm7 = ymm3[0],ymm0[1],ymm3[2],ymm0[3],ymm3[4],ymm0[5],ymm3[6],ymm0[7]
-	vpblendd	$170, %ymm0, %ymm4, %ymm8 # ymm8 = ymm4[0],ymm0[1],ymm4[2],ymm0[3],ymm4[4],ymm0[5],ymm4[6],ymm0[7]
-	vmovdqu	%ymm8, 96(%rdi,%rax)
-	vmovdqu	%ymm7, 64(%rdi,%rax)
-	vmovdqu	%ymm6, 32(%rdi,%rax)
-	vmovdqu	%ymm5, (%rdi,%rax)
-	leal	-2(%rbx), %eax
-	shlq	$7, %rax
-	vpsrlq	$32, %ymm3, %ymm3
-	vpsrlq	$32, %ymm1, %ymm1
-	vpsrlq	$32, %ymm2, %ymm2
-	vpsrlq	$32, %ymm4, %ymm4
-	vmovdqu	%ymm4, 96(%rdi,%rax)
-	vmovdqu	%ymm2, 32(%rdi,%rax)
-	vmovdqu	%ymm1, (%rdi,%rax)
-	vmovdqu	%ymm3, 64(%rdi,%rax)
-	vpblendd	$85, 64(%rcx), %ymm0, %ymm1 # ymm1 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
-	vpblendd	$85, (%rcx), %ymm0, %ymm2 # ymm2 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
-	vpblendd	$85, 32(%rcx), %ymm0, %ymm3 # ymm3 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
-	vpblendd	$85, 96(%rcx), %ymm0, %ymm4 # ymm4 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
-	vpmuludq	%ymm4, %ymm4, %ymm4
 	vpmuludq	%ymm3, %ymm3, %ymm3
-	vpmuludq	%ymm2, %ymm2, %ymm2
 	vpmuludq	%ymm1, %ymm1, %ymm1
-	leal	-1(%rbx), %eax
-	shlq	$7, %rax
-	vpblendd	$170, %ymm0, %ymm1, %ymm5 # ymm5 = ymm1[0],ymm0[1],ymm1[2],ymm0[3],ymm1[4],ymm0[5],ymm1[6],ymm0[7]
-	vpblendd	$170, %ymm0, %ymm2, %ymm6 # ymm6 = ymm2[0],ymm0[1],ymm2[2],ymm0[3],ymm2[4],ymm0[5],ymm2[6],ymm0[7]
-	vpblendd	$170, %ymm0, %ymm3, %ymm7 # ymm7 = ymm3[0],ymm0[1],ymm3[2],ymm0[3],ymm3[4],ymm0[5],ymm3[6],ymm0[7]
-	vpblendd	$170, %ymm0, %ymm4, %ymm8 # ymm8 = ymm4[0],ymm0[1],ymm4[2],ymm0[3],ymm4[4],ymm0[5],ymm4[6],ymm0[7]
-	vmovdqu	%ymm8, 96(%rdi,%rax)
-	vmovdqu	%ymm7, 32(%rdi,%rax)
-	vmovdqu	%ymm6, (%rdi,%rax)
-	vmovdqu	%ymm5, 64(%rdi,%rax)
-	movl	%ebx, %eax
-	shlq	$7, %rax
-	vpsrlq	$32, %ymm2, %ymm2
-	vpsrlq	$32, %ymm3, %ymm3
-	vpsrlq	$32, %ymm1, %ymm1
-	vpsrlq	$32, %ymm4, %ymm4
-	vmovdqu	%ymm4, 96(%rdi,%rax)
-	vmovdqu	%ymm1, 64(%rdi,%rax)
-	vmovdqu	%ymm3, 32(%rdi,%rax)
-	vmovdqu	%ymm2, (%rdi,%rax)
-	addq	$2, %r10
-	addq	$256, %rcx              # imm = 0x100
-	addl	$4, %ebx
-	cmpl	%r10d, %r9d
-	jne	.LBB0_27
-.LBB0_2:                                # %for_test73.for_test107.preheader_crit_edge.unr-lcssa
-	testl	%r8d, %r8d
-	jne	.LBB0_23
-# %bb.24:                               # %for_test107.preheader
-	testl	%r11d, %r11d
-	je	.LBB0_25
-.LBB0_28:                               # %for_loop109.preheader
-	vpxor	%xmm0, %xmm0, %xmm0
-	movl	$1, %eax
-	vpbroadcastq	.LCPI0_0(%rip), %ymm1 # ymm1 = [4294967294,4294967294,4294967294,4294967294]
-	vpxor	%xmm2, %xmm2, %xmm2
-	vpxor	%xmm3, %xmm3, %xmm3
+	vpblendd	$170, %ymm6, %ymm3, %ymm4 # ymm4 = ymm3[0],ymm6[1],ymm3[2],ymm6[3],ymm3[4],ymm6[5],ymm3[6],ymm6[7]
+	vpblendd	$170, %ymm6, %ymm2, %ymm5 # ymm5 = ymm2[0],ymm6[1],ymm2[2],ymm6[3],ymm2[4],ymm6[5],ymm2[6],ymm6[7]
+	vpblendd	$170, %ymm6, %ymm0, %ymm7 # ymm7 = ymm0[0],ymm6[1],ymm0[2],ymm6[3],ymm0[4],ymm6[5],ymm0[6],ymm6[7]
+	vmovdqu	%ymm7, 96(%rdi)
+	vmovdqu	%ymm5, 64(%rdi)
+	vmovdqu	%ymm4, 32(%rdi)
+	vpblendd	$170, %ymm6, %ymm1, %ymm4 # ymm4 = ymm1[0],ymm6[1],ymm1[2],ymm6[3],ymm1[4],ymm6[5],ymm1[6],ymm6[7]
+	vmovdqu	%ymm4, (%rdi)
+	cmpl	$0, 108(%rsp)           # 4-byte Folded Reload
+	je	.LBB0_19
+# %bb.20:                               # %for_loop89.preheader
+	addq	%r9, %r9
+	subq	$-128, %rsi
 	vpxor	%xmm4, %xmm4, %xmm4
-	vpxor	%xmm5, %xmm5, %xmm5
+	xorl	%eax, %eax
+	vpbroadcastq	.LCPI0_0(%rip), %ymm5 # ymm5 = [4294967294,4294967294,4294967294,4294967294]
+	vpxor	%xmm6, %xmm6, %xmm6
+	vpxor	%xmm7, %xmm7, %xmm7
+	vpxor	%xmm8, %xmm8, %xmm8
+	vpxor	%xmm9, %xmm9, %xmm9
 	.p2align	4, 0x90
-.LBB0_29:                               # %for_loop109
+.LBB0_21:                               # %for_loop89
                                         # =>This Inner Loop Header: Depth=1
-	leal	-1(%rax), %ebx
 	movl	%eax, %ecx
-	cltq
-	movq	%rax, %rsi
-	shlq	$7, %rsi
-	vpaddq	64(%rdi,%rsi), %ymm4, %ymm6
-	vpaddq	(%rdi,%rsi), %ymm2, %ymm7
-	vpaddq	32(%rdi,%rsi), %ymm3, %ymm8
-	vpaddq	96(%rdi,%rsi), %ymm5, %ymm9
-	shlq	$7, %rbx
-	vmovdqa	128(%rsp,%rbx), %ymm2
-	vmovdqa	160(%rsp,%rbx), %ymm3
-	vmovdqa	192(%rsp,%rbx), %ymm4
-	vmovdqa	224(%rsp,%rbx), %ymm5
-	vpaddq	%ymm5, %ymm5, %ymm10
-	vpaddq	%ymm3, %ymm3, %ymm11
-	vpaddq	%ymm2, %ymm2, %ymm12
-	vpaddq	%ymm4, %ymm4, %ymm13
-	vpand	%ymm1, %ymm13, %ymm13
-	vpaddq	%ymm13, %ymm6, %ymm6
-	vpand	%ymm1, %ymm12, %ymm12
-	vpaddq	%ymm12, %ymm7, %ymm7
-	vpand	%ymm1, %ymm11, %ymm11
-	vpaddq	%ymm11, %ymm8, %ymm8
-	vpand	%ymm1, %ymm10, %ymm10
-	vpaddq	%ymm10, %ymm9, %ymm9
 	shlq	$7, %rcx
-	vpblendd	$170, %ymm0, %ymm6, %ymm10 # ymm10 = ymm6[0],ymm0[1],ymm6[2],ymm0[3],ymm6[4],ymm0[5],ymm6[6],ymm0[7]
-	vpblendd	$170, %ymm0, %ymm7, %ymm11 # ymm11 = ymm7[0],ymm0[1],ymm7[2],ymm0[3],ymm7[4],ymm0[5],ymm7[6],ymm0[7]
-	vpblendd	$170, %ymm0, %ymm8, %ymm12 # ymm12 = ymm8[0],ymm0[1],ymm8[2],ymm0[3],ymm8[4],ymm0[5],ymm8[6],ymm0[7]
-	vpblendd	$170, %ymm0, %ymm9, %ymm13 # ymm13 = ymm9[0],ymm0[1],ymm9[2],ymm0[3],ymm9[4],ymm0[5],ymm9[6],ymm0[7]
-	vmovdqu	%ymm13, 96(%rdi,%rcx)
-	vmovdqu	%ymm12, 32(%rdi,%rcx)
-	vmovdqu	%ymm11, (%rdi,%rcx)
-	vmovdqu	%ymm10, 64(%rdi,%rcx)
-	vpsrlq	$32, %ymm9, %ymm10
-	vpsrlq	$32, %ymm6, %ymm11
-	vpsrlq	$32, %ymm8, %ymm12
-	vpsrlq	$32, %ymm7, %ymm13
-	vmovdqa	128(%rsp,%rcx), %ymm9
-	vmovdqa	160(%rsp,%rcx), %ymm8
-	vmovdqa	192(%rsp,%rcx), %ymm7
-	vmovdqa	224(%rsp,%rcx), %ymm6
-	vpaddq	%ymm9, %ymm9, %ymm14
-	vpand	%ymm1, %ymm14, %ymm14
-	vpaddq	%ymm14, %ymm13, %ymm13
-	vpaddq	%ymm8, %ymm8, %ymm14
-	vpand	%ymm1, %ymm14, %ymm14
-	vpaddq	%ymm14, %ymm12, %ymm12
-	vpaddq	%ymm7, %ymm7, %ymm14
-	vpand	%ymm1, %ymm14, %ymm14
-	vpaddq	%ymm14, %ymm11, %ymm11
-	vpaddq	%ymm6, %ymm6, %ymm14
-	vpand	%ymm1, %ymm14, %ymm14
-	vpaddq	%ymm14, %ymm10, %ymm10
-	vpsrlq	$31, %ymm5, %ymm5
-	leal	1(%rax), %ecx
-	movslq	%ecx, %rsi
-	shlq	$7, %rsi
-	vpaddq	96(%rdi,%rsi), %ymm5, %ymm5
-	vpaddq	%ymm10, %ymm5, %ymm5
-	vpsrlq	$31, %ymm4, %ymm4
-	vpaddq	64(%rdi,%rsi), %ymm4, %ymm4
-	vpaddq	%ymm11, %ymm4, %ymm4
-	vpsrlq	$31, %ymm3, %ymm3
-	vpaddq	32(%rdi,%rsi), %ymm3, %ymm3
-	vpsrlq	$31, %ymm2, %ymm2
-	vpaddq	%ymm12, %ymm3, %ymm3
-	vpaddq	(%rdi,%rsi), %ymm2, %ymm2
-	shlq	$7, %rcx
-	vpblendd	$170, %ymm0, %ymm5, %ymm10 # ymm10 = ymm5[0],ymm0[1],ymm5[2],ymm0[3],ymm5[4],ymm0[5],ymm5[6],ymm0[7]
-	vmovdqu	%ymm10, 96(%rdi,%rcx)
-	vpaddq	%ymm13, %ymm2, %ymm2
-	vpblendd	$170, %ymm0, %ymm4, %ymm10 # ymm10 = ymm4[0],ymm0[1],ymm4[2],ymm0[3],ymm4[4],ymm0[5],ymm4[6],ymm0[7]
-	vmovdqu	%ymm10, 64(%rdi,%rcx)
-	vpblendd	$170, %ymm0, %ymm3, %ymm10 # ymm10 = ymm3[0],ymm0[1],ymm3[2],ymm0[3],ymm3[4],ymm0[5],ymm3[6],ymm0[7]
-	vmovdqu	%ymm10, 32(%rdi,%rcx)
-	vpblendd	$170, %ymm0, %ymm2, %ymm10 # ymm10 = ymm2[0],ymm0[1],ymm2[2],ymm0[3],ymm2[4],ymm0[5],ymm2[6],ymm0[7]
-	vmovdqu	%ymm10, (%rdi,%rcx)
-	vpsrlq	$31, %ymm9, %ymm9
-	vpsrlq	$32, %ymm2, %ymm2
-	vpaddq	%ymm9, %ymm2, %ymm2
-	vpsrlq	$31, %ymm8, %ymm8
+	vmovdqa	128(%rsp,%rcx), %ymm10
+	vmovdqa	160(%rsp,%rcx), %ymm11
+	vmovdqa	192(%rsp,%rcx), %ymm12
+	vmovdqa	224(%rsp,%rcx), %ymm13
+	vpsrlq	$32, %ymm0, %ymm0
+	vpaddq	%ymm9, %ymm0, %ymm0
 	vpsrlq	$32, %ymm3, %ymm3
-	vpaddq	%ymm8, %ymm3, %ymm3
-	vpsrlq	$31, %ymm7, %ymm7
-	vpsrlq	$32, %ymm4, %ymm4
-	vpaddq	%ymm7, %ymm4, %ymm4
-	vpsrlq	$31, %ymm6, %ymm6
-	vpsrlq	$32, %ymm5, %ymm5
-	vpaddq	%ymm6, %ymm5, %ymm5
-	addl	$2, %eax
-	addq	$-1, %r15
-	jne	.LBB0_29
-	jmp	.LBB0_30
-.LBB0_20:
-	movl	108(%rsp), %r11d        # 4-byte Reload
-	testl	%r11d, %r11d
-	jne	.LBB0_28
-	jmp	.LBB0_25
-.LBB0_22:
-	xorl	%r10d, %r10d
-.LBB0_23:                               # %for_loop75.epil.preheader
-	movq	%r10, %rcx
+	vpaddq	%ymm7, %ymm3, %ymm3
+	vpsrlq	$32, %ymm1, %ymm1
+	vpaddq	%ymm6, %ymm1, %ymm1
+	vpsrlq	$32, %ymm2, %ymm2
+	vpaddq	%ymm8, %ymm2, %ymm2
+	vpaddq	%ymm13, %ymm13, %ymm6
+	vpaddq	%ymm11, %ymm11, %ymm7
+	vpaddq	%ymm10, %ymm10, %ymm8
+	vpaddq	%ymm12, %ymm12, %ymm9
+	vpand	%ymm5, %ymm9, %ymm9
+	vpaddq	%ymm9, %ymm2, %ymm2
+	vpand	%ymm5, %ymm8, %ymm8
+	vpaddq	%ymm8, %ymm1, %ymm1
+	vpand	%ymm5, %ymm7, %ymm7
+	vpaddq	%ymm7, %ymm3, %ymm3
+	vpand	%ymm5, %ymm6, %ymm6
+	vpaddq	%ymm6, %ymm0, %ymm0
+	leal	1(%rax), %ecx
 	shlq	$7, %rcx
-	vpxor	%xmm0, %xmm0, %xmm0
-	vpblendd	$85, 64(%rsi,%rcx), %ymm0, %ymm1 # ymm1 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
-	vpblendd	$85, (%rsi,%rcx), %ymm0, %ymm2 # ymm2 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
-	vpblendd	$85, 32(%rsi,%rcx), %ymm0, %ymm3 # ymm3 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
-	vpblendd	$85, 96(%rsi,%rcx), %ymm0, %ymm4 # ymm4 = mem[0],ymm0[1],mem[2],ymm0[3],mem[4],ymm0[5],mem[6],ymm0[7]
-	vpmuludq	%ymm4, %ymm4, %ymm4
-	vpmuludq	%ymm3, %ymm3, %ymm3
-	vpmuludq	%ymm2, %ymm2, %ymm2
-	vpmuludq	%ymm1, %ymm1, %ymm1
-	leal	(%r10,%r10), %ecx
-	shlq	$7, %rcx
-	vpblendd	$170, %ymm0, %ymm1, %ymm5 # ymm5 = ymm1[0],ymm0[1],ymm1[2],ymm0[3],ymm1[4],ymm0[5],ymm1[6],ymm0[7]
-	vpblendd	$170, %ymm0, %ymm2, %ymm6 # ymm6 = ymm2[0],ymm0[1],ymm2[2],ymm0[3],ymm2[4],ymm0[5],ymm2[6],ymm0[7]
-	vpblendd	$170, %ymm0, %ymm3, %ymm7 # ymm7 = ymm3[0],ymm0[1],ymm3[2],ymm0[3],ymm3[4],ymm0[5],ymm3[6],ymm0[7]
-	vpblendd	$170, %ymm0, %ymm4, %ymm0 # ymm0 = ymm4[0],ymm0[1],ymm4[2],ymm0[3],ymm4[4],ymm0[5],ymm4[6],ymm0[7]
-	vmovdqu	%ymm0, 96(%rdi,%rcx)
+	vpblendd	$170, %ymm4, %ymm1, %ymm6 # ymm6 = ymm1[0],ymm4[1],ymm1[2],ymm4[3],ymm1[4],ymm4[5],ymm1[6],ymm4[7]
+	vpblendd	$170, %ymm4, %ymm3, %ymm7 # ymm7 = ymm3[0],ymm4[1],ymm3[2],ymm4[3],ymm3[4],ymm4[5],ymm3[6],ymm4[7]
+	vpblendd	$170, %ymm4, %ymm0, %ymm8 # ymm8 = ymm0[0],ymm4[1],ymm0[2],ymm4[3],ymm0[4],ymm4[5],ymm0[6],ymm4[7]
+	vmovdqu	%ymm8, 96(%rdi,%rcx)
 	vmovdqu	%ymm7, 32(%rdi,%rcx)
 	vmovdqu	%ymm6, (%rdi,%rcx)
-	vmovdqu	%ymm5, 64(%rdi,%rcx)
-	leal	(%r10,%r10), %eax
-	addl	$1, %eax
-	shlq	$7, %rax
-	vpsrlq	$32, %ymm2, %ymm0
-	vpsrlq	$32, %ymm3, %ymm2
+	vpblendd	$170, %ymm4, %ymm2, %ymm6 # ymm6 = ymm2[0],ymm4[1],ymm2[2],ymm4[3],ymm2[4],ymm4[5],ymm2[6],ymm4[7]
+	vmovdqu	%ymm6, 64(%rdi,%rcx)
+	vpsrlq	$31, %ymm10, %ymm6
+	vpsrlq	$31, %ymm11, %ymm7
+	vpsrlq	$31, %ymm12, %ymm8
+	vpsrlq	$31, %ymm13, %ymm9
 	vpsrlq	$32, %ymm1, %ymm1
-	vpsrlq	$32, %ymm4, %ymm3
-	vmovdqu	%ymm3, 96(%rdi,%rax)
-	vmovdqu	%ymm1, 64(%rdi,%rax)
-	vmovdqu	%ymm2, 32(%rdi,%rax)
-	vmovdqu	%ymm0, (%rdi,%rax)
-	testl	%r11d, %r11d
-	jne	.LBB0_28
-.LBB0_25:
-	vpxor	%xmm2, %xmm2, %xmm2
-	vpxor	%xmm3, %xmm3, %xmm3
-	vpxor	%xmm4, %xmm4, %xmm4
-	vpxor	%xmm5, %xmm5, %xmm5
-.LBB0_30:                               # %for_exit110
+	vpaddq	%ymm6, %ymm1, %ymm10
+	vpsrlq	$32, %ymm3, %ymm1
+	vpaddq	%ymm7, %ymm1, %ymm11
+	vpsrlq	$32, %ymm2, %ymm1
+	vpaddq	%ymm8, %ymm1, %ymm12
+	vpsrlq	$32, %ymm0, %ymm0
+	vpblendd	$85, 96(%rsi), %ymm4, %ymm6 # ymm6 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
+	vpblendd	$85, 64(%rsi), %ymm4, %ymm2 # ymm2 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
+	vpblendd	$85, 32(%rsi), %ymm4, %ymm3 # ymm3 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
+	vpaddq	%ymm9, %ymm0, %ymm13
+	vpblendd	$85, (%rsi), %ymm4, %ymm0 # ymm0 = mem[0],ymm4[1],mem[2],ymm4[3],mem[4],ymm4[5],mem[6],ymm4[7]
+	vpmuludq	%ymm0, %ymm0, %ymm1
+	vpmuludq	%ymm3, %ymm3, %ymm3
+	vpmuludq	%ymm2, %ymm2, %ymm2
+	vpmuludq	%ymm6, %ymm6, %ymm0
+	vmovdqa	128(%rsp,%rcx), %ymm6
+	vmovdqa	160(%rsp,%rcx), %ymm7
+	vmovdqa	192(%rsp,%rcx), %ymm8
+	vmovdqa	224(%rsp,%rcx), %ymm9
+	vpaddq	%ymm6, %ymm6, %ymm14
+	vpand	%ymm5, %ymm14, %ymm14
+	vpaddq	%ymm14, %ymm10, %ymm10
+	vpblendd	$170, %ymm4, %ymm1, %ymm14 # ymm14 = ymm1[0],ymm4[1],ymm1[2],ymm4[3],ymm1[4],ymm4[5],ymm1[6],ymm4[7]
+	vpaddq	%ymm10, %ymm14, %ymm10
+	vpaddq	%ymm7, %ymm7, %ymm14
+	vpand	%ymm5, %ymm14, %ymm14
+	vpaddq	%ymm14, %ymm11, %ymm11
+	vpblendd	$170, %ymm4, %ymm3, %ymm14 # ymm14 = ymm3[0],ymm4[1],ymm3[2],ymm4[3],ymm3[4],ymm4[5],ymm3[6],ymm4[7]
+	vpaddq	%ymm11, %ymm14, %ymm11
+	vpaddq	%ymm8, %ymm8, %ymm14
+	vpand	%ymm5, %ymm14, %ymm14
+	vpaddq	%ymm14, %ymm12, %ymm12
+	vpaddq	%ymm9, %ymm9, %ymm14
+	vpand	%ymm5, %ymm14, %ymm14
+	vpaddq	%ymm14, %ymm13, %ymm13
+	vpblendd	$170, %ymm4, %ymm0, %ymm14 # ymm14 = ymm0[0],ymm4[1],ymm0[2],ymm4[3],ymm0[4],ymm4[5],ymm0[6],ymm4[7]
+	vpaddq	%ymm13, %ymm14, %ymm13
+	addq	$2, %rax
+	movl	%eax, %ecx
+	shlq	$7, %rcx
+	vpblendd	$170, %ymm4, %ymm13, %ymm14 # ymm14 = ymm13[0],ymm4[1],ymm13[2],ymm4[3],ymm13[4],ymm4[5],ymm13[6],ymm4[7]
+	vmovdqu	%ymm14, 96(%rdi,%rcx)
+	vpblendd	$170, %ymm4, %ymm2, %ymm14 # ymm14 = ymm2[0],ymm4[1],ymm2[2],ymm4[3],ymm2[4],ymm4[5],ymm2[6],ymm4[7]
+	vpaddq	%ymm12, %ymm14, %ymm12
+	vpblendd	$170, %ymm4, %ymm12, %ymm14 # ymm14 = ymm12[0],ymm4[1],ymm12[2],ymm4[3],ymm12[4],ymm4[5],ymm12[6],ymm4[7]
+	vmovdqu	%ymm14, 64(%rdi,%rcx)
+	vpblendd	$170, %ymm4, %ymm11, %ymm14 # ymm14 = ymm11[0],ymm4[1],ymm11[2],ymm4[3],ymm11[4],ymm4[5],ymm11[6],ymm4[7]
+	vmovdqu	%ymm14, 32(%rdi,%rcx)
+	vpblendd	$170, %ymm4, %ymm10, %ymm14 # ymm14 = ymm10[0],ymm4[1],ymm10[2],ymm4[3],ymm10[4],ymm4[5],ymm10[6],ymm4[7]
+	vmovdqu	%ymm14, (%rdi,%rcx)
+	vpsrlq	$31, %ymm6, %ymm6
+	vpsrlq	$32, %ymm10, %ymm10
+	vpaddq	%ymm6, %ymm10, %ymm6
+	vpsrlq	$31, %ymm7, %ymm7
+	vpsrlq	$32, %ymm11, %ymm10
+	vpaddq	%ymm7, %ymm10, %ymm7
+	vpsrlq	$31, %ymm8, %ymm8
+	vpsrlq	$32, %ymm12, %ymm10
+	vpaddq	%ymm8, %ymm10, %ymm8
+	vpsrlq	$31, %ymm9, %ymm9
+	vpsrlq	$32, %ymm13, %ymm10
+	vpaddq	%ymm9, %ymm10, %ymm9
+	subq	$-128, %rsi
+	cmpq	%rax, %r9
+	jne	.LBB0_21
+	jmp	.LBB0_22
+.LBB0_19:
+	vpxor	%xmm7, %xmm7, %xmm7
+	vpxor	%xmm8, %xmm8, %xmm8
+	vpxor	%xmm9, %xmm9, %xmm9
+.LBB0_22:                               # %for_exit90
 	leal	(%rdx,%rdx), %eax
 	addl	$-1, %eax
 	shlq	$7, %rax
-	vpaddq	(%rdi,%rax), %ymm2, %ymm0
-	vpaddq	32(%rdi,%rax), %ymm3, %ymm1
-	vpaddq	64(%rdi,%rax), %ymm4, %ymm2
-	vpaddq	96(%rdi,%rax), %ymm5, %ymm3
-	vmovdqu	%ymm3, 96(%rdi,%rax)
+	vpsrlq	$32, %ymm2, %ymm2
+	vpaddq	%ymm8, %ymm2, %ymm2
+	vpsrlq	$32, %ymm3, %ymm3
+	vpaddq	%ymm7, %ymm3, %ymm3
+	vpsrlq	$32, %ymm1, %ymm1
+	vpaddq	%ymm6, %ymm1, %ymm1
+	vpsrlq	$32, %ymm0, %ymm0
+	vpaddq	%ymm9, %ymm0, %ymm0
 	vmovdqu	%ymm2, 64(%rdi,%rax)
-	vmovdqu	%ymm1, 32(%rdi,%rax)
-	vmovdqu	%ymm0, (%rdi,%rax)
+	vmovdqu	%ymm3, 32(%rdi,%rax)
+	vmovdqu	%ymm1, (%rdi,%rax)
+	vmovdqu	%ymm0, 96(%rdi,%rax)
 	leaq	-40(%rbp), %rsp
 	popq	%rbx
 	popq	%r12

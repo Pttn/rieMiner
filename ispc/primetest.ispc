@@ -33,31 +33,26 @@ static unmasked void squareSimple(varying ulong* uniform P, varying const ulong*
 		T[N_Size + j - 2] = cy;
 	}
 
-	/* Better not to include this into the next loop as doing it first */
-	/* avoids latency stalls. */
-	for (uniform uint i = 0; i < N_Size; ++i)
-	{
-		ulong p = mullo32(R[i], R[i]);
-		P[2 * i] = (uint)p;
-		P[2 * i + 1] = (uint)(p >> 32);
-	}
+	ulong p = mullo32(R[0], R[0]);
+	P[0] = (uint)p;
 
 	ulong cy = 0;
 	for (uniform uint i = 0; i < N_Size - 1; ++i)
 	{
 		ulong t = T[2 * i];
-		ulong a = P[2 * i + 1] + cy;
+		ulong a = (p >> 32) + cy;
 		a += (uint)t << 1;
 		P[2 * i + 1] = (uint)a;
 		cy = (t >> 31) + (a >> 32);
 
+		p = mullo32(R[i + 1], R[i + 1]);
 		t = T[2 * i + 1];
-		a = P[2 * i + 2] + cy;
+		a = (uint)p + cy;
 		a += (uint)t << 1;
 		P[2 * i + 2] = (uint)a;
 		cy = (t >> 31) + (a >> 32);
 	}
-	P[2 * N_Size - 1] += cy;
+	P[2 * N_Size - 1] = (p >> 32) + cy;
 }
 
 static inline ulong bigAdd(varying ulong* uniform R, varying const ulong* uniform A, varying const ulong* uniform B, uniform uint N_Size)
