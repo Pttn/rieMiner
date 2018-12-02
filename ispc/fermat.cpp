@@ -46,6 +46,15 @@ const unsigned char  binvert_limb_table[128] = {
     (inv) = __inv;                                      \
   } while (0)
 
+thread_local bool inited = false;
+static void checkStackSize() {
+	volatile int foo[128 * 1024];
+	for (int i = 0; i < 128*1024; ++i) {
+		foo[i] = i;
+		foo[i] = foo[i];
+	}
+}
+
 static uint32_t setup_fermat(uint32_t N_Size, int num, const mp_limb_t* M, mp_limb_t* MI, mp_limb_t* R)
 {
 	assert(N_Size <= MAX_N_SIZE);
@@ -97,6 +106,13 @@ static uint32_t setup_fermat(uint32_t N_Size, int num, const mp_limb_t* M, mp_li
 
 void fermatTest(int N_Size, int listSize, uint32_t* M, uint32_t* is_prime)
 {
+	// Because of the way the ISPC code uses the stack, we must ensure
+	// enough stack is paged in before running the test.
+	if (!inited) {
+		checkStackSize();
+		inited = true;
+	}
+
 	if (N_Size < 3 || N_Size > MAX_N_SIZE)
 	{
 		printf("N Size out of bounds\n");

@@ -6,7 +6,7 @@ CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native -fno-pie -no-pie
 
 msys_version := $(if $(findstring Msys, $(shell uname -o)),$(word 1, $(subst ., ,$(shell uname -r))),0)
 ifneq ($(msys_version), 0)
-LIBS   = -pthread -ljansson -lcurl -lcrypto -lgmpxx -lgmp -lws2_32
+LIBS   = -pthread -ljansson -lcurl -lcrypto -lgmpxx -lgmp -lws2_32 -Wl,--image-base -Wl,0x10000000
 MOD_1_4_ASM = mod_1_4_win.asm
 else
 LIBS   = -L/usr/local/lib -pthread -ljansson -lcurl -lcrypto -Wl,-Bstatic -lgmpxx -lgmp -Wl,-Bdynamic
@@ -72,8 +72,15 @@ mod_1_2_avx.o: external/mod_1_2_avx.asm
 	rm mod_1_2_avx.s
 endif
 
+ifneq ($(msys_version), 0)
+primetest.o: ispc/primetest.s ispc/primetest_win.sed
+	$(SED) -f ispc/primetest_win.sed <ispc/primetest.s >primetest_win.s
+	$(AS) primetest_win.s -o primetest.o
+	rm primetest_win.s
+else
 primetest.o: ispc/primetest.s
 	$(AS) ispc/primetest.s -o primetest.o
+endif
 
 clean:
 	rm -rf rieMiner *.o
