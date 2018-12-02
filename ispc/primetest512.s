@@ -31,8 +31,8 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	movw	$-21846, %r9w           # imm = 0xAAAA
 	kmovw	%r9d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm0, %zmm0 {%k1} {z}
-	vmovdqa32	%zmm1, %zmm1 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm0 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm1 {%k1}{z}
 	leal	-2(%rdx), %r14d
 	movl	%r11d, %ecx
 	andl	$3, %ecx
@@ -72,81 +72,81 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vmovdqu64	-192(%rsi,%rbx), %zmm7
 	kmovw	%r9d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm7, %zmm7 {%k1} {z}
+	vmovdqa32	%zmm7, %zmm7 {%k1}{z}
 	vpmuludq	%zmm7, %zmm0, %zmm8
 	vpaddq	%zmm5, %zmm8, %zmm5
 	vpmuludq	%zmm7, %zmm3, %zmm7
 	vpsllq	$32, %zmm7, %zmm7
 	vpaddq	%zmm5, %zmm7, %zmm5
-	vmovdqa32	%zmm6, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm6, %zmm6 {%k1}{z}
 	vpmuludq	%zmm6, %zmm1, %zmm7
 	vpaddq	%zmm2, %zmm7, %zmm2
 	vpmuludq	%zmm6, %zmm4, %zmm6
 	vpsllq	$32, %zmm6, %zmm6
-	vmovdqa32	%zmm5, %zmm7 {%k1} {z}
+	vmovdqa32	%zmm5, %zmm7 {%k1}{z}
 	vmovdqa64	%zmm7, -192(%rsp,%rbx)
 	vpaddq	%zmm2, %zmm6, %zmm2
-	vmovdqa32	%zmm2, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm6 {%k1}{z}
 	vmovdqa64	%zmm6, -256(%rsp,%rbx)
 	vpsrlq	$32, %zmm5, %zmm5
 	vpsrlq	$32, %zmm2, %zmm2
 	vmovdqu64	-128(%rsi,%rbx), %zmm6
 	vmovdqu64	-64(%rsi,%rbx), %zmm7
-	vmovdqa32	%zmm7, %zmm7 {%k1} {z}
+	vmovdqa32	%zmm7, %zmm7 {%k1}{z}
 	vpmuludq	%zmm7, %zmm0, %zmm8
 	vpmuludq	%zmm7, %zmm3, %zmm7
 	vpsllq	$32, %zmm7, %zmm7
 	vpaddq	%zmm7, %zmm8, %zmm7
 	vpaddq	%zmm5, %zmm7, %zmm5
-	vmovdqa32	%zmm6, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm6, %zmm6 {%k1}{z}
 	vpmuludq	%zmm6, %zmm1, %zmm7
 	vpmuludq	%zmm6, %zmm4, %zmm6
 	vpsllq	$32, %zmm6, %zmm6
 	vpaddq	%zmm6, %zmm7, %zmm6
 	vpaddq	%zmm2, %zmm6, %zmm2
-	vmovdqa32	%zmm5, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm5, %zmm6 {%k1}{z}
 	vmovdqa64	%zmm6, -64(%rsp,%rbx)
-	vmovdqa32	%zmm2, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm6 {%k1}{z}
 	vmovdqa64	%zmm6, -128(%rsp,%rbx)
 	vpsrlq	$32, %zmm5, %zmm5
 	vpsrlq	$32, %zmm2, %zmm2
 	vmovdqu64	(%rsi,%rbx), %zmm6
 	vmovdqu64	64(%rsi,%rbx), %zmm7
-	vmovdqa32	%zmm7, %zmm7 {%k1} {z}
+	vmovdqa32	%zmm7, %zmm7 {%k1}{z}
 	vpmuludq	%zmm7, %zmm0, %zmm8
 	vpmuludq	%zmm7, %zmm3, %zmm7
 	vpsllq	$32, %zmm7, %zmm7
 	vpaddq	%zmm7, %zmm8, %zmm7
 	vpaddq	%zmm5, %zmm7, %zmm5
-	vmovdqa32	%zmm6, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm6, %zmm6 {%k1}{z}
 	vpmuludq	%zmm6, %zmm1, %zmm7
 	vpmuludq	%zmm6, %zmm4, %zmm6
 	vpsllq	$32, %zmm6, %zmm6
 	vpaddq	%zmm6, %zmm7, %zmm6
-	vmovdqa32	%zmm5, %zmm7 {%k1} {z}
+	vmovdqa32	%zmm5, %zmm7 {%k1}{z}
 	vmovdqa64	%zmm7, 64(%rsp,%rbx)
 	vpaddq	%zmm2, %zmm6, %zmm2
-	vmovdqa32	%zmm2, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm6 {%k1}{z}
 	vmovdqa64	%zmm6, (%rsp,%rbx)
 	vpsrlq	$32, %zmm2, %zmm2
 	vpsrlq	$32, %zmm5, %zmm5
 	addq	$4, %rax
 	vmovdqu64	128(%rsi,%rbx), %zmm6
 	vmovdqu64	192(%rsi,%rbx), %zmm7
-	vmovdqa32	%zmm6, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm6, %zmm6 {%k1}{z}
 	vpmuludq	%zmm6, %zmm1, %zmm8
 	vpmuludq	%zmm6, %zmm4, %zmm6
 	vpsllq	$32, %zmm6, %zmm6
 	vpaddq	%zmm6, %zmm8, %zmm6
 	vpaddq	%zmm2, %zmm6, %zmm2
-	vmovdqa32	%zmm7, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm7, %zmm6 {%k1}{z}
 	vpmuludq	%zmm6, %zmm0, %zmm7
 	vpmuludq	%zmm6, %zmm3, %zmm6
 	vpsllq	$32, %zmm6, %zmm6
 	vpaddq	%zmm6, %zmm7, %zmm6
 	vpaddq	%zmm5, %zmm6, %zmm5
-	vmovdqa32	%zmm2, %zmm6 {%k1} {z}
-	vmovdqa32	%zmm5, %zmm7 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm6 {%k1}{z}
+	vmovdqa32	%zmm5, %zmm7 {%k1}{z}
 	vmovdqa64	%zmm7, 192(%rsp,%rbx)
 	vmovdqa64	%zmm6, 128(%rsp,%rbx)
 	vpsrlq	$32, %zmm5, %zmm5
@@ -170,20 +170,20 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vmovdqu64	192(%rsi,%rax), %zmm7
 	kmovw	%ebx, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm6, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm6, %zmm6 {%k1}{z}
 	vpmuludq	%zmm6, %zmm1, %zmm8
 	vpaddq	%zmm2, %zmm8, %zmm2
 	vpmuludq	%zmm6, %zmm3, %zmm6
 	vpsllq	$32, %zmm6, %zmm6
 	vpaddq	%zmm2, %zmm6, %zmm2
-	vmovdqa32	%zmm7, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm7, %zmm6 {%k1}{z}
 	vpmuludq	%zmm6, %zmm0, %zmm7
 	vpaddq	%zmm5, %zmm7, %zmm5
 	vpmuludq	%zmm6, %zmm4, %zmm6
 	vpsllq	$32, %zmm6, %zmm6
 	vpaddq	%zmm5, %zmm6, %zmm5
-	vmovdqa32	%zmm2, %zmm6 {%k1} {z}
-	vmovdqa32	%zmm5, %zmm7 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm6 {%k1}{z}
+	vmovdqa32	%zmm5, %zmm7 {%k1}{z}
 	vmovdqa64	%zmm7, 192(%rsp,%rax)
 	vmovdqa64	%zmm6, 128(%rsp,%rax)
 	vpsrlq	$32, %zmm5, %zmm5
@@ -222,8 +222,8 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vmovdqu64	-64(%rsi,%rcx), %zmm0
 	kmovw	%r13d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm0, %zmm0 {%k1} {z}
-	vmovdqa32	%zmm1, %zmm1 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm0 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm1 {%k1}{z}
 	vpxor	%xmm2, %xmm2, %xmm2
 	leaq	-2(%r11), %r12
 	testb	$1, %bl
@@ -236,13 +236,13 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vmovdqu64	64(%rsi,%rcx), %zmm3
 	kmovw	%r13d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm2, %zmm2 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm2 {%k1}{z}
 	vpmuludq	%zmm2, %zmm1, %zmm4
 	vpsrlq	$32, %zmm1, %zmm5
 	vpmuludq	%zmm2, %zmm5, %zmm2
 	vpsllq	$32, %zmm2, %zmm2
 	vpaddq	%zmm2, %zmm4, %zmm2
-	vmovdqa32	%zmm3, %zmm3 {%k1} {z}
+	vmovdqa32	%zmm3, %zmm3 {%k1}{z}
 	vpmuludq	%zmm3, %zmm0, %zmm4
 	vpsrlq	$32, %zmm0, %zmm5
 	vpmuludq	%zmm3, %zmm5, %zmm3
@@ -252,8 +252,8 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	shlq	$7, %rcx
 	vpaddq	192(%rsp,%rcx), %zmm3, %zmm3
 	vpaddq	128(%rsp,%rcx), %zmm2, %zmm2
-	vmovdqa32	%zmm2, %zmm4 {%k1} {z}
-	vmovdqa32	%zmm3, %zmm5 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
+	vmovdqa32	%zmm3, %zmm5 {%k1}{z}
 	vmovdqa64	%zmm5, 192(%rsp,%rcx)
 	vmovdqa64	%zmm4, 128(%rsp,%rcx)
 	vpsrlq	$32, %zmm3, %zmm3
@@ -278,12 +278,12 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vmovdqu64	-64(%rbx), %zmm5
 	kmovw	%r13d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm5, %zmm5 {%k1} {z}
+	vmovdqa32	%zmm5, %zmm5 {%k1}{z}
 	vpmuludq	%zmm5, %zmm0, %zmm6
 	vpsrlq	$32, %zmm0, %zmm7
 	vpmuludq	%zmm5, %zmm7, %zmm5
 	vpsllq	$32, %zmm5, %zmm5
-	vmovdqa32	%zmm4, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm4, %zmm4 {%k1}{z}
 	vpmuludq	%zmm4, %zmm1, %zmm8
 	vpsrlq	$32, %zmm1, %zmm9
 	vpmuludq	%zmm4, %zmm9, %zmm4
@@ -296,20 +296,20 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vpaddq	128(%rsp,%rcx), %zmm2, %zmm2
 	vpaddq	%zmm2, %zmm8, %zmm2
 	vpaddq	%zmm2, %zmm4, %zmm2
-	vmovdqa32	%zmm3, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm3, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 192(%rsp,%rcx)
-	vmovdqa32	%zmm2, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 128(%rsp,%rcx)
 	vpsrlq	$32, %zmm2, %zmm2
 	vpsrlq	$32, %zmm3, %zmm3
 	vmovdqu64	(%rbx), %zmm4
 	vmovdqu64	64(%rbx), %zmm5
-	vmovdqa32	%zmm5, %zmm5 {%k1} {z}
+	vmovdqa32	%zmm5, %zmm5 {%k1}{z}
 	vpmuludq	%zmm5, %zmm0, %zmm6
 	vpmuludq	%zmm5, %zmm7, %zmm5
 	vpsllq	$32, %zmm5, %zmm5
 	vpaddq	%zmm5, %zmm6, %zmm5
-	vmovdqa32	%zmm4, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm4, %zmm4 {%k1}{z}
 	vpmuludq	%zmm4, %zmm1, %zmm6
 	vpmuludq	%zmm4, %zmm9, %zmm4
 	vpsllq	$32, %zmm4, %zmm4
@@ -320,9 +320,9 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vpaddq	%zmm5, %zmm3, %zmm3
 	vpaddq	128(%rsp,%rcx), %zmm2, %zmm2
 	vpaddq	%zmm4, %zmm2, %zmm2
-	vmovdqa32	%zmm2, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 128(%rsp,%rcx)
-	vmovdqa32	%zmm3, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm3, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 192(%rsp,%rcx)
 	vpsrlq	$32, %zmm3, %zmm3
 	vpsrlq	$32, %zmm2, %zmm2
@@ -366,15 +366,15 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vmovdqu64	-64(%rbx), %zmm1
 	kmovw	%r9d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm0, %zmm0 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm0 {%k1}{z}
 	vpmuludq	%zmm0, %zmm0, %zmm0
-	vmovdqa32	%zmm1, %zmm1 {%k1} {z}
+	vmovdqa32	%zmm1, %zmm1 {%k1}{z}
 	vpmuludq	%zmm1, %zmm1, %zmm1
 	leal	-3(%rcx), %edx
 	shlq	$7, %rdx
-	vmovdqa32	%zmm1, %zmm2 {%k1} {z}
+	vmovdqa32	%zmm1, %zmm2 {%k1}{z}
 	vmovdqu64	%zmm2, 64(%rdi,%rdx)
-	vmovdqa32	%zmm0, %zmm2 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
 	vmovdqu64	%zmm2, (%rdi,%rdx)
 	leal	-2(%rcx), %edx
 	shlq	$7, %rdx
@@ -384,14 +384,14 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vmovdqu64	%zmm0, (%rdi,%rdx)
 	vmovdqu64	(%rbx), %zmm0
 	vmovdqu64	64(%rbx), %zmm1
-	vmovdqa32	%zmm1, %zmm1 {%k1} {z}
+	vmovdqa32	%zmm1, %zmm1 {%k1}{z}
 	vpmuludq	%zmm1, %zmm1, %zmm1
-	vmovdqa32	%zmm0, %zmm0 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm0 {%k1}{z}
 	vpmuludq	%zmm0, %zmm0, %zmm0
 	leal	-1(%rcx), %edx
 	shlq	$7, %rdx
-	vmovdqa32	%zmm0, %zmm2 {%k1} {z}
-	vmovdqa32	%zmm1, %zmm3 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
 	vmovdqu64	%zmm3, 64(%rdi,%rdx)
 	vmovdqu64	%zmm2, (%rdi,%rdx)
 	movl	%ecx, %edx
@@ -423,14 +423,14 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	movw	$-21846, %cx            # imm = 0xAAAA
 	kmovw	%ecx, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm1, %zmm1 {%k1} {z}
+	vmovdqa32	%zmm1, %zmm1 {%k1}{z}
 	vpmuludq	%zmm1, %zmm1, %zmm1
-	vmovdqa32	%zmm0, %zmm0 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm0 {%k1}{z}
 	vpmuludq	%zmm0, %zmm0, %zmm0
 	leal	(%rax,%rax), %ecx
 	shlq	$7, %rcx
-	vmovdqa32	%zmm0, %zmm2 {%k1} {z}
-	vmovdqa32	%zmm1, %zmm3 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
 	vmovdqu64	%zmm3, 64(%rdi,%rcx)
 	vmovdqu64	%zmm2, (%rdi,%rcx)
 	leal	(%rax,%rax), %eax
@@ -471,10 +471,10 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	shlq	$7, %rbx
 	kmovw	%ecx, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm3, %zmm7 {%k1} {z}
+	vmovdqa32	%zmm3, %zmm7 {%k1}{z}
 	vmovdqu64	%zmm7, 64(%rdi,%rbx)
 	vpaddq	%zmm6, %zmm2, %zmm2
-	vmovdqa32	%zmm2, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm6 {%k1}{z}
 	vmovdqu64	%zmm6, (%rdi,%rbx)
 	vpsrlq	$31, %zmm5, %zmm5
 	vpsrlq	$31, %zmm4, %zmm4
@@ -498,8 +498,8 @@ squareSimple___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @squareSimple___UM_un_3C_vyU
 	vpaddq	(%rdi,%rsi), %zmm4, %zmm4
 	vpaddq	%zmm2, %zmm4, %zmm2
 	shlq	$7, %rbx
-	vmovdqa32	%zmm2, %zmm4 {%k1} {z}
-	vmovdqa32	%zmm3, %zmm5 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
+	vmovdqa32	%zmm3, %zmm5 {%k1}{z}
 	vmovdqu64	%zmm5, 64(%rdi,%rbx)
 	vmovdqu64	%zmm4, (%rdi,%rbx)
 	vpsrlq	$31, %zmm7, %zmm4
@@ -577,7 +577,7 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	kortestw	%k1, %k1
 	jb	.LBB1_15
 # %bb.2:                                # %no_return.i.lr.ph
-	vpternlogd	$255, %zmm0, %zmm0, %zmm0 {%k1} {z}
+	vpternlogd	$255, %zmm0, %zmm0, %zmm0 {%k1}{z}
 	vpmovdb	%zmm0, %xmm7
 	leal	-2(%r11), %eax
 	vpcmpeqd	%xmm0, %xmm0, %xmm0
@@ -590,7 +590,7 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpcmpnleuq	%zmm5, %zmm3, %k0
 	vpcmpnleuq	%zmm6, %zmm4, %k1
 	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm3, %zmm3, %zmm3 {%k1} {z}
+	vpternlogd	$255, %zmm3, %zmm3, %zmm3 {%k1}{z}
 	vpmovdb	%zmm3, %xmm3
 	vpand	%xmm1, %xmm3, %xmm1
 	vpcmpeqb	%xmm8, %xmm1, %xmm3
@@ -614,7 +614,7 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpcmpltuq	%zmm5, %zmm3, %k0
 	vpcmpltuq	%zmm6, %zmm4, %k1
 	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm1, %zmm1, %zmm1 {%k1} {z}
+	vpternlogd	$255, %zmm1, %zmm1, %zmm1 {%k1}{z}
 	vpmovdb	%zmm1, %xmm1
 	vpand	%xmm2, %xmm1, %xmm1
 	vpcmpeqb	%xmm8, %xmm1, %xmm9
@@ -637,7 +637,7 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vptestnmq	%zmm8, %zmm8, %k0
 	vptestnmq	%zmm10, %zmm10, %k1
 	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm0, %zmm0, %zmm0 {%k1} {z}
+	vpternlogd	$255, %zmm0, %zmm0, %zmm0 {%k1}{z}
 	vpmovdb	%zmm0, %xmm11
 	kortestw	%k1, %k1
 	je	.LBB1_11
@@ -658,7 +658,7 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	cmpw	%ax, %cx
 	je	.LBB1_10
 # %bb.7:                                # %no_return.i512.lr.ph
-	vpternlogd	$255, %zmm0, %zmm0, %zmm0 {%k2} {z}
+	vpternlogd	$255, %zmm0, %zmm0, %zmm0 {%k2}{z}
 	vpmovdb	%zmm0, %xmm1
 	leal	-2(%r11), %edx
 	vpcmpeqd	%xmm3, %xmm3, %xmm3
@@ -671,7 +671,7 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpcmpnleuq	%zmm7, %zmm5, %k0
 	vpcmpnleuq	%zmm9, %zmm6, %k1
 	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm5, %zmm5, %zmm5 {%k1} {z}
+	vpternlogd	$255, %zmm5, %zmm5, %zmm5 {%k1}{z}
 	vpmovdb	%zmm5, %xmm5
 	vpand	%xmm2, %xmm5, %xmm2
 	vpcmpeqb	%xmm4, %xmm2, %xmm5
@@ -697,7 +697,7 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpcmpltuq	%zmm7, %zmm5, %k0
 	vpcmpltuq	%zmm9, %zmm6, %k1
 	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1} {z}
+	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1}{z}
 	vpmovdb	%zmm2, %xmm2
 	vpand	%xmm0, %xmm2, %xmm2
 	vpcmpeqb	%xmm4, %xmm2, %xmm12
@@ -802,9 +802,9 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	%zmm2, %zmm3, %zmm2
 	kmovw	%eax, %k0
 	knotw	%k0, %k3
-	vmovdqa32	%zmm1, %zmm3 {%k3} {z}
+	vmovdqa32	%zmm1, %zmm3 {%k3}{z}
 	vmovdqu64	%zmm3, (%r12,%rdi) {%k1}
-	vmovdqa32	%zmm2, %zmm3 {%k3} {z}
+	vmovdqa32	%zmm2, %zmm3 {%k3}{z}
 	vmovdqu64	%zmm3, 64(%r12,%rdi) {%k2}
 	vpsraq	$32, %zmm2, %zmm2
 	vpsraq	$32, %zmm1, %zmm1
@@ -814,9 +814,9 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	%zmm2, %zmm3, %zmm2
 	vpsubq	128(%r13,%rdi), %zmm4, %zmm3
 	vpaddq	%zmm1, %zmm3, %zmm1
-	vmovdqa32	%zmm1, %zmm3 {%k3} {z}
+	vmovdqa32	%zmm1, %zmm3 {%k3}{z}
 	vmovdqu64	%zmm3, 128(%r12,%rdi) {%k1}
-	vmovdqa32	%zmm2, %zmm3 {%k3} {z}
+	vmovdqa32	%zmm2, %zmm3 {%k3}{z}
 	vmovdqu64	%zmm3, 192(%r12,%rdi) {%k2}
 	vpsraq	$32, %zmm2, %zmm2
 	vpsraq	$32, %zmm1, %zmm1
@@ -839,8 +839,8 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	movw	$-21846, %ax            # imm = 0xAAAA
 	kmovw	%eax, %k0
 	knotw	%k0, %k3
-	vmovdqa32	%zmm2, %zmm2 {%k3} {z}
-	vmovdqa32	%zmm1, %zmm1 {%k3} {z}
+	vmovdqa32	%zmm2, %zmm2 {%k3}{z}
+	vmovdqa32	%zmm1, %zmm1 {%k3}{z}
 	vmovdqu64	%zmm1, (%r12,%rcx) {%k1}
 	vmovdqu64	%zmm2, 64(%r12,%rcx) {%k2}
 .LBB1_24:                               # %safe_if_after_true
@@ -899,9 +899,9 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	%zmm1, %zmm2, %zmm1
 	kmovw	%eax, %k0
 	knotw	%k0, %k3
-	vmovdqa32	%zmm0, %zmm2 {%k3} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k3}{z}
 	vmovdqu64	%zmm2, (%r12,%rdi) {%k1}
-	vmovdqa32	%zmm1, %zmm2 {%k3} {z}
+	vmovdqa32	%zmm1, %zmm2 {%k3}{z}
 	vmovdqu64	%zmm2, 64(%r12,%rdi) {%k2}
 	vpsraq	$32, %zmm1, %zmm1
 	vpsraq	$32, %zmm0, %zmm0
@@ -911,9 +911,9 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	%zmm1, %zmm2, %zmm1
 	vpsubq	(%rdx,%rdi), %zmm3, %zmm2
 	vpaddq	%zmm0, %zmm2, %zmm0
-	vmovdqa32	%zmm0, %zmm2 {%k3} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k3}{z}
 	vmovdqu64	%zmm2, 128(%r12,%rdi) {%k1}
-	vmovdqa32	%zmm1, %zmm2 {%k3} {z}
+	vmovdqa32	%zmm1, %zmm2 {%k3}{z}
 	vmovdqu64	%zmm2, 192(%r12,%rdi) {%k2}
 	vpsraq	$32, %zmm1, %zmm1
 	vpsraq	$32, %zmm0, %zmm0
@@ -936,8 +936,8 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	movw	$-21846, %ax            # imm = 0xAAAA
 	kmovw	%eax, %k0
 	knotw	%k0, %k3
-	vmovdqa32	%zmm1, %zmm1 {%k3} {z}
-	vmovdqa32	%zmm0, %zmm0 {%k3} {z}
+	vmovdqa32	%zmm1, %zmm1 {%k3}{z}
+	vmovdqa32	%zmm0, %zmm0 {%k3}{z}
 	vmovdqu64	%zmm0, (%r12,%rcx) {%k1}
 	vmovdqu64	%zmm1, 64(%r12,%rcx) {%k2}
 	jmp	.LBB1_48
@@ -965,9 +965,9 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	%zmm1, %zmm2, %zmm1
 	kmovw	%eax, %k0
 	knotw	%k0, %k3
-	vmovdqa32	%zmm0, %zmm2 {%k3} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k3}{z}
 	vmovdqu64	%zmm2, (%r12,%rdx) {%k1}
-	vmovdqa32	%zmm1, %zmm2 {%k3} {z}
+	vmovdqa32	%zmm1, %zmm2 {%k3}{z}
 	vmovdqu64	%zmm2, 64(%r12,%rdx) {%k2}
 	vpsraq	$32, %zmm1, %zmm1
 	vpsraq	$32, %zmm0, %zmm0
@@ -977,9 +977,9 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	%zmm1, %zmm2, %zmm1
 	vpsubq	128(%r13,%rdx), %zmm3, %zmm2
 	vpaddq	%zmm0, %zmm2, %zmm0
-	vmovdqa32	%zmm0, %zmm2 {%k3} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k3}{z}
 	vmovdqu64	%zmm2, 128(%r12,%rdx) {%k1}
-	vmovdqa32	%zmm1, %zmm2 {%k3} {z}
+	vmovdqa32	%zmm1, %zmm2 {%k3}{z}
 	vmovdqu64	%zmm2, 192(%r12,%rdx) {%k2}
 	vpsraq	$32, %zmm1, %zmm1
 	vpsraq	$32, %zmm0, %zmm0
@@ -1002,8 +1002,8 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	movw	$-21846, %ax            # imm = 0xAAAA
 	kmovw	%eax, %k0
 	knotw	%k0, %k3
-	vmovdqa32	%zmm1, %zmm1 {%k3} {z}
-	vmovdqa32	%zmm0, %zmm0 {%k3} {z}
+	vmovdqa32	%zmm1, %zmm1 {%k3}{z}
+	vmovdqa32	%zmm0, %zmm0 {%k3}{z}
 	vmovdqu64	%zmm0, (%r12,%rcx) {%k1}
 	vmovdqu64	%zmm1, 64(%r12,%rcx) {%k2}
 .LBB1_36:                               # %bigSub___un_3C_vyU_3E_un_3C_CvyU_3E_un_3C_CvyU_3E_unu.exit446
@@ -1068,9 +1068,9 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	%zmm1, %zmm2, %zmm1
 	kmovw	%eax, %k0
 	knotw	%k0, %k3
-	vmovdqa32	%zmm0, %zmm2 {%k3} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k3}{z}
 	vmovdqu64	%zmm2, (%r12,%rsi) {%k1}
-	vmovdqa32	%zmm1, %zmm2 {%k3} {z}
+	vmovdqa32	%zmm1, %zmm2 {%k3}{z}
 	vmovdqu64	%zmm2, 64(%r12,%rsi) {%k2}
 	vpsraq	$32, %zmm1, %zmm1
 	vpsraq	$32, %zmm0, %zmm0
@@ -1080,9 +1080,9 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	%zmm1, %zmm2, %zmm1
 	vpsubq	(%rdi,%rsi), %zmm3, %zmm2
 	vpaddq	%zmm0, %zmm2, %zmm0
-	vmovdqa32	%zmm0, %zmm2 {%k3} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k3}{z}
 	vmovdqu64	%zmm2, 128(%r12,%rsi) {%k1}
-	vmovdqa32	%zmm1, %zmm2 {%k3} {z}
+	vmovdqa32	%zmm1, %zmm2 {%k3}{z}
 	vmovdqu64	%zmm2, 192(%r12,%rsi) {%k2}
 	vpsraq	$32, %zmm1, %zmm1
 	vpsraq	$32, %zmm0, %zmm0
@@ -1105,8 +1105,8 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	movw	$-21846, %ax            # imm = 0xAAAA
 	kmovw	%eax, %k0
 	knotw	%k0, %k3
-	vmovdqa32	%zmm1, %zmm2 {%k3} {z}
-	vmovdqa32	%zmm0, %zmm3 {%k3} {z}
+	vmovdqa32	%zmm1, %zmm2 {%k3}{z}
+	vmovdqa32	%zmm0, %zmm3 {%k3}{z}
 	vmovdqu64	%zmm3, (%r12,%rdx) {%k1}
 	vmovdqu64	%zmm2, 64(%r12,%rdx) {%k2}
 	vpsraq	$32, %zmm1, %zmm1
@@ -1198,9 +1198,9 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	64(%r14,%rdx), %zmm1, %zmm1
 	kmovw	%ebx, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm1, %zmm2 {%k1} {z}
+	vmovdqa32	%zmm1, %zmm2 {%k1}{z}
 	vmovdqu64	%zmm2, -64(%rcx)
-	vmovdqa32	%zmm0, %zmm2 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
 	vmovdqu64	%zmm2, -128(%rcx)
 	vpsrlq	$32, %zmm1, %zmm1
 	vpsrlq	$32, %zmm0, %zmm0
@@ -1210,8 +1210,8 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	64(%rax,%rdx), %zmm1, %zmm1
 	vpaddq	64(%r14,%rdx), %zmm1, %zmm1
 	vpaddq	(%r14,%rdx), %zmm0, %zmm0
-	vmovdqa32	%zmm0, %zmm2 {%k1} {z}
-	vmovdqa32	%zmm1, %zmm3 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
 	vmovdqu64	%zmm3, 64(%rcx)
 	vmovdqu64	%zmm2, (%rcx)
 	vpsrlq	$32, %zmm1, %zmm1
@@ -1235,8 +1235,8 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	movw	$-21846, %cx            # imm = 0xAAAA
 	kmovw	%ecx, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm0, %zmm2 {%k1} {z}
-	vmovdqa32	%zmm1, %zmm3 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
 	vmovdqu64	%zmm3, 64(%r14,%rsi)
 	vmovdqu64	%zmm2, (%r14,%rsi)
 	vpsrlq	$32, %zmm1, %zmm1
@@ -1285,9 +1285,9 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	64(%r12,%rdx), %zmm3, %zmm3
 	kmovw	%ebx, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm3, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm3, %zmm4 {%k1}{z}
 	vmovdqu64	%zmm4, -64(%rcx)
-	vmovdqa32	%zmm2, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
 	vmovdqu64	%zmm4, -128(%rcx)
 	vpsrlq	$32, %zmm3, %zmm3
 	vpsrlq	$32, %zmm2, %zmm2
@@ -1297,8 +1297,8 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	64(%r14,%rdx), %zmm3, %zmm3
 	vpaddq	64(%r12,%rdx), %zmm3, %zmm3
 	vpaddq	(%r12,%rdx), %zmm2, %zmm2
-	vmovdqa32	%zmm2, %zmm4 {%k1} {z}
-	vmovdqa32	%zmm3, %zmm5 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
+	vmovdqa32	%zmm3, %zmm5 {%k1}{z}
 	vmovdqu64	%zmm5, 64(%rcx)
 	vmovdqu64	%zmm4, (%rcx)
 	vpsrlq	$32, %zmm3, %zmm3
@@ -1322,8 +1322,8 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	movw	$-21846, %cx            # imm = 0xAAAA
 	kmovw	%ecx, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm2, %zmm4 {%k1} {z}
-	vmovdqa32	%zmm3, %zmm5 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
+	vmovdqa32	%zmm3, %zmm5 {%k1}{z}
 	vmovdqu64	%zmm5, 64(%rax,%rsi)
 	vmovdqu64	%zmm4, (%rax,%rsi)
 	vpsrlq	$32, %zmm3, %zmm3
@@ -1361,7 +1361,7 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	kortestw	%k1, %k1
 	je	.LBB1_72
 # %bb.70:                               # %for_loop.lr.ph
-	vpternlogd	$255, %zmm4, %zmm4, %zmm4 {%k1} {z}
+	vpternlogd	$255, %zmm4, %zmm4, %zmm4 {%k1}{z}
 	vpmovdb	%zmm4, %xmm4
 	movw	$-21846, %ax            # imm = 0xAAAA
 	vpxor	%xmm12, %xmm12, %xmm12
@@ -1377,8 +1377,8 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	shlq	$7, %rcx
 	kmovw	%eax, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm7, %zmm8 {%k1} {z}
-	vmovdqa32	%zmm6, %zmm9 {%k1} {z}
+	vmovdqa32	%zmm7, %zmm8 {%k1}{z}
+	vmovdqa32	%zmm6, %zmm9 {%k1}{z}
 	vpcmpeqb	%xmm12, %xmm4, %xmm10
 	vpmovsxbd	%xmm10, %zmm11
 	vpternlogq	$15, %zmm10, %zmm10, %zmm10
@@ -1402,7 +1402,7 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vptestnmq	%zmm5, %zmm5, %k0
 	vptestnmq	%zmm6, %zmm6, %k1
 	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1} {z}
+	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1}{z}
 	vpmovdb	%zmm2, %xmm2
 	vpandn	%xmm4, %xmm2, %xmm4
 	vpcmpeqb	%xmm12, %xmm4, %xmm2
@@ -1420,7 +1420,7 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	kortestw	%k1, %k1
 	je	.LBB1_75
 # %bb.73:                               # %for_loop202.lr.ph
-	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1} {z}
+	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1}{z}
 	vpmovdb	%zmm2, %xmm2
 	leal	(%r13,%r13,2), %eax
 	movw	$-21846, %cx            # imm = 0xAAAA
@@ -1434,8 +1434,8 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	64(%r12,%rdx), %zmm1, %zmm5
 	kmovw	%ecx, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm5, %zmm6 {%k1} {z}
-	vmovdqa32	%zmm4, %zmm7 {%k1} {z}
+	vmovdqa32	%zmm5, %zmm6 {%k1}{z}
+	vmovdqa32	%zmm4, %zmm7 {%k1}{z}
 	vpcmpeqb	%xmm10, %xmm2, %xmm8
 	vpmovsxbd	%xmm8, %zmm9
 	vpternlogq	$15, %zmm8, %zmm8, %zmm8
@@ -1459,7 +1459,7 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vptestnmq	%zmm3, %zmm3, %k0
 	vptestnmq	%zmm4, %zmm4, %k1
 	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm0, %zmm0, %zmm0 {%k1} {z}
+	vpternlogd	$255, %zmm0, %zmm0, %zmm0 {%k1}{z}
 	vpmovdb	%zmm0, %xmm0
 	vpandn	%xmm2, %xmm0, %xmm2
 	vpcmpeqb	%xmm10, %xmm2, %xmm0
@@ -1502,9 +1502,9 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	64(%rbx,%rdx), %zmm5, %zmm5
 	kmovw	%r8d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm5, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm5, %zmm6 {%k1}{z}
 	vmovdqu64	%zmm6, -64(%rcx)
-	vmovdqa32	%zmm4, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm4, %zmm6 {%k1}{z}
 	vmovdqu64	%zmm6, -128(%rcx)
 	vpsrlq	$32, %zmm5, %zmm5
 	vpsrlq	$32, %zmm4, %zmm4
@@ -1514,8 +1514,8 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	64(%r14,%rdx), %zmm5, %zmm5
 	vpaddq	64(%rbx,%rdx), %zmm5, %zmm5
 	vpaddq	(%rbx,%rdx), %zmm4, %zmm4
-	vmovdqa32	%zmm4, %zmm6 {%k1} {z}
-	vmovdqa32	%zmm5, %zmm7 {%k1} {z}
+	vmovdqa32	%zmm4, %zmm6 {%k1}{z}
+	vmovdqa32	%zmm5, %zmm7 {%k1}{z}
 	vmovdqu64	%zmm7, 64(%rcx)
 	vmovdqu64	%zmm6, (%rcx)
 	vpsrlq	$32, %zmm5, %zmm5
@@ -1539,8 +1539,8 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	movw	$-21846, %cx            # imm = 0xAAAA
 	kmovw	%ecx, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm4, %zmm6 {%k1} {z}
-	vmovdqa32	%zmm5, %zmm7 {%k1} {z}
+	vmovdqa32	%zmm4, %zmm6 {%k1}{z}
+	vmovdqa32	%zmm5, %zmm7 {%k1}{z}
 	vmovdqu64	%zmm7, 64(%r14,%rdi)
 	vmovdqu64	%zmm6, (%r14,%rdi)
 	vpsrlq	$32, %zmm5, %zmm5
@@ -1582,8 +1582,8 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	%zmm5, %zmm6, %zmm5
 	kmovw	%esi, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm4, %zmm6 {%k1} {z}
-	vmovdqa32	%zmm5, %zmm7 {%k1} {z}
+	vmovdqa32	%zmm4, %zmm6 {%k1}{z}
+	vmovdqa32	%zmm5, %zmm7 {%k1}{z}
 	vmovdqu64	%zmm7, 64(%rax,%rdx)
 	vmovdqu64	%zmm6, (%rax,%rdx)
 	vpsraq	$32, %zmm5, %zmm5
@@ -1618,10 +1618,10 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpsubq	-256(%rsp,%rdi), %zmm6, %zmm6
 	kmovw	%r8d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm5, %zmm7 {%k1} {z}
+	vmovdqa32	%zmm5, %zmm7 {%k1}{z}
 	vmovdqu64	%zmm7, -320(%rax,%rdi)
 	vpaddq	%zmm4, %zmm6, %zmm4
-	vmovdqa32	%zmm4, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm4, %zmm6 {%k1}{z}
 	vmovdqu64	%zmm6, -384(%rax,%rdi)
 	vpsraq	$32, %zmm5, %zmm5
 	vpsubq	-64(%rsp,%rdi), %zmm9, %zmm6
@@ -1629,9 +1629,9 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	%zmm5, %zmm6, %zmm5
 	vpsubq	-128(%rsp,%rdi), %zmm8, %zmm6
 	vpaddq	%zmm4, %zmm6, %zmm4
-	vmovdqa32	%zmm5, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm5, %zmm6 {%k1}{z}
 	vmovdqu64	%zmm6, -192(%rax,%rdi)
-	vmovdqa32	%zmm4, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm4, %zmm6 {%k1}{z}
 	vmovdqu64	%zmm6, -256(%rax,%rdi)
 	vpsraq	$32, %zmm5, %zmm5
 	vpsraq	$32, %zmm4, %zmm4
@@ -1641,9 +1641,9 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	%zmm5, %zmm6, %zmm5
 	vpsubq	(%rsp,%rdi), %zmm7, %zmm6
 	vpaddq	%zmm4, %zmm6, %zmm4
-	vmovdqa32	%zmm5, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm5, %zmm6 {%k1}{z}
 	vmovdqu64	%zmm6, -64(%rax,%rdi)
-	vmovdqa32	%zmm4, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm4, %zmm6 {%k1}{z}
 	vmovdqu64	%zmm6, -128(%rax,%rdi)
 	vpsraq	$32, %zmm4, %zmm4
 	vpsraq	$32, %zmm5, %zmm5
@@ -1653,9 +1653,9 @@ toom2SquareFull___UM_un_3C_vyU_3E_un_3C_CvyU_3E_unu: # @toom2SquareFull___UM_un_
 	vpaddq	%zmm4, %zmm6, %zmm4
 	vpsubq	192(%rsp,%rdi), %zmm7, %zmm6
 	vpaddq	%zmm5, %zmm6, %zmm5
-	vmovdqa32	%zmm5, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm5, %zmm6 {%k1}{z}
 	vmovdqu64	%zmm6, 64(%rax,%rdi)
-	vmovdqa32	%zmm4, %zmm6 {%k1} {z}
+	vmovdqa32	%zmm4, %zmm6 {%k1}{z}
 	vmovdqu64	%zmm6, (%rax,%rdi)
 	vpsraq	$32, %zmm5, %zmm5
 	vpsraq	$32, %zmm4, %zmm4
@@ -1819,7 +1819,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpternlogq	$15, %zmm0, %zmm0, %zmm0
 	vpmovsxbd	%xmm0, %zmm0
 	vptestmd	%zmm0, %zmm0, %k4
-	vmovdqu32	(%rsi), %zmm0 {%k4} {z}
+	vmovdqu32	(%rsi), %zmm0 {%k4}{z}
 	vmovdqa64	%zmm0, 128(%rsp) # 64-byte Spill
 	testl	%r11d, %r11d
 	jle	.LBB2_38
@@ -1929,10 +1929,10 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	29056(%rsp,%rdx), %zmm2, %zmm2
 	kmovw	%r12d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm3, %zmm5 {%k1} {z}
+	vmovdqa32	%zmm3, %zmm5 {%k1}{z}
 	vmovdqa64	%zmm5, 29120(%rsp,%rdx)
 	vpaddq	%zmm4, %zmm2, %zmm2
-	vmovdqa32	%zmm2, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 29056(%rsp,%rdx)
 	vpsrlq	$32, %zmm3, %zmm3
 	vpmovzxdq	32(%rdi), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
@@ -1946,9 +1946,9 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	%zmm5, %zmm2, %zmm2
 	vpaddq	29120(%rsp,%rdx), %zmm3, %zmm3
 	vpaddq	%zmm4, %zmm3, %zmm3
-	vmovdqa32	%zmm3, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm3, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 29120(%rsp,%rdx)
-	vmovdqa32	%zmm2, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 29056(%rsp,%rdx)
 	vpsrlq	$32, %zmm3, %zmm3
 	vpsrlq	$32, %zmm2, %zmm2
@@ -1981,8 +1981,8 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	%zmm0, %zmm2, %zmm0
 	kmovw	%r12d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm1, %zmm2 {%k1} {z}
-	vmovdqa32	%zmm0, %zmm3 {%k1} {z}
+	vmovdqa32	%zmm1, %zmm2 {%k1}{z}
+	vmovdqa32	%zmm0, %zmm3 {%k1}{z}
 	vmovdqa64	%zmm3, 29120(%rsp,%rsi)
 	vmovdqa64	%zmm2, 29056(%rsp,%rsi)
 	vpsrlq	$32, %zmm0, %zmm3
@@ -2001,10 +2001,10 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	movl	84(%rsp), %r8d          # 4-byte Reload
 	vpbroadcastd	%r8d, %zmm0
 	vptestmd	320(%rsp), %zmm0, %k1 # 64-byte Folded Reload
-	vpternlogq	$255, %zmm0, %zmm0, %zmm0 {%k1} {z}
+	vpternlogq	$255, %zmm0, %zmm0, %zmm0 {%k1}{z}
 	vpsrlq	$63, %zmm0, %zmm2
 	kshiftrw	$8, %k1, %k1
-	vpternlogq	$255, %zmm0, %zmm0, %zmm0 {%k1} {z}
+	vpternlogq	$255, %zmm0, %zmm0, %zmm0 {%k1}{z}
 	vpsrlq	$63, %zmm0, %zmm3
 	testl	%r13d, %r13d
 	vmovdqa	112(%rsp), %xmm12       # 16-byte Reload
@@ -2042,9 +2042,9 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	shlq	$7, %rcx
 	kmovw	%r12d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm1, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm1, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 448(%rsp,%rcx)
-	vmovdqa32	%zmm0, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 384(%rsp,%rcx)
 	vpsrlq	$32, %zmm0, %zmm0
 	leal	1(%rax), %ecx
@@ -2063,8 +2063,8 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpsllvq	%zmm3, %zmm5, %zmm4
 	vpaddq	%zmm1, %zmm4, %zmm1
 	shlq	$7, %rcx
-	vmovdqa32	%zmm0, %zmm4 {%k1} {z}
-	vmovdqa32	%zmm1, %zmm5 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm4 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm5 {%k1}{z}
 	vmovdqa64	%zmm5, 448(%rsp,%rcx)
 	vmovdqa64	%zmm4, 384(%rsp,%rcx)
 	vpsrlq	$32, %zmm1, %zmm1
@@ -2103,8 +2103,8 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	shlq	$7, %rax
 	kmovw	%r12d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm0, %zmm2 {%k1} {z}
-	vmovdqa32	%zmm1, %zmm3 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
 	vmovdqa64	%zmm3, 448(%rsp,%rax)
 	vmovdqa64	%zmm2, 384(%rsp,%rax)
 	vpsrlq	$32, %zmm1, %zmm1
@@ -2114,7 +2114,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vptestmq	%zmm0, %zmm0, %k0
 	vptestmq	%zmm1, %zmm1, %k1
 	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1} {z}
+	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1}{z}
 	vpmovdb	%zmm2, %xmm2
 	jmp	.LBB2_29
 	.p2align	4, 0x90
@@ -2124,16 +2124,16 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpmovsxbd	%xmm5, %zmm5
 	vptestmd	%zmm5, %zmm5, %k0
 	knotw	%k0, %k1
-	vmovdqa64	%zmm4, %zmm4 {%k1} {z}
+	vmovdqa64	%zmm4, %zmm4 {%k1}{z}
 	vpaddq	%zmm0, %zmm4, %zmm0
 	kshiftrw	$8, %k0, %k0
 	knotw	%k0, %k1
-	vmovdqa64	%zmm3, %zmm3 {%k1} {z}
+	vmovdqa64	%zmm3, %zmm3 {%k1}{z}
 	vpaddq	%zmm1, %zmm3, %zmm1
 	vptestnmq	%zmm0, %zmm0, %k0
 	vptestnmq	%zmm1, %zmm1, %k1
 	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm3, %zmm3, %zmm3 {%k1} {z}
+	vpternlogd	$255, %zmm3, %zmm3, %zmm3 {%k1}{z}
 	vpmovdb	%zmm3, %xmm3
 	vpandn	%xmm2, %xmm3, %xmm2
 .LBB2_29:                               # %for_test124.preheader
@@ -2188,9 +2188,9 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	%zmm3, %zmm5, %zmm3
 	kmovw	%r12d, %k0
 	knotw	%k0, %k2
-	vmovdqa32	%zmm4, %zmm5 {%k2} {z}
+	vmovdqa32	%zmm4, %zmm5 {%k2}{z}
 	kshiftrw	$8, %k1, %k3
-	vmovdqa32	%zmm3, %zmm6 {%k2} {z}
+	vmovdqa32	%zmm3, %zmm6 {%k2}{z}
 	vmovdqa64	%zmm9, %zmm6 {%k3}
 	vmovdqa64	%zmm6, -64(%rdx)
 	vmovdqa64	%zmm8, %zmm5 {%k1}
@@ -2210,8 +2210,8 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	%zmm3, %zmm6, %zmm3
 	vpsubq	%zmm7, %zmm10, %zmm6
 	vpaddq	%zmm4, %zmm6, %zmm4
-	vmovdqa32	%zmm3, %zmm6 {%k2} {z}
-	vmovdqa32	%zmm4, %zmm7 {%k2} {z}
+	vmovdqa32	%zmm3, %zmm6 {%k2}{z}
+	vmovdqa32	%zmm4, %zmm7 {%k2}{z}
 	vmovdqa64	%zmm10, %zmm7 {%k1}
 	vmovdqa64	%zmm11, %zmm6 {%k3}
 	vmovdqa64	%zmm6, 64(%rdx)
@@ -2257,8 +2257,8 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	%zmm4, %zmm5, %zmm4
 	kmovw	%r12d, %k0
 	knotw	%k0, %k2
-	vmovdqa32	%zmm3, %zmm5 {%k2} {z}
-	vmovdqa32	%zmm4, %zmm8 {%k2} {z}
+	vmovdqa32	%zmm3, %zmm5 {%k2}{z}
+	vmovdqa32	%zmm4, %zmm8 {%k2}{z}
 	vmovdqa64	%zmm6, %zmm8 {%k1}
 	kshiftrw	$8, %k1, %k1
 	vmovdqa64	%zmm7, %zmm5 {%k1}
@@ -2426,10 +2426,10 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	12672(%rsp,%rdi), %zmm2, %zmm2
 	kmovw	%r11d, %k0
 	knotw	%k0, %k2
-	vmovdqa32	%zmm3, %zmm5 {%k2} {z}
+	vmovdqa32	%zmm3, %zmm5 {%k2}{z}
 	vmovdqa64	%zmm5, 12736(%rsp,%rdi)
 	vpaddq	%zmm4, %zmm2, %zmm2
-	vmovdqa32	%zmm2, %zmm4 {%k2} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k2}{z}
 	vmovdqa64	%zmm4, 12672(%rsp,%rdi)
 	vpsrlq	$32, %zmm3, %zmm3
 	vpmovzxdq	32(%rcx), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
@@ -2443,9 +2443,9 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	%zmm5, %zmm2, %zmm2
 	vpaddq	12736(%rsp,%rdi), %zmm3, %zmm3
 	vpaddq	%zmm4, %zmm3, %zmm3
-	vmovdqa32	%zmm3, %zmm4 {%k2} {z}
+	vmovdqa32	%zmm3, %zmm4 {%k2}{z}
 	vmovdqa64	%zmm4, 12736(%rsp,%rdi)
-	vmovdqa32	%zmm2, %zmm4 {%k2} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k2}{z}
 	vmovdqa64	%zmm4, 12672(%rsp,%rdi)
 	vpsrlq	$32, %zmm3, %zmm3
 	vpsrlq	$32, %zmm2, %zmm2
@@ -2473,8 +2473,8 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	%zmm0, %zmm2, %zmm0
 	kmovw	%r11d, %k0
 	knotw	%k0, %k2
-	vmovdqa32	%zmm1, %zmm2 {%k2} {z}
-	vmovdqa32	%zmm0, %zmm3 {%k2} {z}
+	vmovdqa32	%zmm1, %zmm2 {%k2}{z}
+	vmovdqa32	%zmm0, %zmm3 {%k2}{z}
 	vmovdqa64	%zmm3, 12736(%rsp,%rbx)
 	vmovdqa64	%zmm2, 12672(%rsp,%rbx)
 	vpsrlq	$32, %zmm0, %zmm3
@@ -2526,9 +2526,9 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	12672(%rsp,%rbx), %zmm0, %zmm0
 	kmovw	%r10d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm0, %zmm2 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
 	vmovdqa64	%zmm2, -128(%rdi)
-	vmovdqa32	%zmm1, %zmm2 {%k1} {z}
+	vmovdqa32	%zmm1, %zmm2 {%k1}{z}
 	vmovdqa64	%zmm2, -64(%rdi)
 	vpsrlq	$32, %zmm1, %zmm1
 	vpsrlq	$32, %zmm0, %zmm0
@@ -2540,8 +2540,8 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	shlq	$7, %rbx
 	vpaddq	12736(%rsp,%rbx), %zmm1, %zmm1
 	vpaddq	12672(%rsp,%rbx), %zmm0, %zmm0
-	vmovdqa32	%zmm0, %zmm2 {%k1} {z}
-	vmovdqa32	%zmm1, %zmm3 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
 	vmovdqa64	%zmm3, 64(%rdi)
 	vmovdqa64	%zmm2, (%rdi)
 	vpsrlq	$32, %zmm1, %zmm1
@@ -2569,8 +2569,8 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	movw	$-21846, %ax            # imm = 0xAAAA
 	kmovw	%eax, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm0, %zmm2 {%k1} {z}
-	vmovdqa32	%zmm1, %zmm3 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
 	vmovdqa64	%zmm3, 448(%rsp,%rcx)
 	vmovdqa64	%zmm2, 384(%rsp,%rcx)
 	vpsrlq	$32, %zmm1, %zmm1
@@ -2636,8 +2636,8 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	%zmm4, %zmm3, %zmm3
 	kmovw	%edx, %k0
 	knotw	%k0, %k3
-	vmovdqa32	%zmm2, %zmm4 {%k3} {z}
-	vmovdqa32	%zmm3, %zmm6 {%k3} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k3}{z}
+	vmovdqa32	%zmm3, %zmm6 {%k3}{z}
 	vmovdqa64	%zmm6, %zmm8 {%k2}
 	vmovdqa64	%zmm8, -64(%rbx)
 	vmovdqa64	%zmm4, %zmm7 {%k1}
@@ -2657,8 +2657,8 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpaddq	%zmm3, %zmm5, %zmm3
 	vpsubq	%zmm6, %zmm9, %zmm5
 	vpaddq	%zmm4, %zmm5, %zmm5
-	vmovdqa32	%zmm3, %zmm4 {%k3} {z}
-	vmovdqa32	%zmm5, %zmm6 {%k3} {z}
+	vmovdqa32	%zmm3, %zmm4 {%k3}{z}
+	vmovdqa32	%zmm5, %zmm6 {%k3}{z}
 	vmovdqa64	%zmm6, %zmm9 {%k1}
 	vmovdqa64	%zmm4, %zmm10 {%k2}
 	vmovdqa64	%zmm10, 64(%rbx)
@@ -2693,8 +2693,8 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	movw	$-21846, %ax            # imm = 0xAAAA
 	kmovw	%eax, %k0
 	knotw	%k0, %k2
-	vmovdqa32	%zmm0, %zmm0 {%k2} {z}
-	vmovdqa32	%zmm2, %zmm2 {%k2} {z}
+	vmovdqa32	%zmm0, %zmm0 {%k2}{z}
+	vmovdqa32	%zmm2, %zmm2 {%k2}{z}
 	vmovdqa64	%zmm2, %zmm1 {%k1}
 	kshiftrw	$8, %k1, %k1
 	vmovdqa64	%zmm0, %zmm5 {%k1}
@@ -2708,7 +2708,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vptestmq	%zmm0, %zmm0, %k0
 	vptestmq	%zmm1, %zmm1, %k1
 	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm0, %zmm0, %zmm0 {%k1} {z}
+	vpternlogd	$255, %zmm0, %zmm0, %zmm0 {%k1}{z}
 	vpmovdb	%zmm0, %xmm1
 	vpand	%xmm12, %xmm1, %xmm0
 	vpxor	%xmm8, %xmm8, %xmm8
@@ -2749,7 +2749,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	movq	%rcx, %rdx
 	shlq	$6, %rdx
 	vpcmpltud	8576(%rsp,%rdx), %zmm6, %k1
-	vpternlogd	$255, %zmm7, %zmm7, %zmm7 {%k1} {z}
+	vpternlogd	$255, %zmm7, %zmm7, %zmm7 {%k1}{z}
 	vpsrld	$31, %zmm7, %zmm7
 	vpcmpeqb	%xmm4, %xmm3, %xmm2
 	vpmovsxbd	%xmm2, %zmm2
@@ -2763,7 +2763,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpcmpeqq	448(%rsp,%rcx), %zmm2, %k2
 	kunpckbw	%k0, %k2, %k0
 	korw	%k1, %k0, %k1
-	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1} {z}
+	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1}{z}
 	vpmovdb	%zmm2, %xmm2
 	vpand	%xmm0, %xmm2, %xmm0
 	addl	$1, %eax
@@ -2794,7 +2794,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpcmpeqq	384(%rsp), %zmm2, %k0
 	vpcmpeqq	448(%rsp), %zmm2, %k1
 	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1} {z}
+	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1}{z}
 	vpmovdb	%zmm2, %xmm2
 	vpblendvb	%xmm1, %xmm0, %xmm2, %xmm0
 	cmpl	$1, %r11d
@@ -2828,7 +2828,7 @@ fermat_test512___un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_un_3C_unu_3E_unuunu: # @
 	vpmovsxbd	%xmm4, %zmm4
 	vptestmd	%zmm4, %zmm4, %k1
 	korw	%k1, %k0, %k1
-	vpternlogd	$255, %zmm4, %zmm4, %zmm4 {%k1} {z}
+	vpternlogd	$255, %zmm4, %zmm4, %zmm4 {%k1}{z}
 	vpmovdb	%zmm4, %xmm4
 	vpand	%xmm0, %xmm4, %xmm0
 	addl	$1, %eax
@@ -3098,10 +3098,10 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	29056(%rsp,%rdx), %zmm2, %zmm2
 	kmovw	%r12d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm3, %zmm5 {%k1} {z}
+	vmovdqa32	%zmm3, %zmm5 {%k1}{z}
 	vmovdqa64	%zmm5, 29120(%rsp,%rdx)
 	vpaddq	%zmm4, %zmm2, %zmm2
-	vmovdqa32	%zmm2, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 29056(%rsp,%rdx)
 	vpsrlq	$32, %zmm3, %zmm3
 	vpmovzxdq	32(%rdi), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
@@ -3115,9 +3115,9 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm5, %zmm2, %zmm2
 	vpaddq	29120(%rsp,%rdx), %zmm3, %zmm3
 	vpaddq	%zmm4, %zmm3, %zmm3
-	vmovdqa32	%zmm3, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm3, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 29120(%rsp,%rdx)
-	vmovdqa32	%zmm2, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 29056(%rsp,%rdx)
 	vpsrlq	$32, %zmm3, %zmm3
 	vpsrlq	$32, %zmm2, %zmm2
@@ -3150,8 +3150,8 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm0, %zmm2, %zmm0
 	kmovw	%r12d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm1, %zmm2 {%k1} {z}
-	vmovdqa32	%zmm0, %zmm3 {%k1} {z}
+	vmovdqa32	%zmm1, %zmm2 {%k1}{z}
+	vmovdqa32	%zmm0, %zmm3 {%k1}{z}
 	vmovdqa64	%zmm3, 29120(%rsp,%rsi)
 	vmovdqa64	%zmm2, 29056(%rsp,%rsi)
 	vpsrlq	$32, %zmm0, %zmm3
@@ -3170,10 +3170,10 @@ fermat_test512:                            # @fermat_test512
 	movl	100(%rsp), %r8d         # 4-byte Reload
 	vpbroadcastd	%r8d, %zmm0
 	vptestmd	320(%rsp), %zmm0, %k1 # 64-byte Folded Reload
-	vpternlogq	$255, %zmm0, %zmm0, %zmm0 {%k1} {z}
+	vpternlogq	$255, %zmm0, %zmm0, %zmm0 {%k1}{z}
 	vpsrlq	$63, %zmm0, %zmm2
 	kshiftrw	$8, %k1, %k1
-	vpternlogq	$255, %zmm0, %zmm0, %zmm0 {%k1} {z}
+	vpternlogq	$255, %zmm0, %zmm0, %zmm0 {%k1}{z}
 	vpsrlq	$63, %zmm0, %zmm3
 	testl	%r13d, %r13d
 	vmovdqa64	256(%rsp), %zmm12 # 64-byte Reload
@@ -3209,9 +3209,9 @@ fermat_test512:                            # @fermat_test512
 	shlq	$7, %rcx
 	kmovw	%r12d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm1, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm1, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 448(%rsp,%rcx)
-	vmovdqa32	%zmm0, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 384(%rsp,%rcx)
 	vpsrlq	$32, %zmm0, %zmm0
 	leal	1(%rax), %ecx
@@ -3230,8 +3230,8 @@ fermat_test512:                            # @fermat_test512
 	vpsllvq	%zmm3, %zmm5, %zmm4
 	vpaddq	%zmm1, %zmm4, %zmm1
 	shlq	$7, %rcx
-	vmovdqa32	%zmm0, %zmm4 {%k1} {z}
-	vmovdqa32	%zmm1, %zmm5 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm4 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm5 {%k1}{z}
 	vmovdqa64	%zmm5, 448(%rsp,%rcx)
 	vmovdqa64	%zmm4, 384(%rsp,%rcx)
 	vpsrlq	$32, %zmm1, %zmm1
@@ -3270,8 +3270,8 @@ fermat_test512:                            # @fermat_test512
 	shlq	$7, %rax
 	kmovw	%r12d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm0, %zmm2 {%k1} {z}
-	vmovdqa32	%zmm1, %zmm3 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
 	vmovdqa64	%zmm3, 448(%rsp,%rax)
 	vmovdqa64	%zmm2, 384(%rsp,%rax)
 	vpsrlq	$32, %zmm1, %zmm1
@@ -3284,7 +3284,7 @@ fermat_test512:                            # @fermat_test512
 	kortestw	%k1, %k1
 	je	.LBB3_43
 # %bb.35:                               #   in Loop: Header=BB3_12 Depth=2
-	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1} {z}
+	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1}{z}
 	vpmovdb	%zmm2, %xmm2
 	.p2align	4, 0x90
 .LBB3_36:                               # %for_loop140.lr.ph.us
@@ -3330,9 +3330,9 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm3, %zmm5, %zmm3
 	kmovw	%r12d, %k0
 	knotw	%k0, %k2
-	vmovdqa32	%zmm4, %zmm5 {%k2} {z}
+	vmovdqa32	%zmm4, %zmm5 {%k2}{z}
 	kshiftrw	$8, %k1, %k3
-	vmovdqa32	%zmm3, %zmm6 {%k2} {z}
+	vmovdqa32	%zmm3, %zmm6 {%k2}{z}
 	vmovdqa64	%zmm9, %zmm6 {%k3}
 	vmovdqa64	%zmm6, -64(%rdx)
 	vmovdqa64	%zmm8, %zmm5 {%k1}
@@ -3352,8 +3352,8 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm3, %zmm6, %zmm3
 	vpsubq	%zmm7, %zmm10, %zmm6
 	vpaddq	%zmm4, %zmm6, %zmm4
-	vmovdqa32	%zmm3, %zmm6 {%k2} {z}
-	vmovdqa32	%zmm4, %zmm7 {%k2} {z}
+	vmovdqa32	%zmm3, %zmm6 {%k2}{z}
+	vmovdqa32	%zmm4, %zmm7 {%k2}{z}
 	vmovdqa64	%zmm10, %zmm7 {%k1}
 	vmovdqa64	%zmm11, %zmm6 {%k3}
 	vmovdqa64	%zmm6, 64(%rdx)
@@ -3399,8 +3399,8 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm4, %zmm5, %zmm4
 	kmovw	%r12d, %k0
 	knotw	%k0, %k2
-	vmovdqa32	%zmm3, %zmm5 {%k2} {z}
-	vmovdqa32	%zmm4, %zmm8 {%k2} {z}
+	vmovdqa32	%zmm3, %zmm5 {%k2}{z}
+	vmovdqa32	%zmm4, %zmm8 {%k2}{z}
 	vmovdqa64	%zmm6, %zmm8 {%k1}
 	kshiftrw	$8, %k1, %k1
 	vmovdqa64	%zmm7, %zmm5 {%k1}
@@ -3414,16 +3414,16 @@ fermat_test512:                            # @fermat_test512
 	vpmovsxbd	%xmm5, %zmm5
 	vptestmd	%zmm5, %zmm5, %k0
 	knotw	%k0, %k1
-	vmovdqa64	%zmm4, %zmm4 {%k1} {z}
+	vmovdqa64	%zmm4, %zmm4 {%k1}{z}
 	vpaddq	%zmm0, %zmm4, %zmm0
 	kshiftrw	$8, %k0, %k0
 	knotw	%k0, %k1
-	vmovdqa64	%zmm3, %zmm3 {%k1} {z}
+	vmovdqa64	%zmm3, %zmm3 {%k1}{z}
 	vpaddq	%zmm1, %zmm3, %zmm1
 	vptestnmq	%zmm0, %zmm0, %k0
 	vptestnmq	%zmm1, %zmm1, %k1
 	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm3, %zmm3, %zmm3 {%k1} {z}
+	vpternlogd	$255, %zmm3, %zmm3, %zmm3 {%k1}{z}
 	vpmovdb	%zmm3, %xmm3
 	vpandn	%xmm2, %xmm3, %xmm2
 	vpcmpeqb	%xmm14, %xmm2, %xmm3
@@ -3594,10 +3594,10 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	12672(%rsp,%rdi), %zmm2, %zmm2
 	kmovw	%r11d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm3, %zmm5 {%k1} {z}
+	vmovdqa32	%zmm3, %zmm5 {%k1}{z}
 	vmovdqa64	%zmm5, 12736(%rsp,%rdi)
 	vpaddq	%zmm4, %zmm2, %zmm2
-	vmovdqa32	%zmm2, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 12672(%rsp,%rdi)
 	vpsrlq	$32, %zmm3, %zmm3
 	vpmovzxdq	32(%rcx), %zmm4 # zmm4 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero,mem[4],zero,mem[5],zero,mem[6],zero,mem[7],zero
@@ -3611,9 +3611,9 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm5, %zmm2, %zmm2
 	vpaddq	12736(%rsp,%rdi), %zmm3, %zmm3
 	vpaddq	%zmm4, %zmm3, %zmm3
-	vmovdqa32	%zmm3, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm3, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 12736(%rsp,%rdi)
-	vmovdqa32	%zmm2, %zmm4 {%k1} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k1}{z}
 	vmovdqa64	%zmm4, 12672(%rsp,%rdi)
 	vpsrlq	$32, %zmm3, %zmm3
 	vpsrlq	$32, %zmm2, %zmm2
@@ -3641,8 +3641,8 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm0, %zmm2, %zmm0
 	kmovw	%r11d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm1, %zmm2 {%k1} {z}
-	vmovdqa32	%zmm0, %zmm3 {%k1} {z}
+	vmovdqa32	%zmm1, %zmm2 {%k1}{z}
+	vmovdqa32	%zmm0, %zmm3 {%k1}{z}
 	vmovdqa64	%zmm3, 12736(%rsp,%rbx)
 	vmovdqa64	%zmm2, 12672(%rsp,%rbx)
 	vpsrlq	$32, %zmm0, %zmm3
@@ -3728,8 +3728,8 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm4, %zmm3, %zmm3
 	kmovw	%edx, %k0
 	knotw	%k0, %k2
-	vmovdqa32	%zmm2, %zmm4 {%k2} {z}
-	vmovdqa32	%zmm3, %zmm6 {%k2} {z}
+	vmovdqa32	%zmm2, %zmm4 {%k2}{z}
+	vmovdqa32	%zmm3, %zmm6 {%k2}{z}
 	vmovdqa64	%zmm6, %zmm8 {%k1}
 	vmovdqa64	%zmm8, -64(%rbx)
 	vmovdqa64	%zmm4, %zmm7 {%k3}
@@ -3749,8 +3749,8 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	%zmm3, %zmm5, %zmm3
 	vpsubq	%zmm6, %zmm9, %zmm5
 	vpaddq	%zmm4, %zmm5, %zmm5
-	vmovdqa32	%zmm3, %zmm4 {%k2} {z}
-	vmovdqa32	%zmm5, %zmm6 {%k2} {z}
+	vmovdqa32	%zmm3, %zmm4 {%k2}{z}
+	vmovdqa32	%zmm5, %zmm6 {%k2}{z}
 	vmovdqa64	%zmm6, %zmm9 {%k3}
 	vmovdqa64	%zmm4, %zmm10 {%k1}
 	vmovdqa64	%zmm10, 64(%rbx)
@@ -3787,8 +3787,8 @@ fermat_test512:                            # @fermat_test512
 	kmovw	%eax, %k0
 	kmovw	%k1, %k2
 	knotw	%k0, %k1
-	vmovdqa32	%zmm0, %zmm0 {%k1} {z}
-	vmovdqa32	%zmm2, %zmm2 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm0 {%k1}{z}
+	vmovdqa32	%zmm2, %zmm2 {%k1}{z}
 	vmovdqa64	%zmm2, %zmm1 {%k2}
 	kshiftrw	$8, %k2, %k1
 	vmovdqa64	%zmm0, %zmm5 {%k1}
@@ -3802,7 +3802,7 @@ fermat_test512:                            # @fermat_test512
 	vptestmq	%zmm0, %zmm0, %k0
 	vptestmq	%zmm1, %zmm1, %k1
 	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm0, %zmm0, %zmm0 {%k1} {z}
+	vpternlogd	$255, %zmm0, %zmm0, %zmm0 {%k1}{z}
 	vpmovdb	%zmm0, %xmm1
 	vpcmpeqd	%xmm0, %xmm0, %xmm0
 	kortestw	%k1, %k1
@@ -3836,7 +3836,7 @@ fermat_test512:                            # @fermat_test512
 	movq	%rcx, %rdx
 	shlq	$6, %rdx
 	vpcmpltud	8576(%rsp,%rdx), %zmm5, %k2
-	vpternlogd	$255, %zmm6, %zmm6, %zmm6 {%k2} {z}
+	vpternlogd	$255, %zmm6, %zmm6, %zmm6 {%k2}{z}
 	vpsrld	$31, %zmm6, %zmm6
 	vpcmpeqb	%xmm2, %xmm3, %xmm7
 	vpmovsxbd	%xmm7, %zmm7
@@ -3850,7 +3850,7 @@ fermat_test512:                            # @fermat_test512
 	vpcmpeqq	448(%rsp,%rcx), %zmm4, %k3
 	kunpckbw	%k0, %k3, %k0
 	korw	%k2, %k0, %k2
-	vpternlogd	$255, %zmm4, %zmm4, %zmm4 {%k2} {z}
+	vpternlogd	$255, %zmm4, %zmm4, %zmm4 {%k2}{z}
 	vpmovdb	%zmm4, %xmm4
 	vpand	%xmm0, %xmm4, %xmm0
 	addl	$1, %eax
@@ -3875,7 +3875,7 @@ fermat_test512:                            # @fermat_test512
 	vpcmpeqq	384(%rsp), %zmm2, %k0
 	vpcmpeqq	448(%rsp), %zmm2, %k1
 	kunpckbw	%k0, %k1, %k1
-	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1} {z}
+	vpternlogd	$255, %zmm2, %zmm2, %zmm2 {%k1}{z}
 	vpmovdb	%zmm2, %xmm2
 	vpblendvb	%xmm1, %xmm0, %xmm2, %xmm0
 	cmpl	$1, %r11d
@@ -3907,7 +3907,7 @@ fermat_test512:                            # @fermat_test512
 	vpmovsxbd	%xmm4, %zmm4
 	vptestmd	%zmm4, %zmm4, %k1
 	korw	%k1, %k0, %k1
-	vpternlogd	$255, %zmm4, %zmm4, %zmm4 {%k1} {z}
+	vpternlogd	$255, %zmm4, %zmm4, %zmm4 {%k1}{z}
 	vpmovdb	%zmm4, %xmm4
 	vpand	%xmm0, %xmm4, %xmm0
 	addl	$1, %eax
@@ -3958,9 +3958,9 @@ fermat_test512:                            # @fermat_test512
 	vpaddq	12672(%rsp,%rbx), %zmm0, %zmm0
 	kmovw	%r10d, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm0, %zmm2 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
 	vmovdqa64	%zmm2, -128(%rdi)
-	vmovdqa32	%zmm1, %zmm2 {%k1} {z}
+	vmovdqa32	%zmm1, %zmm2 {%k1}{z}
 	vmovdqa64	%zmm2, -64(%rdi)
 	vpsrlq	$32, %zmm1, %zmm1
 	vpsrlq	$32, %zmm0, %zmm0
@@ -3972,8 +3972,8 @@ fermat_test512:                            # @fermat_test512
 	shlq	$7, %rbx
 	vpaddq	12736(%rsp,%rbx), %zmm1, %zmm1
 	vpaddq	12672(%rsp,%rbx), %zmm0, %zmm0
-	vmovdqa32	%zmm0, %zmm2 {%k1} {z}
-	vmovdqa32	%zmm1, %zmm3 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
 	vmovdqa64	%zmm3, 64(%rdi)
 	vmovdqa64	%zmm2, (%rdi)
 	vpsrlq	$32, %zmm1, %zmm1
@@ -4001,8 +4001,8 @@ fermat_test512:                            # @fermat_test512
 	movw	$-21846, %ax            # imm = 0xAAAA
 	kmovw	%eax, %k0
 	knotw	%k0, %k1
-	vmovdqa32	%zmm0, %zmm2 {%k1} {z}
-	vmovdqa32	%zmm1, %zmm3 {%k1} {z}
+	vmovdqa32	%zmm0, %zmm2 {%k1}{z}
+	vmovdqa32	%zmm1, %zmm3 {%k1}{z}
 	vmovdqa64	%zmm3, 448(%rsp,%rcx)
 	vmovdqa64	%zmm2, 384(%rsp,%rcx)
 	vpsrlq	$32, %zmm1, %zmm1
