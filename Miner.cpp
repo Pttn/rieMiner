@@ -5,6 +5,8 @@
 #include "Miner.hpp"
 #include "external/gmp_util.h"
 
+#include "ispc/fermat.h"
+
 thread_local bool isMaster(false);
 thread_local uint64_t** offset_stack(NULL);
 
@@ -560,6 +562,34 @@ void Miner::_runSieve(SieveInstance& sieve, uint32_t workDataIndex) {
 	}
 }
 
+bool Miner::_testPrimesIspc(uint32_t indexes[WORK_INDEXES], uint32_t is_prime[WORK_INDEXES], mpz_t z_ploop, mpz_t z_tmp)
+{
+	uint32_t M[WORK_INDEXES * MAX_N_SIZE];
+	uint32_t bits = 0;
+	uint32_t N_Size;
+	uint32_t* mp = &M[0];
+	for (uint32_t i(0); i < WORK_INDEXES; ++i) {
+		mpz_mul_ui(z_tmp, _primorial, indexes[i]);
+		mpz_add(z_tmp, z_tmp, z_ploop);
+
+		if (bits == 0) {
+			bits = mpz_sizeinbase(z_tmp, 2);
+			N_Size = (bits >> 5) + 1;
+
+			if (N_Size > MAX_N_SIZE) return false;
+		}
+		else {
+			assert(bits == mpz_sizeinbase(z_tmp, 2));
+		}
+
+		memcpy(mp, z_tmp->_mp_d, N_Size * 4);
+		mp += N_Size;
+	}
+
+	fermatTest(N_Size, WORK_INDEXES, M, is_prime);
+	return true;
+}
+
 void Miner::_verifyThread() {
 /* Check for a prime cluster. Uses the fermat test - jh's code noted that it is
 slightly faster. Could do an MR test as a follow-up, but the server can do this
@@ -597,6 +627,32 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 			mpz_add(z_ploop, z_ploop, _workData[job.workDataIndex].z_verifyTarget);
 			mpz_add_ui(z_ploop, z_ploop, _primorialOffsetDiffToFirst[job.testWork.offsetId]);
 
+			bool firstTestDone(false);
+			if (_cpuInfo.hasAVX2() && job.testWork.n_indexes == WORK_INDEXES) {
+				uint32_t isPrime[WORK_INDEXES];
+				firstTestDone = _testPrimesIspc(job.testWork.indexes, isPrime, z_ploop, z_tmp);
+
+				if (firstTestDone) {
+					job.testWork.n_indexes = 0;
+					for (uint32_t i(0); i < WORK_INDEXES; i++) {
+#if 1
+						mpz_mul_ui(z_tmp, _primorial, job.testWork.indexes[i]);
+						mpz_add(z_tmp, z_tmp, z_ploop);
+
+						mpz_sub_ui(z_ft_n, z_tmp, 1);
+						mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
+
+						if (mpz_cmp_ui(z_ft_r, 1) == 0) assert(isPrime[i]);
+						else assert(!isPrime[i]);
+#endif
+
+						if (isPrime[i]) {
+							job.testWork.indexes[job.testWork.n_indexes++] = job.testWork.indexes[i];
+						}
+					}
+				}
+			}
+
 			for (uint32_t idx(0) ; idx < job.testWork.n_indexes ; idx++) {
 				if (_currentHeight != _workData[job.workDataIndex].verifyBlock.height) break;
 
@@ -604,10 +660,12 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				mpz_mul_ui(z_tmp, _primorial, job.testWork.indexes[idx]);
 				mpz_add(z_tmp, z_tmp, z_ploop);
 				
-				mpz_sub_ui(z_ft_n, z_tmp, 1);
-				mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
+				if (!firstTestDone) {
+					mpz_sub_ui(z_ft_n, z_tmp, 1);
+					mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
 				
-				if (mpz_cmp_ui(z_ft_r, 1) != 0) continue;
+					if (mpz_cmp_ui(z_ft_r, 1) != 0) continue;
+				}
 
 				mpz_sub(z_tmp2, z_tmp, _workData[job.workDataIndex].z_verifyTarget); // offset = tested - target
 				
