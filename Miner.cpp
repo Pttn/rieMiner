@@ -635,7 +635,7 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				if (firstTestDone) {
 					job.testWork.n_indexes = 0;
 					for (uint32_t i(0); i < WORK_INDEXES; i++) {
-#if 1
+#if 0
 						mpz_mul_ui(z_tmp, _primorial, job.testWork.indexes[i]);
 						mpz_add(z_tmp, z_tmp, z_ploop);
 

@@ -2,7 +2,7 @@ CXX    = g++
 M4     = m4
 AS     = as
 SED    = sed
-CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native
+CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native -fno-pie -no-pie
 
 msys_version := $(if $(findstring Msys, $(shell uname -o)),$(word 1, $(subst ., ,$(shell uname -r))),0)
 ifneq ($(msys_version), 0)
