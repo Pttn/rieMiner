@@ -21,7 +21,7 @@ release: rieMiner
 debug: CFLAGS += -g
 debug: rieMiner
 
-rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o WorkManager.cpp Stats.cpp tools.o CpuID.o mod_1_4.o mod_1_2_avx.o fermat.o primetest.o primetest512.o
+rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o WorkManager.cpp Stats.cpp tools.o CpuID.o mod_1_4.o mod_1_2_avx.o mod_1_2_avx2.o fermat.o primetest.o primetest512.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
 main.o: main.cpp main.hpp Miner.hpp StratumClient.hpp GBTClient.hpp Client.hpp WorkManager.hpp Stats.hpp tools.hpp tsQueue.hpp
@@ -65,11 +65,22 @@ mod_1_2_avx.o: external/mod_1_2_avx.asm external/mod_1_2_avx_win.sed
 	$(M4) mod_1_2_avx.asm >mod_1_2_avx.s
 	$(AS) mod_1_2_avx.s -o mod_1_2_avx.o
 	rm mod_1_2_avx.s mod_1_2_avx.asm
+
+mod_1_2_avx2.o: external/mod_1_2_avx2.asm external/mod_1_2_avx_win.sed
+	$(SED) -f external/mod_1_2_avx_win.sed <external/mod_1_2_avx2.asm >mod_1_2_avx2.asm
+	$(M4) mod_1_2_avx2.asm >mod_1_2_avx2.s
+	$(AS) mod_1_2_avx2.s -o mod_1_2_avx2.o
+	rm mod_1_2_avx2.s mod_1_2_avx2.asm
 else
 mod_1_2_avx.o: external/mod_1_2_avx.asm
 	$(M4) external/mod_1_2_avx.asm >mod_1_2_avx.s
 	$(AS) mod_1_2_avx.s -o mod_1_2_avx.o
 	rm mod_1_2_avx.s
+
+mod_1_2_avx2.o: external/mod_1_2_avx2.asm
+	$(M4) external/mod_1_2_avx2.asm >mod_1_2_avx2.s
+	$(AS) mod_1_2_avx2.s -o mod_1_2_avx2.o
+	rm mod_1_2_avx2.s
 endif
 
 ifneq ($(msys_version), 0)

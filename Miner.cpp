@@ -18,6 +18,7 @@ extern "C" {
 	void rie_mod_1s_4p_cps(uint64_t *cps, uint64_t p);
 	mp_limb_t rie_mod_1s_4p(mp_srcptr ap, mp_size_t n, uint64_t ps, uint64_t cnt, uint64_t* cps);
 	mp_limb_t rie_mod_1s_2p_4times(mp_srcptr ap, mp_size_t n, uint32_t* ps, uint32_t cnt, uint64_t* cps, uint64_t* remainders);
+	mp_limb_t rie_mod_1s_2p_8times(mp_srcptr ap, mp_size_t n, uint32_t* ps, uint32_t cnt, uint64_t* cps, uint64_t* remainders);
 }
 
 void Miner::init() {
@@ -247,13 +248,14 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 	uint64_t precompLimit(_parameters.modPrecompute.size());
 
 	uint64_t avxLimit(0);
+	uint64_t avxWidth(_cpuInfo.hasAVX2() ? 8 : 4);
 	if (_cpuInfo.hasAVX()) {
-		avxLimit = 203280222 - 4;  // Index of first prime > 2^32
-		avxLimit -= (avxLimit - start_i) & 3;  // Must be at least 4 more primes in range to use AVX
+		avxLimit = 203280222 - avxWidth;  // Index of first prime > 2^32
+		avxLimit -= (avxLimit - start_i) & (avxWidth-1);  // Must be enough primes in range to use AVX
 	}
 
-	uint64_t nextRemainder[4];
-	uint64_t nextRemainderIdx(4);
+	uint64_t nextRemainder[8];
+	uint64_t nextRemainderIdx(8);
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
 		uint64_t p(_parameters.primes[i]);
 
@@ -268,7 +270,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		uint64_t cnt(0), ps(0);
 		if (i < precompLimit) {
 			bool haveRemainder(false);
-			if (nextRemainderIdx < 4) {
+			if (nextRemainderIdx < avxWidth) {
 				index = nextRemainder[nextRemainderIdx++];
 				cnt = __builtin_clzll(p);
 				ps = p << cnt;
@@ -276,13 +278,14 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 			}
 			else if (i < avxLimit) {
 				cnt = __builtin_clz((uint32_t)p);
-				if (__builtin_clz((uint32_t)_parameters.primes[i+3]) == cnt) {
-					uint32_t ps32[4];
-					for (uint64_t j(0); j < 4; j++) {
+				if (__builtin_clz((uint32_t)_parameters.primes[i+avxWidth-1]) == cnt) {
+					uint32_t ps32[8];
+					for (uint64_t j(0); j < avxWidth; j++) {
 						ps32[j] = (uint32_t)_parameters.primes[i+j] << cnt;
 						nextRemainder[j] = _parameters.inverts[i+j];
 					}
-					rie_mod_1s_2p_4times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
+					if (_cpuInfo.hasAVX2()) rie_mod_1s_2p_8times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
+					else rie_mod_1s_2p_4times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
 					haveRemainder = true;
 					index = nextRemainder[0];
 					nextRemainderIdx = 1;
