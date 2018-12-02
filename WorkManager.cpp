@@ -73,7 +73,7 @@ void WorkManager::manage() {
 				if (_stats.tuplesCount()[2] >= _options.test2t() && _options.test2t() != 0) {
 					std::cout << _options.test2t() << " 2-tuples found, test finished. " << versionString << ", difficulty " << _options.testDiff() << ", sieve " << _options.sieve() << std::endl;
 					_stats.printBenchmarkResults();
-					if (_options.testDiff() == 1600 && (_options.sieve() == 1073741824 || _options.sieve() == 2147483648) && _options.test2t() >= 50000)
+					if (_options.testDiff() == 1600 && _options.sieve() == 2147483648 && _options.test2t() >= 50000 && _options.testTime() == 0)
 						std::cout << "VALID parameters for Standard Benchmark" << std::endl;
 					_stats.printTuplesStats();
 					_stats.saveTuplesCounts(_options.tcFile());

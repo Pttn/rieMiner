@@ -1,10 +1,10 @@
-# rieMiner 0.9RC2
+# rieMiner 0.9RC3
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
 Solo mining is done using the GetBlockTemplate protocol, while pooled mining is via the Stratum protocol. A benchmark mode is also proposed to compare more easily the performance between different computers.
 
-Direct link to the latest official [Windows x64 standalone executable](https://ric.pttn.me/file.php?d=rieMinerWin64).
+Direct link to the latest official [Windows x64 standalone executable](https://ric.pttn.me/file.php?d=rieMinerWin64). First stable version, rieMiner 0.9, will be released on December 16.
 
 This README also serves as manual for rieMiner. I hope that this program will be useful for you! Happy mining!
 
@@ -20,12 +20,12 @@ Only x64 systems with SSE are supported since version 0.9β2.4.
 
 * Windows 7 or later, or recent enough Linux;
 * x64 CPU with SSE instruction set;
-* 1 GiB of RAM (Sieve size must be manually set at a very low value in the options).
+* 1 GiB of RAM (Sieve size must be manually set at a lower value in the options).
 
 Recommended:
 
 * Windows 10 or Debian 9;
-* Intel Core i7 6700 or better, AMD Ryzen R5 1600 or better;
+* Intel Core i7 6700 or better, or AMD Ryzen R5 1600 or better;
 * 8 GiB of RAM.
 
 ## Compile this program
@@ -124,8 +124,7 @@ It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; a
 * Protocol : protocol to use: GetBlockTemplate for solo mining, Stratum for pooled mining, Benchmark for testing. Default: Benchmark;
 * Address : custom payout address for solo mining (GetBlockTemplate only). Default: a donation address;
 * Threads : number of threads used for mining. Default: 8;
-* Sieve : size of the sieve table used for mining. Use a bigger number if you have 16 GiB of RAM or more, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. Reduce if you have less than 8 GiB of RAM. It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^30;
-* MaxMem : set an approximate limit on amount of memory to use in MiB. 0 for no limit. Default: 0;
+* Sieve : size of the sieve table used for mining. Use a bigger number if you have 16 GiB of RAM or more, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. Reduce if you have less than 8 GiB of RAM (or if you want to reduce memory usage). It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^31;
 * Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Additionally, the base prime of such tuple will be shown in the Benchmark Mode. Default: 6.
 
 It is also possible to use custom configuration file paths, examples:
@@ -179,7 +178,7 @@ Note that you must use different tuples counts files if you use different conste
 
 ### Memory problems
 
-If you have memory errors, try to lower the Sieve value in the configuration file, or set MaxMem to control memory usage.
+If you have memory errors, try to lower the Sieve value in the configuration file.
 
 ## Statistics
 
@@ -278,7 +277,7 @@ To compare two different platforms, you must absolutely test with the same diffi
 
 * Standard Benchmark
   * Difficulty of 1600;
-  * Sieve of 2^30 = 1073741824 or 2^31 = 2147483648 (always precise this information too);
+  * Sieve of 2^31 = 2147483648;
   * No memory limit;
   * Stop after finding 50000 2-tuples or more;
   * The computer must not do anything else during testing;
@@ -288,8 +287,8 @@ To compare two different platforms, you must absolutely test with the same diffi
 Once the benchmark finished itself (i. e. not by the user), it will print something like:
 
 ```
-50000 2-tuples found, test finished. rieMiner 0.9-beta3.1, difficulty 1600, sieve 2147483648
-BENCHMARK RESULTS: 227.470700 primes/s with ratio 28.914627 -> 0.972414 block(s)/day
+50000 2-tuples found, test finished. rieMiner 0.9RC3, difficulty 1600, sieve 2147483648
+BENCHMARK RESULTS: 234.805246 primes/s with ratio 28.960823 -> 0.995788 block(s)/day
 ```
 
 The block(s)/day metric is the one that should be shared or used to compare performance, though it is always good to also take in consideration the other ones. The precision will be about 2 significant digits for the block(s)/day. To get 3 solid digits, about 1 million of 2-tuples would need to be found, which would be way too long to be practical for the Standard Benchmark.
@@ -306,7 +305,7 @@ Which should appear if you want to share your results.
 
 More current results Coming Soon. Data: primes/s, ratio -> block(s)/day.
 
-* AMD Ryzen 2700X @4 GHz, DDR4 2400 CL15, Debian 9, 0.9β3.1: 227.470700, 28.914627 -> 0.972414
+* AMD Ryzen 2700X @4 GHz, DDR4 2400 CL15, Debian 9, 0.9RC3: 234.805246, 28.960823 -> 0.995788
 
 ## Miscellaneous
 
@@ -335,6 +334,21 @@ Donations welcome:
 * Bitcoin: 1PttnMeD9X6imTsRojmhHa1rjudW8Bjok5
 * Riecoin: RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB
 * Ethereum: 0x32de6b854b6a05448b4f25d4496990bece8a2862
+
+### Quick contributor's checklist
+
+* Your code must compile and work on recent Debian based distributions and Windows using MSYS;
+* If modifying the miner, you must ensure that your changes do not cause any performance loss. You have to do proper and long enough before/after benchmarks;
+* rieMiner must should work for any realistic setting, at least try these in the Benchmark Mode:
+  * Difficulty 304, Sieve 2^20 (Testnet mining conditions);
+  * Difficulty 800, Sieve 2^27;
+  * Difficulty 1600, Sieve 2^31 (Standard Benchmark, similar to real mining conditions);
+  * Difficulty 3200, Sieve 2^31 or more (we will eventually reach such Difficulties someday...).
+* Ensure that your changes did not break anything, even if it compiles. Examples (if applicable):
+  * There should never be random (or not) segmentation faults or any other bug, try to do actual mining with Gdb, debugging symbols and Debug Mode enabled during hours or even days to catch possible bugs;
+  * Ensure that valid work is produced (pools and Riecoin-Qt must not reject submissions);
+  * Mining must stop completely while disconnected and restart properly when connection is established again.
+* Follow the style of the rest of the code (curly braces position, camelCase variable names, tabs and not spaces, spaces around + and - but not around * and /,...).
 
 ## Resources
 
