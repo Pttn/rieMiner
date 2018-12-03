@@ -86,9 +86,9 @@ void Miner::init() {
 		mpz_mul_ui(_primorial, _primorial, _parameters.primes[i]);
 	
 	// Estimate memory usage, precomputation only works up to p = 2^37
-	uint64_t primeMult(8 + 16*_parameters.sieveWorkers),
-	         memUsage(128ULL*1048576ULL + 650ULL*1048576ULL*_parameters.sieveWorkers + _nPrimes*primeMult),
-	         precompPrimes(std::min(_nPrimes, 5586502348UL));
+	uint64_t primeMult(16 + 8*_parameters.sieveWorkers),
+	         precompPrimes(std::min(_nPrimes, 5586502348UL)),
+		 memUsage(128ULL*1048576ULL + 650ULL*1048576ULL*_parameters.sieveWorkers + _nPrimes*primeMult + precompPrimes*8);
 	
 	std::cout << "Estimated memory usage: " << ((float) memUsage)/1048576. << " MiB" << std::endl;
 	std::cout << "Reduce Sieve option value to lower this, if needed." << std::endl;
