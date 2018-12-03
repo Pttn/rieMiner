@@ -190,7 +190,7 @@ void Options::loadConf() {
 				}
 				else if (key == "Sieve") {
 					try {_sieve = std::stoll(value);}
-					catch (...) {_sieve = 1073741824;}
+					catch (...) {_sieve = 2147483648;}
 					if (_sieve < 65536) _sieve = 65536;
 				}
 				else if (key == "Tuples") {
@@ -241,11 +241,6 @@ void Options::loadConf() {
 						std::cout << "Too short or invalid primorial offsets, ignoring." << std::endl;
 					else _pOff = primorialOffset;
 				}
-				else if (key == "MaxMem") {
-					try {_maxMem = std::stoll(value);}
-					catch (...) {_maxMem = 0;}
-					_maxMem *= 1048576;
-				}
 				else if (key == "SieveBits") {
 					try {_sieveBits = std::stoi(value);}
 					catch (...) {_sieveBits = 25;}
@@ -282,7 +277,7 @@ void Options::loadConf() {
 		std::cout << "Benchmark Mode at difficulty " << _testDiff << std::endl;
 		if (_testTime != 0) std::cout << "Will stop after " << _testTime << " s" << std::endl;
 		if (_test2t   != 0) std::cout << "Will stop after finding " << _test2t << " 2-tuples" << std::endl;
-		if (_testDiff == 1600 && (_sieve == 1073741824 || _sieve == 2147483648) && _test2t >= 50000)
+		if (_testDiff == 1600 && _sieve == 2147483648 && _test2t >= 50000 && _testTime == 0)
 			std::cout << "VALID parameters for Standard Benchmark" << std::endl;
 	}
 	else {
@@ -302,12 +297,10 @@ void Options::loadConf() {
 	}
 	std::cout << "Threads = " << _threads << std::endl;
 	std::cout << "Sieve max = " << _sieve << std::endl;
-	if (_maxMem != 0)
-		std::cout << "Max Memory = " << _maxMem << std::endl;
 	if (_protocol == "Benchmark")
-		std::cout << "Will notify tuples of at least length = " << (uint16_t) _tuples << std::endl;
+		std::cout << "Will show tuples of at least length " << _tuples << std::endl;
 	else if (_protocol != "Stratum")
-		std::cout << "Will submit tuples of at least length = " << (uint16_t) _tuples << std::endl;
+		std::cout << "Will submit tuples of at least length " << _tuples << std::endl;
 	else std::cout << "Will submit 4-shares" << std::endl;
 	std::cout << "Stats refresh rate = " << _refresh << " s" << std::endl;
 	if (_tcFile != "None") std::cout << "Tuple Count File = " << _tcFile << std::endl;

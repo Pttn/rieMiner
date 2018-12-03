@@ -38,7 +38,7 @@ struct MinerParameters {
 		primorialNumber = 40;
 		threads         = 8;
 		tuples          = 6;
-		sieve           = 1073741824;
+		sieve           = 2147483648;
 		sieveWorkers    = 2;
 		solo            = true;
 		sieveBits       = 25;
@@ -47,7 +47,6 @@ struct MinerParameters {
 		maxIncrements   = (1ULL << 29),
 		maxIter         = maxIncrements/sieveSize;
 		primorialOffset = {4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull, 7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull};
-		denseLimit      = 16384;
 		primeTupleOffset = {0, 4, 2, 4, 2, 4};
 	}
 };
@@ -98,7 +97,7 @@ class Miner {
 	tsQueue<uint64_t, 1024> _modDoneQueue;
 	tsQueue<int, 9216> _workDoneQueue;
 	mpz_t _primorial;
-	uint64_t _nPrimes, _entriesPerSegment, _primeTestStoreOffsetsSize, _startingPrimeIndex, _nDense, _nSparse;
+	uint64_t _nPrimes, _entriesPerSegment, _primeTestStoreOffsetsSize, _startingPrimeIndex, _sparseLimit;
 	std::vector<uint64_t> _halfPrimeTupleOffset, _primorialOffsetDiff, _primorialOffsetDiffToFirst;
 	SieveInstance* _sieves;
 
@@ -152,7 +151,7 @@ class Miner {
 	bool _testPrimesIspc(uint32_t indexes[WORK_INDEXES], uint32_t is_prime[WORK_INDEXES], mpz_t z_ploop, mpz_t z_temp);
 	void _verifyThread();
 	void _getTargetFromBlock(mpz_t z_target, const WorkData& block);
-	void _processOneBlock(uint32_t workDataIndex);
+	void _processOneBlock(uint32_t workDataIndex, bool isNewHeight);
 	
 	public:
 	Miner(const std::shared_ptr<WorkManager> &manager) {
@@ -165,8 +164,7 @@ class Miner {
 		_entriesPerSegment = 0;
 		_primeTestStoreOffsetsSize = 0;
 		_startingPrimeIndex = 0;
-		_nDense  = 0;
-		_nSparse = 0;
+		_sparseLimit = 0;
 		_masterExists = false;
 	}
 	
