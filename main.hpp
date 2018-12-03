@@ -21,11 +21,12 @@
 #define FIXED(x) std::fixed << std::setprecision(x)
 #define FIXED(x) std::fixed << std::setprecision(x)
 
-extern bool DEBUG;
+extern int DEBUG;
 #define DBG(x) if (DEBUG) {x;};
+#define DBG_VERIFY(x) if (DEBUG > 1) { x; };
 
 class Options {
-	bool _debug;
+	int _debug;
 	std::string _host, _user, _pass, _protocol, _address, _tcFile;
 	uint16_t  _tuples, _sieveBits, _port, _threads, _sieveWorkers;
 	uint32_t _refresh, _testDiff, _testTime, _test2t;
@@ -36,7 +37,7 @@ class Options {
 	
 	public:
 	Options() { // Default options: Standard Benchmark with 8 threads
-		_debug     = false;
+		_debug     = 0;
 		_user      = "";
 		_pass      = "";
 		_host      = "127.0.0.1";

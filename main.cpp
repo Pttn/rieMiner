@@ -15,7 +15,7 @@
 	#include <winsock2.h>
 #endif
 
-bool DEBUG(false);
+int DEBUG(0);
 
 std::shared_ptr<WorkManager> manager;
 static std::string confPath("rieMiner.conf");
@@ -168,10 +168,9 @@ void Options::loadConf() {
 			if (line.size() != 0) {
 				parseLine(line, key, value);
 				if (key == "Debug") {
-					uint64_t tmp;
-					try {tmp = std::stoll(value);}
-					catch (...) {tmp = 0;}
-					_debug = (tmp == 1);
+					int tmp;
+					try {_debug = std::stoi(value);}
+					catch (...) {_debug = 0;}
 				}
 				else if (key == "Host") _host = value;
 				else if (key == "Port") {
