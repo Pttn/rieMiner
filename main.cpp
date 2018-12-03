@@ -168,7 +168,6 @@ void Options::loadConf() {
 			if (line.size() != 0) {
 				parseLine(line, key, value);
 				if (key == "Debug") {
-					int tmp;
 					try {_debug = std::stoi(value);}
 					catch (...) {_debug = 0;}
 				}
