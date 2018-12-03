@@ -150,7 +150,7 @@ class Miner {
 	void _runSieve(SieveInstance& sieve, uint32_t workDataIndex);
 	void _verifyThread();
 	void _getTargetFromBlock(mpz_t z_target, const WorkData& block);
-	void _processOneBlock(uint32_t workDataIndex);
+	void _processOneBlock(uint32_t workDataIndex, bool isNewHeight);
 	
 	public:
 	Miner(const std::shared_ptr<WorkManager> &manager) {

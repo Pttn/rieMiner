@@ -665,13 +665,15 @@ void Miner::process(WorkData block) {
 	
 	uint32_t workDataIndex(0);
 	_workData[workDataIndex].verifyBlock = block;
+	uint32_t oldHeight = 0;
 	
 	do {
 		_modTime = _modTime.zero();
 		_sieveTime = _sieveTime.zero();
 		_verifyTime = _verifyTime.zero();
 		
-		_processOneBlock(workDataIndex);
+		_processOneBlock(workDataIndex, oldHeight != _workData[workDataIndex].verifyBlock.height);
+		oldHeight = _workData[workDataIndex].verifyBlock.height;
 
 		while (_workData[workDataIndex].outstandingTests > _maxWorkOut)
 			_workData[_workDoneQueue.pop_front()].outstandingTests--;
@@ -690,7 +692,7 @@ void Miner::process(WorkData block) {
 	}
 }
 
-void Miner::_processOneBlock(uint32_t workDataIndex) {
+void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 	mpz_t z_target, z_tmp, z_remainderPrimorial;
 	mpz_init(z_tmp);
 	mpz_init(z_remainderPrimorial);
@@ -757,7 +759,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex) {
 			minWorkOut = std::min(minWorkOut, _verifyWorkQueue.size());
 		}
 
-		if (_currentHeight == _workData[workDataIndex].verifyBlock.height) {
+		if (_currentHeight == _workData[workDataIndex].verifyBlock.height && !isNewHeight) {
 			DBG(std::cout << "Min work outstanding during sieving: " << minWorkOut << std::endl;);
 			if (curWorkOut > _maxWorkOut - _parameters.threads*2) {
 				// If we are acheiving our work target, then adjust it towards the amount
