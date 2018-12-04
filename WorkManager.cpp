@@ -124,12 +124,16 @@ void WorkManager::manage() {
 			}
 			else {
 				std::cout << "Connecting to Riecoin server..." << std::endl;
+				_clientMutex.lock();
 				if (!_client->connect()) {
+					_clientMutex.unlock();
 					std::cout << "Failure :| ! Retry in 10 seconds..." << std::endl;
 					usleep(1000000*_waitReconnect);
 				}
-				else
+				else {
+					_clientMutex.unlock();
 					std::cout << "Connected!" << std::endl;
+				}
 				usleep(10000);
 			}
 		}
