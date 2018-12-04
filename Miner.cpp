@@ -122,14 +122,10 @@ void Miner::init() {
 	uint64_t highSegmentEntries(0);
 	double highFloats(0.), tupleSizeAsDouble(_parameters.primeTupleOffset.size());
 	_primeTestStoreOffsetsSize = 0;
-	_sparseLimit = 0;
 	for (uint64_t i(5) ; i < _nPrimes ; i++) {
 		uint64_t p(_parameters.primes[i]);
 		if (p < _parameters.maxIncrements) _primeTestStoreOffsetsSize++;
-		else {
-			if (_sparseLimit == 0) _sparseLimit = i & (~1ull);
-			highFloats += ((tupleSizeAsDouble*_parameters.maxIncrements)/(double) p);
-		}
+		else highFloats += ((tupleSizeAsDouble*_parameters.maxIncrements)/(double) p);
 	}
 	
 	highSegmentEntries = ceil(highFloats);
@@ -143,6 +139,21 @@ void Miner::init() {
 	for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
 		_sieves[i].id = i;
 		_sieves[i].segmentCounts.resize(_parameters.maxIter);
+	}
+
+	for (uint64_t i(_startingPrimeIndex) ; i < _nPrimes ; i++) {
+		uint64_t p(_parameters.primes[i]);
+		if (p < _parameters.denseLimit) _nDense++;
+		else if (p < _parameters.maxIncrements) _nSparse++;
+		else break;
+	}
+
+	uint64_t round(8 - ((_nDense + _parameters.primorialNumber) & 0x7));
+	_nDense += round;
+	_nSparse -= round;
+	if ((_nSparse - _nDense) & 1) {
+		if (_nSparse + _nDense + _parameters.primorialNumber < _nPrimes) _nSparse += 1;
+		else _nSparse -= 1;
 	}
 
 	try {
@@ -229,7 +240,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		uint64_t p(_parameters.primes[i]);
 
 		// Also update the offsets unless once only
-		bool onceOnly(i >= _sparseLimit);
+		bool onceOnly(p >= _parameters.maxIncrements);
 
 		uint64_t invert[4];
 		invert[0] = _parameters.inverts[i];
@@ -469,9 +480,9 @@ void Miner::_runSieve(SieveInstance& sieve, uint32_t workDataIndex) {
 
 		// Main sieve
 		if (tupleSize == 6)
-			_processSieve6(sieve.sieve, sieve.offsets, start_i, _sparseLimit);
+			_processSieve6(sieve.sieve, sieve.offsets, start_i, _startingPrimeIndex + _nDense + _nSparse);
 		else
-			_processSieve(sieve.sieve, sieve.offsets, start_i, _sparseLimit);
+			_processSieve(sieve.sieve, sieve.offsets, start_i, _startingPrimeIndex + _nDense + _nSparse);
 
 		// Must now have all segments populated.
 		if (loop == 0) modLock.lock();
@@ -729,12 +740,12 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 			wi.modWork.end = lim;
 			if (curWorkOut == 0) _verifyWorkQueue.push_back(wi);
 			else _verifyWorkQueue.push_front(wi);
-			if (wi.modWork.start < _sparseLimit) nLowModWorkers++;
+			if (wi.modWork.start < _startingPrimeIndex + _nDense + _nSparse) nLowModWorkers++;
 			else nModWorkers++;
 		}
 		while (nLowModWorkers > 0) {
 			uint64_t i(_modDoneQueue.pop_front());
-			if (i < _sparseLimit) nLowModWorkers--;
+			if (i < _startingPrimeIndex + _nDense + _nSparse) nLowModWorkers--;
 			else nModWorkers--;
 		}
 
