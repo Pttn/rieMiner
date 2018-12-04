@@ -79,10 +79,10 @@ struct MinerWorkData {
 
 struct SieveInstance {
 	uint32_t id;
-	std::mutex bucketLock, modLock;
+	std::mutex modLock;
 	uint8_t* sieve = NULL;
 	uint32_t **segmentHits = NULL;
-	std::vector<uint64_t> segmentCounts;
+	std::atomic<uint64_t>* segmentCounts = NULL;
 	uint32_t* offsets = NULL;
 };
 
@@ -142,7 +142,7 @@ class Miner {
 		}
 	}
 	
-	void _putOffsetsInSegments(SieveInstance& sieve, uint64_t *offsets, int n_offsets);
+	void _putOffsetsInSegments(SieveInstance& sieve, uint64_t *offsets, uint64_t* counts, int n_offsets);
 	void _updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t end_i);
 	void _processSieve(uint8_t *sieve, uint32_t* offsets, uint64_t start_i, uint64_t end_i);
 	void _processSieve6(uint8_t *sieve, uint32_t* offsets, uint64_t start_i, uint64_t end_i);

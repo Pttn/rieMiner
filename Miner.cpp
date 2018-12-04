@@ -9,6 +9,7 @@
 
 thread_local bool isMaster(false);
 thread_local uint64_t** offset_stack(NULL);
+thread_local uint64_t** offset_count(NULL);
 
 #define MAX_SIEVE_WORKERS 16
 
@@ -145,13 +146,13 @@ void Miner::init() {
 		_entriesPerSegment = (_entriesPerSegment + (_entriesPerSegment >> 3));
 	}
 	
-	_sieves = new SieveInstance[_parameters.sieveWorkers];
-	for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
-		_sieves[i].id = i;
-		_sieves[i].segmentCounts.resize(_parameters.maxIter);
-	}
-
 	try {
+		_sieves = new SieveInstance[_parameters.sieveWorkers];
+		for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
+			_sieves[i].id = i;
+			_sieves[i].segmentCounts = new std::atomic<uint64_t>[_parameters.maxIter];
+		}
+
 		DBG(std::cout << "Allocating " << _parameters.sieveSize/8*_parameters.sieveWorkers << " bytes for the sieves..." << std::endl;);
 		for (int i(0) ; i < _parameters.sieveWorkers ; i++)
 			_sieves[i].sieve = new uint8_t[_parameters.sieveSize/8];
@@ -193,18 +194,25 @@ void Miner::init() {
 	_inited = true;
 }
 
-void Miner::_putOffsetsInSegments(SieveInstance& sieve, uint64_t *offsets, int n_offsets) {
-	std::lock_guard<std::mutex> lock(sieve.bucketLock);
+void Miner::_putOffsetsInSegments(SieveInstance& sieve, uint64_t *offsets, uint64_t* counts, int n_offsets) {
+	for (uint64_t segment(0); segment < _parameters.maxIter; segment++) {
+		uint64_t curSegmentCount(sieve.segmentCounts[segment].fetch_add(counts[segment])),
+		         sc(curSegmentCount + counts[segment]);
+		if (sc >= _entriesPerSegment) {
+			std::cerr << "Segment " << segment << " " << sc << " count is > " << _entriesPerSegment << std::endl;
+			abort();
+		}
+		counts[segment] = curSegmentCount;
+	}
 	for (int i(0); i < n_offsets; i++) {
 		uint64_t index(offsets[i]),
 		         segment(index >> _parameters.sieveBits),
-		         sc(sieve.segmentCounts[segment]);
-		if (sc >= _entriesPerSegment) {
-			std::cerr << "Segment " << segment << " " << sc << " with index " << index << " is > " << _entriesPerSegment << std::endl;
-			exit(-1);
-		}
+		         sc(counts[segment]);
 		sieve.segmentHits[segment][sc] = index & (_parameters.sieveSize - 1);
-		sieve.segmentCounts[segment]++;
+		counts[segment]++;
+	}
+	for (uint64_t segment(0); segment < _parameters.maxIter; segment++) {
+		counts[segment] = 0;
 	}
 }
 
@@ -218,8 +226,14 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 	const uint64_t tupleSize(_parameters.primeTupleOffset.size());
 	if (offset_stack == NULL) {
 		offset_stack = new uint64_t*[MAX_SIEVE_WORKERS];
-		for (int i(0); i < _parameters.sieveWorkers; ++i)
+		offset_count = new uint64_t*[MAX_SIEVE_WORKERS];
+		for (int i(0); i < _parameters.sieveWorkers; ++i) {
 			offset_stack[i] = new uint64_t[OFFSET_STACK_SIZE];
+			offset_count[i] = new uint64_t[_parameters.maxIter];
+			for (uint64_t segment(0); segment < _parameters.maxIter; segment++) {
+				offset_count[i][segment] = 0;
+			}
+		}
 	}
 	uint64_t precompLimit(_parameters.modPrecompute.size());
 
@@ -326,14 +340,20 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 						mpz_clear(tar); \
 						return; \
 					} \
-					_putOffsetsInSegments(_sieves[j], offset_stack[j], n_offsets[j]); \
+					_putOffsetsInSegments(_sieves[j], offset_stack[j], offset_count[j], n_offsets[j]); \
 					n_offsets[j] = 0; \
 				} \
-				if (index < _parameters.maxIncrements) offset_stack[j][n_offsets[j]++] = index; \
+				if (index < _parameters.maxIncrements) { \
+					offset_stack[j][n_offsets[j]++] = index; \
+					offset_count[j][index >> _parameters.sieveBits]++; \
+				} \
 				for (std::vector<uint64_t>::size_type f(1) ; f < _halfPrimeTupleOffset.size() ; f++) { \
 					if (index < invert[_halfPrimeTupleOffset[f]]) index += p; \
 					index -= invert[_halfPrimeTupleOffset[f]]; \
-					if (index < _parameters.maxIncrements) offset_stack[j][n_offsets[j]++] = index; \
+					if (index < _parameters.maxIncrements) { \
+						offset_stack[j][n_offsets[j]++] = index; \
+						offset_count[j][index >> _parameters.sieveBits]++; \
+					} \
 				} \
 			} \
 		};
@@ -373,7 +393,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 
 	for (int j(0) ; j < _parameters.sieveWorkers ; j++) {
 		if (n_offsets[j] > 0) {
-			_putOffsetsInSegments(_sieves[j], offset_stack[j], n_offsets[j]);
+			_putOffsetsInSegments(_sieves[j], offset_stack[j], offset_count[j], n_offsets[j]);
 			n_offsets[j] = 0;
 		}
 	}
