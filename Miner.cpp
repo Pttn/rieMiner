@@ -804,9 +804,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 		int32_t nModWorkers(0), nLowModWorkers(0);
 		
 		const uint32_t curWorkOut(_verifyWorkQueue.size());
-		uint64_t incr(_nPrimes/(_parameters.threads*4));
-		if (curWorkOut + _parameters.threads*8 > _maxWorkOut) // Just use half the threads to reduce lock contention and allow other threads to keep processing verify tests.
-			incr = _nPrimes/(_parameters.threads*2);
+		uint64_t incr(_nPrimes/(_parameters.threads*8));
 		for (auto base(_nPrimes - incr) ; base + incr >= incr ; base -= incr) {
 			uint64_t start = base;
 			if (base < incr) start = _startingPrimeIndex;
@@ -861,13 +859,13 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 				}
 				else {
 					// Adjust towards target of min work = 4*threads
-					const uint32_t targetMaxWork((_maxWorkOut - minWorkOut) + 4*_parameters.threads);
+					const uint32_t targetMaxWork((_maxWorkOut - minWorkOut) + 8*_parameters.threads);
 					_maxWorkOut = (_maxWorkOut + targetMaxWork)/2;
 				}
 			}
 			else if (minWorkOut > 4u*_parameters.threads) {
 				// Didn't make the target, but also didn't run out of work.  Can still adjust target.
-				const uint32_t targetMaxWork((curWorkOut - minWorkOut) + 6*_parameters.threads);
+				const uint32_t targetMaxWork((curWorkOut - minWorkOut) + 10*_parameters.threads);
 				_maxWorkOut = (_maxWorkOut + targetMaxWork)/2;
 			}
 			else if (minWorkOut == 0 && curWorkOut > 0) {
@@ -879,7 +877,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 					    std::cout << "Sieve = " << _parameters.sieve << ", SieveWorkers = " << _parameters.sieveWorkers << std::endl;);
 				}
 			}
-			_maxWorkOut = std::min(_maxWorkOut, _workDoneQueue.size() - 256);
+			_maxWorkOut = std::min(_maxWorkOut, _workDoneQueue.size() - 9*_parameters.threads);
 			DBG(std::cout << "Work target before starting next block now: " << _maxWorkOut << std::endl;);
 		}
 
