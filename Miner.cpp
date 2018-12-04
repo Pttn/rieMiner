@@ -131,6 +131,10 @@ void Miner::init() {
 			highFloats += ((tupleSizeAsDouble*_parameters.maxIncrements)/(double) p);
 		}
 	}
+	if (_sparseLimit == 0) {
+		_nPrimes &= (~1ull);
+		_sparseLimit = _nPrimes;
+	}
 	
 	highSegmentEntries = ceil(highFloats);
 	if (highSegmentEntries == 0) _entriesPerSegment = 1;
@@ -195,7 +199,7 @@ void Miner::_putOffsetsInSegments(SieveInstance& sieve, uint64_t *offsets, int n
 		         sc(sieve.segmentCounts[segment]);
 		if (sc >= _entriesPerSegment) {
 			std::cerr << "Segment " << segment << " " << sc << " with index " << index << " is > " << _entriesPerSegment << std::endl;
-			exit(-1);
+			abort();
 		}
 		sieve.segmentHits[segment][sc] = index & (_parameters.sieveSize - 1);
 		sieve.segmentCounts[segment]++;
