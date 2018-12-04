@@ -841,6 +841,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 		while (nModWorkers > 0) {
 			int64_t i(_workDoneQueue.pop_front());
 			if (i >= 0) _workData[i].outstandingTests--;
+			else if (i == -1) nSieveWorkers--;
 			else nModWorkers--;
 		}
 		for (int i(0) ; i < _parameters.sieveWorkers; ++i) _sieves[i].modLock.unlock();
