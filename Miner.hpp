@@ -94,8 +94,7 @@ class Miner {
 	CpuID _cpuInfo;
 	
 	tsQueue<primeTestWork, 4096> _verifyWorkQueue;
-	tsQueue<uint64_t, 1024> _modDoneQueue;
-	tsQueue<int, 9216> _workDoneQueue;
+	tsQueue<int64_t, 9216> _workDoneQueue;
 	mpz_t _primorial;
 	uint64_t _nPrimes, _entriesPerSegment, _primeTestStoreOffsetsSize, _startingPrimeIndex, _sparseLimit;
 	std::vector<uint64_t> _halfPrimeTupleOffset, _primorialOffsetDiff, _primorialOffsetDiffToFirst;

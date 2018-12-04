@@ -12,6 +12,8 @@ thread_local uint64_t** offset_stack(NULL);
 
 #define MAX_SIEVE_WORKERS 16
 
+#define NUM_PRIMES_TO_2P32 203280222
+
 #define	zeroesBeforeHashInPrime	8
 
 extern "C" {
@@ -27,6 +29,7 @@ void Miner::init() {
 	_parameters.sieveWorkers = _manager->options().sieveWorkers();
 	if (_parameters.sieveWorkers == 0) {
 		_parameters.sieveWorkers = std::max(_manager->options().threads()/5, 1);
+		_parameters.sieveWorkers += (_manager->options().sieve() >> 31) / 3;
 	}
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, MAX_SIEVE_WORKERS);
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, int(_parameters.primorialOffset.size()));
@@ -223,7 +226,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 	uint64_t avxLimit(0);
 	uint64_t avxWidth(_cpuInfo.hasAVX2() ? 8 : 4);
 	if (_cpuInfo.hasAVX()) {
-		avxLimit = 203280222 - avxWidth;  // Index of first prime > 2^32
+		avxLimit = NUM_PRIMES_TO_2P32 - avxWidth;
 		avxLimit -= (avxLimit - start_i) & (avxWidth-1);  // Must be enough primes in range to use AVX
 	}
 
@@ -548,7 +551,7 @@ bool Miner::_testPrimesIspc(uint32_t indexes[WORK_INDEXES], uint32_t is_prime[WO
 
 		if (bits == 0) {
 			bits = mpz_sizeinbase(z_tmp, 2);
-			N_Size = (bits >> 5) + 1;
+			N_Size = (bits >> 5) + ((bits & 0x1f) > 0);
 
 			if (N_Size > MAX_N_SIZE) return false;
 		}
@@ -582,7 +585,7 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 		
 		if (job.type == TYPE_MOD) {
 			_updateRemainders(job.workDataIndex, job.modWork.start, job.modWork.end);
-			_modDoneQueue.push_back(job.modWork.start);
+			_workDoneQueue.push_back(-int64_t(job.modWork.start));
 			_modTime += std::chrono::duration_cast<decltype(_modTime)>(std::chrono::high_resolution_clock::now() - startTime);
 			continue;
 		}
@@ -782,21 +785,24 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 		
 		const uint32_t curWorkOut(_verifyWorkQueue.size());
 		uint64_t incr(_nPrimes/(_parameters.threads*4));
-		if (curWorkOut != 0) // Just use half the threads to reduce lock contention and allow other threads to keep processing verify tests.
-			incr = _nPrimes/(_parameters.threads/2);
-		for (auto base(_startingPrimeIndex) ; base < _nPrimes ; base += incr) {
-			uint64_t lim(std::min(_nPrimes, base + incr));
-			wi.modWork.start = base;
-			wi.modWork.end = lim;
-			if (curWorkOut == 0) _verifyWorkQueue.push_back(wi);
-			else _verifyWorkQueue.push_front(wi);
-			if (wi.modWork.start < _sparseLimit) nLowModWorkers++;
+		if (curWorkOut + _parameters.threads*8 > _maxWorkOut) // Just use half the threads to reduce lock contention and allow other threads to keep processing verify tests.
+			incr = _nPrimes/(_parameters.threads*2);
+		for (auto base(_nPrimes - incr) ; base + incr >= incr ; base -= incr) {
+			uint64_t start = base;
+			if (base < incr) start = _startingPrimeIndex;
+			wi.modWork.start = start;
+			wi.modWork.end = base + incr;
+			_verifyWorkQueue.push_front(wi);
+			if (start < _sparseLimit) nLowModWorkers++;
 			else nModWorkers++;
 		}
 		while (nLowModWorkers > 0) {
-			uint64_t i(_modDoneQueue.pop_front());
-			if (i < _sparseLimit) nLowModWorkers--;
-			else nModWorkers--;
+			int64_t i(_workDoneQueue.pop_front());
+			if (i >= 0) _workData[i].outstandingTests--;
+			else {
+				if (uint64_t(-i) < _sparseLimit) nLowModWorkers--;
+				else nModWorkers--;
+			}
 		}
 
 		assert(_workData[workDataIndex].outstandingTests == 0);
@@ -809,7 +815,11 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 		}
 		int nSieveWorkers(_parameters.sieveWorkers);
 		
-		for (int i(0) ; i < nModWorkers ; i++) _modDoneQueue.pop_front();
+		while (nModWorkers > 0) {
+			int64_t i(_workDoneQueue.pop_front());
+			if (i >= 0) _workData[i].outstandingTests--;
+			else nModWorkers--;
+		}
 		for (int i(0) ; i < _parameters.sieveWorkers; ++i) _sieves[i].modLock.unlock();
 
 		uint32_t minWorkOut(std::min(curWorkOut, _verifyWorkQueue.size()));
