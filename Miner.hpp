@@ -22,7 +22,7 @@ union xmmreg_t {
 
 #define WORK_DATAS 2
 #define WORK_INDEXES 64
-enum JobType {TYPE_CHECK, TYPE_MOD, TYPE_SIEVE};
+enum JobType {TYPE_CHECK, TYPE_MOD, TYPE_SIEVE, TYPE_DUMMY};
 
 struct MinerParameters {
 	uint64_t primorialNumber;
@@ -93,6 +93,7 @@ class Miner {
 	MinerParameters _parameters;
 	CpuID _cpuInfo;
 	
+	tsQueue<primeTestWork, 1024> _modWorkQueue;
 	tsQueue<primeTestWork, 4096> _verifyWorkQueue;
 	tsQueue<int64_t, 9216> _workDoneQueue;
 	mpz_t _primorial;

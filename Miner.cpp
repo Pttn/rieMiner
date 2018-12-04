@@ -600,7 +600,10 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 	mpz_init(z_ploop);
 
 	while (_running) {
-		auto job(_verifyWorkQueue.pop_front());
+		primeTestWork job;
+		if (!_modWorkQueue.pop_front_if_not_empty(job)) {
+			job = _verifyWorkQueue.pop_front();
+		}
 		auto startTime(std::chrono::high_resolution_clock::now());
 		
 		if (job.type == TYPE_MOD) {
@@ -801,17 +804,19 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 		primeTestWork wi;
 		wi.type = TYPE_MOD;
 		wi.workDataIndex = workDataIndex;
+		primeTestWork wd;
+		wd.type = TYPE_DUMMY;
 		int32_t nModWorkers(0), nLowModWorkers(0);
 		
 		const uint32_t curWorkOut(_verifyWorkQueue.size());
 		uint64_t incr(_nPrimes/(_parameters.threads*8));
-		for (auto base(_nPrimes - incr) ; base + incr >= incr ; base -= incr) {
-			uint64_t start = base;
-			if (base < incr) start = _startingPrimeIndex;
-			wi.modWork.start = start;
-			wi.modWork.end = base + incr;
-			_verifyWorkQueue.push_front(wi);
-			if (start < _sparseLimit) nLowModWorkers++;
+		for (auto base(_startingPrimeIndex) ; base < _nPrimes ; base += incr) {
+			uint64_t lim(std::min(_nPrimes, base + incr));
+			wi.modWork.start = base;
+			wi.modWork.end = lim;
+			_modWorkQueue.push_back(wi);
+			_verifyWorkQueue.push_front(wd);  // To ensure a thread wakes up to grab the mod work.
+			if (wi.modWork.start < _sparseLimit) nLowModWorkers++;
 			else nModWorkers++;
 		}
 		while (nLowModWorkers > 0) {
