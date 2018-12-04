@@ -30,7 +30,7 @@ void Miner::init() {
 	_parameters.sieveWorkers = _manager->options().sieveWorkers();
 	if (_parameters.sieveWorkers == 0) {
 		_parameters.sieveWorkers = std::max(_manager->options().threads()/5, 1);
-		_parameters.sieveWorkers += (_manager->options().sieve() >> 31) / 3;
+		_parameters.sieveWorkers += (_manager->options().sieve() + 0x80000000ull) >> 33;
 	}
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, MAX_SIEVE_WORKERS);
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, int(_parameters.primorialOffset.size()));
