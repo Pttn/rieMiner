@@ -292,14 +292,14 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 				cnt = __builtin_clzll(p);
 				ps = p << cnt;
 				uint64_t remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, cnt, &_parameters.modPrecompute[i]));
-				DBG_VERIFY(if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail %lu != %lu\n", remainder >> cnt, mpz_tdiv_ui(tar, p)); abort();});
+				DBG_VERIFY(if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { std::cerr << "Remainder check fail " << (remainder >> cnt) << " != " << mpz_tdiv_ui(tar, p) << std::endl; abort();});
 
 				uint64_t pa(ps - remainder);
 				uint64_t r, nh, nl;
 				umul_ppmm(nh, nl, pa, invert[0]);
 				udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i]);
 				index = r >> cnt;
-				DBG_VERIFY(if (p < 0x100000000ull && (r >> cnt) != ((pa >> cnt)*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1);});
+				DBG_VERIFY(if (p < 0x100000000ull && (r >> cnt) != ((pa >> cnt)*invert[0]) % p) {  std::cerr << "Remainder check fail" << std::endl; abort();});
 			}
 			DBG_VERIFY(({
 				uint64_t remainder(mpz_tdiv_ui(tar, p)),
@@ -308,7 +308,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 				
 				umul_ppmm(nh, nl, pa, invert[0]);
 				udiv_qrnnd(q, indexCheck, nh, nl, p);
-				if (index != indexCheck) { printf("Index check fail, p=%ld, i=%ld, start_i=%ld\n", p, i, start_i); abort(); }
+				if (index != indexCheck) { std::cerr << "Index check fail, p=" << p << ", i=" << i << ", start_i=" << start_i << std::endl; abort(); }
 			}));
 		}
 		else {
