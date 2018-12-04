@@ -138,6 +138,10 @@ void Miner::init() {
 			highFloats += ((tupleSizeAsDouble*_parameters.maxIncrements)/(double) p);
 		}
 	}
+	if (_sparseLimit == 0) {
+		_nPrimes &= (~1ull);
+		_sparseLimit = _nPrimes;
+	}
 	
 	highSegmentEntries = ceil(highFloats);
 	if (highSegmentEntries == 0) _entriesPerSegment = 1;
