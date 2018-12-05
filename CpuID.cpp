@@ -5,13 +5,15 @@
 #include "CpuID.hpp"
 
 CpuID::CpuID() {
-	if (__get_cpuid_max(0, 0) < 7) {
+	uint32_t eax(0), ebx(0), ecx(0), edx(0);
+	__get_cpuid(0, &eax, &ebx, &ecx, &edx);
+	_intel = (ebx == 0x756e6547 && ecx == 0x6c65746e && edx == 49656e69);
+	if (eax < 7) {
 		_avx = false;
 		_avx2 = false;
 		_avx512 = false;
 	}
 	else {
-		uint32_t eax(0), ebx(0), ecx(0), edx(0);
 		__get_cpuid(1, &eax, &ebx, &ecx, &edx);
 		_avx = (ecx & (1 << 28)) != 0;
 
