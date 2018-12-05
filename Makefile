@@ -1,4 +1,4 @@
-cxx    = G++
+CXX    = g++
 M4     = m4
 AS     = as
 SED    = sed
@@ -9,7 +9,7 @@ ifneq ($(msys_version), 0)
 LIBS   = -pthread -ljansson -lcurl -lcrypto -lgmpxx -lgmp -lws2_32 -Wl,--image-base -Wl,0x10000000
 MOD_1_4_ASM = mod_1_4_win.asm
 else
-LIBS   = -L/usr/local/lib -pthread -ljansson -lcurl -lcrypto -Wl,-Bstatic -lgmpxx -lgmp -Wl,-Bdynamic
+LIBS   = -pthread -ljansson -lcurl -lcrypto -Wl,-Bstatic -lgmpxx -lgmp -Wl,-Bdynamic
 MOD_1_4_ASM = mod_1_4.asm
 endif
 

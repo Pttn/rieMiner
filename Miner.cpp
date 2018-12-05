@@ -641,16 +641,16 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				if (firstTestDone) {
 					job.testWork.n_indexes = 0;
 					for (uint32_t i(0); i < WORK_INDEXES; i++) {
-#if 0
-						mpz_mul_ui(z_tmp, _primorial, job.testWork.indexes[i]);
-						mpz_add(z_tmp, z_tmp, z_ploop);
+						DBG_VERIFY(({
+							mpz_mul_ui(z_tmp, _primorial, job.testWork.indexes[i]);
+							mpz_add(z_tmp, z_tmp, z_ploop);
 
-						mpz_sub_ui(z_ft_n, z_tmp, 1);
-						mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
+							mpz_sub_ui(z_ft_n, z_tmp, 1);
+							mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
 
-						if (mpz_cmp_ui(z_ft_r, 1) == 0) assert(isPrime[i]);
-						else assert(!isPrime[i]);
-#endif
+							if (mpz_cmp_ui(z_ft_r, 1) == 0) assert(isPrime[i]);
+							else assert(!isPrime[i]);
+						}));
 
 						if (isPrime[i]) {
 							job.testWork.indexes[job.testWork.n_indexes++] = job.testWork.indexes[i];
