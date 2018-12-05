@@ -1,4 +1,4 @@
-# rieMiner 0.9RC3.5
+# rieMiner 0.9RC4
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
@@ -155,7 +155,7 @@ These ones should never be modified outside developing purposes and research for
 
 * ConsType : set your Constellation Type, i. e. the primes tuple offsets, each separated by a comma. Default: 0, 4, 2, 4, 2, 4 (values for Riecoin mining);
 * PN : Primorial Number for the Wheel Factorization. Default: 40;
-* POff : list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConsType. Default: 4209995887, 4209999247, 4210002607, 4210005967, 7452755407, 7452758767, 7452762127, 7452765487;
+* POff : list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConsType. Default: carefully chosen offsets;
 * Debug : activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, any other value do disable. Default : disabled.
 
 Some possible constellations types (format: (type) -> offsets to put for ConsType ; 3 first constellations (n + 0) which can be used for POff, though some might not work)
@@ -340,7 +340,7 @@ Donations welcome:
 
 * Your code must compile and work on recent Debian based distributions and Windows using MSYS;
 * If modifying the miner, you must ensure that your changes do not cause any performance loss. You have to do proper and long enough before/after benchmarks;
-* rieMiner must should work for any realistic setting, at least try these in the Benchmark Mode:
+* rieMiner must work for any realistic setting, at least try these in the Benchmark Mode:
   * Difficulty 304, Sieve 2^20 (Testnet mining conditions);
   * Difficulty 800, Sieve 2^27;
   * Difficulty 1600, Sieve 2^31 (Standard Benchmark, similar to real mining conditions);

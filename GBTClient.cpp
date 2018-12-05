@@ -171,10 +171,10 @@ void GBTClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 	uint16_t k(share.second);
 	_manager->printTime();
 	std::cout << " " << k << "-tuple found";
+	json_t *jsonSb(sendRPCCall(req)); // SubmitBlock response
 	if (k < _gbtd.primes) std::cout << std::endl;
 	else {
 		std::cout << ", this is a block!" << std::endl;
-		json_t *jsonSb(sendRPCCall(req)); // SubmitBlock response
 		std::cout << "Sent: " << req;
 		if (jsonSb == NULL) std::cerr << "Failure submiting block :|" << std::endl;
 		else {
@@ -182,9 +182,9 @@ void GBTClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 			       *jsonSb_Err(json_object_get(jsonSb, "error"));
 			if (json_is_null(jsonSb_Res) && json_is_null(jsonSb_Err)) std::cout << "Submission accepted :D !" << std::endl;
 			else std::cout << "Submission rejected :| ! Received: " << json_dumps(jsonSb, JSON_COMPACT) << std::endl;
-			json_decref(jsonSb);
 		}
 	}
+	if (jsonSb != NULL) json_decref(jsonSb);
 }
 
 WorkData GBTClient::workData() const {
