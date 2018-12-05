@@ -5,10 +5,15 @@
 #include "Miner.hpp"
 #include "external/gmp_util.h"
 
+#include "ispc/fermat.h"
+
 thread_local bool isMaster(false);
 thread_local uint64_t** offset_stack(NULL);
+thread_local uint64_t** offset_count(NULL);
 
 #define MAX_SIEVE_WORKERS 16
+
+#define NUM_PRIMES_TO_2P32 203280222
 
 #define	zeroesBeforeHashInPrime	8
 
@@ -16,6 +21,7 @@ extern "C" {
 	void rie_mod_1s_4p_cps(uint64_t *cps, uint64_t p);
 	mp_limb_t rie_mod_1s_4p(mp_srcptr ap, mp_size_t n, uint64_t ps, uint64_t cnt, uint64_t* cps);
 	mp_limb_t rie_mod_1s_2p_4times(mp_srcptr ap, mp_size_t n, uint32_t* ps, uint32_t cnt, uint64_t* cps, uint64_t* remainders);
+	mp_limb_t rie_mod_1s_2p_8times(mp_srcptr ap, mp_size_t n, uint32_t* ps, uint32_t cnt, uint64_t* cps, uint64_t* remainders);
 }
 
 void Miner::init() {
@@ -24,6 +30,7 @@ void Miner::init() {
 	_parameters.sieveWorkers = _manager->options().sieveWorkers();
 	if (_parameters.sieveWorkers == 0) {
 		_parameters.sieveWorkers = std::max(_manager->options().threads()/5, 1);
+		_parameters.sieveWorkers += (_manager->options().sieve() + 0x80000000ull) >> 33;
 	}
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, MAX_SIEVE_WORKERS);
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, int(_parameters.primorialOffset.size()));
@@ -33,6 +40,8 @@ void Miner::init() {
 	else if (_cpuInfo.hasAVX2()) std::cout << " AVX2";
 	else if (_cpuInfo.hasAVX()) std::cout << " AVX";
 	else std::cout << " AVX not suppported!";
+	if (_cpuInfo.isIntel()) std::cout << " (Intel)";
+	else std::cout << " (AMD or other)";
 	std::cout << std::endl;
 	_parameters.sieveBits = _manager->options().sieveBits();
 	_parameters.sieveSize = 1 << _parameters.sieveBits;
@@ -143,13 +152,13 @@ void Miner::init() {
 		_entriesPerSegment = (_entriesPerSegment + (_entriesPerSegment >> 3));
 	}
 	
-	_sieves = new SieveInstance[_parameters.sieveWorkers];
-	for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
-		_sieves[i].id = i;
-		_sieves[i].segmentCounts.resize(_parameters.maxIter);
-	}
-
 	try {
+		_sieves = new SieveInstance[_parameters.sieveWorkers];
+		for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
+			_sieves[i].id = i;
+			_sieves[i].segmentCounts = new std::atomic<uint64_t>[_parameters.maxIter];
+		}
+
 		DBG(std::cout << "Allocating " << _parameters.sieveSize/8*_parameters.sieveWorkers << " bytes for the sieves..." << std::endl;);
 		for (int i(0) ; i < _parameters.sieveWorkers ; i++)
 			_sieves[i].sieve = new uint8_t[_parameters.sieveSize/8];
@@ -191,18 +200,25 @@ void Miner::init() {
 	_inited = true;
 }
 
-void Miner::_putOffsetsInSegments(SieveInstance& sieve, uint64_t *offsets, int n_offsets) {
-	std::lock_guard<std::mutex> lock(sieve.bucketLock);
+void Miner::_putOffsetsInSegments(SieveInstance& sieve, uint64_t *offsets, uint64_t* counts, int n_offsets) {
+	for (uint64_t segment(0); segment < _parameters.maxIter; segment++) {
+		uint64_t curSegmentCount(sieve.segmentCounts[segment].fetch_add(counts[segment])),
+		         sc(curSegmentCount + counts[segment]);
+		if (sc >= _entriesPerSegment) {
+			std::cerr << "Segment " << segment << " " << sc << " count is > " << _entriesPerSegment << std::endl;
+			abort();
+		}
+		counts[segment] = curSegmentCount;
+	}
 	for (int i(0); i < n_offsets; i++) {
 		uint64_t index(offsets[i]),
 		         segment(index >> _parameters.sieveBits),
-		         sc(sieve.segmentCounts[segment]);
-		if (sc >= _entriesPerSegment) {
-			std::cerr << "Segment " << segment << " " << sc << " with index " << index << " is > " << _entriesPerSegment << std::endl;
-			abort();
-		}
+		         sc(counts[segment]);
 		sieve.segmentHits[segment][sc] = index & (_parameters.sieveSize - 1);
-		sieve.segmentCounts[segment]++;
+		counts[segment]++;
+	}
+	for (uint64_t segment(0); segment < _parameters.maxIter; segment++) {
+		counts[segment] = 0;
 	}
 }
 
@@ -216,19 +232,26 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 	const uint64_t tupleSize(_parameters.primeTupleOffset.size());
 	if (offset_stack == NULL) {
 		offset_stack = new uint64_t*[MAX_SIEVE_WORKERS];
-		for (int i(0); i < _parameters.sieveWorkers; ++i)
+		offset_count = new uint64_t*[MAX_SIEVE_WORKERS];
+		for (int i(0); i < _parameters.sieveWorkers; ++i) {
 			offset_stack[i] = new uint64_t[OFFSET_STACK_SIZE];
+			offset_count[i] = new uint64_t[_parameters.maxIter];
+			for (uint64_t segment(0); segment < _parameters.maxIter; segment++) {
+				offset_count[i][segment] = 0;
+			}
+		}
 	}
 	uint64_t precompLimit(_parameters.modPrecompute.size());
 
 	uint64_t avxLimit(0);
+	uint64_t avxWidth(_cpuInfo.hasAVX2() ? 8 : 4);
 	if (_cpuInfo.hasAVX()) {
-		avxLimit = 203280222 - 4;  // Index of first prime > 2^32
-		avxLimit -= (avxLimit - start_i) & 3;  // Must be at least 4 more primes in range to use AVX
+		avxLimit = NUM_PRIMES_TO_2P32 - avxWidth;
+		avxLimit -= (avxLimit - start_i) & (avxWidth-1);  // Must be enough primes in range to use AVX
 	}
 
-	uint64_t nextRemainder[4];
-	uint64_t nextRemainderIdx(4);
+	uint64_t nextRemainder[8];
+	uint64_t nextRemainderIdx(8);
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
 		uint64_t p(_parameters.primes[i]);
 
@@ -243,7 +266,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		uint64_t cnt(0), ps(0);
 		if (i < precompLimit) {
 			bool haveRemainder(false);
-			if (nextRemainderIdx < 4) {
+			if (nextRemainderIdx < avxWidth) {
 				index = nextRemainder[nextRemainderIdx++];
 				cnt = __builtin_clzll(p);
 				ps = p << cnt;
@@ -251,13 +274,14 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 			}
 			else if (i < avxLimit) {
 				cnt = __builtin_clz((uint32_t)p);
-				if (__builtin_clz((uint32_t)_parameters.primes[i+3]) == cnt) {
-					uint32_t ps32[4];
-					for (uint64_t j(0); j < 4; j++) {
+				if (__builtin_clz((uint32_t)_parameters.primes[i+avxWidth-1]) == cnt) {
+					uint32_t ps32[8];
+					for (uint64_t j(0); j < avxWidth; j++) {
 						ps32[j] = (uint32_t)_parameters.primes[i+j] << cnt;
 						nextRemainder[j] = _parameters.inverts[i+j];
 					}
-					rie_mod_1s_2p_4times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
+					if (_cpuInfo.hasAVX2()) rie_mod_1s_2p_8times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
+					else rie_mod_1s_2p_4times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
 					haveRemainder = true;
 					index = nextRemainder[0];
 					nextRemainderIdx = 1;
@@ -270,14 +294,14 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 				cnt = __builtin_clzll(p);
 				ps = p << cnt;
 				uint64_t remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, cnt, &_parameters.modPrecompute[i]));
-				DBG_VERIFY(if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { printf("Remainder check fail %lu != %lu\n", remainder >> cnt, mpz_tdiv_ui(tar, p)); abort();});
+				DBG_VERIFY(if (remainder >> cnt != mpz_tdiv_ui(tar, p)) { std::cerr << "Remainder check fail " << (remainder >> cnt) << " != " << mpz_tdiv_ui(tar, p) << std::endl; abort();});
 
 				uint64_t pa(ps - remainder);
 				uint64_t r, nh, nl;
 				umul_ppmm(nh, nl, pa, invert[0]);
 				udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i]);
 				index = r >> cnt;
-				DBG_VERIFY(if (p < 0x100000000ull && (r >> cnt) != ((pa >> cnt)*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1);});
+				DBG_VERIFY(if (p < 0x100000000ull && (r >> cnt) != ((pa >> cnt)*invert[0]) % p) {  std::cerr << "Remainder check fail" << std::endl; abort();});
 			}
 			DBG_VERIFY(({
 				uint64_t remainder(mpz_tdiv_ui(tar, p)),
@@ -286,7 +310,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 				
 				umul_ppmm(nh, nl, pa, invert[0]);
 				udiv_qrnnd(q, indexCheck, nh, nl, p);
-				if (index != indexCheck) { printf("Index check fail, p=%ld, i=%ld, start_i=%ld\n", p, i, start_i); abort(); }
+				if (index != indexCheck) { std::cerr << "Index check fail, p=" << p << ", i=" << i << ", start_i=" << start_i << std::endl; abort(); }
 			}));
 		}
 		else {
@@ -322,14 +346,20 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 						mpz_clear(tar); \
 						return; \
 					} \
-					_putOffsetsInSegments(_sieves[j], offset_stack[j], n_offsets[j]); \
+					_putOffsetsInSegments(_sieves[j], offset_stack[j], offset_count[j], n_offsets[j]); \
 					n_offsets[j] = 0; \
 				} \
-				if (index < _parameters.maxIncrements) offset_stack[j][n_offsets[j]++] = index; \
+				if (index < _parameters.maxIncrements) { \
+					offset_stack[j][n_offsets[j]++] = index; \
+					offset_count[j][index >> _parameters.sieveBits]++; \
+				} \
 				for (std::vector<uint64_t>::size_type f(1) ; f < _halfPrimeTupleOffset.size() ; f++) { \
 					if (index < invert[_halfPrimeTupleOffset[f]]) index += p; \
 					index -= invert[_halfPrimeTupleOffset[f]]; \
-					if (index < _parameters.maxIncrements) offset_stack[j][n_offsets[j]++] = index; \
+					if (index < _parameters.maxIncrements) { \
+						offset_stack[j][n_offsets[j]++] = index; \
+						offset_count[j][index >> _parameters.sieveBits]++; \
+					} \
 				} \
 			} \
 		};
@@ -369,7 +399,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 
 	for (int j(0) ; j < _parameters.sieveWorkers ; j++) {
 		if (n_offsets[j] > 0) {
-			_putOffsetsInSegments(_sieves[j], offset_stack[j], n_offsets[j]);
+			_putOffsetsInSegments(_sieves[j], offset_stack[j], offset_count[j], n_offsets[j]);
 			n_offsets[j] = 0;
 		}
 	}
@@ -535,6 +565,34 @@ void Miner::_runSieve(SieveInstance& sieve, uint32_t workDataIndex) {
 	}
 }
 
+bool Miner::_testPrimesIspc(uint32_t indexes[WORK_INDEXES], uint32_t is_prime[WORK_INDEXES], mpz_t z_ploop, mpz_t z_tmp)
+{
+	uint32_t M[WORK_INDEXES * MAX_N_SIZE];
+	uint32_t bits = 0;
+	uint32_t N_Size;
+	uint32_t* mp = &M[0];
+	for (uint32_t i(0); i < WORK_INDEXES; ++i) {
+		mpz_mul_ui(z_tmp, _primorial, indexes[i]);
+		mpz_add(z_tmp, z_tmp, z_ploop);
+
+		if (bits == 0) {
+			bits = mpz_sizeinbase(z_tmp, 2);
+			N_Size = (bits >> 5) + ((bits & 0x1f) > 0);
+
+			if (N_Size > MAX_N_SIZE) return false;
+		}
+		else {
+			assert(bits == mpz_sizeinbase(z_tmp, 2));
+		}
+
+		memcpy(mp, z_tmp->_mp_d, N_Size * 4);
+		mp += N_Size;
+	}
+
+	fermatTest(N_Size, WORK_INDEXES, M, is_prime, _cpuInfo.hasAVX512());
+	return true;
+}
+
 void Miner::_verifyThread() {
 /* Check for a prime cluster. Uses the fermat test - jh's code noted that it is
 slightly faster. Could do an MR test as a follow-up, but the server can do this
@@ -548,12 +606,15 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 	mpz_init(z_ploop);
 
 	while (_running) {
-		auto job(_verifyWorkQueue.pop_front());
+		primeTestWork job;
+		if (!_modWorkQueue.pop_front_if_not_empty(job)) {
+			job = _verifyWorkQueue.pop_front();
+		}
 		auto startTime(std::chrono::high_resolution_clock::now());
 		
 		if (job.type == TYPE_MOD) {
 			_updateRemainders(job.workDataIndex, job.modWork.start, job.modWork.end);
-			_modDoneQueue.push_back(job.modWork.start);
+			_workDoneQueue.push_back(-int64_t(job.modWork.start));
 			_modTime += std::chrono::duration_cast<decltype(_modTime)>(std::chrono::high_resolution_clock::now() - startTime);
 			continue;
 		}
@@ -572,6 +633,32 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 			mpz_add(z_ploop, z_ploop, _workData[job.workDataIndex].z_verifyTarget);
 			mpz_add_ui(z_ploop, z_ploop, _primorialOffsetDiffToFirst[job.testWork.offsetId]);
 
+			bool firstTestDone(false);
+			if (_cpuInfo.hasAVX2() && _cpuInfo.isIntel() && job.testWork.n_indexes == WORK_INDEXES) {
+				uint32_t isPrime[WORK_INDEXES];
+				firstTestDone = _testPrimesIspc(job.testWork.indexes, isPrime, z_ploop, z_tmp);
+
+				if (firstTestDone) {
+					job.testWork.n_indexes = 0;
+					for (uint32_t i(0); i < WORK_INDEXES; i++) {
+						DBG_VERIFY(({
+							mpz_mul_ui(z_tmp, _primorial, job.testWork.indexes[i]);
+							mpz_add(z_tmp, z_tmp, z_ploop);
+
+							mpz_sub_ui(z_ft_n, z_tmp, 1);
+							mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
+
+							if (mpz_cmp_ui(z_ft_r, 1) == 0) assert(isPrime[i]);
+							else assert(!isPrime[i]);
+						}));
+
+						if (isPrime[i]) {
+							job.testWork.indexes[job.testWork.n_indexes++] = job.testWork.indexes[i];
+						}
+					}
+				}
+			}
+
 			for (uint32_t idx(0) ; idx < job.testWork.n_indexes ; idx++) {
 				if (_currentHeight != _workData[job.workDataIndex].verifyBlock.height) break;
 
@@ -579,10 +666,12 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				mpz_mul_ui(z_tmp, _primorial, job.testWork.indexes[idx]);
 				mpz_add(z_tmp, z_tmp, z_ploop);
 				
-				mpz_sub_ui(z_ft_n, z_tmp, 1);
-				mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
+				if (!firstTestDone) {
+					mpz_sub_ui(z_ft_n, z_tmp, 1);
+					mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
 				
-				if (mpz_cmp_ui(z_ft_r, 1) != 0) continue;
+					if (mpz_cmp_ui(z_ft_r, 1) != 0) continue;
+				}
 
 				mpz_sub(z_tmp2, z_tmp, _workData[job.workDataIndex].z_verifyTarget); // offset = tested - target
 				
@@ -721,25 +810,28 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 		primeTestWork wi;
 		wi.type = TYPE_MOD;
 		wi.workDataIndex = workDataIndex;
+		primeTestWork wd;
+		wd.type = TYPE_DUMMY;
 		int32_t nModWorkers(0), nLowModWorkers(0);
 		
 		const uint32_t curWorkOut(_verifyWorkQueue.size());
-		uint64_t incr(_nPrimes/(_parameters.threads*4));
-		if (curWorkOut != 0) // Just use half the threads to reduce lock contention and allow other threads to keep processing verify tests.
-			incr = _nPrimes/(_parameters.threads/2);
+		uint64_t incr(_nPrimes/(_parameters.threads*8));
 		for (auto base(_startingPrimeIndex) ; base < _nPrimes ; base += incr) {
 			uint64_t lim(std::min(_nPrimes, base + incr));
 			wi.modWork.start = base;
 			wi.modWork.end = lim;
-			if (curWorkOut == 0) _verifyWorkQueue.push_back(wi);
-			else _verifyWorkQueue.push_front(wi);
+			_modWorkQueue.push_back(wi);
+			_verifyWorkQueue.push_front(wd);  // To ensure a thread wakes up to grab the mod work.
 			if (wi.modWork.start < _sparseLimit) nLowModWorkers++;
 			else nModWorkers++;
 		}
 		while (nLowModWorkers > 0) {
-			uint64_t i(_modDoneQueue.pop_front());
-			if (i < _sparseLimit) nLowModWorkers--;
-			else nModWorkers--;
+			int64_t i(_workDoneQueue.pop_front());
+			if (i >= 0) _workData[i].outstandingTests--;
+			else {
+				if (uint64_t(-i) < _sparseLimit) nLowModWorkers--;
+				else nModWorkers--;
+			}
 		}
 
 		assert(_workData[workDataIndex].outstandingTests == 0);
@@ -752,7 +844,12 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 		}
 		int nSieveWorkers(_parameters.sieveWorkers);
 		
-		for (int i(0) ; i < nModWorkers ; i++) _modDoneQueue.pop_front();
+		while (nModWorkers > 0) {
+			int64_t i(_workDoneQueue.pop_front());
+			if (i >= 0) _workData[i].outstandingTests--;
+			else if (i == -1) nSieveWorkers--;
+			else nModWorkers--;
+		}
 		for (int i(0) ; i < _parameters.sieveWorkers; ++i) _sieves[i].modLock.unlock();
 
 		uint32_t minWorkOut(std::min(curWorkOut, _verifyWorkQueue.size()));
@@ -774,13 +871,13 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 				}
 				else {
 					// Adjust towards target of min work = 4*threads
-					const uint32_t targetMaxWork((_maxWorkOut - minWorkOut) + 4*_parameters.threads);
+					const uint32_t targetMaxWork((_maxWorkOut - minWorkOut) + 8*_parameters.threads);
 					_maxWorkOut = (_maxWorkOut + targetMaxWork)/2;
 				}
 			}
 			else if (minWorkOut > 4u*_parameters.threads) {
 				// Didn't make the target, but also didn't run out of work.  Can still adjust target.
-				const uint32_t targetMaxWork((curWorkOut - minWorkOut) + 6*_parameters.threads);
+				const uint32_t targetMaxWork((curWorkOut - minWorkOut) + 10*_parameters.threads);
 				_maxWorkOut = (_maxWorkOut + targetMaxWork)/2;
 			}
 			else if (minWorkOut == 0 && curWorkOut > 0) {
@@ -792,7 +889,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 					    std::cout << "Sieve = " << _parameters.sieve << ", SieveWorkers = " << _parameters.sieveWorkers << std::endl;);
 				}
 			}
-			_maxWorkOut = std::min(_maxWorkOut, _workDoneQueue.size() - 256);
+			_maxWorkOut = std::min(_maxWorkOut, _workDoneQueue.size() - 9*_parameters.threads);
 			DBG(std::cout << "Work target before starting next block now: " << _maxWorkOut << std::endl;);
 		}
 

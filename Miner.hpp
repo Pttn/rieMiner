@@ -22,7 +22,7 @@ union xmmreg_t {
 
 #define WORK_DATAS 2
 #define WORK_INDEXES 64
-enum JobType {TYPE_CHECK, TYPE_MOD, TYPE_SIEVE};
+enum JobType {TYPE_CHECK, TYPE_MOD, TYPE_SIEVE, TYPE_DUMMY};
 
 struct MinerParameters {
 	uint64_t primorialNumber;
@@ -79,10 +79,10 @@ struct MinerWorkData {
 
 struct SieveInstance {
 	uint32_t id;
-	std::mutex bucketLock, modLock;
+	std::mutex modLock;
 	uint8_t* sieve = NULL;
 	uint32_t **segmentHits = NULL;
-	std::vector<uint64_t> segmentCounts;
+	std::atomic<uint64_t>* segmentCounts = NULL;
 	uint32_t* offsets = NULL;
 };
 
@@ -93,9 +93,9 @@ class Miner {
 	MinerParameters _parameters;
 	CpuID _cpuInfo;
 	
+	tsQueue<primeTestWork, 1024> _modWorkQueue;
 	tsQueue<primeTestWork, 4096> _verifyWorkQueue;
-	tsQueue<uint64_t, 1024> _modDoneQueue;
-	tsQueue<int, 9216> _workDoneQueue;
+	tsQueue<int64_t, 9216> _workDoneQueue;
 	mpz_t _primorial;
 	uint64_t _nPrimes, _entriesPerSegment, _primeTestStoreOffsetsSize, _startingPrimeIndex, _sparseLimit;
 	std::vector<uint64_t> _halfPrimeTupleOffset, _primorialOffsetDiff, _primorialOffsetDiffToFirst;
@@ -143,11 +143,12 @@ class Miner {
 		}
 	}
 	
-	void _putOffsetsInSegments(SieveInstance& sieve, uint64_t *offsets, int n_offsets);
+	void _putOffsetsInSegments(SieveInstance& sieve, uint64_t *offsets, uint64_t* counts, int n_offsets);
 	void _updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t end_i);
 	void _processSieve(uint8_t *sieve, uint32_t* offsets, uint64_t start_i, uint64_t end_i);
 	void _processSieve6(uint8_t *sieve, uint32_t* offsets, uint64_t start_i, uint64_t end_i);
 	void _runSieve(SieveInstance& sieve, uint32_t workDataIndex);
+	bool _testPrimesIspc(uint32_t indexes[WORK_INDEXES], uint32_t is_prime[WORK_INDEXES], mpz_t z_ploop, mpz_t z_temp);
 	void _verifyThread();
 	void _getTargetFromBlock(mpz_t z_target, const WorkData& block);
 	void _processOneBlock(uint32_t workDataIndex, bool isNewHeight);

@@ -1,7 +1,7 @@
 #!/usr/bin/sed -f
-/^PROLOGUE(rie_mod_1s_2p_4times)/s/.*/\
-	.globl rie_mod_1s_2p_4times\
-rie_mod_1s_2p_4times:\
+/^PROLOGUE(rie_mod_1s_2p_[48]times)/s/PROLOGUE(\(rie_mod_1s_2p_[48]times\).*/\
+	.globl \1\
+\1:\
 	push	%rdi\
 	push	%rsi\
 	mov	%rcx, %rdi\

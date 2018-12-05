@@ -278,6 +278,7 @@ void Options::loadConf() {
 	
 	DEBUG = _debug;
 	DBG(std::cout << "Debug Mode enabled" << std::endl;);
+	DBG_VERIFY(std::cout << "Debug Verification enabled" << std::endl;);
 	if (_protocol == "Benchmark") {
 		std::cout << "Benchmark Mode at difficulty " << _testDiff << std::endl;
 		if (_testTime != 0) std::cout << "Will stop after " << _testTime << " s" << std::endl;
