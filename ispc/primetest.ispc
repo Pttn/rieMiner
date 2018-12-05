@@ -1,3 +1,16 @@
+/* Copyright 2017-2018 Michael Bell
+  
+  This file contains code derived from GMP.  I believe that no code
+  was directly copied from GMP so it could possibly be license permissively, 
+  but as it follow the GMP implementation so closely, I can't be sure (and IANAL).
+  
+  Therefore this file is licensed under the LGPLv3 to ensure there is no legal issue.
+  
+  You may redistribute this and/or modify it under the terms of 
+  the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version. */
+
 #define MAX_N_SIZE 64
 
 typedef unsigned int uint;

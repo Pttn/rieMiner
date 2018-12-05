@@ -1,3 +1,13 @@
+/* Copyright 2017-2018 Michael Bell
+
+  This file contains code copied and derived from GMP.
+  GMP code is Copyright 1991-1997, 1999-2016 Free Software Foundation, Inc.
+
+  You may redistribute this and/or modify it under the terms of 
+  the GNU Lesser General Public License as published by the Free
+    Software Foundation; either version 3 of the License, or (at your
+    option) any later version. */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
