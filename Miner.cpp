@@ -241,6 +241,9 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 			}
 		}
 	}
+
+	// On Windows, caching these thread_local pointers on the stack makes a noticeable perf difference.
+	uint64_t **offsets = offset_stack, **counts = offset_count;
 	uint64_t precompLimit(_parameters.modPrecompute.size());
 
 	uint64_t avxLimit(0);
@@ -346,19 +349,19 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 						mpz_clear(tar); \
 						return; \
 					} \
-					_putOffsetsInSegments(_sieves[j], offset_stack[j], offset_count[j], n_offsets[j]); \
+					_putOffsetsInSegments(_sieves[j], offsets[j], counts[j], n_offsets[j]); \
 					n_offsets[j] = 0; \
 				} \
 				if (index < _parameters.maxIncrements) { \
-					offset_stack[j][n_offsets[j]++] = index; \
-					offset_count[j][index >> _parameters.sieveBits]++; \
+					offsets[j][n_offsets[j]++] = index; \
+					counts[j][index >> _parameters.sieveBits]++; \
 				} \
 				for (std::vector<uint64_t>::size_type f(1) ; f < _halfPrimeTupleOffset.size() ; f++) { \
 					if (index < invert[_halfPrimeTupleOffset[f]]) index += p; \
 					index -= invert[_halfPrimeTupleOffset[f]]; \
 					if (index < _parameters.maxIncrements) { \
-						offset_stack[j][n_offsets[j]++] = index; \
-						offset_count[j][index >> _parameters.sieveBits]++; \
+						offsets[j][n_offsets[j]++] = index; \
+						counts[j][index >> _parameters.sieveBits]++; \
 					} \
 				} \
 			} \
@@ -397,10 +400,13 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		}
 	}
 
-	for (int j(0) ; j < _parameters.sieveWorkers ; j++) {
-		if (n_offsets[j] > 0) {
-			_putOffsetsInSegments(_sieves[j], offset_stack[j], offset_count[j], n_offsets[j]);
-			n_offsets[j] = 0;
+	if (end_i > _sparseLimit)
+	{
+		for (int j(0) ; j < _parameters.sieveWorkers ; j++) {
+			if (n_offsets[j] > 0) {
+				_putOffsetsInSegments(_sieves[j], offsets[j], counts[j], n_offsets[j]);
+				n_offsets[j] = 0;
+			}
 		}
 	}
 
