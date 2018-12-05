@@ -253,6 +253,13 @@ void Options::loadConf() {
 						std::cout << "Too short or invalid tuple offsets, ignoring." << std::endl;
 					else _consType = primeTupleOffset;
 				}
+				else if (key == "Rules") {
+					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
+					std::stringstream offsets(value);
+					_rules = std::vector<std::string>();
+					std::string tmp;
+					while (offsets >> tmp) _rules.push_back(tmp);
+				}
 				else if (key == "Error")
 					std::cout << "Ignoring invalid line" << std::endl;
 				else
@@ -286,6 +293,14 @@ void Options::loadConf() {
 		else std::cout << "User.worker = " << _user << std::endl;
 		std::cout << "Pass = ..." << std::endl;
 		std::cout << "Protocol = " << _protocol << std::endl;
+		if (_rules.size() > 0 && _protocol == "GetBlockTemplate") {
+			std::cout << "Consensus Rules = ";
+			for (std::vector<std::string>::size_type i(0) ; i < _rules.size() ; i++) {
+				std::cout << _rules[i];
+				if (i != _rules.size() - 1) std::cout << ", ";
+			}
+			std::cout << std::endl;
+		}
 	}
 	if (_protocol == "GetBlockTemplate")
 		std::cout << "Payout address = " << _address << std::endl;

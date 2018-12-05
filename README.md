@@ -1,4 +1,4 @@
-# rieMiner 0.9RC3
+# rieMiner 0.9RC3.5
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
@@ -125,7 +125,8 @@ It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; a
 * Address : custom payout address for solo mining (GetBlockTemplate only). Default: a donation address;
 * Threads : number of threads used for mining. Default: 8;
 * Sieve : size of the sieve table used for mining. Use a bigger number if you have 16 GiB of RAM or more, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. Reduce if you have less than 8 GiB of RAM (or if you want to reduce memory usage). It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^31;
-* Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Additionally, the base prime of such tuple will be shown in the Benchmark Mode. Default: 6.
+* Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Additionally, the base prime of such tuple will be shown in the Benchmark Mode. Default: 6;
+* Rules : for solo mining, add consensus rules in the GetBlockTemplate RPC call, each separated by a comma. Useful for softforks, for example, to mine SegWit transactions, you would need the line "Rules = segwit". Default: no rule.
 
 It is also possible to use custom configuration file paths, examples:
 

@@ -15,6 +15,8 @@ struct GetBlockTemplateData {
 	uint32_t primes;
 	std::vector<uint8_t> coinbase, // Store Coinbase Transaction here
 	                     scriptPubKey; // Calculated from custom payout address for Coinbase Transaction
+	std::vector<std::string> rules; // From GetBlockTemplate response
+	std::string default_witness_commitment; // In hex format
 	
 	GetBlockTemplateData() {
 		bh = BlockHeader();
@@ -25,6 +27,8 @@ struct GetBlockTemplateData {
 		primes = 6;
 		coinbase = std::vector<uint8_t>();
 		scriptPubKey = std::vector<uint8_t>(20, 0);
+		rules = std::vector<std::string>();
+		default_witness_commitment = std::string();
 	}
 	
 	void coinBaseGen();
@@ -37,6 +41,12 @@ struct GetBlockTemplateData {
 	void merkleRootGen() {
 		std::array<uint8_t, 32> mr(calculateMerkleRoot(txHashes));
 		memcpy(bh.merkleRoot, mr.data(), 32);
+	}
+	bool segwitActive() {
+		for (uint32_t i(0) ; i < rules.size() ; i++) {
+			if (rules[i] == "segwit") return true;
+		}
+		return false;
 	}
 };
 

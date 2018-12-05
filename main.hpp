@@ -3,7 +3,7 @@
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
 
-#define versionString	"rieMiner 0.9RC3"
+#define versionString	"rieMiner 0.9RC3.5"
 
 #include <unistd.h>
 #include <string>
@@ -32,6 +32,7 @@ class Options {
 	uint32_t _refresh, _testDiff, _testTime, _test2t;
 	uint64_t _sieve, _pn;
 	std::vector<uint64_t> _consType, _pOff;
+	std::vector<std::string> _rules;
 	
 	void parseLine(std::string, std::string&, std::string&) const;
 	
@@ -58,6 +59,7 @@ class Options {
 		              7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull}; // Primorial Offsets
 		_sieveBits = 25;
 		_consType  = {0, 4, 2, 4, 2, 4}; // What type of constellations are we mining (offsets)
+		_rules     = std::vector<std::string>();
 	}
 	
 	void loadConf();
@@ -82,6 +84,7 @@ class Options {
 	std::vector<uint64_t> pOff() const {return _pOff;}
 	uint8_t sieveBits() const {return _sieveBits;}
 	std::vector<uint64_t> consType() const {return _consType;}
+	std::vector<std::string> rules() const {return _rules;}
 };
 
 #endif
