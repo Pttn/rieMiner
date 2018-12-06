@@ -23,10 +23,11 @@ bool GBTClient::connect() {
 	}
 }
 
-void GetBlockTemplateData::coinBaseGen() {
+void GetBlockTemplateData::coinBaseGen(const std::string &cbMsg) {
 	coinbase = std::vector<uint8_t>();
-	std::vector<uint8_t> scriptSig(hexStrToV8("7269654d696e6572")),
-	                     dwc(hexStrToV8(default_witness_commitment)); // For SegWit
+	std::vector<uint8_t> scriptSig, dwc(hexStrToV8(default_witness_commitment)); // dwc for SegWit
+	for (uint32_t i(0) ; i < cbMsg.size() ; i++) scriptSig.push_back(cbMsg[i]);
+	
 	// Randomization to avoid 2 threads working on the same problem
 	for (uint32_t i(0) ; i < 4 ; i++) scriptSig.push_back(rand(0x00, 0xFF));
 	
@@ -189,7 +190,7 @@ void GBTClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 
 WorkData GBTClient::workData() const {
 	GetBlockTemplateData gbtd(_gbtd);
-	gbtd.coinBaseGen();
+	gbtd.coinBaseGen(_manager->options().cbMsg());
 	gbtd.transactions = binToHexStr(gbtd.coinbase.data(), gbtd.coinbase.size()) + gbtd.transactions;
 	gbtd.txHashes.insert(gbtd.txHashes.begin(), gbtd.coinBaseHash());
 	gbtd.merkleRootGen();

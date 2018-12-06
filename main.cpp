@@ -208,6 +208,9 @@ void Options::loadConf() {
 				else if (key == "Address") {
 					_address = value;
 				}
+				else if (key == "CBMsg") {
+					_cbMsg = value;
+				}
 				else if (key == "TestDiff") {
 					try {_testDiff = std::stoll(value);}
 					catch (...) {_testDiff = 304;}

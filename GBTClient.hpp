@@ -31,7 +31,7 @@ struct GetBlockTemplateData {
 		default_witness_commitment = std::string();
 	}
 	
-	void coinBaseGen();
+	void coinBaseGen(const std::string& = "");
 	std::array<uint8_t, 32> coinBaseHash() {
 		std::vector<uint8_t> cbHashTmp(sha256sha256(coinbase.data(), coinbase.size()));
 		std::array<uint8_t, 32> cbHash;

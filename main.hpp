@@ -3,7 +3,7 @@
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
 
-#define versionString	"rieMiner 0.9RC4"
+#define versionString	"rieMiner 0.9RC4a"
 
 #include <unistd.h>
 #include <string>
@@ -27,7 +27,7 @@ extern int DEBUG;
 
 class Options {
 	int _debug;
-	std::string _host, _user, _pass, _protocol, _address, _tcFile;
+	std::string _host, _user, _pass, _protocol, _address, _cbMsg, _tcFile;
 	uint16_t  _tuples, _sieveBits, _port, _threads, _sieveWorkers;
 	uint32_t _refresh, _testDiff, _testTime, _test2t;
 	uint64_t _sieve, _pn;
@@ -44,6 +44,7 @@ class Options {
 		_host      = "127.0.0.1";
 		_protocol  = "Benchmark";
 		_address   = "RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB";
+		_cbMsg     = "/rieMiner/";
 		_tcFile    = "None";
 		_port      = 28332;
 		_threads   = 8;
@@ -72,6 +73,7 @@ class Options {
 	std::string pass() const {return _pass;}
 	std::string protocol() const {return _protocol;}
 	std::string address() const {return _address;}
+	std::string cbMsg() const {return _cbMsg;}
 	std::string tcFile() const {return _tcFile;}
 	uint16_t threads() const {return _threads;}
 	uint16_t sieveWorkers() const {return _sieveWorkers;}
