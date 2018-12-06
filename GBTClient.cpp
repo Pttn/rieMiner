@@ -25,7 +25,8 @@ bool GBTClient::connect() {
 
 void GetBlockTemplateData::coinBaseGen(const std::string &cbMsg) {
 	coinbase = std::vector<uint8_t>();
-	std::vector<uint8_t> scriptSig, dwc(hexStrToV8(default_witness_commitment)); // dwc for SegWit
+	std::vector<uint8_t> scriptSig;
+	const std::vector<uint8_t> dwc(hexStrToV8(default_witness_commitment)); // for SegWit
 	for (uint32_t i(0) ; i < cbMsg.size() ; i++) scriptSig.push_back(cbMsg[i]);
 	
 	// Randomization to avoid 2 threads working on the same problem
@@ -89,7 +90,7 @@ void GetBlockTemplateData::coinBaseGen(const std::string &cbMsg) {
 }
 
 bool GBTClient::getWork() {
-	std::vector<std::string> rules(_manager->options().rules());
+	const std::vector<std::string> rules(_manager->options().rules());
 	std::string req;
 	if (rules.size() == 0) req = "{\"method\": \"getblocktemplate\", \"params\": [], \"id\": 0}\n";
 	else {
@@ -112,7 +113,7 @@ bool GBTClient::getWork() {
 	// Failure to GetBlockTemplate
 	if (jsonGbt == NULL || jsonGbt_Res == NULL || jsonGbt_Res_Txs == NULL) return false;
 	
-	uint32_t oldHeight(_gbtd.height);
+	const uint32_t oldHeight(_gbtd.height);
 	uint8_t bitsTmp[4];
 	hexStrToBin(json_string_value(json_object_get(jsonGbt_Res, "bits")), bitsTmp);
 	_gbtd.bh = BlockHeader();
@@ -156,7 +157,7 @@ bool GBTClient::getWork() {
 }
 
 void GBTClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
-	WorkData wdToSend(share.first);
+	const WorkData wdToSend(share.first);
 	std::ostringstream oss;
 	std::string req;
 	
@@ -169,7 +170,7 @@ void GBTClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
 	oss << wdToSend.transactions << "\"], \"id\": 0}\n";
 	req = oss.str();
 	
-	uint16_t k(share.second);
+	const uint16_t k(share.second);
 	_manager->printTime();
 	std::cout << " " << k << "-tuple found";
 	json_t *jsonSb(sendRPCCall(req)); // SubmitBlock response

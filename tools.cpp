@@ -8,8 +8,7 @@ std::default_random_engine eng((std::random_device())());
 uint8_t rand(uint8_t min, uint8_t max) {
 	if (min > max) std::swap(min, max);
 	std::uniform_int_distribution<uint8_t> urd(min, max);
-	uint8_t n(urd(eng));
-	return n;
+	return urd(eng);
 }
 
 std::vector<uint8_t> hexStrToV8(std::string str) {
@@ -82,7 +81,7 @@ std::vector<uint8_t> b58StrToV8(const std::string &btc58Str) {
 
 bool addrToScriptPubKey(const std::string &address, std::vector<uint8_t> &spk) {
 	spk = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-	std::vector<uint8_t> addr(b58StrToV8(address));
+	const std::vector<uint8_t> addr(b58StrToV8(address));
 	
 	if (addr.size() != 25) {
 		std::cerr << __func__ << ": invalid address length!" << std::endl;
@@ -125,7 +124,7 @@ std::array<uint8_t, 32> calculateMerkleRoot(const std::vector<std::array<uint8_t
 					concat[j + 32] = txHashes[i + 1][j];
 			}
 			
-			std::vector<uint8_t> concatHash(sha256sha256((uint8_t*) concat, 64));
+			const std::vector<uint8_t> concatHash(sha256sha256((uint8_t*) concat, 64));
 			std::array<uint8_t, 32> concatHash2;
 			for (uint32_t j(0) ; j < 32 ; j++) concatHash2[j] = concatHash[j];
 			txHashes2.push_back(concatHash2);

@@ -72,7 +72,7 @@ struct primeTestWork {
 struct MinerWorkData {
 	mpz_t z_verifyTarget, z_verifyRemainderPrimorial;
 	WorkData verifyBlock;
-	std::atomic<uint64_t> outstandingTests {0};
+	std::atomic<uint64_t> outstandingTests{0};
 };
 
 struct SieveInstance {
@@ -114,7 +114,7 @@ class Miner {
 
 	void _addToPending(uint8_t *sieve, uint32_t pending[PENDING_SIZE], uint64_t &pos, uint32_t ent) {
 		__builtin_prefetch(&(sieve[ent >> 3]));
-		uint32_t old(pending[pos]);
+		const uint32_t old(pending[pos]);
 		if (old != 0) {
 			assert(old < _parameters.sieveSize);
 			sieve[old >> 3] |= (1 << (old & 7));
@@ -133,7 +133,7 @@ class Miner {
 
 	void _termPending(uint8_t *sieve, uint32_t pending[PENDING_SIZE]) {
 		for (uint64_t i(0) ; i < PENDING_SIZE ; i++) {
-			uint32_t old(pending[i]);
+			const uint32_t old(pending[i]);
 			if (old != 0) {
 				assert(old < _parameters.sieveSize);
 				sieve[old >> 3] |= (1 << (old & 7));

@@ -28,7 +28,7 @@ void Options::parseLine(std::string line, std::string& key, std::string& value) 
 		}
 	}
 	
-	auto pos(line.find('='));
+	const auto pos(line.find('='));
 	if (pos != std::string::npos) {
 		key   = line.substr(0, pos);
 		value = line.substr(pos + 1, line.size() - pos - 1);

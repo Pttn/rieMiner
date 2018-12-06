@@ -92,9 +92,9 @@ void Miner::init() {
 		mpz_mul_ui(_primorial, _primorial, _parameters.primes[i]);
 	
 	// Estimate memory usage, precomputation only works up to p = 2^37
-	uint64_t primeMult(16 + 8*_parameters.sieveWorkers),
-	         precompPrimes(std::min(_nPrimes, 5586502348UL)),
-		 memUsage(128ULL*1048576ULL + 650ULL*1048576ULL*_parameters.sieveWorkers + _nPrimes*primeMult + precompPrimes*8);
+	const uint64_t primeMult(16 + 8*_parameters.sieveWorkers),
+	               precompPrimes(std::min(_nPrimes, 5586502348UL)),
+	               memUsage(128ULL*1048576ULL + 650ULL*1048576ULL*_parameters.sieveWorkers + _nPrimes*primeMult + precompPrimes*8);
 	
 	std::cout << "Estimated memory usage: " << ((float) memUsage)/1048576. << " MiB" << std::endl;
 	std::cout << "Reduce Sieve option value to lower this, if needed." << std::endl;
@@ -110,7 +110,7 @@ void Miner::init() {
 			mpz_t z_tmp, z_p;
 			mpz_init(z_tmp);
 			mpz_init(z_p);
-			uint64_t endIndex(std::min(_startingPrimeIndex + (j + 1)*blockSize, _nPrimes));
+			const uint64_t endIndex(std::min(_startingPrimeIndex + (j + 1)*blockSize, _nPrimes));
 			for (uint64_t i(_startingPrimeIndex + j*blockSize) ; i < endIndex ; i++) {
 				mpz_set_ui(z_p, _parameters.primes[i]);
 				mpz_invert(z_tmp, _primorial, z_p);
@@ -122,15 +122,14 @@ void Miner::init() {
 			mpz_clear(z_tmp);
 		});
 	}
-	for (int16_t j(0) ; j < _parameters.threads ; j++)
-		threads[j].join();
+	for (int16_t j(0) ; j < _parameters.threads ; j++) threads[j].join();
 	
 	uint64_t highSegmentEntries(0);
 	double highFloats(0.), tupleSizeAsDouble(_parameters.primeTupleOffset.size());
 	_primeTestStoreOffsetsSize = 0;
 	_sparseLimit = 0;
 	for (uint64_t i(5) ; i < _nPrimes ; i++) {
-		uint64_t p(_parameters.primes[i]);
+		const uint64_t p(_parameters.primes[i]);
 		if (p < _parameters.maxIncrements) _primeTestStoreOffsetsSize++;
 		else {
 			if (_sparseLimit == 0) _sparseLimit = i & (~1ull);
@@ -193,14 +192,14 @@ void Miner::init() {
 
 	// Initial guess at a value for maxWorkOut
 	_maxWorkOut = std::min(_parameters.threads*32u*_parameters.sieveWorkers, _workDoneQueue.size() - 256);
-
+	
 	_inited = true;
 }
 
 void Miner::_putOffsetsInSegments(SieveInstance& sieve, uint64_t *offsets, uint64_t* counts, int n_offsets) {
 	for (uint64_t segment(0) ; segment < _parameters.maxIter ; segment++) {
-		uint64_t curSegmentCount(sieve.segmentCounts[segment].fetch_add(counts[segment])),
-		         sc(curSegmentCount + counts[segment]);
+		const uint64_t curSegmentCount(sieve.segmentCounts[segment].fetch_add(counts[segment])),
+		               sc(curSegmentCount + counts[segment]);
 		if (sc >= _entriesPerSegment) {
 			std::cerr << __func__ << ": segment " << segment << " " << sc << " count is > " << _entriesPerSegment << std::endl;
 			abort();
@@ -208,15 +207,14 @@ void Miner::_putOffsetsInSegments(SieveInstance& sieve, uint64_t *offsets, uint6
 		counts[segment] = curSegmentCount;
 	}
 	for (int i(0) ; i < n_offsets ; i++) {
-		uint64_t index(offsets[i]),
-		         segment(index >> _parameters.sieveBits),
-		         sc(counts[segment]);
+		const uint64_t index(offsets[i]),
+		               segment(index >> _parameters.sieveBits),
+		               sc(counts[segment]);
 		sieve.segmentHits[segment][sc] = index & (_parameters.sieveSize - 1);
 		counts[segment]++;
 	}
-	for (uint64_t segment(0); segment < _parameters.maxIter; segment++) {
+	for (uint64_t segment(0); segment < _parameters.maxIter; segment++)
 		counts[segment] = 0;
-	}
 }
 
 void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t end_i) {
@@ -240,29 +238,28 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 
 	// On Windows, caching these thread_local pointers on the stack makes a noticeable perf difference.
 	uint64_t **offsets(offsetStack), **counts(offsetCount);
-	uint64_t precompLimit(_parameters.modPrecompute.size());
+	const uint64_t precompLimit(_parameters.modPrecompute.size());
 
 	uint64_t avxLimit(0);
-	uint64_t avxWidth(_cpuInfo.hasAVX2() ? 8 : 4);
+	const uint64_t avxWidth(_cpuInfo.hasAVX2() ? 8 : 4);
 	if (_cpuInfo.hasAVX()) {
 		avxLimit = NUM_PRIMES_TO_2P32 - avxWidth;
-		avxLimit -= (avxLimit - start_i) & (avxWidth-1);  // Must be enough primes in range to use AVX
+		avxLimit -= (avxLimit - start_i) & (avxWidth - 1);  // Must be enough primes in range to use AVX
 	}
 
 	uint64_t nextRemainder[8];
 	uint64_t nextRemainderIdx(8);
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
-		uint64_t p(_parameters.primes[i]);
+		const uint64_t p(_parameters.primes[i]);
 
 		// Also update the offsets unless once only
-		bool onceOnly(i >= _sparseLimit);
+		const bool onceOnly(i >= _sparseLimit);
 
 		uint64_t invert[4];
 		invert[0] = _parameters.inverts[i];
 
 		// Compute the index, using precomputation speed up if available.
-		uint64_t index;
-		uint64_t cnt(0), ps(0);
+		uint64_t index, cnt(0), ps(0);
 		if (i < precompLimit) {
 			bool haveRemainder(false);
 			if (nextRemainderIdx < avxWidth) {
@@ -272,12 +269,12 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 				haveRemainder = true;
 			}
 			else if (i < avxLimit) {
-				cnt = __builtin_clz((uint32_t)p);
-				if (__builtin_clz((uint32_t)_parameters.primes[i+avxWidth-1]) == cnt) {
+				cnt = __builtin_clz((uint32_t) p);
+				if (__builtin_clz((uint32_t) _parameters.primes[i + avxWidth - 1]) == cnt) {
 					uint32_t ps32[8];
-					for (uint64_t j(0); j < avxWidth; j++) {
-						ps32[j] = (uint32_t)_parameters.primes[i+j] << cnt;
-						nextRemainder[j] = _parameters.inverts[i+j];
+					for (uint64_t j(0) ; j < avxWidth; j++) {
+						ps32[j] = (uint32_t) _parameters.primes[i + j] << cnt;
+						nextRemainder[j] = _parameters.inverts[i + j];
 					}
 					if (_cpuInfo.hasAVX2()) rie_mod_1s_2p_8times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
 					else rie_mod_1s_2p_4times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
@@ -285,17 +282,17 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 					index = nextRemainder[0];
 					nextRemainderIdx = 1;
 					cnt += 32;
-					ps = (uint64_t)ps32[0] << 32;
+					ps = (uint64_t) ps32[0] << 32;
 				}
 			}
 			
 			if (!haveRemainder) {
 				cnt = __builtin_clzll(p);
 				ps = p << cnt;
-				uint64_t remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, cnt, &_parameters.modPrecompute[i]));
+				const uint64_t remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, cnt, &_parameters.modPrecompute[i]));
 				DBG_VERIFY(if (remainder >> cnt != mpz_tdiv_ui(tar, p)) {std::cerr << "Remainder check fail " << (remainder >> cnt) << " != " << mpz_tdiv_ui(tar, p) << std::endl; abort();});
 
-				uint64_t pa(ps - remainder);
+				const uint64_t pa(ps - remainder);
 				uint64_t r, nh, nl;
 				umul_ppmm(nh, nl, pa, invert[0]);
 				udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i]);
@@ -303,19 +300,16 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 				DBG_VERIFY(if (p < 0x100000000ull && (r >> cnt) != ((pa >> cnt)*invert[0]) % p) {std::cerr << "Remainder check fail" << std::endl; abort();});
 			}
 			DBG_VERIFY(({
-				uint64_t remainder(mpz_tdiv_ui(tar, p)),
-				         pa(p - remainder),
-				         q, nh, nl, indexCheck;
-				
+				const uint64_t remainder(mpz_tdiv_ui(tar, p)), pa(p - remainder);
+				uint64_t q, nh, nl, indexCheck;
 				umul_ppmm(nh, nl, pa, invert[0]);
 				udiv_qrnnd(q, indexCheck, nh, nl, p);
-				if (index != indexCheck) {std::cerr << "Index check fail, p=" << p << ", i=" << i << ", start_i=" << start_i << std::endl; abort();}
+				if (index != indexCheck) {std::cerr << "Index check fail, p = " << p << ", i = " << i << ", start_i = " << start_i << std::endl; abort();}
 			}));
 		}
 		else {
-			uint64_t remainder(mpz_tdiv_ui(tar, p)),
-			         pa(p - remainder),
-			         q, nh, nl;
+			const uint64_t remainder(mpz_tdiv_ui(tar, p)), pa(p - remainder);
+			uint64_t q, nh, nl;
 			umul_ppmm(nh, nl, pa, invert[0]);
 			udiv_qrnnd(q, index, nh, nl, p);
 		}
@@ -416,7 +410,7 @@ void Miner::_processSieve(uint8_t *sieve, uint32_t* offsets, uint64_t start_i, u
 	_initPending(pending);
 
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
-		uint32_t p(_parameters.primes[i]);
+		const uint32_t p(_parameters.primes[i]);
 		for (uint64_t f(0) ; f < tupleSize; f++) {
 			while (offsets[i*tupleSize + f] < _parameters.sieveSize) {
 				_addToPending(sieve, pending, pending_pos, offsets[i*tupleSize + f]);
@@ -455,9 +449,9 @@ void Miner::_processSieve6(uint8_t *sieve, uint32_t* offsets, uint64_t start_i, 
 			cmpres1.m128 = _mm_cmpgt_epi32(offsetmax.m128, offset1.m128);
 			cmpres2.m128 = _mm_cmpgt_epi32(offsetmax.m128, offset2.m128);
 			cmpres3.m128 = _mm_cmpgt_epi32(offsetmax.m128, offset3.m128);
-			int mask1 = _mm_movemask_epi8(cmpres1.m128);
-			int mask2 = _mm_movemask_epi8(cmpres2.m128);
-			int mask3 = _mm_movemask_epi8(cmpres3.m128);
+			const int mask1 = _mm_movemask_epi8(cmpres1.m128);
+			const int mask2 = _mm_movemask_epi8(cmpres2.m128);
+			const int mask3 = _mm_movemask_epi8(cmpres3.m128);
 			if ((mask1 == 0) && (mask2 == 0) && (mask3 == 0)) break;
 			_addRegToPending(sieve, pending, pending_pos, offset1, mask1);
 			_addRegToPending(sieve, pending, pending_pos, offset2, mask2);
@@ -536,8 +530,7 @@ void Miner::_runSieve(SieveInstance& sieve, uint32_t workDataIndex) {
 			uint64_t sb(~sieve64[b]);
 
 			while (sb != 0) {
-				const uint32_t lowsb(__builtin_ctzll(sb)),
-				               i((b*64) + lowsb);
+				const uint32_t lowsb(__builtin_ctzll(sb)), i((b*64) + lowsb);
 				sb &= sb - 1;
 
 				w.testWork.indexes[w.testWork.n_indexes] = i;
@@ -566,10 +559,9 @@ void Miner::_runSieve(SieveInstance& sieve, uint32_t workDataIndex) {
 	}
 }
 
-bool Miner::_testPrimesIspc(uint32_t indexes[WORK_INDEXES], uint32_t is_prime[WORK_INDEXES], mpz_t z_ploop, mpz_t z_tmp)
-{
+bool Miner::_testPrimesIspc(uint32_t indexes[WORK_INDEXES], uint32_t is_prime[WORK_INDEXES], mpz_t z_ploop, mpz_t z_tmp) {
 	uint32_t M[WORK_INDEXES * MAX_N_SIZE], bits(0), N_Size;
-	uint32_t* mp(&M[0]);
+	uint32_t *mp(&M[0]);
 	for (uint32_t i(0); i < WORK_INDEXES; ++i) {
 		mpz_mul_ui(z_tmp, _primorial, indexes[i]);
 		mpz_add(z_tmp, z_tmp, z_ploop);
@@ -577,12 +569,9 @@ bool Miner::_testPrimesIspc(uint32_t indexes[WORK_INDEXES], uint32_t is_prime[WO
 		if (bits == 0) {
 			bits = mpz_sizeinbase(z_tmp, 2);
 			N_Size = (bits >> 5) + ((bits & 0x1f) > 0);
-
 			if (N_Size > MAX_N_SIZE) return false;
 		}
-		else {
-			assert(bits == mpz_sizeinbase(z_tmp, 2));
-		}
+		else assert(bits == mpz_sizeinbase(z_tmp, 2));
 
 		memcpy(mp, z_tmp->_mp_d, N_Size * 4);
 		mp += N_Size;
@@ -609,7 +598,7 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 		if (!_modWorkQueue.pop_front_if_not_empty(job)) {
 			job = _verifyWorkQueue.pop_front();
 		}
-		auto startTime(std::chrono::high_resolution_clock::now());
+		const auto startTime(std::chrono::high_resolution_clock::now());
 		
 		if (job.type == TYPE_MOD) {
 			_updateRemainders(job.workDataIndex, job.modWork.start, job.modWork.end);
@@ -639,21 +628,18 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 
 				if (firstTestDone) {
 					job.testWork.n_indexes = 0;
-					for (uint32_t i(0); i < WORK_INDEXES; i++) {
+					for (uint32_t i(0) ; i < WORK_INDEXES ; i++) {
 						DBG_VERIFY(({
 							mpz_mul_ui(z_tmp, _primorial, job.testWork.indexes[i]);
 							mpz_add(z_tmp, z_tmp, z_ploop);
-
 							mpz_sub_ui(z_ft_n, z_tmp, 1);
 							mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
-
 							if (mpz_cmp_ui(z_ft_r, 1) == 0) assert(isPrime[i]);
 							else assert(!isPrime[i]);
 						}));
 
-						if (isPrime[i]) {
+						if (isPrime[i])
 							job.testWork.indexes[job.testWork.n_indexes++] = job.testWork.indexes[i];
-						}
 					}
 				}
 			}
@@ -700,7 +686,7 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				// Generate nOffset and submit
 				uint8_t nOffset[32];
 				memset(nOffset, 0x00, 32);
-				for(uint32_t d(0) ; d < (uint32_t) std::min(32/8, z_tmp2->_mp_size) ; d++)
+				for (uint32_t d(0) ; d < (uint32_t) std::min(32/8, z_tmp2->_mp_size) ; d++)
 					*(uint64_t*) (nOffset + d*8) = z_tmp2->_mp_d[d];
 				
 				_manager->submitWork(_workData[job.workDataIndex].verifyBlock, (uint32_t*) nOffset, tupleSize);
@@ -727,7 +713,7 @@ void Miner::_getTargetFromBlock(mpz_t z_target, const WorkData &block) {
 	const uint64_t trailingZeros(searchBits - 1 - zeroesBeforeHashInPrime - 256);
 	mpz_mul_2exp(z_target, z_target, trailingZeros);
 	
-	uint64_t difficulty(mpz_sizeinbase(z_target, 2));
+	const uint64_t difficulty(mpz_sizeinbase(z_target, 2));
 	if (_manager->difficulty() != difficulty) {
 		bool save(true);
 		if (_manager->difficulty() == 1) {
@@ -813,7 +799,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 		int32_t nModWorkers(0), nLowModWorkers(0);
 		
 		const uint32_t curWorkOut(_verifyWorkQueue.size());
-		uint64_t incr(_nPrimes/(_parameters.threads*8));
+		const uint64_t incr(_nPrimes/(_parameters.threads*8));
 		for (auto base(_startingPrimeIndex) ; base < _nPrimes ; base += incr) {
 			uint64_t lim(std::min(_nPrimes, base + incr));
 			wi.modWork.start = base;
@@ -824,7 +810,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 			else nModWorkers++;
 		}
 		while (nLowModWorkers > 0) {
-			int64_t i(_workDoneQueue.pop_front());
+			const int64_t i(_workDoneQueue.pop_front());
 			if (i >= 0) _workData[i].outstandingTests--;
 			else {
 				if (uint64_t(-i) < _sparseLimit) nLowModWorkers--;
@@ -843,7 +829,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 		int nSieveWorkers(_parameters.sieveWorkers);
 		
 		while (nModWorkers > 0) {
-			int64_t i(_workDoneQueue.pop_front());
+			const int64_t i(_workDoneQueue.pop_front());
 			if (i >= 0) _workData[i].outstandingTests--;
 			else if (i == -1) nSieveWorkers--;
 			else nModWorkers--;

@@ -33,16 +33,16 @@ struct GetBlockTemplateData {
 	
 	void coinBaseGen(const std::string& = "");
 	std::array<uint8_t, 32> coinBaseHash() {
-		std::vector<uint8_t> cbHashTmp(sha256sha256(coinbase.data(), coinbase.size()));
+		const std::vector<uint8_t> cbHashTmp(sha256sha256(coinbase.data(), coinbase.size()));
 		std::array<uint8_t, 32> cbHash;
 		for (uint8_t j(0) ; j < 32 ; j++) cbHash[j] = cbHashTmp[j];
 		return cbHash;
 	}
 	void merkleRootGen() {
-		std::array<uint8_t, 32> mr(calculateMerkleRoot(txHashes));
+		const std::array<uint8_t, 32> mr(calculateMerkleRoot(txHashes));
 		memcpy(bh.merkleRoot, mr.data(), 32);
 	}
-	bool segwitActive() {
+	bool segwitActive() const {
 		for (uint32_t i(0) ; i < rules.size() ; i++) {
 			if (rules[i] == "segwit") return true;
 		}

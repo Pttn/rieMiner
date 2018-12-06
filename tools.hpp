@@ -52,8 +52,8 @@ std::array<uint8_t, 32> calculateMerkleRootStratum(const std::vector<std::array<
 uint8_t rand(uint8_t, uint8_t);
 
 inline double timeSince(const std::chrono::time_point<std::chrono::system_clock> &t0) {
-	std::chrono::time_point<std::chrono::system_clock> t(std::chrono::system_clock::now());
-	std::chrono::duration<double> dt(t - t0);
+	const std::chrono::time_point<std::chrono::system_clock> t(std::chrono::system_clock::now());
+	const std::chrono::duration<double> dt(t - t0);
 	return dt.count();
 }
 
@@ -69,7 +69,7 @@ inline std::vector<uint8_t> sha256(const uint8_t *data, uint32_t len) {
 }
 
 inline std::vector<uint8_t> sha256sha256(const uint8_t *data, uint32_t len) {
-	std::vector<uint8_t> hash(sha256(data, len));
+	const std::vector<uint8_t> hash(sha256(data, len));
 	return sha256(hash.data(), 32);
 }
 

@@ -17,7 +17,7 @@ void StratumData::merkleRootGen() {
 	}
 	for (uint32_t i(0) ; i < coinbase2.size() ; i++) coinbase.push_back(coinbase2[i]);
 	
-	std::vector<uint8_t> cbHashTmp(sha256sha256(coinbase.data(), coinbase.size()));
+	const std::vector<uint8_t> cbHashTmp(sha256sha256(coinbase.data(), coinbase.size()));
 	std::array<uint8_t, 32> cbHash;
 	for (uint32_t j(0) ; j < 32 ; j++) cbHash[j] = cbHashTmp[j];
 	txHashes.insert(txHashes.begin(), cbHash);
@@ -310,7 +310,7 @@ bool StratumClient::process() {
 	_submitMutex.lock();
 	if (_pendingSubmissions.size() > 0) {
 		for (uint32_t i(0) ; i < _pendingSubmissions.size() ; i++) {
-			std::pair<WorkData, uint8_t> share(_pendingSubmissions[i]);
+			const std::pair<WorkData, uint8_t> share(_pendingSubmissions[i]);
 			sendWork(share);
 			_state = SHARE_SENT;
 		}
@@ -319,7 +319,7 @@ bool StratumClient::process() {
 	_submitMutex.unlock();
 	
 	// Get server data
-	ssize_t n(recv(_socket, &_buffer[0], RECVSIZE, 0));
+	const ssize_t n(recv(_socket, &_buffer[0], RECVSIZE, 0));
 	_result = std::string();
 	
 	if (n <= 0) { // No data received. Usually, this is normal, because of the non-blocking socket...

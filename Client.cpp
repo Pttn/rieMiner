@@ -74,8 +74,8 @@ bool Client::process() {
 	_submitMutex.lock();
 	if (_pendingSubmissions.size() > 0) {
 		for (uint32_t i(0) ; i < _pendingSubmissions.size() ; i++) {
-			std::pair<WorkData, uint8_t> share(_pendingSubmissions[i]);
-			sendWork(share);
+			const std::pair<WorkData, uint8_t> work(_pendingSubmissions[i]);
+			sendWork(work);
 		}
 		_pendingSubmissions.clear();
 	}
@@ -114,13 +114,13 @@ bool BMClient::getWork() {
 }
 
 void BMClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
-	WorkData wdToSend(share.first);
-	uint8_t k(share.second);
+	const WorkData wdToSend(share.first);
+	const uint16_t k(share.second);
 	_manager->printTime();
-	std::cout << " " << (uint16_t) k << "-tuple found: ";
+	std::cout << " " << k << "-tuple found: ";
 	
-	std::string bhStr(binToHexStr(&wdToSend, 112));
-	uint32_t diff(getCompact(invEnd32(strtol(bhStr.substr(136, 8).c_str(), NULL, 16))));
+	const std::string bhStr(binToHexStr(&wdToSend, 112));
+	const uint32_t diff(getCompact(invEnd32(strtol(bhStr.substr(136, 8).c_str(), NULL, 16))));
 	std::vector<uint8_t> SV8(32), XV8, tmp(sha256sha256(hexStrToV8(bhStr.substr(0, 160)).data(), 80));
 	for (uint64_t i(0) ; i < 256 ; i++) SV8[i/8] |= (((tmp[i/8] >> (i % 8)) & 1) << (7 - (i % 8)));
 	mpz_class S(v8ToHexStr(SV8).c_str(), 16), target(1);
