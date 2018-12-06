@@ -1,4 +1,5 @@
 // (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018 Michael Bell/Rockhawk (CPUID tools)
 
 #include "tools.hpp"
 
@@ -43,7 +44,7 @@ std::string gmp58Tobtc58(const std::string &gmp58Str) {
 	std::string btc58Str;
 	for (uint64_t i(0) ; i < gmp58Str.size() ; i++) {
 		if (b58GmpBtcTable[gmp58Str[i]] == '0') {
-			std::cerr << "gmp58Tobtc58: invalid Base58 (GMP) string!" << std::endl;
+			std::cerr << __func__ << ": invalid Base58 (GMP) string!" << std::endl;
 			return "1";
 		}
 		btc58Str += b58GmpBtcTable[gmp58Str[i]];
@@ -55,7 +56,7 @@ std::string btc58Togmp58(const std::string &btc58Str) {
 	std::string gmp58Str;
 	for (uint64_t i(0) ; i < btc58Str.size() ; i++) {
 		if (b58BtcGmpTable[btc58Str[i]] == 'z') {
-			std::cerr << "btc58Togmp58: invalid Base58 (Bitcoin) string!" << std::endl;
+			std::cerr << __func__ << ": invalid Base58 (Bitcoin) string!" << std::endl;
 			return "0";
 		}
 		gmp58Str += b58BtcGmpTable[btc58Str[i]];
@@ -84,7 +85,7 @@ bool addrToScriptPubKey(const std::string &address, std::vector<uint8_t> &spk) {
 	std::vector<uint8_t> addr(b58StrToV8(address));
 	
 	if (addr.size() != 25) {
-		std::cerr << "Invalid address length!" << std::endl;
+		std::cerr << __func__ << ": invalid address length!" << std::endl;
 		return false;
 	}
 	else {
@@ -93,7 +94,7 @@ bool addrToScriptPubKey(const std::string &address, std::vector<uint8_t> &spk) {
 		addressHash = sha256(addressHash.data(), 32);
 		
 		if (*((uint32_t*) &addr[21]) != *((uint32_t*) &addressHash[0])) {
-			std::cerr << "Invalid checksum!" << std::endl;
+			std::cerr << __func__ << ": invalid checksum!" << std::endl;
 			return false;
 		}
 		else {
@@ -106,7 +107,7 @@ bool addrToScriptPubKey(const std::string &address, std::vector<uint8_t> &spk) {
 std::array<uint8_t, 32> calculateMerkleRoot(const std::vector<std::array<uint8_t, 32>> &txHashes) {
 	std::array<uint8_t, 32> merkleRoot{};
 	if (txHashes.size() == 0)
-		std::cerr << "CalculateMerkleRoot: no transaction to hash!" << std::endl;
+		std::cerr << __func__ << ": no transaction to hash!" << std::endl;
 	else if (txHashes.size() == 1)
 		return txHashes[0];
 	else {
@@ -138,7 +139,7 @@ std::array<uint8_t, 32> calculateMerkleRoot(const std::vector<std::array<uint8_t
 std::array<uint8_t, 32> calculateMerkleRootStratum(const std::vector<std::array<uint8_t, 32>> &txHashes) {
 	std::array<uint8_t, 32> merkleRoot{};
 	if (txHashes.size() == 0)
-		std::cerr << "calculateMerkleRootStratum: no transaction to hash!";
+		std::cerr << __func__ << ": no transaction to hash!";
 	else if (txHashes.size() == 1)
 		return txHashes[0];
 	else {
@@ -152,4 +153,29 @@ std::array<uint8_t, 32> calculateMerkleRootStratum(const std::vector<std::array<
 		for (uint32_t i(0) ; i < 32 ; i++) merkleRoot[i] = hashData[i];
 	}
 	return merkleRoot;
+}
+
+CpuID::CpuID() {
+	uint32_t eax(0), ebx(0), ecx(0), edx(0);
+	__get_cpuid(0, &eax, &ebx, &ecx, &edx);
+	_intel = (ebx == 0x756e6547 && ecx == 0x6c65746e && edx == 0x49656e69);
+	if (eax < 7) {
+		_avx = false;
+		_avx2 = false;
+		_avx512 = false;
+	}
+	else {
+		__get_cpuid(1, &eax, &ebx, &ecx, &edx);
+		_avx = (ecx & (1 << 28)) != 0;
+
+		// Must do this with inline assembly as __get_cpuid is unreliable for level 7
+		// and __get_cpuid_count is not always available.
+		//__get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx);
+		uint32_t level(7), zero(0);
+		asm ("cpuid\n\t"
+		    : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
+		    : "0"(level), "2"(zero));
+		_avx2 = (ebx & (1 << 5)) != 0;
+		_avx512 = (ebx & (1 << 16)) != 0;
+	}
 }

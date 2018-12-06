@@ -7,7 +7,6 @@
 #include <atomic>
 #include "WorkManager.hpp"
 #include "tsQueue.hpp"
-#include "CpuID.hpp"
 
 class WorkManager;
 struct WorkData;
@@ -25,28 +24,27 @@ union xmmreg_t {
 enum JobType {TYPE_CHECK, TYPE_MOD, TYPE_SIEVE, TYPE_DUMMY};
 
 struct MinerParameters {
-	uint64_t primorialNumber;
 	int16_t threads;
 	uint8_t tuples;
-	uint64_t sieve;
+	uint64_t primorialNumber, sieve;
 	bool solo;
 	int sieveWorkers;
 	uint64_t sieveBits, sieveSize, sieveWords, maxIncrements, maxIter, denseLimit;
-	std::vector<uint64_t> primes, inverts, modPrecompute, primeTupleOffset, primorialOffset;
+	std::vector<uint64_t> primes, inverts, modPrecompute, primeTupleOffset, primorialOffsets;
 	
 	MinerParameters() {
-		primorialNumber = 40;
-		threads         = 8;
-		tuples          = 6;
-		sieve           = 2147483648;
-		sieveWorkers    = 2;
-		solo            = true;
-		sieveBits       = 25;
-		sieveSize       = 1UL << sieveBits;
-		sieveWords      = sieveSize/64;
-		maxIncrements   = (1ULL << 29),
-		maxIter         = maxIncrements/sieveSize;
-		primorialOffset = {4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull, 7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull};
+		primorialNumber  = 40;
+		threads          = 8;
+		tuples           = 6;
+		sieve            = 2147483648;
+		sieveWorkers     = 2;
+		solo             = true;
+		sieveBits        = 25;
+		sieveSize        = 1UL << sieveBits;
+		sieveWords       = sieveSize/64;
+		maxIncrements    = (1ULL << 29),
+		maxIter          = maxIncrements/sieveSize;
+		primorialOffsets = {4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull, 7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull};
 		primeTupleOffset = {0, 4, 2, 4, 2, 4};
 	}
 };
@@ -80,10 +78,10 @@ struct MinerWorkData {
 struct SieveInstance {
 	uint32_t id;
 	std::mutex modLock;
-	uint8_t* sieve = NULL;
+	uint8_t *sieve = NULL;
 	uint32_t **segmentHits = NULL;
-	std::atomic<uint64_t>* segmentCounts = NULL;
-	uint32_t* offsets = NULL;
+	std::atomic<uint64_t> *segmentCounts = NULL;
+	uint32_t *offsets = NULL;
 };
 
 class Miner {
@@ -116,7 +114,7 @@ class Miner {
 
 	void _addToPending(uint8_t *sieve, uint32_t pending[PENDING_SIZE], uint64_t &pos, uint32_t ent) {
 		__builtin_prefetch(&(sieve[ent >> 3]));
-		uint32_t old = pending[pos];
+		uint32_t old(pending[pos]);
 		if (old != 0) {
 			assert(old < _parameters.sieveSize);
 			sieve[old >> 3] |= (1 << (old & 7));

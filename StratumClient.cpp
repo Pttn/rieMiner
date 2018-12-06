@@ -38,7 +38,7 @@ bool StratumClient::connect() {
 			std::cerr << "Unable to resolve '" << _manager->options().host() << "'. Check the URL or your connection." << std::endl;
 			return false;
 		}
-		void** ipListPtr = (void**) hostInfo->h_addr_list;
+		void** ipListPtr((void**) hostInfo->h_addr_list);
 		uint32_t ip(0xFFFFFFFF);
 		if (ipListPtr[0]) ip = *(uint32_t*) ipListPtr[0];
 		std::ostringstream oss;
@@ -90,24 +90,24 @@ void StratumClient::getSubscribeInfo() {
 	}
 	jsonObj = json_loads(r.c_str(), 0, &err);
 	if (jsonObj == NULL)
-		std::cerr << "getSubscribeInfo: JSON decode failed - " << err.text << std::endl;
+		std::cerr << __func__ << ": JSON decode failed - " << err.text << std::endl;
 	else {
 		jsonRes = json_object_get(jsonObj, "result");
 		jsonErr = json_object_get(jsonObj, "error");
 		
 		if (!jsonRes || json_is_null(jsonRes) || (jsonErr && !json_is_null(jsonErr))) {
-			std::cerr << "getSubscribeInfo: Invalid or missing mining.subscribe data! " << std::endl;
+			std::cerr << __func__ << ": invalid or missing mining.subscribe data! " << std::endl;
 			if (jsonErr) std::cerr << " Reason: " << json_dumps(jsonErr, JSON_INDENT(3)) << std::endl;
 			else std::cerr << "No reason given" << std::endl;
 			std::cerr << std::endl;
 		}
 		else if (json_array_size(jsonRes) != 3)
-			std::cerr << "getSubscribeInfo: Invalid mining.subscribe result size!" << std::endl;
+			std::cerr << __func__ << ": invalid mining.subscribe result size!" << std::endl;
 		else {
 			json_t *jsonSids;
 			jsonSids = json_array_get(jsonRes, 0);
 			if (jsonSids == NULL || !json_is_array(jsonSids))
-				std::cerr << "getSubscribeInfo: Invalid or missing mining.subscribe response!" << std::endl;
+				std::cerr << __func__ << ": invalid or missing mining.subscribe response!" << std::endl;
 			else {
 				_sd.sids = std::vector<std::pair<std::string, std::vector<uint8_t>>>();
 				if (json_array_size(jsonSids) == 2 && !json_is_array(json_array_get(jsonSids, 0)) && !json_is_array(json_array_get(jsonSids, 1))) {
@@ -119,9 +119,9 @@ void StratumClient::getSubscribeInfo() {
 					for (uint16_t i(0) ; i < json_array_size(jsonSids) ; i++) {
 						json_t *jsonSid(json_array_get(jsonSids, i));
 						if (jsonSid == NULL || !json_is_array(jsonSid))
-							std::cerr << "getSubscribeInfo: invalid or missing Subscribtion Id " << i << " data received!" << std::endl;
+							std::cerr << __func__ << ": invalid or missing Subscribtion Id " << i << " data received!" << std::endl;
 						else if (json_array_size(jsonSid) != 2)
-							std::cerr << "getSubscribeInfo: invalid Subscribtion Id " << i << " array size!" << std::endl;
+							std::cerr << __func__ << ": invalid Subscribtion Id " << i << " array size!" << std::endl;
 						else {
 							_sd.sids.push_back(std::make_pair(
 								json_string_value(json_array_get(jsonSid, 0)),
@@ -168,7 +168,7 @@ void StratumClient::handleOther() {
 
 	jsonObj = json_loads(_result.c_str(), 0, &err);
 	if (jsonObj == NULL)
-		/*std::cerr << "handleOther: JSON decode failed :| - " << err.text << std::endl*/; // This happens sometimes but without harm
+		/*std::cerr << __func__ << ": JSON decode failed :| - " << err.text << std::endl*/; // This happens sometimes but without harm
 	else {
 		const char *method(NULL);
 		method = json_string_value(json_object_get(jsonObj, "method"));
@@ -195,13 +195,13 @@ bool StratumClient::getWork() {
 	json_error_t err;
 	jsonMn = json_loads(_result.c_str(), 0, &err);
 	if (jsonMn == NULL) {
-		std::cerr << "getWork: Invalid or no mining.notify result received!" << std::endl;
+		std::cerr << __func__ << ": invalid or no mining.notify result received!" << std::endl;
 		return false;
 	}
 	else {
 		jsonMn_params = json_object_get(jsonMn, "params");
 		if (jsonMn_params == NULL) {
-			std::cerr << "getWork: Invalid or no params in mining.notify received!" << std::endl;
+			std::cerr << __func__ << ": invalid or no params in mining.notify received!" << std::endl;
 			json_decref(jsonMn);
 			return false;
 		}
@@ -216,7 +216,7 @@ bool StratumClient::getWork() {
 			coinbase2 = json_string_value(json_array_get(jsonMn_params, 3));
 			jsonTxs   = json_array_get(jsonMn_params, 4);
 			if (!jsonTxs || !json_is_array(jsonTxs)) {
-				std::cerr << "getWork: Missing or invalid Merkle data for params in mining.notify!" << std::endl;
+				std::cerr << __func__ << ": missing or invalid Merkle data for params in mining.notify!" << std::endl;
 				json_decref(jsonMn);
 				return false;
 			}
@@ -225,12 +225,12 @@ bool StratumClient::getWork() {
 			ntime   = json_string_value(json_array_get(jsonMn_params, 7));
 
 			if (jobId == NULL || prevhash == NULL || coinbase1 == NULL || coinbase2 == NULL || version == NULL || nbits == NULL || ntime == NULL) {
-				std::cerr << "getWork: Missing params in mining.notify!" << std::endl;
+				std::cerr << __func__ << ": missing params in mining.notify!" << std::endl;
 				json_decref(jsonMn);
 				return false;
 			}
 			else if (strlen(prevhash) != 64 || strlen(version) != 8 || strlen(nbits) != 8 || strlen(ntime) != 8) {
-				std::cerr << "getWork: Invalid params in mining.notify!" << std::endl;
+				std::cerr << __func__ << ": invalid params in mining.notify!" << std::endl;
 				json_decref(jsonMn);
 				return false;
 			}
@@ -269,7 +269,7 @@ void StratumClient::getSentShareResponse() {
 	json_t *jsonObj(json_loads(_result.c_str(), 0, &err));
 	
 	if (jsonObj == NULL)
-		std::cerr << "getSentShareResponse: JSON decode failed :| - " << err.text << std::endl;
+		std::cerr << __func__ << ": JSON decode failed :| - " << err.text << std::endl;
 	else {
 		json_t *jsonRes(json_object_get(jsonObj, "result")),
 		       *jsonErr(json_object_get(jsonObj, "error"));
@@ -329,9 +329,9 @@ bool StratumClient::process() {
 		if (errno != EWOULDBLOCK || n == 0 || timeSince(_lastDataRecvTp) > STRATUMTIMEOUT) { // ...but else, this is an error! Or a timeout.
 #endif
 			if (timeSince(_lastDataRecvTp) > STRATUMTIMEOUT)
-				std::cerr << "process: no server response since a very long time, disconnection assumed." << std::endl;
+				std::cerr << __func__ << ": no server response since a very long time, disconnection assumed." << std::endl;
 			else
-				std::cerr << "process: error receiving work data :| - " << std::strerror(errno) << std::endl;
+				std::cerr << __func__ << ": error receiving work data :| - " << std::strerror(errno) << std::endl;
 			_socket = -1;
 			_connected = false;
 			return false;
@@ -357,11 +357,11 @@ WorkData StratumClient::workData() const {
 	WorkData wd;
 	wd.height = sd.height;
 	memcpy(&wd.bh, &sd.bh, 128);
-	wd.bh.bits        = invEnd32(wd.bh.bits);
-	wd.targetCompact  = getCompact(wd.bh.bits);
-	wd.extraNonce1    = sd.extraNonce1;
-	wd.extraNonce2    = sd.extraNonce2;
-	wd.jobId          = sd.jobId;
+	wd.bh.bits       = invEnd32(wd.bh.bits);
+	wd.targetCompact = getCompact(wd.bh.bits);
+	wd.extraNonce1   = sd.extraNonce1;
+	wd.extraNonce2   = sd.extraNonce2;
+	wd.jobId         = sd.jobId;
 	// Change endianness for mining (will revert back when submit share)
 	for (uint8_t i(0) ; i < 8 ; i++) ((uint32_t*) wd.bh.previousblockhash)[i] = toBEnd32(((uint32_t*) wd.bh.previousblockhash)[i]);
 	wd.bh.curtime = toBEnd32(wd.bh.curtime);

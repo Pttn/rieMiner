@@ -1,4 +1,5 @@
 // (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018 Michael Bell/Rockhawk (CPUID tools)
 
 #ifndef HEADER_tools_hpp
 #define HEADER_tools_hpp
@@ -16,6 +17,7 @@
 #include <openssl/sha.h>
 #include <random>
 #include <gmpxx.h>
+#include <cpuid.h>
 
 inline std::string v8ToHexStr(const std::vector<uint8_t> &v) {
 	std::ostringstream oss;
@@ -81,5 +83,17 @@ inline uint32_t toBEnd32(uint32_t n) {
 	const uint8_t *tmp((uint8_t*) &n);
 	return (uint32_t) tmp[3] | ((uint32_t) tmp[2]) << 8 | ((uint32_t) tmp[1]) << 16 | ((uint32_t) tmp[0]) << 24;
 }
+
+class CpuID {
+	bool _avx, _avx2, _avx512, _intel;
+	
+public:
+	CpuID();
+	
+	bool hasAVX() const {return _avx;}
+	bool hasAVX2() const {return _avx2;}
+	bool hasAVX512() const {return _avx512;}
+	bool isIntel() const {return _intel;}
+};
 
 #endif

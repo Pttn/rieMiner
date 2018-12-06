@@ -21,7 +21,7 @@ release: rieMiner
 debug: CFLAGS += -g
 debug: rieMiner
 
-rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o WorkManager.cpp Stats.cpp tools.o CpuID.o mod_1_4.o mod_1_2_avx.o mod_1_2_avx2.o fermat.o primetest.o primetest512.o
+rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o WorkManager.cpp Stats.cpp tools.o mod_1_4.o mod_1_2_avx.o mod_1_2_avx2.o fermat.o primetest.o primetest512.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
 main.o: main.cpp main.hpp Miner.hpp StratumClient.hpp GBTClient.hpp Client.hpp WorkManager.hpp Stats.hpp tools.hpp tsQueue.hpp
@@ -47,9 +47,6 @@ WorkManager.o: WorkManager.cpp
 
 tools.o: tools.cpp
 	$(CXX) $(CFLAGS) -c -o tools.o tools.cpp
-
-CpuID.o: CpuID.cpp
-	$(CXX) $(CFLAGS) -c -o CpuID.o CpuID.cpp
 
 fermat.o: ispc/fermat.cpp
 	$(CXX) $(CFLAGS) -c -o fermat.o ispc/fermat.cpp -Wno-unused-function -Wno-unused-parameter -Wno-strict-overflow

@@ -26,9 +26,8 @@ extern int DEBUG;
 #define DBG_VERIFY(x) if (DEBUG > 1) { x; };
 
 class Options {
-	int _debug;
 	std::string _host, _user, _pass, _protocol, _address, _cbMsg, _tcFile;
-	uint16_t  _tuples, _sieveBits, _port, _threads, _sieveWorkers;
+	uint16_t _debug, _tuples, _sieveBits, _port, _threads, _sieveWorkers;
 	uint32_t _refresh, _testDiff, _testTime, _test2t;
 	uint64_t _sieve, _pn;
 	std::vector<uint64_t> _consType, _pOff;

@@ -5,13 +5,13 @@
 #include "StratumClient.hpp"
 
 WorkManager::WorkManager() {
-	_options           = Options();
-	_client            = NULL;
-	_miner             = NULL;
-	_inited            = false;
-	_waitReconnect     = 10;
-	_workRefresh       = 500;
-	_stats             = Stats(offsets().size());
+	_options       = Options();
+	_client        = NULL;
+	_miner         = NULL;
+	_inited        = false;
+	_waitReconnect = 10;
+	_workRefresh   = 500;
+	_stats         = Stats(offsets().size());
 }
 
 void WorkManager::init() {
@@ -59,7 +59,7 @@ void WorkManager::minerThread() {
 }
 
 void WorkManager::manage() {
-	if (!_inited) std::cerr << "Manager was not inited!" << std::endl;
+	if (!_inited) std::cerr << __func__ << ": manager was not inited!" << std::endl;
 	else {
 		std::chrono::time_point<std::chrono::system_clock> timer;
 		while (true) {

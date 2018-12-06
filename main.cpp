@@ -205,12 +205,8 @@ void Options::loadConf() {
 					}
 					else std::cout << "Invalid Protocol" << std::endl;
 				}
-				else if (key == "Address") {
-					_address = value;
-				}
-				else if (key == "CBMsg") {
-					_cbMsg = value;
-				}
+				else if (key == "Address") _address = value;
+				else if (key == "CBMsg")   _cbMsg = value;
 				else if (key == "TestDiff") {
 					try {_testDiff = std::stoll(value);}
 					catch (...) {_testDiff = 304;}
@@ -225,9 +221,7 @@ void Options::loadConf() {
 					try {_test2t = std::stoll(value);}
 					catch (...) {_test2t = 50000;}
 				}
-				else if (key == "TCFile") {
-					_tcFile = value;
-				}
+				else if (key == "TCFile") _tcFile = value;
 				else if (key == "PN") {
 					try {_pn = std::stoll(value);}
 					catch (...) {_pn = 40;}
@@ -263,15 +257,12 @@ void Options::loadConf() {
 					std::string tmp;
 					while (offsets >> tmp) _rules.push_back(tmp);
 				}
-				else if (key == "Error")
-					std::cout << "Ignoring invalid line" << std::endl;
-				else
-					std::cout << "Ignoring line with unused key " << key << std::endl;
+				else if (key == "Error") std::cout << "Ignoring invalid line" << std::endl;
+				else std::cout << "Ignoring line with unused key " << key << std::endl;
 			}
 		}
 		
-		if (_tuples < 2 || _tuples > _consType.size())
-			_tuples = _consType.size();
+		if (_tuples < 2 || _tuples > _consType.size()) _tuples = _consType.size();
 		file.close();
 	}
 	else {
