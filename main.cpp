@@ -20,7 +20,7 @@ int DEBUG(0);
 std::shared_ptr<WorkManager> manager;
 static std::string confPath("rieMiner.conf");
 
-void Options::parseLine(std::string line, std::string& key, std::string& value) const {
+void Options::_parseLine(std::string line, std::string& key, std::string& value) const {
 	for (uint16_t i(0) ; i < line.size() ; i++) { // Delete spaces
 		if (line[i] == ' ' || line[i] == '\t') {
 			line.erase (i, 1);
@@ -38,6 +38,11 @@ void Options::parseLine(std::string line, std::string& key, std::string& value) 
 		key   = "Error";
 		value = "Ill formed configuration line";
 	}
+}
+
+void Options::_stopConfig() const {
+	std::remove(confPath.c_str());
+	exit(0);
 }
 
 void Options::askConf() {
@@ -60,8 +65,7 @@ void Options::askConf() {
 		}
 		else {
 			std::cerr << "Invalid choice! Please answer solo, pool, or benchmark." << std::endl;
-			std::remove(confPath.c_str());
-			exit(0);
+			_stopConfig();
 		}
 		
 		if (_protocol != "Benchmark") {
@@ -72,8 +76,7 @@ void Options::askConf() {
 				struct sockaddr_in sa;
 				if (inet_pton(AF_INET, value.c_str(), &(sa.sin_addr)) != 1) {
 					std::cerr << "Invalid IP address!" << std::endl;
-					std::remove(confPath.c_str());
-					exit(0);
+					_stopConfig();
 				}
 				else {
 					file << "Host = " << value << std::endl;
@@ -104,8 +107,7 @@ void Options::askConf() {
 			}
 			catch (...) {
 				std::cerr << "Invalid port !" << std::endl;
-				std::remove(confPath.c_str());
-				exit(0);
+				_stopConfig();
 			}
 			
 			if (_protocol == "GetBlockTemplate") std::cout << "RPC username: ";
@@ -124,17 +126,19 @@ void Options::askConf() {
 			
 			if (_protocol == "GetBlockTemplate") {
 				std::vector<uint8_t> spk;
-				std::cout << "Payout address: ";
+				std::cout << "Payout address (P2PKH or P2SH): ";
 				std::cin >> value;
-				if (!addrToScriptPubKey(value, spk)) {
+				setPayoutAddress(value);
+				if (_addressFormat == AddressFormat::INVALID) {
 					std::cerr << "Invalid payout address!" << std::endl;
-					std::remove(confPath.c_str());
-					exit(0);
+					_stopConfig();
 				}
-				else {
-					file << "Address = " << value << std::endl;
-					_address = value;
+				else if (_addressFormat == AddressFormat::BECH32) {
+					std::cout << "Sorry, Bech32 addresses are currently not supported." << std::endl;
+					_stopConfig();
 				}
+				
+				file << "Address = " << _address << std::endl;
 			}
 		}
 		else std::cout << "Standard Benchmark values loaded. Edit the configuration file if needed." << std::endl;
@@ -147,8 +151,7 @@ void Options::askConf() {
 		}
 		catch (...) {
 			std::cerr << "Invalid thread number!" << std::endl;
-			std::remove(confPath.c_str());
-			exit(0);
+			_stopConfig();
 		}
 		
 		if (_protocol != "Benchmark") std::cout << "Thank you, happy mining :D !" << std::endl;
@@ -166,7 +169,7 @@ void Options::loadConf() {
 		std::string line, key, value;
 		while (std::getline(file, line)) {
 			if (line.size() != 0) {
-				parseLine(line, key, value);
+				_parseLine(line, key, value);
 				if (key == "Debug") {
 					try {_debug = std::stoi(value);}
 					catch (...) {_debug = 0;}
@@ -205,7 +208,7 @@ void Options::loadConf() {
 					}
 					else std::cout << "Invalid Protocol" << std::endl;
 				}
-				else if (key == "Address") _address = value;
+				else if (key == "Address") setPayoutAddress(value);
 				else if (key == "CBMsg")   _cbMsg = value;
 				else if (key == "TestDiff") {
 					try {_testDiff = std::stoll(value);}
@@ -297,8 +300,16 @@ void Options::loadConf() {
 			std::cout << std::endl;
 		}
 	}
-	if (_protocol == "GetBlockTemplate")
-		std::cout << "Payout address = " << _address << std::endl;
+	if (_protocol == "GetBlockTemplate") {
+		std::cout << "Payout address = " << _address;
+		if (_addressFormat == AddressFormat::P2PKH) std::cout << " (P2PKH)";
+		else if (_addressFormat == AddressFormat::P2SH) std::cout << " (P2SH)";
+		else {
+			std::cout << std::endl << "Invalid or unsupported payout address! Exiting." << std::endl;
+			exit(0);
+		}
+		std::cout << std::endl;
+	}
 	if (_threads < 2) {
 		std::cout << "At least 2 threads are needed, overriding." << std::endl;
 		_threads = 2;
@@ -329,6 +340,34 @@ void Options::loadConf() {
 	}
 	std::cout << "), length " << _consType.size() << std::endl;
 	std::cout << "Sieve bits = " <<  _sieveBits << std::endl;
+}
+
+void Options::setPayoutAddress(const std::string& addr) {
+	_address = addr;
+	if (addr.size() < 26) {
+		std::cerr << __func__ << ": empty or too short address!" << std::endl;
+		_addressFormat = AddressFormat::INVALID;
+	}
+	else {
+		if (addr[0] == 'R' || addr[0] == 'r')
+			_addressFormat = AddressFormat::P2PKH;
+		else if (addr[0] == 'T' || addr[0] == 't')
+			_addressFormat = AddressFormat::P2SH;
+		else if (addr.substr(0, 3) == "bcR" || addr.substr(0, 3) == "bcr")
+			_addressFormat = AddressFormat::BECH32;
+		else {
+			std::cerr << __func__ << ": invalid address prefix!" << std::endl;
+			_addressFormat = AddressFormat::INVALID;
+		}
+		
+		if (_addressFormat == AddressFormat::P2PKH || _addressFormat == AddressFormat::P2SH) {
+			std::vector<uint8_t> spk;
+			if (!addrToScriptPubKey(addr, spk)) {
+				std::cerr << __func__ << ": invalid payout address!" << std::endl;
+				_addressFormat = AddressFormat::INVALID;
+			}
+		}
+	}
 }
 
 void signalHandler(int signum) {

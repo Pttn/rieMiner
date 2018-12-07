@@ -29,9 +29,16 @@ struct GetBlockTemplateData {
 		rules = std::vector<std::string>();
 	}
 	
-	void coinBaseGen(const std::string& = "");
+	void coinBaseGen(const AddressFormat&, const std::string& = "");
 	std::array<uint8_t, 32> coinBaseHash() const {
-		return v8ToA8(sha256sha256(coinbase.data(), coinbase.size()));
+		if (default_witness_commitment.size() > 0) { // For SegWit, hash to get txid rather than just hash the whole Coinbase
+			std::vector<uint8_t> coinbase2;
+			for (uint32_t i(0) ; i < 4 ; i++) coinbase2.push_back(coinbase[i]); // nVersion
+			for (uint32_t i(6) ; i < coinbase.size() - 38 ; i++) coinbase2.push_back(coinbase[i]); // txins . txouts
+			for (uint32_t i(coinbase.size() - 4) ; i < coinbase.size() ; i++) coinbase2.push_back(coinbase[i]); // nLockTime
+			return v8ToA8(sha256sha256(coinbase2.data(), coinbase2.size()));
+		}
+		else return v8ToA8(sha256sha256(coinbase.data(), coinbase.size()));
 	}
 	void merkleRootGen() {
 		const std::array<uint8_t, 32> mr(calculateMerkleRoot(txHashes));

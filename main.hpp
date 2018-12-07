@@ -3,7 +3,7 @@
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
 
-#define versionString	"rieMiner 0.9RC4b"
+#define versionString	"rieMiner 0.9RC4c"
 
 #include <unistd.h>
 #include <string>
@@ -25,15 +25,19 @@ extern int DEBUG;
 #define DBG(x) if (DEBUG) {x;};
 #define DBG_VERIFY(x) if (DEBUG > 1) { x; };
 
+enum AddressFormat {INVALID, P2PKH, P2SH, BECH32};
+
 class Options {
 	std::string _host, _user, _pass, _protocol, _address, _cbMsg, _tcFile;
+	AddressFormat _addressFormat;
 	uint16_t _debug, _tuples, _sieveBits, _port, _threads, _sieveWorkers;
 	uint32_t _refresh, _testDiff, _testTime, _test2t;
 	uint64_t _sieve, _pn;
 	std::vector<uint64_t> _consType, _pOff;
 	std::vector<std::string> _rules;
 	
-	void parseLine(std::string, std::string&, std::string&) const;
+	void _parseLine(std::string, std::string&, std::string&) const;
+	void _stopConfig() const;
 	
 	public:
 	Options() { // Default options: Standard Benchmark with 8 threads
@@ -43,6 +47,7 @@ class Options {
 		_host      = "127.0.0.1";
 		_protocol  = "Benchmark";
 		_address   = "RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB";
+		_addressFormat = AddressFormat::P2PKH;
 		_cbMsg     = "/rieMiner/";
 		_tcFile    = "None";
 		_port      = 28332;
@@ -72,6 +77,8 @@ class Options {
 	std::string pass() const {return _pass;}
 	std::string protocol() const {return _protocol;}
 	std::string address() const {return _address;}
+	void setPayoutAddress(const std::string&);
+	AddressFormat payoutAddressFormat() const {return _addressFormat;}
 	std::string cbMsg() const {return _cbMsg;}
 	std::string tcFile() const {return _tcFile;}
 	uint16_t threads() const {return _threads;}

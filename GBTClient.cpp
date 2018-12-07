@@ -23,7 +23,7 @@ bool GBTClient::connect() {
 	}
 }
 
-void GetBlockTemplateData::coinBaseGen(const std::string &cbMsg) {
+void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const std::string &cbMsg) {
 	coinbase = std::vector<uint8_t>();
 	std::vector<uint8_t> scriptSig;
 	const std::vector<uint8_t> dwc(hexStrToV8(default_witness_commitment)); // for SegWit
@@ -32,57 +32,78 @@ void GetBlockTemplateData::coinBaseGen(const std::string &cbMsg) {
 	// Randomization to avoid 2 threads working on the same problem
 	for (uint32_t i(0) ; i < 4 ; i++) scriptSig.push_back(rand(0x00, 0xFF));
 	
-	// Version [0 -> 3] (01000000)
+	// Version (01000000)
+	coinbase.push_back(0x01); coinbase.push_back(0x00); coinbase.push_back(0x00); coinbase.push_back(0x00);
+	
+	if (dwc.size() > 0) {
+		coinbase.push_back(0x00); // Marker
+		coinbase.push_back(0x01); // Flag
+	}
+	
+	// Input Count (01)
 	coinbase.push_back(1);
-	coinbase.push_back(0); coinbase.push_back(0); coinbase.push_back(0);
-	// Input Count [4] (01)
-	coinbase.push_back(1);
-	// 0000000000000000000000000000000000000000000000000000000000000000 (Input TXID [5 -> 36])
+	// 0000000000000000000000000000000000000000000000000000000000000000 (Input TXID)
 	for (uint32_t i(0) ; i < 32 ; i++) coinbase.push_back(0);
-	// Input VOUT [37 -> 40] (FFFFFFFF)
+	// Input VOUT (FFFFFFFF)
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0xFF);
-	// ScriptSig Size [41]
+	// ScriptSig Size
 	coinbase.push_back(4 + scriptSig.size()); // Block Height Push (4) + scriptSig.size()
-	// Block Height Length [42]
+	// Block Height Length
 	if (height/65536 == 0) {
 		if (height/256 == 0) coinbase.push_back(1);
 		else coinbase.push_back(2);
 	}
 	else coinbase.push_back(3);
-	// Block Height [43 -> 45]
+	// Block Height
 	coinbase.push_back(height % 256);
 	coinbase.push_back((height/256) % 256);
 	coinbase.push_back((height/65536) % 256);
-	// ScriptSig [46 -> 46 + scriptSig.size() = s]
+	// ScriptSig
 	for (uint32_t i(0) ; i < scriptSig.size() ; i++) coinbase.push_back(scriptSig[i]);
-	// Input Sequence [s -> s + 3] (FFFFFFFF)
+	// Input Sequence (FFFFFFFF)
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0xFF);
 	
-	// Output Count [s + 4]
+	// Output Count
 	coinbase.push_back(1);
 	if (dwc.size() > 0) coinbase[coinbase.size() - 1]++; // Dummy Output for SegWit if needed
-	// Output Value [s + 5 -> s + 12]
+	// Output Value
 	uint64_t reward(coinbasevalue);
 	for (uint32_t i(0) ; i < 8 ; i++) {
 		coinbase.push_back(reward % 256);
 		reward /= 256;
 	}
 	
-	coinbase.push_back(25); // Output Length [s + 13]
-	coinbase.push_back(0x76); // OP_DUP [s + 14]
-	coinbase.push_back(0xA9); // OP_HASH160 [s + 15]
-	coinbase.push_back(0x14); // Bytes Pushed on Stack [s + 16]
-	// ScriptPubKey (for payout address) [s + 17 -> s + 36]
+	if (addressFormat == AddressFormat::P2SH) {
+		coinbase.push_back(23);   // Output Length
+		coinbase.push_back(0xA9); // OP_HASH160
+		coinbase.push_back(0x14); // Bytes Pushed on Stack
+	}
+	else {
+		coinbase.push_back(25);   // Output Length
+		coinbase.push_back(0x76); // OP_DUP
+		coinbase.push_back(0xA9); // OP_HASH160
+		coinbase.push_back(0x14); // Bytes Pushed on Stack
+	}
+	// ScriptPubKey (for payout address)
 	for (uint32_t i(0) ; i < 20 ; i++) coinbase.push_back(scriptPubKey[i]);
-	coinbase.push_back(0x88); // OP_EQUALVERIFY [s + 37]
-	coinbase.push_back(0xAC); // OP_CHECKSIG [s + 38]
+	if (addressFormat == AddressFormat::P2SH)
+		coinbase.push_back(0x87); // OP_EQUAL
+	else {
+		coinbase.push_back(0x88); // OP_EQUALVERIFY
+		coinbase.push_back(0xAC); // OP_CHECKSIG
+	}
 	
-	// Default witness commitment for SegWit if applicable, contained in another output
+	// SegWit specifics (dummy output, witness)
 	if (dwc.size() > 0) {
 		for (uint32_t i(0) ; i < 8 ; i++) coinbase.push_back(0x00); // No reward
 		coinbase.push_back(dwc.size()); // Output Length
 		// default_witness_commitment from GetBlockTemplate
 		for (uint32_t i(0) ; i < dwc.size() ; i++) coinbase.push_back(dwc[i]);
+		
+		coinbase.push_back(1); // Number of Witnesses/stack items
+		coinbase.push_back(32); // Witness Length
+		// Witness of the Coinbase Input
+		for (uint32_t i(0) ; i < 32 ; i++) coinbase.push_back(0x00);
 	}
 	
 	// Lock Time (00000000)
@@ -188,7 +209,7 @@ void GBTClient::sendWork(const WorkData &work) const {
 
 WorkData GBTClient::workData() const {
 	GetBlockTemplateData gbtd(_gbtd);
-	gbtd.coinBaseGen(_manager->options().cbMsg());
+	gbtd.coinBaseGen(_manager->options().payoutAddressFormat(), _manager->options().cbMsg());
 	gbtd.transactions = binToHexStr(gbtd.coinbase.data(), gbtd.coinbase.size()) + gbtd.transactions;
 	gbtd.txHashes.insert(gbtd.txHashes.begin(), gbtd.coinBaseHash());
 	gbtd.merkleRootGen();
