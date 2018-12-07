@@ -19,8 +19,8 @@ class WorkManager : public std::enable_shared_from_this<WorkManager> {
 	std::mutex _clientMutex;
 	std::vector<std::thread> _threads;
 	bool _inited;
-	uint16_t _waitReconnect; // Time in s to wait before reconnecting after disconnect
-	uint16_t _workRefresh;   // Time in ms for each fetch work cycle
+	uint16_t _waitReconnect, // Time in s to wait before reconnecting after disconnect
+	         _workRefresh;   // Time in ms for each fetch work cycle
 	
 	void minerThread();
 	
@@ -28,8 +28,8 @@ class WorkManager : public std::enable_shared_from_this<WorkManager> {
 	WorkManager();
 	
 	void init();
-	void submitWork(WorkData wd, uint32_t* nOffset, uint8_t length);
-	bool getWork(WorkData& wd);
+	void submitWork(const WorkData&);
+	bool getWork(WorkData&);
 	void manage();
 	Options options() const {return _options;}
 	uint32_t height() const {return _stats.height();}

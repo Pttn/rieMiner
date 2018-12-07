@@ -13,7 +13,7 @@ bool GBTClient::connect() {
 			std::cerr << "Invalid payout address! Using donation address instead." << std::endl;
 			addrToScriptPubKey("RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB", _gbtd.scriptPubKey);
 		}
-		_pendingSubmissions = std::vector<std::pair<WorkData, uint8_t>>();
+		_pendingSubmissions = std::vector<WorkData>();
 		_connected = true;
 		return true;
 	}
@@ -137,15 +137,13 @@ bool GBTClient::getWork() {
 	
 	_gbtd.transactions += binToHexStr(_gbtd.coinbase.data(), _gbtd.coinbase.size());
 	for (uint32_t i(0) ; i < json_array_size(jsonGbt_Res_Txs) ; i++) {
-		std::array<uint8_t, 32> txHash;
-		uint8_t txHashInv[32];
-		if (_gbtd.segwitActive())
-			hexStrToBin(json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "txid")), txHashInv);
+		std::vector<uint8_t> txHash;
+		if (_gbtd.isActive("segwit"))
+			txHash = reverse(hexStrToV8(json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "txid"))));
 		else
-			hexStrToBin(json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "hash")), txHashInv);
-		for (uint8_t j(0) ; j < 32 ; j++) txHash[j] = txHashInv[31 - j];
+			txHash = reverse(hexStrToV8(json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "hash"))));
 		_gbtd.transactions += json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "data"));
-		_gbtd.txHashes.push_back(txHash);
+		_gbtd.txHashes.push_back(v8ToA8(txHash));
 	}
 	
 	// Notify when the network found a block
@@ -156,27 +154,26 @@ bool GBTClient::getWork() {
 	return true;
 }
 
-void GBTClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
-	const WorkData wdToSend(share.first);
+void GBTClient::sendWork(const WorkData &work) const {
 	std::ostringstream oss;
 	std::string req;
 	
-	oss << "{\"method\": \"submitblock\", \"params\": [\"" << binToHexStr(&wdToSend.bh, (32 + 256 + 256 + 32 + 64 + 256)/8);
+	oss << "{\"method\": \"submitblock\", \"params\": [\"" << binToHexStr(&work.bh, (32 + 256 + 256 + 32 + 64 + 256)/8);
 	// Using the Variable Length Integer format
-	if (wdToSend.txCount < 0xFD)
-		oss << binToHexStr((uint8_t*) &wdToSend.txCount, 1);
+	if (work.txCount < 0xFD)
+		oss << binToHexStr((uint8_t*) &work.txCount, 1);
 	else // Having more than 65535 transactions is currently impossible
-		oss << "fd" << binToHexStr((uint8_t*) &wdToSend.txCount, 2);
-	oss << wdToSend.transactions << "\"], \"id\": 0}\n";
+		oss << "fd" << binToHexStr((uint8_t*) &work.txCount, 2);
+	oss << work.transactions << "\"], \"id\": 0}\n";
 	req = oss.str();
 	
-	const uint16_t k(share.second);
 	_manager->printTime();
-	std::cout << " " << k << "-tuple found";
+	std::cout << " " << work.primes << "-tuple found";
 	json_t *jsonSb(sendRPCCall(req)); // SubmitBlock response
-	if (k < _gbtd.primes) std::cout << std::endl;
+	if (work.primes < _gbtd.primes) std::cout << std::endl;
 	else {
 		std::cout << ", this is a block!" << std::endl;
+		std::cout << "Base prime: " << work.bh.decodeSolution() << std::endl;
 		std::cout << "Sent: " << req;
 		if (jsonSb == NULL) std::cerr << "Failure submiting block :|" << std::endl;
 		else {

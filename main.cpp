@@ -1,4 +1,4 @@
-// (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2017-2018 Pttn and contributors (https://github.com/Pttn/rieMiner)
 
 #include "main.hpp"
 #include "Client.hpp"

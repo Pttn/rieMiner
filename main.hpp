@@ -1,9 +1,9 @@
-// (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2017-2018 Pttn and contributors (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
 
-#define versionString	"rieMiner 0.9RC4a"
+#define versionString	"rieMiner 0.9RC4b"
 
 #include <unistd.h>
 #include <string>
@@ -77,14 +77,14 @@ class Options {
 	uint16_t threads() const {return _threads;}
 	uint16_t sieveWorkers() const {return _sieveWorkers;}
 	uint64_t sieve() const {return _sieve;}
-	uint8_t tuples() const {return _tuples;}
+	uint16_t tuples() const {return _tuples;}
 	uint32_t refresh() const {return _refresh;}
 	uint32_t testDiff() const {return _testDiff;}
 	uint32_t testTime() const {return _testTime;}
 	uint32_t test2t() const {return _test2t;}
 	uint64_t pn() const {return _pn;}
 	std::vector<uint64_t> pOff() const {return _pOff;}
-	uint8_t sieveBits() const {return _sieveBits;}
+	uint16_t sieveBits() const {return _sieveBits;}
 	std::vector<uint64_t> consType() const {return _consType;}
 	std::vector<std::string> rules() const {return _rules;}
 };

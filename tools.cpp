@@ -10,6 +10,20 @@ uint8_t rand(uint8_t min, uint8_t max) {
 	std::uniform_int_distribution<uint8_t> urd(min, max);
 	return urd(eng);
 }
+std::array<uint8_t, 32> v8ToA8(std::vector<uint8_t> v8) {
+	std::array<uint8_t, 32> a8;
+	for (uint8_t i(0) ; i < 32 ; i++) {
+		if (i < v8.size()) a8[i] = v8[i];
+		else a8[i] = 0;
+	}
+	return a8;
+}
+
+std::vector<uint8_t> a8ToV8(std::array<uint8_t, 32> a8) {
+	std::vector<uint8_t> v8;
+	for (uint8_t i(0) ; i < 32 ; i++) v8.push_back(a8[i]);
+	return v8;
+}
 
 std::vector<uint8_t> hexStrToV8(std::string str) {
 	if (str.size() % 2 != 0) str = "0" + str;
@@ -88,10 +102,7 @@ bool addrToScriptPubKey(const std::string &address, std::vector<uint8_t> &spk) {
 		return false;
 	}
 	else {
-		std::vector<uint8_t> addressHash;
-		addressHash = sha256(addr.data(), 21);
-		addressHash = sha256(addressHash.data(), 32);
-		
+		std::vector<uint8_t> addressHash(sha256sha256(addr.data(), 21));
 		if (*((uint32_t*) &addr[21]) != *((uint32_t*) &addressHash[0])) {
 			std::cerr << __func__ << ": invalid checksum!" << std::endl;
 			return false;
@@ -116,18 +127,13 @@ std::array<uint8_t, 32> calculateMerkleRoot(const std::vector<std::array<uint8_t
 			uint8_t concat[64];
 			for (uint32_t j(0) ; j < 32 ; j++) concat[j] = txHashes[i][j];
 			if (i == txHashes.size() - 1) { // Concatenation of the last element with itself for an odd number of transactions
-				for (uint32_t j(0) ; j < 32 ; j++)
-					concat[j + 32] = txHashes[i][j];
+				for (uint32_t j(0) ; j < 32 ; j++) concat[j + 32] = txHashes[i][j];
 			}
 			else {
-				for (uint32_t j(0) ; j < 32 ; j++)
-					concat[j + 32] = txHashes[i + 1][j];
+				for (uint32_t j(0) ; j < 32 ; j++) concat[j + 32] = txHashes[i + 1][j];
 			}
 			
-			const std::vector<uint8_t> concatHash(sha256sha256((uint8_t*) concat, 64));
-			std::array<uint8_t, 32> concatHash2;
-			for (uint32_t j(0) ; j < 32 ; j++) concatHash2[j] = concatHash[j];
-			txHashes2.push_back(concatHash2);
+			txHashes2.push_back(v8ToA8(sha256sha256((uint8_t*) concat, 64)));
 		}
 		// Process the next step
 		merkleRoot = calculateMerkleRoot(txHashes2);

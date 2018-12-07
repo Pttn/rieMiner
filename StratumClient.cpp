@@ -17,9 +17,7 @@ void StratumData::merkleRootGen() {
 	}
 	for (uint32_t i(0) ; i < coinbase2.size() ; i++) coinbase.push_back(coinbase2[i]);
 	
-	const std::vector<uint8_t> cbHashTmp(sha256sha256(coinbase.data(), coinbase.size()));
-	std::array<uint8_t, 32> cbHash;
-	for (uint32_t j(0) ; j < 32 ; j++) cbHash[j] = cbHashTmp[j];
+	std::array<uint8_t, 32> cbHash(v8ToA8(sha256sha256(coinbase.data(), coinbase.size())));
 	txHashes.insert(txHashes.begin(), cbHash);
 	memcpy(bh.merkleRoot, calculateMerkleRootStratum(txHashes).data(), 32);
 }
@@ -267,27 +265,23 @@ bool StratumClient::getWork() {
 void StratumClient::getSentShareResponse() {
 	json_error_t err;
 	json_t *jsonObj(json_loads(_result.c_str(), 0, &err));
-	
 	if (jsonObj == NULL)
 		std::cerr << __func__ << ": JSON decode failed :| - " << err.text << std::endl;
 	else {
 		json_t *jsonRes(json_object_get(jsonObj, "result")),
 		       *jsonErr(json_object_get(jsonObj, "error"));
 		if (jsonRes == NULL || json_is_null(jsonRes) || !json_is_null(jsonErr)) {
-			std::cout << "Share rejected :| - ";
+			std::cout << "Share rejected :| ! Received: " << json_dumps(jsonObj, JSON_COMPACT) << std::endl;
 			_manager->incRejectedShares();
-			if (!json_is_null(jsonErr)) std::cout << "Reason: " << json_dumps(jsonErr, JSON_INDENT(3));
-			else std::cout << "No reason given";
-			std::cout << std::endl;
 		}
 		json_decref(jsonObj);
 	}
 }
 
-void StratumClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
+void StratumClient::sendWork(const WorkData &share) const {
 	_manager->printTime();
-	std::cout << " " << (uint16_t) share.second << "-share found" << std::endl;
-	WorkData wdToSend(share.first);
+	std::cout << " " << share.primes << "-share found" << std::endl;
+	WorkData wdToSend(share);
 	
 	std::ostringstream oss;
 	uint32_t nonce[8];
@@ -310,8 +304,7 @@ bool StratumClient::process() {
 	_submitMutex.lock();
 	if (_pendingSubmissions.size() > 0) {
 		for (uint32_t i(0) ; i < _pendingSubmissions.size() ; i++) {
-			const std::pair<WorkData, uint8_t> share(_pendingSubmissions[i]);
-			sendWork(share);
+			sendWork(_pendingSubmissions[i]);
 			_state = SHARE_SENT;
 		}
 		_pendingSubmissions.clear();

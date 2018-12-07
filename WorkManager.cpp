@@ -35,15 +35,13 @@ void WorkManager::init() {
 	_inited = true;
 }
 
-void WorkManager::submitWork(WorkData wd, uint32_t* nOffset, uint8_t length) {
+void WorkManager::submitWork(const WorkData &wd) {
 	_clientMutex.lock();
-	// Fill the nOffset and submit
-	memcpy(wd.bh.nOffset, nOffset, 32); 
-	_client->addSubmission(wd, length);
+	_client->addSubmission(wd);
 	_clientMutex.unlock();
 }
 
-bool WorkManager::getWork(WorkData& wd) {
+bool WorkManager::getWork(WorkData &wd) {
 	_clientMutex.lock();
 	wd = _client->workData();
 	_clientMutex.unlock();

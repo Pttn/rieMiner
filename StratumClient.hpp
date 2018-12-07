@@ -62,7 +62,7 @@ class StratumClient : public Client {
 	using Client::Client;
 	bool connect();
 	bool getWork();
-	void sendWork(const std::pair<WorkData, uint8_t>&) const;
+	void sendWork(const WorkData&) const;
 	bool process();
 	WorkData workData() const;
 };

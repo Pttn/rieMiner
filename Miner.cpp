@@ -654,7 +654,6 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				if (!firstTestDone) {
 					mpz_sub_ui(z_ft_n, z_tmp, 1);
 					mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
-				
 					if (mpz_cmp_ui(z_ft_r, 1) != 0) continue;
 				}
 
@@ -684,12 +683,10 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				else if (tupleSize < 4) continue;
 	
 				// Generate nOffset and submit
-				uint8_t nOffset[32];
-				memset(nOffset, 0x00, 32);
 				for (uint32_t d(0) ; d < (uint32_t) std::min(32/8, z_tmp2->_mp_size) ; d++)
-					*(uint64_t*) (nOffset + d*8) = z_tmp2->_mp_d[d];
-				
-				_manager->submitWork(_workData[job.workDataIndex].verifyBlock, (uint32_t*) nOffset, tupleSize);
+					*(uint64_t*) (_workData[job.workDataIndex].verifyBlock.bh.nOffset + d*8) = z_tmp2->_mp_d[d];
+				_workData[job.workDataIndex].verifyBlock.primes = tupleSize;
+				_manager->submitWork(_workData[job.workDataIndex].verifyBlock);
 			}
 			
 			_workDoneQueue.push_back(job.workDataIndex);

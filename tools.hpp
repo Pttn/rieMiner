@@ -19,6 +19,16 @@
 #include <gmpxx.h>
 #include <cpuid.h>
 
+std::array<uint8_t, 32> v8ToA8(std::vector<uint8_t>);
+std::vector<uint8_t> a8ToV8(std::array<uint8_t, 32>);
+
+
+inline std::vector<uint8_t> reverse(const std::vector<uint8_t> &v0) {
+	std::vector<uint8_t> v;
+	for (uint8_t i(0) ; i < v0.size() ; i++) v.push_back(v0[v0.size() - i - 1]);
+	return v;
+}
+
 inline std::string v8ToHexStr(const std::vector<uint8_t> &v) {
 	std::ostringstream oss;
 	for (uint32_t i(0) ; i < v.size() ; i++)

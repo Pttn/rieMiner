@@ -6,7 +6,7 @@
 Client::Client(const std::shared_ptr<WorkManager> &manager) {
 	_manager = manager;
 	_connected = false;
-	_pendingSubmissions = std::vector<std::pair<WorkData, uint8_t>>();
+	_pendingSubmissions = std::vector<WorkData>();
 	_curl = curl_easy_init();
 	_inited = true;
 }
@@ -27,7 +27,7 @@ bool Client::connect() {
 	if (_connected) return false;
 	if (_inited) {
 		if (!getWork()) return false;
-		_pendingSubmissions = std::vector<std::pair<WorkData, uint8_t>>();
+		_pendingSubmissions = std::vector<WorkData>();
 		_connected = true;
 		return true;
 	}
@@ -56,8 +56,7 @@ json_t* RPCClient::sendRPCCall(const std::string& req) const {
 		curl_easy_setopt(_curl, CURLOPT_USERPWD, getUserPass().c_str());
 		curl_easy_setopt(_curl, CURLOPT_TIMEOUT, 10);
 		
-		CURLcode cc;
-		cc = curl_easy_perform(_curl);
+		const CURLcode cc(curl_easy_perform(_curl));
 		if (cc != CURLE_OK)
 			std::cerr << __func__ << ": curl_easy_perform() failed :| - " << curl_easy_strerror(cc) << std::endl;
 		else {
@@ -73,10 +72,8 @@ json_t* RPCClient::sendRPCCall(const std::string& req) const {
 bool Client::process() {
 	_submitMutex.lock();
 	if (_pendingSubmissions.size() > 0) {
-		for (uint32_t i(0) ; i < _pendingSubmissions.size() ; i++) {
-			const std::pair<WorkData, uint8_t> work(_pendingSubmissions[i]);
-			sendWork(work);
-		}
+		for (uint32_t i(0) ; i < _pendingSubmissions.size() ; i++)
+			sendWork(_pendingSubmissions[i]);
 		_pendingSubmissions.clear();
 	}
 	_submitMutex.unlock();
@@ -92,7 +89,7 @@ bool BMClient::connect() {
 	if (_connected) return false;
 	if (_inited) {
 		_bh = BlockHeader();
-		_pendingSubmissions = std::vector<std::pair<WorkData, uint8_t>>();
+		_pendingSubmissions = std::vector<WorkData>();
 		_connected = true;
 		_height = 0;
 		return true;
@@ -113,25 +110,11 @@ bool BMClient::getWork() {
 	else return false;
 }
 
-void BMClient::sendWork(const std::pair<WorkData, uint8_t>& share) const {
-	const WorkData wdToSend(share.first);
-	const uint16_t k(share.second);
+void BMClient::sendWork(const WorkData &work) const {
 	_manager->printTime();
-	std::cout << " " << k << "-tuple found: ";
-	
-	const std::string bhStr(binToHexStr(&wdToSend, 112));
-	const uint32_t diff(getCompact(invEnd32(strtol(bhStr.substr(136, 8).c_str(), NULL, 16))));
-	std::vector<uint8_t> SV8(32), XV8, tmp(sha256sha256(hexStrToV8(bhStr.substr(0, 160)).data(), 80));
-	for (uint64_t i(0) ; i < 256 ; i++) SV8[i/8] |= (((tmp[i/8] >> (i % 8)) & 1) << (7 - (i % 8)));
-	mpz_class S(v8ToHexStr(SV8).c_str(), 16), target(1);
-	mpz_mul_2exp(S.get_mpz_t(), S.get_mpz_t(), diff - 265);
-	mpz_mul_2exp(target.get_mpz_t(), target.get_mpz_t(), diff - 1);
-	target += S;
-	tmp = hexStrToV8(bhStr.substr(160, 64));
-	for (uint8_t i(0) ; i < tmp.size() ; i++) XV8.push_back(tmp[tmp.size() - i - 1]);
-	mpz_class X(v8ToHexStr(XV8).c_str(), 16);
-	std::cout << "n = " << target + X << std::endl;
-	DBG(std::cout << "Dummy block header: " << bhStr << std::endl;);
+	std::cout << " " << work.primes << "-tuple found: ";
+	std::cout << "Base prime: " << work.bh.decodeSolution() << std::endl;
+	DBG(std::cout << "Dummy block header: " << binToHexStr(&work.bh, 112) << std::endl;);
 }
 
 WorkData BMClient::workData() const {

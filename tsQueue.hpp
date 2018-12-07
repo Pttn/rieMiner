@@ -1,6 +1,6 @@
 /* tsqueue.hpp from https://github.com/dave-andersen/fastrie
 (c) 2014-2017 dave-andersen (http://www.cs.cmu.edu/~dga/)
-(c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner) */
+(c) 2017-2018 Pttn and contributors (https://github.com/Pttn/rieMiner) */
 
 /* Threadsafe blocking work queue implementation. Defined to be analogous to STL
 deque, please follow STL naming conventions for methods. */
