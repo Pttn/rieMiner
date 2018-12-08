@@ -150,8 +150,7 @@ void StratumClient::getSubscribeInfo() {
 			oss << "{\"id\": 2, \"method\": \"mining.authorize\", \"params\": [\"" << _manager->options().username() << "\", \"" << _manager->options().password() << "\"]}\n";
 			send(_socket, oss.str().c_str(), oss.str().size(), 0);
 			
-			_state = AUTHORIZE_SENT;
-			std::cout << "Waiting for server data..." << std::endl;
+			_state = READY;
 		}
 	}
 	
@@ -161,7 +160,7 @@ void StratumClient::getSubscribeInfo() {
 }
 
 void StratumClient::handleOther() {
-	json_t *jsonObj/*, *id, *params*/;
+	json_t *jsonObj;
 	json_error_t err;
 
 	jsonObj = json_loads(_result.c_str(), 0, &err);
@@ -177,9 +176,6 @@ void StratumClient::handleOther() {
 			}
 		}
 		else {
-			/*id = json_object_get(jsonObj, "id");
-			params = json_object_get(jsonObj, "params");
-			std::cout << "Received: " << method << std::endl;*/
 			if (strcasecmp(method, "mining.notify") == 0)
 				getWork();
 		}
@@ -334,11 +330,17 @@ bool StratumClient::process() {
 	
 	_lastDataRecvTp = std::chrono::system_clock::now();
 	_result.append(_buffer.cbegin(), _buffer.cbegin() + n);
-	DBG(std::cout << "Result = " << _result << std::endl;);
+	DBG(std::cout << "Result = " << _result;);
 	
-	if      (_state == SUBSCRIBE_SENT) getSubscribeInfo();
-	else if (_state == AUTHORIZE_SENT) _state = READY;
-	else                               handleOther();
+	// Sometimes, the pool sends multiple lines in a single response (example, if a share is found
+	// immediately before a mining.notify). We need to process all of them.
+	std::stringstream resultSS(_result);
+	std::string line;
+	while (std::getline(resultSS, line)) {
+		_result = line;
+		if (_state == SUBSCRIBE_SENT) getSubscribeInfo();
+		else handleOther();
+	}
 	
 	return true;
 }

@@ -50,7 +50,7 @@ class StratumClient : public Client {
 	std::array<char, RBUFSIZE> _buffer;
 	std::chrono::time_point<std::chrono::system_clock> _lastDataRecvTp; // Used to disconnect if the server sent nothing since a long time
 	
-	enum State {INIT, SUBSCRIBE_SENT, SUBSCRIBE_RCVD, AUTHORIZE_SENT, AUTHORIZE_RCVD, READY, SHARE_SENT};
+	enum State {INIT, SUBSCRIBE_SENT, SUBSCRIBE_RCVD, READY, SHARE_SENT};
 	State _state;
 	std::string _result; // Results of Stratum requests
 	
