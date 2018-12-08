@@ -52,24 +52,24 @@ void Options::askConf() {
 		std::cout << "Solo mining (solo), pooled mining (pool), or benchmarking (benchmark)? ";
 		std::cin >> value;
 		if (value == "solo") {
-			file << "Protocol = GetBlockTemplate" << std::endl;
-			_protocol = "GetBlockTemplate";
+			file << "Mode = Solo" << std::endl;
+			_mode = "Solo";
 		}
 		else if (value == "pool") {
-			file << "Protocol = Stratum" << std::endl;
-			_protocol = "Stratum";
+			file << "Mode = Pool" << std::endl;
+			_mode = "Pool";
 		}
 		else if (value == "benchmark") {
-			file << "Protocol = Benchmark" << std::endl;
-			_protocol = "Benchmark";
+			file << "Mode = Benchmark" << std::endl;
+			_mode = "Benchmark";
 		}
 		else {
 			std::cerr << "Invalid choice! Please answer solo, pool, or benchmark." << std::endl;
 			_stopConfig();
 		}
 		
-		if (_protocol != "Benchmark") {
-			if (_protocol == "GetBlockTemplate") {
+		if (_mode != "Benchmark") {
+			if (_mode == "Solo") {
 				std::cout << "Riecoin Core (wallet) IP: ";
 				std::cin >> value;
 #ifndef _WIN32
@@ -110,35 +110,35 @@ void Options::askConf() {
 				_stopConfig();
 			}
 			
-			if (_protocol == "GetBlockTemplate") std::cout << "RPC username: ";
+			if (_mode == "Solo") std::cout << "RPC username: ";
 			else std::cout << "Pool username.worker: ";
 			
 			std::cin >> value;
-			file << "User = " << value << std::endl;
-			_user = value;
+			file << "Username = " << value << std::endl;
+			_username = value;
 			
-			if (_protocol == "GetBlockTemplate") std::cout << "RPC password: ";
+			if (_mode == "Solo") std::cout << "RPC password: ";
 			else std::cout << "Worker password: ";
 			
 			std::cin >> value;
-			file << "Pass = " << value << std::endl;
-			_pass = value;
+			file << "Password = " << value << std::endl;
+			_password = value;
 			
-			if (_protocol == "GetBlockTemplate") {
+			if (_mode == "Solo") {
 				std::vector<uint8_t> spk;
 				std::cout << "Payout address (P2PKH or P2SH): ";
 				std::cin >> value;
 				setPayoutAddress(value);
-				if (_addressFormat == AddressFormat::INVALID) {
+				if (_payoutAddressFormat == AddressFormat::INVALID) {
 					std::cerr << "Invalid payout address!" << std::endl;
 					_stopConfig();
 				}
-				else if (_addressFormat == AddressFormat::BECH32) {
+				else if (_payoutAddressFormat == AddressFormat::BECH32) {
 					std::cout << "Sorry, Bech32 addresses are currently not supported." << std::endl;
 					_stopConfig();
 				}
 				
-				file << "Address = " << _address << std::endl;
+				file << "PayoutAddress = " << _payoutAddress << std::endl;
 			}
 		}
 		else std::cout << "Standard Benchmark values loaded. Edit the configuration file if needed." << std::endl;
@@ -154,8 +154,7 @@ void Options::askConf() {
 			_stopConfig();
 		}
 		
-		if (_protocol != "Benchmark") std::cout << "Thank you, happy mining :D !" << std::endl;
-		else std::cout << "Thank you :D !" << std::endl;
+		std::cout << "Thank you :D !" << std::endl;
 		std::cout << "-----------------------------------------------------------" << std::endl;
 		file.close();
 	}
@@ -169,18 +168,26 @@ void Options::loadConf() {
 		std::string line, key, value;
 		while (std::getline(file, line)) {
 			if (line.size() != 0) {
+				if (line[0] == '#') continue;
 				_parseLine(line, key, value);
 				if (key == "Debug") {
 					try {_debug = std::stoi(value);}
 					catch (...) {_debug = 0;}
+				}
+				else if (key == "Mode") {
+					if (value == "Solo" || value == "Pool" || value == "Benchmark")
+						_mode = value;
+					else std::cout << "Invalid mode!" << std::endl;
 				}
 				else if (key == "Host") _host = value;
 				else if (key == "Port") {
 					try {_port = std::stoi(value);}
 					catch (...) {_port = 28332;}
 				}
-				else if (key == "User") _user = value;
-				else if (key == "Pass") _pass = value;
+				else if (key == "Username") _username = value;
+				else if (key == "Password") _password = value;
+				else if (key == "PayoutAddress") setPayoutAddress(value);
+				else if (key == "Secret!!!") _secret = value;
 				else if (key == "Threads") {
 					try {_threads = std::stoi(value);}
 					catch (...) {_threads = 8;}
@@ -189,70 +196,62 @@ void Options::loadConf() {
 					try {_sieveWorkers = std::stoi(value);}
 					catch (...) {_sieveWorkers = 0;}
 				}
-				else if (key == "Sieve") {
-					try {_sieve = std::stoll(value);}
-					catch (...) {_sieve = 2147483648;}
-					if (_sieve < 65536) _sieve = 65536;
-				}
-				else if (key == "Tuples") {
-					try {_tuples = std::stoi(value);}
-					catch (...) {_tuples = 6;}
-				}
-				else if (key == "Refresh") {
-					try {_refresh = std::stoi(value);}
-					catch (...) {_refresh = 10;}
-				}
-				else if (key == "Protocol") {
-					if (value == "GetBlockTemplate" || value == "Stratum" || value == "Benchmark") {
-						_protocol = value;
-					}
-					else std::cout << "Invalid Protocol" << std::endl;
-				}
-				else if (key == "Address") setPayoutAddress(value);
-				else if (key == "CBMsg")   _cbMsg = value;
-				else if (key == "TestDiff") {
-					try {_testDiff = std::stoll(value);}
-					catch (...) {_testDiff = 304;}
-					if (_testDiff < 265) _testDiff = 265;
-					else if (_testDiff > 32767) _testDiff = 32767;
-				}
-				else if (key == "TestTime") {
-					try {_testTime = std::stoll(value);}
-					catch (...) {_testTime = 0;}
-				}
-				else if (key == "Test2t") {
-					try {_test2t = std::stoll(value);}
-					catch (...) {_test2t = 50000;}
-				}
-				else if (key == "TCFile") _tcFile = value;
-				else if (key == "PN") {
-					try {_pn = std::stoll(value);}
-					catch (...) {_pn = 40;}
-				}
-				else if (key == "POff") {
-					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
-					std::stringstream offsets(value);
-					std::vector<uint64_t> primorialOffset;
-					uint64_t tmp;
-					while (offsets >> tmp) primorialOffset.push_back(tmp);
-					if (primorialOffset.size() < 1)
-						std::cout << "Too short or invalid primorial offsets, ignoring." << std::endl;
-					else _pOff = primorialOffset;
+				else if (key == "PrimeTableLimit") {
+					try {_primeTableLimit = std::stoll(value);}
+					catch (...) {_primeTableLimit = 2147483648;}
+					if (_primeTableLimit < 65536) _primeTableLimit = 65536;
 				}
 				else if (key == "SieveBits") {
 					try {_sieveBits = std::stoi(value);}
 					catch (...) {_sieveBits = 25;}
 				}
-				else if (key == "ConsType") {
+				else if (key == "RefreshInterval") {
+					try {_refreshInterval = std::stoi(value);}
+					catch (...) {_refreshInterval = 10;}
+				}
+				else if (key == "TupleLengthMin") {
+					try {_tupleLengthMin = std::stoi(value);}
+					catch (...) {_tupleLengthMin = 6;}
+				}
+				else if (key == "BenchmarkDifficulty") {
+					try {_benchmarkDifficulty = std::stoll(value);}
+					catch (...) {_benchmarkDifficulty = 304;}
+					if (_benchmarkDifficulty < 265) _benchmarkDifficulty = 265;
+					else if (_benchmarkDifficulty > 32767) _benchmarkDifficulty = 32767;
+				}
+				else if (key == "BenchmarkTimeLimit") {
+					try {_benchmarkTimeLimit = std::stoll(value);}
+					catch (...) {_benchmarkTimeLimit = 0;}
+				}
+				else if (key == "Benchmark2tupleCountLimit") {
+					try {_benchmark2tupleCountLimit = std::stoll(value);}
+					catch (...) {_benchmark2tupleCountLimit = 50000;}
+				}
+				else if (key == "ConstellationType") {
+					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
+					std::stringstream offsetsSS(value);
+					std::vector<uint64_t> offsets;
+					uint64_t tmp;
+					while (offsetsSS >> tmp) offsets.push_back(tmp);
+					if (offsets.size() < 2)
+						std::cout << "Too short or invalid tuple offsets, ignoring." << std::endl;
+					else _constellationType = offsets;
+				}
+				else if (key == "PrimorialNumber") {
+					try {_primorialNumber = std::stoll(value);}
+					catch (...) {_primorialNumber = 40;}
+				}
+				else if (key == "PrimorialOffsets") {
 					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
 					std::stringstream offsets(value);
-					std::vector<uint64_t> primeTupleOffset;
+					std::vector<uint64_t> primorialOffsets;
 					uint64_t tmp;
-					while (offsets >> tmp) primeTupleOffset.push_back(tmp);
-					if (primeTupleOffset.size() < 2)
-						std::cout << "Too short or invalid tuple offsets, ignoring." << std::endl;
-					else _consType = primeTupleOffset;
+					while (offsets >> tmp) primorialOffsets.push_back(tmp);
+					if (primorialOffsets.size() < 1)
+						std::cout << "Too short or invalid primorial offsets, ignoring." << std::endl;
+					else _primorialOffsets = primorialOffsets;
 				}
+				else if (key == "TupleCountsFile") _tupleCountsFile = value;
 				else if (key == "Rules") {
 					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
 					std::stringstream offsets(value);
@@ -265,7 +264,8 @@ void Options::loadConf() {
 			}
 		}
 		
-		if (_tuples < 2 || _tuples > _consType.size()) _tuples = _consType.size();
+		if (_tupleLengthMin < 2 || _tupleLengthMin > _constellationType.size())
+			_tupleLengthMin = _constellationType.size();
 		file.close();
 	}
 	else {
@@ -274,97 +274,99 @@ void Options::loadConf() {
 	}
 	
 	DEBUG = _debug;
-	DBG(std::cout << "Debug Mode enabled" << std::endl;);
-	DBG_VERIFY(std::cout << "Debug Verification enabled" << std::endl;);
-	if (_protocol == "Benchmark") {
-		std::cout << "Benchmark Mode at difficulty " << _testDiff << std::endl;
-		if (_testTime != 0) std::cout << "Will stop after " << _testTime << " s" << std::endl;
-		if (_test2t   != 0) std::cout << "Will stop after finding " << _test2t << " 2-tuples" << std::endl;
-		if (_testDiff == 1600 && _sieve == 2147483648 && _test2t >= 50000 && _testTime == 0)
-			std::cout << "VALID parameters for Standard Benchmark" << std::endl;
+	DBG(std::cout << "Debug messages enabled" << std::endl;);
+	DBG_VERIFY(std::cout << "Debug verification messages enabled" << std::endl;);
+	if (_mode == "Benchmark") {
+		std::cout << "Benchmark Mode at difficulty " << _benchmarkDifficulty << std::endl;
+		if (_benchmarkTimeLimit != 0) std::cout << " Time limit: " << _benchmarkTimeLimit << " s" << std::endl;
+		if (_benchmark2tupleCountLimit   != 0) std::cout << " 2-tuple count limit: " << _benchmark2tupleCountLimit << " 2-tuples" << std::endl;
+		if (_benchmarkDifficulty == 1600 && _primeTableLimit == 2147483648 && _benchmark2tupleCountLimit >= 50000 && _benchmarkTimeLimit == 0)
+			std::cout << " VALID parameters for Standard Benchmark" << std::endl;
 	}
 	else {
-		std::cout << "Host = " << _host << std::endl;
-		std::cout << "Port = " << _port << std::endl;
-		if (_protocol != "Stratum")
-			std::cout << "User = " << _user << std::endl;
-		else std::cout << "User.worker = " << _user << std::endl;
-		std::cout << "Pass = ..." << std::endl;
-		std::cout << "Protocol = " << _protocol << std::endl;
-		if (_rules.size() > 0 && _protocol == "GetBlockTemplate") {
-			std::cout << "Consensus Rules = ";
-			for (std::vector<std::string>::size_type i(0) ; i < _rules.size() ; i++) {
-				std::cout << _rules[i];
-				if (i != _rules.size() - 1) std::cout << ", ";
+		if (_mode == "Solo") std::cout << "Solo mining";
+		else if (_mode == "Pool") std::cout << "Pooled mining";
+		else {
+			std::cerr << "Invalid Mode! Exiting." << std::endl;
+			exit(-1);
+		}
+		std::cout << " via host " << _host << ", port " << _port << std::endl;
+		if (_mode == "Pool") std::cout << "Username.worker: " << _username << std::endl;
+		else std::cout << "Username: " << _username << std::endl;
+		std::cout << "Password: ..." << std::endl;
+		
+		if (_mode == "Solo") {
+			std::cout << "Payout address: " << _payoutAddress;
+			if (_payoutAddressFormat == AddressFormat::P2PKH) std::cout << " (P2PKH)";
+			else if (_payoutAddressFormat == AddressFormat::P2SH) std::cout << " (P2SH)";
+			else {
+				std::cout << std::endl << "Invalid or unsupported payout address! Exiting." << std::endl;
+				exit(0);
 			}
 			std::cout << std::endl;
+			if (_rules.size() > 0) {
+				std::cout << "Consensus rules: ";
+				for (std::vector<std::string>::size_type i(0) ; i < _rules.size() ; i++) {
+					std::cout << _rules[i];
+					if (i != _rules.size() - 1) std::cout << ", ";
+				}
+				std::cout << std::endl;
+			}
 		}
 	}
-	if (_protocol == "GetBlockTemplate") {
-		std::cout << "Payout address = " << _address;
-		if (_addressFormat == AddressFormat::P2PKH) std::cout << " (P2PKH)";
-		else if (_addressFormat == AddressFormat::P2SH) std::cout << " (P2SH)";
-		else {
-			std::cout << std::endl << "Invalid or unsupported payout address! Exiting." << std::endl;
-			exit(0);
-		}
-		std::cout << std::endl;
-	}
+	
 	if (_threads < 2) {
 		std::cout << "At least 2 threads are needed, overriding." << std::endl;
 		_threads = 2;
 	}
-	std::cout << "Threads = " << _threads << std::endl;
-	std::cout << "Sieve max = " << _sieve << std::endl;
-	if (_protocol == "Benchmark")
-		std::cout << "Will show tuples of at least length " << _tuples << std::endl;
-	else if (_protocol != "Stratum")
-		std::cout << "Will submit tuples of at least length " << _tuples << std::endl;
-	else std::cout << "Will submit 4-shares" << std::endl;
-	std::cout << "Stats refresh rate = " << _refresh << " s" << std::endl;
-	if (_tcFile != "None") std::cout << "Tuple Count File = " << _tcFile << std::endl;
-	std::cout << "Primorial Number  = " << _pn << std::endl;
-	std::cout << "Primorial Offsets = " << "(";
-	for (std::vector<uint64_t>::size_type i(0) ; i < _pOff.size() ; i++) {
-		std::cout << _pOff[i];
-		if (i != _pOff.size() - 1) std::cout << ", ";
-	}
-	std::cout << ")" << std::endl;
-	std::cout << "Constellation Type = " << "(";
+	std::cout << "Threads: " << _threads << std::endl;
+	std::cout << "Prime table limit: " << _primeTableLimit << std::endl;
+	std::cout << "Sieve bits: " <<  _sieveBits << std::endl;
+	if (_mode == "Benchmark") std::cout << "Will show tuples of at least length " << _tupleLengthMin << std::endl;
+	else if (_mode == "Solo") std::cout << "Will submit tuples of at least length " << _tupleLengthMin << std::endl;
+	std::cout << "Stats refresh interval: " << _refreshInterval << " s" << std::endl;
+	std::cout << "Constellation type: " << "(";
 	uint64_t offsetTemp(0);
-	for (std::vector<uint64_t>::size_type i(0) ; i < _consType.size() ; i++) {
-		offsetTemp += _consType[i];
+	for (std::vector<uint64_t>::size_type i(0) ; i < _constellationType.size() ; i++) {
+		offsetTemp += _constellationType[i];
 		if (offsetTemp == 0) std::cout << "n";
 		else std::cout << "n + " << offsetTemp;
-		if (i != _consType.size() - 1) std::cout << ", ";
+		if (i != _constellationType.size() - 1) std::cout << ", ";
 	}
-	std::cout << "), length " << _consType.size() << std::endl;
-	std::cout << "Sieve bits = " <<  _sieveBits << std::endl;
+	std::cout << "), length " << _constellationType.size() << std::endl;
+	std::cout << "Primorial number: " << _primorialNumber << std::endl;
+	std::cout << "Primorial offsets: " << "(";
+	for (std::vector<uint64_t>::size_type i(0) ; i < _primorialOffsets.size() ; i++) {
+		std::cout << _primorialOffsets[i];
+		if (i != _primorialOffsets.size() - 1) std::cout << ", ";
+	}
+	std::cout << ")" << std::endl;
+	if (_tupleCountsFile != "None") std::cout << "Tuple counts file: " << _tupleCountsFile << std::endl;
 }
 
-void Options::setPayoutAddress(const std::string& addr) {
-	_address = addr;
-	if (addr.size() < 26) {
+void Options::setPayoutAddress(const std::string& address) {
+	_payoutAddress = address;
+	if (address.size() < 26) {
 		std::cerr << __func__ << ": empty or too short address!" << std::endl;
-		_addressFormat = AddressFormat::INVALID;
+		_payoutAddressFormat = AddressFormat::INVALID;
 	}
 	else {
-		if (addr[0] == 'R' || addr[0] == 'r')
-			_addressFormat = AddressFormat::P2PKH;
-		else if (addr[0] == 'T' || addr[0] == 't')
-			_addressFormat = AddressFormat::P2SH;
-		else if (addr.substr(0, 3) == "bcR" || addr.substr(0, 3) == "bcr")
-			_addressFormat = AddressFormat::BECH32;
+		if (address[0] == 'R' || address[0] == 'r')
+			_payoutAddressFormat = AddressFormat::P2PKH;
+		else if (address[0] == 'T' || address[0] == 't')
+			_payoutAddressFormat = AddressFormat::P2SH;
+		else if (address.substr(0, 3) == "bcR" || address.substr(0, 3) == "bcr")
+			_payoutAddressFormat = AddressFormat::BECH32;
 		else {
 			std::cerr << __func__ << ": invalid address prefix!" << std::endl;
-			_addressFormat = AddressFormat::INVALID;
+			_payoutAddressFormat = AddressFormat::INVALID;
 		}
 		
-		if (_addressFormat == AddressFormat::P2PKH || _addressFormat == AddressFormat::P2SH) {
+		if (_payoutAddressFormat == AddressFormat::P2PKH || _payoutAddressFormat == AddressFormat::P2SH) {
 			std::vector<uint8_t> spk;
-			if (!addrToScriptPubKey(addr, spk)) {
+			if (!addrToScriptPubKey(address, spk)) {
 				std::cerr << __func__ << ": invalid payout address!" << std::endl;
-				_addressFormat = AddressFormat::INVALID;
+				_payoutAddressFormat = AddressFormat::INVALID;
 			}
 		}
 	}

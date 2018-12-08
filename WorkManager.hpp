@@ -34,14 +34,14 @@ class WorkManager : public std::enable_shared_from_this<WorkManager> {
 	Options options() const {return _options;}
 	uint32_t height() const {return _stats.height();}
 	uint32_t difficulty() const {return _stats.difficulty();}
-	std::vector<uint64_t> offsets() const {return _options.consType();}
+	std::vector<uint64_t> offsets() const {return _options.constellationType();}
 	void printTime() const {_stats.printTime();}
 	void printTuplesStats() const {_stats.printTuplesStats();}
 	void incTupleCount(const uint8_t i) {_stats.incTupleCount(i);}
 	void incRejectedShares() {_stats.incRejectedShares();}
 	void updateDifficulty(const uint32_t newDifficulty, const uint32_t height) {_stats.updateDifficulty(newDifficulty, height);}
 	void updateHeight(const uint32_t height) {_stats.updateHeight(height);}
-	void saveTuplesCounts() {_stats.saveTuplesCounts(_options.tcFile());}
+	void saveTuplesCounts() {_stats.saveTuplesCounts(_options.tupleCountsFile());}
 };
 
 #endif

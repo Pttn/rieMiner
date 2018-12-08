@@ -17,9 +17,9 @@ WorkManager::WorkManager() {
 void WorkManager::init() {
 	_options.loadConf();
 	std::cout << "-----------------------------------------------------------" << std::endl;
-	if (_options.protocol() == "GetBlockTemplate")
+	if (_options.mode() == "Solo")
 		_client = std::unique_ptr<Client>(new GBTClient(shared_from_this()));
-	else if (_options.protocol() == "Stratum")
+	else if (_options.mode() == "Pool")
 		_client = std::unique_ptr<Client>(new StratumClient(shared_from_this()));
 	else _client = std::unique_ptr<Client>(new BMClient(shared_from_this()));
 	
@@ -61,28 +61,28 @@ void WorkManager::manage() {
 	else {
 		std::chrono::time_point<std::chrono::system_clock> timer;
 		while (true) {
-			if (_options.protocol() == "Benchmark" && _miner->running()) {
-				if (timeSince(_stats.miningStartTp()) > _options.testTime() && _options.testTime() != 0) {
-					std::cout << _options.testTime() << " s elapsed, test finished. " << versionString << ", diff " << _options.testDiff() << ", sieve " << _options.sieve() << std::endl;
+			if (_options.mode() == "Benchmark" && _miner->running()) {
+				if (timeSince(_stats.miningStartTp()) > _options.benchmarkTimeLimit() && _options.benchmarkTimeLimit() != 0) {
+					std::cout << timeSince(_stats.miningStartTp()) << " s elapsed, test finished. " << versionString << ", difficulty " << _options.benchmarkDifficulty() << ", PTL " << _options.primeTableLimit() << std::endl;
 					_stats.printTuplesStats();
-					_stats.saveTuplesCounts(_options.tcFile());
+					_stats.saveTuplesCounts(_options.tupleCountsFile());
 					_exit(0);
 				}
-				if (_stats.tuplesCount()[2] >= _options.test2t() && _options.test2t() != 0) {
-					std::cout << _options.test2t() << " 2-tuples found, test finished. " << versionString << ", difficulty " << _options.testDiff() << ", sieve " << _options.sieve() << std::endl;
+				if (_stats.tuplesCount()[2] >= _options.benchmark2tupleCountLimit() && _options.benchmark2tupleCountLimit() != 0) {
+					std::cout << _stats.tuplesCount()[2] << " 2-tuples found, test finished. " << versionString << ", difficulty " << _options.benchmarkDifficulty() << ", PTL " << _options.primeTableLimit() << std::endl;
 					_stats.printBenchmarkResults();
-					if (_options.testDiff() == 1600 && _options.sieve() == 2147483648 && _options.test2t() >= 50000 && _options.testTime() == 0)
+					if (_options.benchmarkDifficulty() == 1600 && _options.primeTableLimit() == 2147483648 && _options.benchmark2tupleCountLimit() >= 50000 && _options.benchmarkTimeLimit() == 0)
 						std::cout << "VALID parameters for Standard Benchmark" << std::endl;
 					_stats.printTuplesStats();
-					_stats.saveTuplesCounts(_options.tcFile());
+					_stats.saveTuplesCounts(_options.tupleCountsFile());
 					_exit(0);
 				}
 			}
 			
 			if (_client->connected()) {
-				if (_options.refresh() != 0) {
+				if (_options.refreshInterval() != 0) {
 					const double dt(timeSince(timer));
-					if (dt > _options.refresh() && _miner->inited() && _miner->running()) {
+					if (dt > _options.refreshInterval() && _miner->inited() && _miner->running()) {
 						_stats.printStats();
 						_stats.printEstimatedTimeToBlock();
 						timer = std::chrono::system_clock::now();
@@ -95,7 +95,7 @@ void WorkManager::manage() {
 					std::cout << "Connection lost :|, reconnecting in 10 seconds..." << std::endl;
 					_miner->pause();
 					_stats.printTuplesStats();
-					_stats.saveTuplesCounts(_options.tcFile());
+					_stats.saveTuplesCounts(_options.tupleCountsFile());
 					_clientMutex.unlock();
 					usleep(1000000*_waitReconnect);
 				}
@@ -103,8 +103,8 @@ void WorkManager::manage() {
 					assert(_miner->inited());
 					if (!_miner->running() && _client->workData().height != 0) {
 						_stats = Stats(offsets().size());
-						_stats.setMiningType(_options.protocol());
-						_stats.loadTuplesCounts(_options.tcFile());
+						_stats.setMiningType(_options.mode());
+						_stats.loadTuplesCounts(_options.tupleCountsFile());
 						_stats.startTimer();
 						_stats.updateHeight(_client->workData().height - 1);
 						std::cout << "-----------------------------------------------------------" << std::endl;

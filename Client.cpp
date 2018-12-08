@@ -11,13 +11,13 @@ Client::Client(const std::shared_ptr<WorkManager> &manager) {
 	_inited = true;
 }
 
-std::string Client::getUserPass() const {
+std::string RPCClient::getUserPass() const {
 	std::ostringstream oss;
-	oss << _manager->options().user() << ":" << _manager->options().pass();
+	oss << _manager->options().username() << ":" << _manager->options().password();
 	return oss.str();
 }
 
-std::string Client::getHostPort() const {
+std::string RPCClient::getHostPort() const {
 	std::ostringstream oss;
 	oss << "http://" << _manager->options().host() << ":" << _manager->options().port() << "/";
 	return oss.str();
@@ -103,7 +103,7 @@ bool BMClient::connect() {
 bool BMClient::getWork() {
 	if (_inited) {
 		_bh = BlockHeader();
-		((uint32_t*) &_bh.bits)[0] = 256*_manager->options().testDiff() + 33554432;
+		((uint32_t*) &_bh.bits)[0] = 256*_manager->options().benchmarkDifficulty() + 33554432;
 		_height = 1;
 		return true;
 	}

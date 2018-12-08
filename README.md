@@ -1,4 +1,4 @@
-# rieMiner 0.9RC4
+# rieMiner 0.9RC5
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
@@ -16,7 +16,7 @@ I provide a Profitability Calculator [here](https://ric.pttn.me/page.php?n=Profi
 
 ## Minimum requirements
 
-Only x64 systems with SSE are supported since version 0.9β2.4.
+Only x64 systems with SSE are supported.
 
 * Windows 7 or later, or recent enough Linux;
 * x64 CPU with SSE instruction set;
@@ -115,18 +115,38 @@ Alternatively, you can create or edit this "rieMiner.conf" file next to the exec
 Option type = Option value
 ```
 
-It is case sensitive, but spaces and invalid lines are ignored. **Do not put ; at the end or use other delimiters than =** for each line, and **do not confuse rieMiner.conf with riecoin.conf**! If an option is missing, the default value(s) will be used. If there are duplicate lines, the last one will be used. The main available options are:
+It is case sensitive, but spaces and invalid lines are ignored. A line starting with "#" will also be ignored. **Do not put ; at the end or use other delimiters than =** for each line, and **do not confuse rieMiner.conf with riecoin.conf**! If an option is missing, the default value(s) will be used. If there are duplicate lines, the last one will be used. Here is a sample configuration file for solo mining, with comments explaining the main available options.
 
-* Host : IP of the Riecoin wallet/server or pool. Default: 127.0.0.1 (your computer);
-* Port : port of the Riecoin wallet/server or pool. Default: 28332 (default port for Riecoin-Qt);
-* User : username used to connect in the server (rpcuser for solo mining). Includes the worker name (user.worker) if using Stratum. Default: nothing;
-* Pass : password used to connect in the server (rpcpassword for solo mining). Default: nothing;
-* Protocol : protocol to use: GetBlockTemplate for solo mining, Stratum for pooled mining, Benchmark for testing. Default: Benchmark;
-* Address : custom payout address for solo mining (GetBlockTemplate only). Default: a donation address;
-* Threads : number of threads used for mining. Default: 8;
-* Sieve : size of the sieve table used for mining. Use a bigger number if you have 16 GiB of RAM or more, as you will obtain better results: this will usually reduce the ratio between the n-tuple and n+1-tuples counts. Reduce if you have less than 8 GiB of RAM (or if you want to reduce memory usage). It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^31;
-* Tuples : for solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Additionally, the base prime of such tuple will be shown in the Benchmark Mode. Default: 6;
-* Rules : for solo mining, add consensus rules in the GetBlockTemplate RPC call, each separated by a comma. Useful for softforks, for example, to mine SegWit transactions, you would need the line "Rules = segwit". Default: no rule.
+```
+# Mining mode: Solo for solo mining via GetBlockTemplate, Pool for pooled mining using Stratum, Benchmark for testing. Default: Benchmark
+Mode = Solo
+
+# IP and port of the Riecoin wallet/server or pool. Default: 127.0.0.1 (your computer), port 28332 (default port for Riecoin-Qt)
+Host = 127.0.0.1
+Port = 28332
+
+# Username and password used to connect to the server (same as rpcuser and rpcpassword in riecoin.conf for solo mining). If using Stratum, the username includes the worker name (username.worker). Default: nothing
+Username = user
+Password = /70P$€CR€7/
+
+# Custom payout address for solo mining (GetBlockTemplate only). Default: a donation address
+PayoutAddress = RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB
+
+# Number of threads used for mining. Default: 8
+Threads = 8
+
+# The prime table used for mining will contain primes up to the given number. Use a bigger one if you have 16 GiB of available RAM or more, as you will obtain better results: this will usually reduce the ratio between the n-tuple and (n + 1)-tuples counts. Reduce if you have less than 8 GiB of RAM (or if you want to reduce memory usage). It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^31
+PrimeTableLimit = 2147483648
+
+# Refresh rate of the stats in seconds. 0 to disable them: will only notify when a k-tuple or share (k >= Tuples option value if solo mining) is found, or when the network finds a block. Default: 30
+RefreshInterval = 60
+
+# For solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Additionally, the base prime of such tuple will be shown in the Benchmark Mode. Default: 6
+TupleLengthMin = 4
+
+# For solo mining, add consensus rules in the GetBlockTemplate RPC call, each separated by a comma. Useful for softforks, for example, to mine SegWit transactions, you would need the following line. Default: no rule
+# Rules = segwit
+```
 
 It is also possible to use custom configuration file paths, examples:
 
@@ -136,29 +156,28 @@ It is also possible to use custom configuration file paths, examples:
 ./rieMiner /home/user/rieMiner/rieMiner.conf
 ```
 
-### Statistics and benchmarking options
+### Other statistics and benchmarking options
 
-* Refresh : refresh rate of the stats in seconds. 0 to disable them: will only notify when a k-tuple or share (k >= Tuples option value if solo mining) is found, or when the network finds a block. Default: 30;
-* TestDiff : only for Benchmark, sets the testing difficulty (must be from 265 to 32767). Default: 1600;
-* TestTime : only for Benchmark, sets the testing duration in s. 0 for no time limit. Default: 0;
-* Test2t : only for Benchmark, stops testing after finding this number of 2-tuples. 0 for no limit. Default: 50000;
-* TCFile : Tuples Counts filename, in which rieMiner will save for each difficulty the number of tuples found. Note that there must never be more than one rieMiner instance using the same file, and you should also use different files if you use different Sieve sizes to not skew the stats (ratios). Default: None (special value that disables this feature).
+* BenchmarkDifficulty : only for Benchmark, sets the testing difficulty (must be from 265 to 32767). Default: 1600;
+* BenchmarkTimeLimit : only for Benchmark, sets the testing duration in s. 0 for no time limit. Default: 0;
+* Benchmark2tupleCountLimit : only for Benchmark, stops testing after finding this number of 2-tuples. 0 for no limit. Default: 50000;
+* TupleCountsFile : Tuple Counts filename, in which rieMiner will save for each difficulty the number of tuples found. Note that there must never be more than one rieMiner instance using the same file, and you should also use different files if you use different Sieve sizes to not skew the stats (ratios). Default: None (special value that disables this feature).
 
 ### Advanced/Tweaking/Dev options
 
 They can be useful to get better performance depending on your computer.
 
 * SieveBits : size of the segment sieve is 2^SieveBits bits, e.g. 25 means the segment sieve size is 4 MiB. Choose this so that SieveWorkers*SieveBits fits in your L3 cache. Default: 25;
-* SieveWorkers : the number of threads to use for sieving. Default: 0, which means choose automatically based on number of threads. If you see warnings about not being able to generate enough work, try increasing it (though note that increasing it will use more memory).
+* SieveWorkers : the number of threads to use for sieving. Increasing it may solve some CPU underuse problems, but will use more memory. 0 for choosing automatically based on number of Threads and PrimeTableLimit. Default: 0.
 
 These ones should never be modified outside developing purposes and research for now.
 
-* ConsType : set your Constellation Type, i. e. the primes tuple offsets, each separated by a comma. Default: 0, 4, 2, 4, 2, 4 (values for Riecoin mining);
-* PN : Primorial Number for the Wheel Factorization. Default: 40;
-* POff : list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConsType. Default: carefully chosen offsets;
+* ConstellationType : set your Constellation Type, i. e. the primes tuple offsets, each separated by a comma. Default: 0, 4, 2, 4, 2, 4 (values for Riecoin mining);
+* PrimorialNumber : Primorial Number for the Wheel Factorization. Default: 40;
+* PrimorialOffsets : list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConsType. Default: carefully chosen offsets;
 * Debug : activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, any other value do disable. Default : disabled.
 
-Some possible constellations types (format: (type) -> offsets to put for ConsType ; 3 first constellations (n + 0) which can be used for POff, though some might not work)
+Some possible constellations types (format: (type) -> offsets to put for ConstellationType ; 3 first constellations (n + 0) which can be used for PrimorialOffsets, though some might not work)
 
 * 5-tuples
   * (0, 2, 6,  8, 12) -> 0, 2, 4, 2, 4 ; 5, 11, 101,...
@@ -175,7 +194,7 @@ Some possible constellations types (format: (type) -> offsets to put for ConsTyp
 
 Also see the constellationsGen tool in my rieTools repository (https://github.com/Pttn/rieTools).
 
-Note that you must use different tuples counts files if you use different constellations types.
+Note that you must use different tuple counts files if you use different constellations types.
 
 ### Memory problems
 
@@ -224,13 +243,13 @@ You might have to wait some consequent time before finding a block. What if some
 
 First, if for some reason rieMiner disconnects from the wallet (you killed it or its computer crashed), it will detect that it has not received the mining data and then just stop mining: so if it is currently mining, everything should be fine.
 
-If you are worried about the fact that the block will be incorrectly submitted, here comes the -k option. Indeed, you can send invalid blocks to the wallet (after all, it is yours), and check if the wallet actually received them and if these submissions are properly processed. When such invalid block is submitted, you can check the debug.log file in the same location as riecoin.conf, and then, you should see something like
+If you are worried about the fact that the block will be incorrectly submitted, here comes the TupleLengthMin option. Indeed, you can send invalid blocks to the wallet (after all, it is yours), and check if the wallet actually received them and if these submissions are properly processed. When such invalid block is submitted, you can check the debug.log file in the same location as riecoin.conf, and then, you should see something like
 
 ```
 ERROR: CheckProofOfWork() : n+10 not prime
 ```
 
-Remember that the miner searches numbers n such that n, n + 2, n + 6, n + 10, n + 12 and n + 16 are prime, so if you passed, for example, 3 via the -k option, rieMiner will submit a n such that n, n + 2 and n + 6 are prime, but not necessarily the other numbers, so you can conclude that the wallet successfully decoded the submission here, and that everything works fine. If you see nothing or another error message, then something is wrong (possible example would be an unstable overclock)...
+Remember that the miner searches numbers n such that n, n + 2, n + 6, n + 10, n + 12 and n + 16 are prime, so if you set the TupleLengthMin option to for example 3, rieMiner will submit a n such that n, n + 2 and n + 6 are prime, but not necessarily the other numbers, so you can conclude that the wallet successfully decoded the submission here, and that everything works fine. If you see nothing or another error message, then something is wrong (possible example would be an unstable overclock)...
 
 Also watch regularly if the wallet is correctly syncing, especially if the message "Blockheight = ..." did not appear since a very long time (except if the Diff is very high, in this case, it means that the network is now mining the superblock). In Riecoin-Qt, this can be done by hovering the green check at the lower right corner, and comparing the number with the latest block found in an Riecoin explorer. If something is wrong, try to change the nodes in riecoin.conf, the following always worked fine for me:
 
@@ -248,6 +267,8 @@ connect=198.251.84.221
 connect=199.126.33.5
 connect=217.182.76.201
 ```
+
+Or check your connection.
 
 ## Pooled mining specific information
 
@@ -338,7 +359,7 @@ Donations welcome:
 
 ### Quick contributor's checklist
 
-* Your code must compile and work on recent Debian based distributions and Windows using MSYS;
+* Your code must compile and work on recent Debian based distributions, and Windows using MSYS;
 * If modifying the miner, you must ensure that your changes do not cause any performance loss. You have to do proper and long enough before/after benchmarks;
 * rieMiner must work for any realistic setting, at least try these in the Benchmark Mode:
   * Difficulty 304, Sieve 2^20 (Testnet mining conditions);
@@ -359,4 +380,5 @@ Donations welcome:
 * [Fast prime cluster search - or building a fast Riecoin miner (part 1)](https://da-data.blogspot.ch/2014/03/fast-prime-cluster-search-or-building.html), nice article by dave-andersen explaining how Riecoin works and how to build an efficient miner and the algorithms. Unfortunately, he never published part 2...
 * [Riecoin FAQ](http://riecoin.org/faq.html) and [technical aspects](http://riecoin.org/about.html#tech)
 * [Bitcoin Wiki - Getblocktemplate](https://en.bitcoin.it/wiki/Getblocktemplate)
+* [BIP141](https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki) (Segwit)
 * [Bitcoin Wiki - Stratum](https://en.bitcoin.it/wiki/Stratum_mining_protocol)

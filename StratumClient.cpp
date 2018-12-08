@@ -147,7 +147,7 @@ void StratumClient::getSubscribeInfo() {
 			std::cout << "extraNonce2Len = " << _sd.extraNonce2Len << std::endl;
 			
 			std::ostringstream oss;
-			oss << "{\"id\": 2, \"method\": \"mining.authorize\", \"params\": [\"" << _manager->options().user() << "\", \"" << _manager->options().pass() << "\"]}\n";
+			oss << "{\"id\": 2, \"method\": \"mining.authorize\", \"params\": [\"" << _manager->options().username() << "\", \"" << _manager->options().password() << "\"]}\n";
 			send(_socket, oss.str().c_str(), oss.str().size(), 0);
 			
 			_state = AUTHORIZE_SENT;
@@ -291,7 +291,7 @@ void StratumClient::sendWork(const WorkData &share) const {
 	for (uint32_t i(0) ; i < 8 ; i++) nonce[i] = invEnd32(((uint32_t*) wdToSend.bh.nOffset)[8 - 1 - i]);
 	
 	oss << "{\"method\": \"mining.submit\", \"params\": [\""
-	    << _manager->options().user() << "\", \""
+	    << _manager->options().username() << "\", \""
 	    << wdToSend.jobId << "\", \""
 	    << v8ToHexStr(wdToSend.extraNonce2) << "\", \""
 	    << binToHexStr((const uint8_t*) &wdToSend.bh.curtime, 8) << "\", \""

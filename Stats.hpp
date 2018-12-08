@@ -19,7 +19,7 @@ class Stats {
 	public:
 	Stats(uint8_t tupleLength = 6);
 	void startTimer();
-	void setMiningType(const std::string &protocol) {_solo = !(protocol == "Stratum");}
+	void setMiningType(const std::string &protocol) {_solo = !(protocol == "Pool");}
 	
 	void incTupleCount(const uint8_t i) {_tuples[i]++; _tuplesSinceLastDiff[i]++;}
 	void incRejectedShares() {_rejectedShares++;}

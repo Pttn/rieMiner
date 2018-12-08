@@ -23,11 +23,11 @@ extern "C" {
 
 void Miner::init() {
 	_parameters.threads = _manager->options().threads();
-	_parameters.primorialOffsets = _manager->options().pOff();
+	_parameters.primorialOffsets = _manager->options().primorialOffsets();
 	_parameters.sieveWorkers = _manager->options().sieveWorkers();
 	if (_parameters.sieveWorkers == 0) {
 		_parameters.sieveWorkers = std::max(_manager->options().threads()/5, 1);
-		_parameters.sieveWorkers += (_manager->options().sieve() + 0x80000000ull) >> 33;
+		_parameters.sieveWorkers += (_manager->options().primeTableLimit() + 0x80000000ull) >> 33;
 	}
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, MAX_SIEVE_WORKERS);
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, int(_parameters.primorialOffsets.size()));
@@ -44,11 +44,11 @@ void Miner::init() {
 	_parameters.sieveSize = 1 << _parameters.sieveBits;
 	_parameters.sieveWords = _parameters.sieveSize/64;
 	_parameters.maxIter = _parameters.maxIncrements/_parameters.sieveSize;
-	_parameters.solo = !(_manager->options().protocol() == "Stratum");
-	_parameters.tuples = _manager->options().tuples();
-	_parameters.sieve = _manager->options().sieve();
-	_parameters.primorialNumber  = _manager->options().pn();
-	_parameters.primeTupleOffset = _manager->options().consType();
+	_parameters.solo = !(_manager->options().mode() == "Pool");
+	_parameters.tuples = _manager->options().tupleLengthMin();
+	_parameters.sieve = _manager->options().primeTableLimit();
+	_parameters.primorialNumber  = _manager->options().primorialNumber();
+	_parameters.primeTupleOffset = _manager->options().constellationType();
 	
 	for (uint32_t i(0) ; i < WORK_DATAS ; i++) {
 		mpz_init(_workData[i].z_verifyTarget);

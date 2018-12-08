@@ -3,7 +3,7 @@
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
 
-#define versionString	"rieMiner 0.9RC4c"
+#define versionString	"rieMiner 0.9RC5"
 
 #include <unistd.h>
 #include <string>
@@ -28,12 +28,12 @@ extern int DEBUG;
 enum AddressFormat {INVALID, P2PKH, P2SH, BECH32};
 
 class Options {
-	std::string _host, _user, _pass, _protocol, _address, _cbMsg, _tcFile;
-	AddressFormat _addressFormat;
-	uint16_t _debug, _tuples, _sieveBits, _port, _threads, _sieveWorkers;
-	uint32_t _refresh, _testDiff, _testTime, _test2t;
-	uint64_t _sieve, _pn;
-	std::vector<uint64_t> _consType, _pOff;
+	std::string _host, _username, _password, _mode, _payoutAddress, _secret, _tupleCountsFile;
+	AddressFormat _payoutAddressFormat;
+	uint16_t _debug, _port, _threads, _sieveWorkers, _sieveBits, _refreshInterval, _tupleLengthMin;
+	uint32_t _benchmarkDifficulty, _benchmarkTimeLimit, _benchmark2tupleCountLimit;
+	uint64_t _primeTableLimit, _primorialNumber;
+	std::vector<uint64_t> _primorialOffsets, _constellationType;
 	std::vector<std::string> _rules;
 	
 	void _parseLine(std::string, std::string&, std::string&) const;
@@ -41,58 +41,58 @@ class Options {
 	
 	public:
 	Options() { // Default options: Standard Benchmark with 8 threads
-		_debug     = 0;
-		_user      = "";
-		_pass      = "";
-		_host      = "127.0.0.1";
-		_protocol  = "Benchmark";
-		_address   = "RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB";
-		_addressFormat = AddressFormat::P2PKH;
-		_cbMsg     = "/rieMiner/";
-		_tcFile    = "None";
-		_port      = 28332;
-		_threads   = 8;
+		_debug = 0;
+		_mode = "Benchmark";
+		_host = "127.0.0.1";
+		_port = 28332;
+		_username = "";
+		_password = "";
+		_payoutAddress = "RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB";
+		_payoutAddressFormat = AddressFormat::P2PKH;
+		_secret = "/rieMiner/";
+		_threads = 8;
 		_sieveWorkers = 0;
-		_sieve     = 2147483648;
-		_tuples    = 6;
-		_refresh   = 30;
-		_testDiff  = 1600;
-		_testTime  = 0;
-		_test2t    = 50000;
-		_pn        = 40; // Primorial Number
-		_pOff      = {4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull, 
-		              7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull,
-		              8145217177ull, 8145220537ull, 8145223897ull, 8145227257ull}; // Primorial Offsets
+		_primeTableLimit = 2147483648;
 		_sieveBits = 25;
-		_consType  = {0, 4, 2, 4, 2, 4}; // What type of constellations are we mining (offsets)
-		_rules     = std::vector<std::string>();
+		_refreshInterval = 30;
+		_tupleLengthMin = 6;
+		_benchmarkDifficulty = 1600;
+		_benchmarkTimeLimit = 0;
+		_benchmark2tupleCountLimit = 50000;
+		_constellationType = {0, 4, 2, 4, 2, 4}; // What type of constellations are we mining (offsets)
+		_primorialNumber = 40; // Primorial Number
+		_primorialOffsets = {4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull,
+		                     7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull,
+		                     8145217177ull, 8145220537ull, 8145223897ull, 8145227257ull}; // Primorial Offsets
+		_tupleCountsFile = "None";
+		_rules = std::vector<std::string>();
 	}
 	
 	void loadConf();
 	void askConf();
 	
+	std::string mode() const {return _mode;}
 	std::string host() const {return _host;}
 	uint16_t port() const {return _port;}
-	std::string user() const {return _user;}
-	std::string pass() const {return _pass;}
-	std::string protocol() const {return _protocol;}
-	std::string address() const {return _address;}
+	std::string username() const {return _username;}
+	std::string password() const {return _password;}
+	std::string payoutAddress() const {return _payoutAddress;}
+	AddressFormat payoutAddressFormat() const {return _payoutAddressFormat;}
 	void setPayoutAddress(const std::string&);
-	AddressFormat payoutAddressFormat() const {return _addressFormat;}
-	std::string cbMsg() const {return _cbMsg;}
-	std::string tcFile() const {return _tcFile;}
+	std::string secret() const {return _secret;}
 	uint16_t threads() const {return _threads;}
 	uint16_t sieveWorkers() const {return _sieveWorkers;}
-	uint64_t sieve() const {return _sieve;}
-	uint16_t tuples() const {return _tuples;}
-	uint32_t refresh() const {return _refresh;}
-	uint32_t testDiff() const {return _testDiff;}
-	uint32_t testTime() const {return _testTime;}
-	uint32_t test2t() const {return _test2t;}
-	uint64_t pn() const {return _pn;}
-	std::vector<uint64_t> pOff() const {return _pOff;}
+	uint64_t primeTableLimit() const {return _primeTableLimit;}
 	uint16_t sieveBits() const {return _sieveBits;}
-	std::vector<uint64_t> consType() const {return _consType;}
+	uint32_t refreshInterval() const {return _refreshInterval;}
+	uint16_t tupleLengthMin() const {return _tupleLengthMin;}
+	uint32_t benchmarkDifficulty() const {return _benchmarkDifficulty;}
+	uint32_t benchmarkTimeLimit() const {return _benchmarkTimeLimit;}
+	uint32_t benchmark2tupleCountLimit() const {return _benchmark2tupleCountLimit;}
+	std::vector<uint64_t> constellationType() const {return _constellationType;}
+	uint64_t primorialNumber() const {return _primorialNumber;}
+	std::vector<uint64_t> primorialOffsets() const {return _primorialOffsets;}
+	std::string tupleCountsFile() const {return _tupleCountsFile;}
 	std::vector<std::string> rules() const {return _rules;}
 };
 

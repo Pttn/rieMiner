@@ -9,7 +9,7 @@ bool GBTClient::connect() {
 	if (_inited) {
 		if (!getWork()) return false;
 		_gbtd = GetBlockTemplateData();
-		if (!addrToScriptPubKey(_manager->options().address(), _gbtd.scriptPubKey)) {
+		if (!addrToScriptPubKey(_manager->options().payoutAddress(), _gbtd.scriptPubKey)) {
 			std::cerr << "Invalid payout address! Using donation address instead." << std::endl;
 			addrToScriptPubKey("RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB", _gbtd.scriptPubKey);
 		}
@@ -209,7 +209,7 @@ void GBTClient::sendWork(const WorkData &work) const {
 
 WorkData GBTClient::workData() const {
 	GetBlockTemplateData gbtd(_gbtd);
-	gbtd.coinBaseGen(_manager->options().payoutAddressFormat(), _manager->options().cbMsg());
+	gbtd.coinBaseGen(_manager->options().payoutAddressFormat(), _manager->options().secret());
 	gbtd.transactions = binToHexStr(gbtd.coinbase.data(), gbtd.coinbase.size()) + gbtd.transactions;
 	gbtd.txHashes.insert(gbtd.txHashes.begin(), gbtd.coinBaseHash());
 	gbtd.merkleRootGen();

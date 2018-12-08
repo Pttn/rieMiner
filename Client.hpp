@@ -88,9 +88,6 @@ class Client {
 	
 	std::shared_ptr<WorkManager> _manager;
 	
-	std::string getUserPass() const;
-	std::string getHostPort() const;
-	
 	public:
 	Client() {_inited = false;}
 	Client(const std::shared_ptr<WorkManager>&);
@@ -112,6 +109,8 @@ class Client {
 class RPCClient : public Client {
 	public:
 	using Client::Client;
+	std::string getUserPass() const;
+	std::string getHostPort() const;
 	json_t* sendRPCCall(const std::string&) const; // Send a RPC call to the server
 };
 
