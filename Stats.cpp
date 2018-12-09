@@ -8,7 +8,6 @@ Stats::Stats(uint8_t tupleLength) {
 		_tuples.push_back(0);
 		_tuplesSinceLastDiff.push_back(0);
 	}
-	_height = 0;
 	_difficulty = 1;
 	_heightAtDiffChange = 0;
 	_rejectedShares = 0;
@@ -22,10 +21,7 @@ void Stats::startTimer() {
 	_lastDiffChangeTp = std::chrono::system_clock::now();
 }
 
-#define leading0s(x) std::setw(x) << std::setfill('0')
-#define FIXED(x) std::fixed << std::setprecision(x)
-
-void Stats::updateHeight(const uint32_t height) {
+void Stats::newHeightMessage(const uint32_t height) {
 	if (_inited()) {
 		printTime();
 		if (height - _heightAtDiffChange != 0) {

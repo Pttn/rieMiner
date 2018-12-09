@@ -13,6 +13,7 @@
 	#include <netdb.h>
 #endif
 
+// Stores the Stratum data got from the RPC call
 struct StratumData {
 	BlockHeader bh;
 	std::vector<std::array<uint8_t, 32>> txHashes;
@@ -44,6 +45,7 @@ struct StratumData {
 #define RECVSIZE	(RBUFSIZE - 4)
 #define STRATUMTIMEOUT	180. // in s
 
+// Client for the Stratum protocol (pooled mining), working for the current Riecoin pools
 class StratumClient : public Client {
 	StratumData _sd;
 	int _socket;
@@ -54,16 +56,17 @@ class StratumClient : public Client {
 	State _state;
 	std::string _result; // Results of Stratum requests
 	
-	void getSubscribeInfo();
-	void getSentShareResponse();
-	void handleOther();
+	bool _getWork();
+	// These will process _result, filled in process()
+	void _getSubscribeInfo(); // Extracts mining.subscribe response data (in particular, extranonces data). Also sends mining.authorize
+	void _getSentShareResponse(); // Checks if the server accepted the share
+	void _handleOther(); // Handles various responses types by calling an appropriate function (for mining.notify or share submission response), or does nothing else for now
 	
 	public:
 	using Client::Client;
-	bool connect();
-	bool getWork();
-	void sendWork(const WorkData&) const;
-	bool process();
+	bool connect(); // Also sends mining.subscribe
+	void sendWork(const WorkData&) const; // Via mining.submit
+	bool process(); // Get data from the server and calls the adequate member function to process it
 	WorkData workData() const;
 };
 

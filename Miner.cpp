@@ -45,7 +45,7 @@ void Miner::init() {
 	_parameters.sieveWords = _parameters.sieveSize/64;
 	_parameters.maxIter = _parameters.maxIncrements/_parameters.sieveSize;
 	_parameters.solo = !(_manager->options().mode() == "Pool");
-	_parameters.tuples = _manager->options().tupleLengthMin();
+	_parameters.tupleLengthMin = _manager->options().tupleLengthMin();
 	_parameters.sieve = _manager->options().primeTableLimit();
 	_parameters.primorialNumber  = _manager->options().primorialNumber();
 	_parameters.primeTupleOffset = _manager->options().constellationType();
@@ -59,7 +59,7 @@ void Miner::init() {
 	std::transform(_parameters.primeTupleOffset.begin(),
 	               _parameters.primeTupleOffset.end(),
 	               std::back_inserter(_halfPrimeTupleOffset),
-	               [](uint64_t n) {assert(n <= 6); return n >> 1;});
+	               [](uint64_t n) {/*assert(n <= 6); */return n >> 1;});
 	_primorialOffsetDiff.resize(_parameters.sieveWorkers - 1);
 	_primorialOffsetDiffToFirst.resize(_parameters.sieveWorkers);
 	_primorialOffsetDiffToFirst[0] = 0;
@@ -647,7 +647,7 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 			for (uint32_t idx(0) ; idx < job.testWork.n_indexes ; idx++) {
 				if (_currentHeight != _workData[job.workDataIndex].verifyBlock.height) break;
 
-				uint8_t tupleSize(0);
+				uint8_t tupleLength(0);
 				mpz_mul_ui(z_tmp, _primorial, job.testWork.indexes[idx]);
 				mpz_add(z_tmp, z_tmp, z_ploop);
 				
@@ -659,33 +659,33 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 
 				mpz_sub(z_tmp2, z_tmp, _workData[job.workDataIndex].z_verifyTarget); // offset = tested - target
 				
-				tupleSize++;
-				_manager->incTupleCount(tupleSize);
+				tupleLength++;
+				_manager->incTupleCount(tupleLength);
 				// Note start at 1 - we've already tested bias 0
 				for (std::vector<uint64_t>::size_type i(1) ; i < _parameters.primeTupleOffset.size() ; i++) {
 					mpz_add_ui(z_tmp, z_tmp, _parameters.primeTupleOffset[i]);
 					mpz_sub_ui(z_ft_n, z_tmp, 1);
 					mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
 					if (mpz_cmp_ui(z_ft_r, 1) == 0) {
-						tupleSize++;
-						_manager->incTupleCount(tupleSize);
+						tupleLength++;
+						_manager->incTupleCount(tupleLength);
 					}
 					else if (!_parameters.solo) {
 						int candidatesRemaining(5 - i);
-						if ((tupleSize + candidatesRemaining) < 4) continue;
+						if ((tupleLength + candidatesRemaining) < 4) continue;
 					}
 					else break;
 				}
 				
 				if (_parameters.solo) {
-					if (tupleSize < _parameters.tuples) continue;
+					if (tupleLength < _parameters.tupleLengthMin) continue;
 				}
-				else if (tupleSize < 4) continue;
+				else if (tupleLength < 4) continue;
 	
 				// Generate nOffset and submit
 				for (uint32_t d(0) ; d < (uint32_t) std::min(32/8, z_tmp2->_mp_size) ; d++)
 					*(uint64_t*) (_workData[job.workDataIndex].verifyBlock.bh.nOffset + d*8) = z_tmp2->_mp_d[d];
-				_workData[job.workDataIndex].verifyBlock.primes = tupleSize;
+				_workData[job.workDataIndex].verifyBlock.primes = tupleLength;
 				_manager->submitWork(_workData[job.workDataIndex].verifyBlock);
 			}
 			
@@ -719,50 +719,6 @@ void Miner::_getTargetFromBlock(mpz_t z_target, const WorkData &block) {
 		}
 		_manager->updateDifficulty(difficulty, block.height);
 		if (save) _manager->saveTuplesCounts();
-	}
-}
-
-void Miner::process(WorkData block) {
-	if (!_masterExists) {
-		_masterLock.lock();
-		if (!_masterExists) {
-			_masterExists = true;
-			isMaster = true;
-		}
-		_masterLock.unlock();
-	}
-	
-	if (!isMaster) {
-		_verifyThread();
-		usleep(1000000);
-		return;
-	}
-	
-	uint32_t workDataIndex(0), oldHeight(0);
-	_workData[workDataIndex].verifyBlock = block;
-	
-	do {
-		_modTime = _modTime.zero();
-		_sieveTime = _sieveTime.zero();
-		_verifyTime = _verifyTime.zero();
-		
-		_processOneBlock(workDataIndex, oldHeight != _workData[workDataIndex].verifyBlock.height);
-		oldHeight = _workData[workDataIndex].verifyBlock.height;
-
-		while (_workData[workDataIndex].outstandingTests > _maxWorkOut)
-			_workData[_workDoneQueue.pop_front()].outstandingTests--;
-
-		workDataIndex = (workDataIndex + 1) % WORK_DATAS;
-		while (_workData[workDataIndex].outstandingTests > 0)
-			_workData[_workDoneQueue.pop_front()].outstandingTests--;
-
-		DBG(std::cout << "Block timing: " << _modTime.count() << ", " << _sieveTime.count() << ", " << _verifyTime.count() << "  Tests out: " << _workData[0].outstandingTests << ", " << _workData[1].outstandingTests << std::endl;);
-
-	} while (_manager->getWork(_workData[workDataIndex].verifyBlock));
-
-	for (workDataIndex = 0 ; workDataIndex < WORK_DATAS ; workDataIndex++) {
-		while (_workData[workDataIndex].outstandingTests > 0)
-			_workData[_workDoneQueue.pop_front()].outstandingTests--;
 	}
 }
 
@@ -875,5 +831,49 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 		}
 
 		mpz_clears(z_target, z_tmp, z_remainderPrimorial, NULL);
+	}
+}
+
+void Miner::process(WorkData block) {
+	if (!_masterExists) {
+		_masterLock.lock();
+		if (!_masterExists) {
+			_masterExists = true;
+			isMaster = true;
+		}
+		_masterLock.unlock();
+	}
+	
+	if (!isMaster) {
+		_verifyThread();
+		usleep(1000000);
+		return;
+	}
+	
+	uint32_t workDataIndex(0), oldHeight(0);
+	_workData[workDataIndex].verifyBlock = block;
+	
+	do {
+		_modTime = _modTime.zero();
+		_sieveTime = _sieveTime.zero();
+		_verifyTime = _verifyTime.zero();
+		
+		_processOneBlock(workDataIndex, oldHeight != _workData[workDataIndex].verifyBlock.height);
+		oldHeight = _workData[workDataIndex].verifyBlock.height;
+
+		while (_workData[workDataIndex].outstandingTests > _maxWorkOut)
+			_workData[_workDoneQueue.pop_front()].outstandingTests--;
+
+		workDataIndex = (workDataIndex + 1) % WORK_DATAS;
+		while (_workData[workDataIndex].outstandingTests > 0)
+			_workData[_workDoneQueue.pop_front()].outstandingTests--;
+
+		DBG(std::cout << "Block timing: " << _modTime.count() << ", " << _sieveTime.count() << ", " << _verifyTime.count() << "  Tests out: " << _workData[0].outstandingTests << ", " << _workData[1].outstandingTests << std::endl;);
+
+	} while (_manager->getWork(_workData[workDataIndex].verifyBlock));
+
+	for (workDataIndex = 0 ; workDataIndex < WORK_DATAS ; workDataIndex++) {
+		while (_workData[workDataIndex].outstandingTests > 0)
+			_workData[_workDoneQueue.pop_front()].outstandingTests--;
 	}
 }

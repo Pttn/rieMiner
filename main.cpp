@@ -389,6 +389,7 @@ int main(int argc, char** argv) {
 #endif
 	
 	std::cout << versionString << ", Riecoin miner by Pttn and contributors" << std::endl;
+	std::cout << "Assembly code by Michael Bell (Rockhawk)" << std::endl;
 	std::cout << "Project page: https://github.com/Pttn/rieMiner" << std::endl;
 	std::cout << "Go to project page or open README.md for usage information" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;

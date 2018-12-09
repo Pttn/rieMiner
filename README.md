@@ -1,4 +1,4 @@
-# rieMiner 0.9RC5
+# rieMiner 0.9 (not definitive)
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
@@ -68,25 +68,23 @@ pacman -S mingw64/mingw-w64-x86_64-gcc
 pacman -S mingw64/mingw-w64-x86_64-curl
 ```
 
-Recommended: move the rieMiner's folder to the MSYS2 home directory.
-
-Go to the rieMiner's directory with cd, and compile with make.
+Clone rieMiner with git like for Linux, go to its directory with cd, and compile with make.
 
 #### Static building
 
-The produced executable will run only in the MSYS console, or if all the needed DLLs are next to the executable. To obtain a standalone executable, you need to link statically the dependencies. Normally, this is done just by adding "-static" at the LIBS line in the Makefile. Unfortunately, libcurl will give you a hard time, and you need to compile it yourself.
+The produced executable will only run in the MSYS console, or if all the needed DLLs are next to the executable. To obtain a standalone executable, you need to link statically the dependencies. Normally, this is done just by adding "-static" at the LIBS line in the Makefile. Unfortunately, libcurl will give you a hard time, and you need to compile it yourself.
 
 First, edit the Makefile to add "-D CURL_STATICLIB" at the end of the CFLAGS line and "-static" just after the "LIBS =" in the first LIBS line. You might also want to change the march argument to support other/olders processors.
 
 ```
-CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native -D CURL_STATICLIB
+CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native -fno-pie -no-pie -D CURL_STATICLIB
 [...]
-LIBS   = -static -pthread -ljansson -lcurl -lcrypto -lgmp -lgmpxx -lws2_32
+LIBS   = -static -pthread -ljansson -lcurl -lcrypto -lgmpxx -lgmp -lws2_32 -Wl,--image-base -Wl,0x10000000
 ```
 
 Then, download the [latest official libcurl code](https://curl.haxx.se/download.html) on their website, under "Source Archives", and decompress the folder somewhere (for example, next to the rieMiner's one).
 
-In the MSYS MinGW-w64 console, cd to the libcurl directory. We will now configure it so we will not build unused features:
+In the MSYS MinGW-w64 console, cd to the libcurl directory. We will now configure it to not build unused features:
 
 ```bash
 ./configure --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-ldap --disable-ldaps --disable-pop3 --disable-rtsp --disable-smtp --disable-telnet --disable-tftp --without-ssl --without-libssh2 --without-zlib --without-brotli --without-libidn2  --without-ldap  --without-ldaps --without-rtsp --without-psl --without-librtmp --without-libpsl --without-nghttp2 --disable-shared --disable-libcurl-option
@@ -125,26 +123,32 @@ Mode = Solo
 Host = 127.0.0.1
 Port = 28332
 
-# Username and password used to connect to the server (same as rpcuser and rpcpassword in riecoin.conf for solo mining). If using Stratum, the username includes the worker name (username.worker). Default: nothing
+# Username and password used to connect to the server (same as rpcuser and rpcpassword in riecoin.conf for solo mining).
+# If using Stratum, the username includes the worker name (username.worker). Default: empty values
 Username = user
 Password = /70P$€CR€7/
 
-# Custom payout address for solo mining (GetBlockTemplate only). Default: a donation address
+# Custom payout address for solo mining (GetBlockTemplate only). Default: this donation address
 PayoutAddress = RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB
 
 # Number of threads used for mining. Default: 8
 Threads = 8
 
-# The prime table used for mining will contain primes up to the given number. Use a bigger one if you have 16 GiB of available RAM or more, as you will obtain better results: this will usually reduce the ratio between the n-tuple and (n + 1)-tuples counts. Reduce if you have less than 8 GiB of RAM (or if you want to reduce memory usage). It can go up to 2^64 - 1, but setting this at more than a few billions will be too much and decrease performance. Default: 2^31
+# The prime table used for mining will contain primes up to the given number.
+# Use a bigger one if you have 16 GiB of available RAM or more, as this will reduce the ratio between the n-tuple and (n + 1)-tuple counts (but also the 1-tuple find rate).
+# Reduce if you have less than 8 GiB of RAM (or if you want to reduce memory usage).
+# It can go up to 2^64 - 1, but setting this at more than 2^33 will usually be too much and decrease performance. Default: 2^31
 PrimeTableLimit = 2147483648
 
-# Refresh rate of the stats in seconds. 0 to disable them: will only notify when a k-tuple or share (k >= Tuples option value if solo mining) is found, or when the network finds a block. Default: 30
+# Refresh rate of the stats in seconds. 0 to disable them and only notify when a long enough tuple or share is found, or when the network finds a block. Default: 30
 RefreshInterval = 60
 
-# For solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length. Additionally, the base prime of such tuple will be shown in the Benchmark Mode. Default: 6
+# For solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length.
+# Additionally, the base prime of such tuple will be shown in the Benchmark Mode. Default: 6
 TupleLengthMin = 4
 
-# For solo mining, add consensus rules in the GetBlockTemplate RPC call, each separated by a comma. Useful for softforks, for example, to mine SegWit transactions, you would need the following line. Default: no rule
+# For solo mining, add consensus rules in the GetBlockTemplate RPC call, each separated by a comma.
+# Useful for softforks, for example, to mine SegWit transactions, you would need the following line. Default: no rule
 # Rules = segwit
 ```
 
@@ -161,7 +165,7 @@ It is also possible to use custom configuration file paths, examples:
 * BenchmarkDifficulty : only for Benchmark, sets the testing difficulty (must be from 265 to 32767). Default: 1600;
 * BenchmarkTimeLimit : only for Benchmark, sets the testing duration in s. 0 for no time limit. Default: 0;
 * Benchmark2tupleCountLimit : only for Benchmark, stops testing after finding this number of 2-tuples. 0 for no limit. Default: 50000;
-* TupleCountsFile : Tuple Counts filename, in which rieMiner will save for each difficulty the number of tuples found. Note that there must never be more than one rieMiner instance using the same file, and you should also use different files if you use different Sieve sizes to not skew the stats (ratios). Default: None (special value that disables this feature).
+* TupleCountsFile : tuple counts filename, in which rieMiner will save for each difficulty the number of tuples found. Note that there must never be more than one rieMiner instance using the same file, and you should also use different files if you use different Sieve sizes to not skew the stats (ratios). Default: None (special value that disables this feature).
 
 ### Advanced/Tweaking/Dev options
 
@@ -204,7 +208,7 @@ If you have memory errors, try to lower the Sieve value in the configuration fil
 
 rieMiner will regularly print some stats, and the frequency of this can be changed with the Refresh parameter as said earlier.
 
-For solo mining, rieMiner will regularly show the 1 to 3 tuples found per second metrics, and the number of 2 to 6 tuples found since the start of the mining. It will also estimate the average time to find a block by extrapolating from the 1-tuples/s (primes per second) metric and the 1 to 2-tuples/s ratio (note that all the ratios are the same, and the estimation should be fairly precise). Of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week.
+For solo mining, rieMiner will regularly show the 1 to 3-tuples found per second metrics, and the number of 2 to 6 tuples found since the start of the mining. It will also estimate the average time to find a block by extrapolating from the 1-tuples/s (primes per second) metric and the 1 to 2-tuples/s ratio (note that all the ratios are the same, and the estimation should be fairly precise). Of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week.
 
 For pooled mining, the shares per minute metric and the numbers of valid and total shares are shown instead. As it is hard to get a correct estimation earnings from k-shares, no other metric is shown. The Benchmark Mode (or solo mining) can be used to get better figures for comparisons.
 
@@ -295,25 +299,27 @@ The miner will disconnect if it did not receive anything during 3 minutes (time 
 
 rieMiner provides a way to test the performance of a computer, and compare with others. This feature can also be used to appreciate the improvements when trying to improve the miner algorithm. When sharing benchmark results, you must always communicate the difficulty, the sieve size, the test duration, the CPU model, the memory speeds (frequency and CL), the miner version, and the OS. Also, do not forget to precise if you changed other options, like the SieveWorkers or Bits.
 
-To compare two different platforms, you must absolutely test with the same difficulty, during enough time. The proposed parameters, conditions and interpretations for serious benchmarking are:
+To compare two different platforms or settings, you must absolutely test with the same difficulty, during enough time. The proposed parameters, conditions and interpretations for serious benchmarking are:
 
 * Standard Benchmark
   * Difficulty of 1600;
   * Sieve of 2^31 = 2147483648;
-  * No memory limit;
+  * No time limit;
   * Stop after finding 50000 2-tuples or more;
   * The computer must not do anything else during testing;
-  * Very long for slow computers, but like the real mining conditions;
+  * Fairly long, but like the real mining conditions;
   * The system must not swap. Else, the result would not make much sense. Ensure that you have enough memory when trying to benchmark.
 
 Once the benchmark finished itself (i. e. not by the user), it will print something like:
 
 ```
-50000 2-tuples found, test finished. rieMiner 0.9RC3, difficulty 1600, sieve 2147483648
-BENCHMARK RESULTS: 234.805246 primes/s with ratio 28.960823 -> 0.995788 block(s)/day
+100000 2-tuples found, test finished. rieMiner 0.9, difficulty 1600, PTL 2147483648
+BENCHMARK RESULTS: 233.354130 primes/s with ratio 28.955020 -> 0.990626 block(s)/day
 ```
 
-The block(s)/day metric is the one that should be shared or used to compare performance, though it is always good to also take in consideration the other ones. The precision will be about 2 significant digits for the block(s)/day. To get 3 solid digits, about 1 million of 2-tuples would need to be found, which would be way too long to be practical for the Standard Benchmark.
+Generally speaking, the block(s)/day metric is the one that should be shared or used to compare performance, though it is always good to also take in consideration the other ones. Moreover, for a given difficulty and PTL, the ratio should be the same, and the more precise primes/day metric can be used instead for comparisons.
+
+The precision will be about 2 significant digits for the block(s)/day. To get 3 solid digits, about 1 million of 2-tuples would need to be found, which would be way too long to be practical for the Standard Benchmark.
 
 A run with valid parameters for the Standard Benchmark will additionally print the message
 
@@ -323,11 +329,15 @@ VALID parameters for Standard Benchmark
 
 Which should appear if you want to share your results.
 
+You could stop before 50000 2-tuples, for example at 10000, if you just want a rough estimation of the performance. However, even after this long, the values are often still very imprecise, and can lead to confusion, like a slightly slower computer getting better results. This remark is critical for people wanting to optimize the miner.
+
 ### A few results
 
-More current results Coming Soon. Data: primes/s, ratio -> block(s)/day.
+Done with rieMiner 0.9, 100000 2-tuples. Data: primes/s, ratio -> block(s)/day.
 
-* AMD Ryzen 2700X @4 GHz, DDR4 2400 CL15, Debian 9, 0.9RC3: 234.805246, 28.960823 -> 0.995788
+* AMD Ryzen R7 2700X @4 GHz, DDR4 2400 CL15, Debian 9: 233.354130, 28.955020 -> 0.990626
+* AMD Ryzen R7 2700X @3 GHz, DDR4 2400 CL15, Debian 9: 177.234506, 28.988780 -> 0.748018
+* Intel Core i7 6700K @3 GHz, DDR4 2400 CL15, Debian 9: 89.288621, 28.883051 -> 0.383791
 
 ## Miscellaneous
 
@@ -344,6 +354,10 @@ Parts coming from other projects and libraries are subject to their respective l
 ### Notable contributors
 
 * [Michael Bell](https://github.com/MichaelBell/): assembly optimizations, improvements of work management between threads, and some more.
+
+### Versioning
+
+The version naming scheme is 0.9, 0.99, 0.999 and so on for major versions, analogous to 1.0, 2.0, 3.0,.... The first non 9 decimal digit is minor, etc. For example, the version 0.9925a can be though as 2.2.5a. A perfect bug-free software will be version 1. No precise criteria have been decided about incrementing major or minor versions for now.
 
 ## Contributing
 

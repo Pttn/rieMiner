@@ -11,22 +11,10 @@ Client::Client(const std::shared_ptr<WorkManager> &manager) {
 	_inited = true;
 }
 
-std::string RPCClient::getUserPass() const {
-	std::ostringstream oss;
-	oss << _manager->options().username() << ":" << _manager->options().password();
-	return oss.str();
-}
-
-std::string RPCClient::getHostPort() const {
-	std::ostringstream oss;
-	oss << "http://" << _manager->options().host() << ":" << _manager->options().port() << "/";
-	return oss.str();
-}
-
 bool Client::connect() {
 	if (_connected) return false;
 	if (_inited) {
-		if (!getWork()) return false;
+		if (!_getWork()) return false;
 		_pendingSubmissions = std::vector<WorkData>();
 		_connected = true;
 		return true;
@@ -35,6 +23,34 @@ bool Client::connect() {
 		std::cout << "Cannot connect because the client was not inited!" << std::endl;
 		return false;
 	}
+}
+
+bool Client::process() {
+	_submitMutex.lock();
+	if (_pendingSubmissions.size() > 0) {
+		for (uint32_t i(0) ; i < _pendingSubmissions.size() ; i++)
+			sendWork(_pendingSubmissions[i]);
+		_pendingSubmissions.clear();
+	}
+	_submitMutex.unlock();
+	
+	if (_getWork()) return true;
+	else { // If _getWork() failed, this means that the client is disconnected
+		_connected = false;
+		return false;
+	}
+}
+
+std::string RPCClient::_getUserPass() const {
+	std::ostringstream oss;
+	oss << _manager->options().username() << ":" << _manager->options().password();
+	return oss.str();
+}
+
+std::string RPCClient::_getHostPort() const {
+	std::ostringstream oss;
+	oss << "http://" << _manager->options().host() << ":" << _manager->options().port() << "/";
+	return oss.str();
 }
 
 static size_t curlWriteCallback(void *data, size_t size, size_t nmemb, std::string *s) {
@@ -48,12 +64,12 @@ json_t* RPCClient::sendRPCCall(const std::string& req) const {
 	
 	if (_curl) {
 		json_error_t err;
-		curl_easy_setopt(_curl, CURLOPT_URL, getHostPort().c_str());
+		curl_easy_setopt(_curl, CURLOPT_URL, _getHostPort().c_str());
 		curl_easy_setopt(_curl, CURLOPT_POSTFIELDSIZE, (long) strlen(req.c_str()));
 		curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, req.c_str());
 		curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
 		curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &s);
-		curl_easy_setopt(_curl, CURLOPT_USERPWD, getUserPass().c_str());
+		curl_easy_setopt(_curl, CURLOPT_USERPWD, _getUserPass().c_str());
 		curl_easy_setopt(_curl, CURLOPT_TIMEOUT, 10);
 		
 		const CURLcode cc(curl_easy_perform(_curl));
@@ -69,20 +85,14 @@ json_t* RPCClient::sendRPCCall(const std::string& req) const {
 	return jsonObj;
 }
 
-bool Client::process() {
-	_submitMutex.lock();
-	if (_pendingSubmissions.size() > 0) {
-		for (uint32_t i(0) ; i < _pendingSubmissions.size() ; i++)
-			sendWork(_pendingSubmissions[i]);
-		_pendingSubmissions.clear();
+bool BMClient::_getWork() {
+	if (_inited) {
+		_bh = BlockHeader();
+		((uint32_t*) &_bh.bits)[0] = 256*_manager->options().benchmarkDifficulty() + 33554432;
+		_height = 1;
+		return true;
 	}
-	_submitMutex.unlock();
-	
-	if (getWork()) return true;
-	else { // If getWork() failed, this means that the client is disconnected
-		_connected = false;
-		return false;
-	}
+	else return false;
 }
 
 bool BMClient::connect() {
@@ -98,16 +108,6 @@ bool BMClient::connect() {
 		std::cout << "Cannot start the benchmark because it was not inited!" << std::endl;
 		return false;
 	}
-}
-
-bool BMClient::getWork() {
-	if (_inited) {
-		_bh = BlockHeader();
-		((uint32_t*) &_bh.bits)[0] = 256*_manager->options().benchmarkDifficulty() + 33554432;
-		_height = 1;
-		return true;
-	}
-	else return false;
 }
 
 void BMClient::sendWork(const WorkData &work) const {

@@ -50,10 +50,10 @@ std::vector<uint8_t> hexStrToV8(std::string str) {
 // GMP base 58 digits    : 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv
 // Bitcoin base 58 digits: 123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz
 // Ascii                          ⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅ !"#$%&'()*+,-./0123465789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}-⋅
-const std::string b58GmpBtcTable("000000000000000000000000000000000000000000000000123456789A0000000BCDEFGHJKLMNPQRSTUVWXYZabc000000defghijkmnopqrstuvwxyz000000000");
-const std::string b58BtcGmpTable("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz012345678zzzzzzz9ABCDEFGzHIJKLzMNOPQRSTUVWzzzzzzXYZabcdefghzijklmnopqrstuvzzzzz");
+static const std::string b58GmpBtcTable("000000000000000000000000000000000000000000000000123456789A0000000BCDEFGHJKLMNPQRSTUVWXYZabc000000defghijkmnopqrstuvwxyz000000000");
+static const std::string b58BtcGmpTable("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz012345678zzzzzzz9ABCDEFGzHIJKLzMNOPQRSTUVWzzzzzzXYZabcdefghzijklmnopqrstuvzzzzz");
 
-std::string gmp58Tobtc58(const std::string &gmp58Str) {
+/*static std::string gmp58Tobtc58(const std::string &gmp58Str) {
 	std::string btc58Str;
 	for (uint64_t i(0) ; i < gmp58Str.size() ; i++) {
 		if (b58GmpBtcTable[gmp58Str[i]] == '0') {
@@ -63,9 +63,9 @@ std::string gmp58Tobtc58(const std::string &gmp58Str) {
 		btc58Str += b58GmpBtcTable[gmp58Str[i]];
 	}
 	return btc58Str;
-}
+}*/
 
-std::string btc58Togmp58(const std::string &btc58Str) {
+static std::string btc58Togmp58(const std::string &btc58Str) {
 	std::string gmp58Str;
 	for (uint64_t i(0) ; i < btc58Str.size() ; i++) {
 		if (b58BtcGmpTable[btc58Str[i]] == 'z') {
@@ -77,15 +77,15 @@ std::string btc58Togmp58(const std::string &btc58Str) {
 	return gmp58Str;
 }
 
-std::string v8ToB58Str(const std::vector<uint8_t> &v8) {
+/*static std::string v8ToB58Str(const std::vector<uint8_t> &v8) {
 	mpz_class data;
 	mpz_import(data.get_mpz_t(), v8.size(), 1, 1, 0, 0, v8.data());
 	char c[255];
 	mpz_get_str(c, 58, data.get_mpz_t());
 	return gmp58Tobtc58(c);
-}
+}*/
 
-std::vector<uint8_t> b58StrToV8(const std::string &btc58Str) {
+static std::vector<uint8_t> b58StrToV8(const std::string &btc58Str) {
 	mpz_class data(btc58Togmp58(btc58Str).c_str(), 58);
 	uint64_t size((mpz_sizeinbase(data.get_mpz_t(), 2) + 7)/8);
 	std::vector<uint8_t> v8(size);

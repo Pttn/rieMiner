@@ -6,6 +6,7 @@
 #include "Client.hpp"
 #include "tools.hpp"
 
+// Stores the GetBlockTemplate data got from the RPC call
 struct GetBlockTemplateData {
 	BlockHeader bh;
 	std::string transactions, default_witness_commitment; // In hex format
@@ -52,14 +53,16 @@ struct GetBlockTemplateData {
 	}
 };
 
+// Client for the GetBlockTemplate protocol (solo mining)
 class GBTClient : public RPCClient {
 	GetBlockTemplateData _gbtd;
+	
+	bool _getWork(); // Via getblocktemplate
 	
 	public:
 	using RPCClient::RPCClient;
 	bool connect();
-	bool getWork();
-	void sendWork(const WorkData&) const;
+	void sendWork(const WorkData&) const; // Via submitblock
 	WorkData workData() const;
 };
 

@@ -22,62 +22,81 @@ void StratumData::merkleRootGen() {
 	memcpy(bh.merkleRoot, calculateMerkleRootStratum(txHashes).data(), 32);
 }
 
-bool StratumClient::connect() {
-	if (_connected) return false;
-	if (_inited) {
-		_sd = StratumData();
-		_buffer = std::array<char, RBUFSIZE>();
-		_lastDataRecvTp = std::chrono::system_clock::now();
-		_state = INIT;
-		_result = std::string();
-		
-		hostent* hostInfo = gethostbyname(_manager->options().host().c_str());
-		if (hostInfo == NULL) {
-			std::cerr << "Unable to resolve '" << _manager->options().host() << "'. Check the URL or your connection." << std::endl;
-			return false;
-		}
-		void** ipListPtr((void**) hostInfo->h_addr_list);
-		uint32_t ip(0xFFFFFFFF);
-		if (ipListPtr[0]) ip = *(uint32_t*) ipListPtr[0];
-		std::ostringstream oss;
-		oss << ((ip >> 0) & 0xFF) << "." << ((ip >> 8) & 0xFF) << "." << ((ip >> 16) & 0xFF) << "." << ((ip >> 24) & 0xFF);
-		std::cout << "Host: " << _manager->options().host()  << " -> " << oss.str() << std::endl;
-		
-		_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		struct sockaddr_in addr;
-		memset(&addr, 0, sizeof(sockaddr_in));
-		addr.sin_family = AF_INET;
-		addr.sin_port = htons(_manager->options().port());
-		addr.sin_addr.s_addr = inet_addr(oss.str().c_str());
-		int result = ::connect(_socket, (sockaddr*) &addr, sizeof(sockaddr_in));
-		if (result != 0) {
-			std::cerr << "Unable to connect :| - " << std::strerror(errno) << std::endl;
-			_socket = -1;
-			return false;
-		}
-#ifdef _WIN32
-		uint32_t nonBlocking(true), cbRet;
-		WSAIoctl(_socket, FIONBIO, &nonBlocking, sizeof(nonBlocking), NULL, 0, (LPDWORD) &cbRet, NULL, NULL);
-#else
-		int fcntlRet(fcntl(_socket, F_SETFL, fcntl(_socket, F_GETFL, 0) | O_NONBLOCK));
-		if (fcntlRet == -1) std::cerr << "Unable to make the socket non-blocking :| - " << std::strerror(errno) << std::endl;
-#endif
-		
-		// Send mining.subscribe request
-		std::ostringstream oss2;
-		oss2 << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": [\"" << USER_AGENT "\"]}\n";
-		send(_socket, oss2.str().c_str(), oss2.str().size(), 0);
-		_state = SUBSCRIBE_SENT;
-		_connected = true;
-		return true;
+bool StratumClient::_getWork() {
+	json_t *jsonMn(NULL), *jsonMn_params(NULL); // Mining.notify results
+	json_error_t err;
+	jsonMn = json_loads(_result.c_str(), 0, &err);
+	if (jsonMn == NULL) {
+		std::cerr << __func__ << ": invalid or no mining.notify result received!" << std::endl;
+		return false;
 	}
 	else {
-		std::cout << "Cannot connect because the client was not inited!" << std::endl;
-		return false;
+		jsonMn_params = json_object_get(jsonMn, "params");
+		if (jsonMn_params == NULL) {
+			std::cerr << __func__ << ": invalid or no params in mining.notify received!" << std::endl;
+			json_decref(jsonMn);
+			return false;
+		}
+		else {
+			uint32_t oldHeight(_sd.height);
+			const char *jobId, *prevhash, *coinbase1, *coinbase2, *version, *nbits, *ntime;
+			json_t *jsonTxs;
+			
+			jobId     = json_string_value(json_array_get(jsonMn_params, 0));
+			prevhash  = json_string_value(json_array_get(jsonMn_params, 1));
+			coinbase1 = json_string_value(json_array_get(jsonMn_params, 2));
+			coinbase2 = json_string_value(json_array_get(jsonMn_params, 3));
+			jsonTxs   = json_array_get(jsonMn_params, 4);
+			if (!jsonTxs || !json_is_array(jsonTxs)) {
+				std::cerr << __func__ << ": missing or invalid Merkle data for params in mining.notify!" << std::endl;
+				json_decref(jsonMn);
+				return false;
+			}
+			version = json_string_value(json_array_get(jsonMn_params, 5));
+			nbits   = json_string_value(json_array_get(jsonMn_params, 6));
+			ntime   = json_string_value(json_array_get(jsonMn_params, 7));
+
+			if (jobId == NULL || prevhash == NULL || coinbase1 == NULL || coinbase2 == NULL || version == NULL || nbits == NULL || ntime == NULL) {
+				std::cerr << __func__ << ": missing params in mining.notify!" << std::endl;
+				json_decref(jsonMn);
+				return false;
+			}
+			else if (strlen(prevhash) != 64 || strlen(version) != 8 || strlen(nbits) != 8 || strlen(ntime) != 8) {
+				std::cerr << __func__ << ": invalid params in mining.notify!" << std::endl;
+				json_decref(jsonMn);
+				return false;
+			}
+			
+			_sd.bh = BlockHeader();
+			_sd.txHashes = std::vector<std::array<uint8_t, 32>>();
+			hexStrToBin(version,  (uint8_t*) &_sd.bh.version);
+			hexStrToBin(prevhash, _sd.bh.previousblockhash);
+			hexStrToBin(nbits,    (uint8_t*) &_sd.bh.bits);
+			hexStrToBin(ntime,    (uint8_t*) &_sd.bh.curtime);
+			_sd.coinbase1 = hexStrToV8(coinbase1);
+			_sd.coinbase2 = hexStrToV8(coinbase2);
+			_sd.jobId     = jobId;
+			// Get Transactions Hashes
+			for (uint32_t i(0) ; i < json_array_size(jsonTxs) ; i++) {
+				std::array<uint8_t, 32> txHash;
+				uint8_t txHashTmp[32];
+				hexStrToBin(json_string_value(json_array_get(jsonTxs, i)), txHashTmp);
+				for (uint8_t j(0) ; j < 32 ; j++) txHash[j] = txHashTmp[j];
+				_sd.txHashes.push_back(txHash);
+			}
+			
+			// Extract BlockHeight from Coinbase
+			_sd.height = _sd.coinbase1[43] + 256*_sd.coinbase1[44] + 65536*_sd.coinbase1[45] - 1;
+			// Notify when the network found a block
+			if (oldHeight != _sd.height) _manager->newHeightMessage(_sd.height);
+			
+			json_decref(jsonMn);
+			return true;
+		}
 	}
 }
 
-void StratumClient::getSubscribeInfo() {
+void StratumClient::_getSubscribeInfo() {
 	std::string r;
 	json_t *jsonObj(NULL), *jsonRes(NULL), *jsonErr(NULL);
 	json_error_t err;
@@ -159,106 +178,7 @@ void StratumClient::getSubscribeInfo() {
 	if (jsonErr == NULL) json_decref(jsonErr);
 }
 
-void StratumClient::handleOther() {
-	json_t *jsonObj;
-	json_error_t err;
-
-	jsonObj = json_loads(_result.c_str(), 0, &err);
-	if (jsonObj == NULL)
-		/*std::cerr << __func__ << ": JSON decode failed :| - " << err.text << std::endl*/; // This happens sometimes but without harm
-	else {
-		const char *method(NULL);
-		method = json_string_value(json_object_get(jsonObj, "method"));
-		if (method == NULL) {
-			if (_state == SHARE_SENT) {
-				getSentShareResponse();
-				_state = READY;
-			}
-		}
-		else {
-			if (strcasecmp(method, "mining.notify") == 0)
-				getWork();
-		}
-	}
-	
-	if (jsonObj != NULL) json_decref(jsonObj);
-}
-
-bool StratumClient::getWork() {
-	json_t *jsonMn(NULL), *jsonMn_params(NULL); // Mining.notify results
-	json_error_t err;
-	jsonMn = json_loads(_result.c_str(), 0, &err);
-	if (jsonMn == NULL) {
-		std::cerr << __func__ << ": invalid or no mining.notify result received!" << std::endl;
-		return false;
-	}
-	else {
-		jsonMn_params = json_object_get(jsonMn, "params");
-		if (jsonMn_params == NULL) {
-			std::cerr << __func__ << ": invalid or no params in mining.notify received!" << std::endl;
-			json_decref(jsonMn);
-			return false;
-		}
-		else {
-			uint32_t oldHeight(_sd.height);
-			const char *jobId, *prevhash, *coinbase1, *coinbase2, *version, *nbits, *ntime;
-			json_t *jsonTxs;
-			
-			jobId     = json_string_value(json_array_get(jsonMn_params, 0));
-			prevhash  = json_string_value(json_array_get(jsonMn_params, 1));
-			coinbase1 = json_string_value(json_array_get(jsonMn_params, 2));
-			coinbase2 = json_string_value(json_array_get(jsonMn_params, 3));
-			jsonTxs   = json_array_get(jsonMn_params, 4);
-			if (!jsonTxs || !json_is_array(jsonTxs)) {
-				std::cerr << __func__ << ": missing or invalid Merkle data for params in mining.notify!" << std::endl;
-				json_decref(jsonMn);
-				return false;
-			}
-			version = json_string_value(json_array_get(jsonMn_params, 5));
-			nbits   = json_string_value(json_array_get(jsonMn_params, 6));
-			ntime   = json_string_value(json_array_get(jsonMn_params, 7));
-
-			if (jobId == NULL || prevhash == NULL || coinbase1 == NULL || coinbase2 == NULL || version == NULL || nbits == NULL || ntime == NULL) {
-				std::cerr << __func__ << ": missing params in mining.notify!" << std::endl;
-				json_decref(jsonMn);
-				return false;
-			}
-			else if (strlen(prevhash) != 64 || strlen(version) != 8 || strlen(nbits) != 8 || strlen(ntime) != 8) {
-				std::cerr << __func__ << ": invalid params in mining.notify!" << std::endl;
-				json_decref(jsonMn);
-				return false;
-			}
-			
-			_sd.bh = BlockHeader();
-			_sd.txHashes = std::vector<std::array<uint8_t, 32>>();
-			hexStrToBin(version,  (uint8_t*) &_sd.bh.version);
-			hexStrToBin(prevhash, _sd.bh.previousblockhash);
-			hexStrToBin(nbits,    (uint8_t*) &_sd.bh.bits);
-			hexStrToBin(ntime,    (uint8_t*) &_sd.bh.curtime);
-			_sd.coinbase1 = hexStrToV8(coinbase1);
-			_sd.coinbase2 = hexStrToV8(coinbase2);
-			_sd.jobId     = jobId;
-			// Get Transactions Hashes
-			for (uint32_t i(0) ; i < json_array_size(jsonTxs) ; i++) {
-				std::array<uint8_t, 32> txHash;
-				uint8_t txHashTmp[32];
-				hexStrToBin(json_string_value(json_array_get(jsonTxs, i)), txHashTmp);
-				for (uint8_t j(0) ; j < 32 ; j++) txHash[j] = txHashTmp[j];
-				_sd.txHashes.push_back(txHash);
-			}
-			
-			// Extract BlockHeight from Coinbase
-			_sd.height = _sd.coinbase1[43] + 256*_sd.coinbase1[44] + 65536*_sd.coinbase1[45] - 1;
-			// Notify when the network found a block
-			if (oldHeight != _sd.height) _manager->updateHeight(_sd.height);
-			
-			json_decref(jsonMn);
-			return true;
-		}
-	}
-}
-
-void StratumClient::getSentShareResponse() {
+void StratumClient::_getSentShareResponse() {
 	json_error_t err;
 	json_t *jsonObj(json_loads(_result.c_str(), 0, &err));
 	if (jsonObj == NULL)
@@ -271,6 +191,86 @@ void StratumClient::getSentShareResponse() {
 			_manager->incRejectedShares();
 		}
 		json_decref(jsonObj);
+	}
+}
+
+void StratumClient::_handleOther() {
+	json_t *jsonObj;
+	json_error_t err;
+
+	jsonObj = json_loads(_result.c_str(), 0, &err);
+	if (jsonObj == NULL)
+		/*std::cerr << __func__ << ": JSON decode failed :| - " << err.text << std::endl*/; // This happens sometimes but without harm
+	else {
+		const char *method(NULL);
+		method = json_string_value(json_object_get(jsonObj, "method"));
+		if (method == NULL) {
+			if (_state == SHARE_SENT) {
+				_getSentShareResponse();
+				_state = READY;
+			}
+		}
+		else {
+			if (strcasecmp(method, "mining.notify") == 0)
+				_getWork();
+		}
+	}
+	
+	if (jsonObj != NULL) json_decref(jsonObj);
+}
+
+bool StratumClient::connect() {
+	if (_connected) return false;
+	if (_inited) {
+		_sd = StratumData();
+		_buffer = std::array<char, RBUFSIZE>();
+		_lastDataRecvTp = std::chrono::system_clock::now();
+		_state = INIT;
+		_result = std::string();
+		
+		hostent* hostInfo = gethostbyname(_manager->options().host().c_str());
+		if (hostInfo == NULL) {
+			std::cerr << "Unable to resolve '" << _manager->options().host() << "'. Check the URL or your connection." << std::endl;
+			return false;
+		}
+		void** ipListPtr((void**) hostInfo->h_addr_list);
+		uint32_t ip(0xFFFFFFFF);
+		if (ipListPtr[0]) ip = *(uint32_t*) ipListPtr[0];
+		std::ostringstream oss;
+		oss << ((ip >> 0) & 0xFF) << "." << ((ip >> 8) & 0xFF) << "." << ((ip >> 16) & 0xFF) << "." << ((ip >> 24) & 0xFF);
+		std::cout << "Host: " << _manager->options().host()  << " -> " << oss.str() << std::endl;
+		
+		_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		struct sockaddr_in addr;
+		memset(&addr, 0, sizeof(sockaddr_in));
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(_manager->options().port());
+		addr.sin_addr.s_addr = inet_addr(oss.str().c_str());
+		int result = ::connect(_socket, (sockaddr*) &addr, sizeof(sockaddr_in));
+		if (result != 0) {
+			std::cerr << "Unable to connect :| - " << std::strerror(errno) << std::endl;
+			_socket = -1;
+			return false;
+		}
+#ifdef _WIN32
+		uint32_t nonBlocking(true), cbRet;
+		WSAIoctl(_socket, FIONBIO, &nonBlocking, sizeof(nonBlocking), NULL, 0, (LPDWORD) &cbRet, NULL, NULL);
+#else
+		int fcntlRet(fcntl(_socket, F_SETFL, fcntl(_socket, F_GETFL, 0) | O_NONBLOCK));
+		if (fcntlRet == -1) std::cerr << "Unable to make the socket non-blocking :| - " << std::strerror(errno) << std::endl;
+#endif
+		
+		// Send mining.subscribe request
+		std::ostringstream oss2;
+		oss2 << "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": [\"" << USER_AGENT "\"]}\n";
+		send(_socket, oss2.str().c_str(), oss2.str().size(), 0);
+		_state = SUBSCRIBE_SENT;
+		_connected = true;
+		return true;
+	}
+	else {
+		std::cout << "Cannot connect because the client was not inited!" << std::endl;
+		return false;
 	}
 }
 
@@ -338,8 +338,8 @@ bool StratumClient::process() {
 	std::string line;
 	while (std::getline(resultSS, line)) {
 		_result = line;
-		if (_state == SUBSCRIBE_SENT) getSubscribeInfo();
-		else handleOther();
+		if (_state == SUBSCRIBE_SENT) _getSubscribeInfo();
+		else _handleOther();
 	}
 	
 	return true;

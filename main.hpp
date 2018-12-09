@@ -3,7 +3,7 @@
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
 
-#define versionString	"rieMiner 0.9RC5a"
+#define versionString	"rieMiner 0.9"
 
 #include <unistd.h>
 #include <string>
@@ -16,10 +16,6 @@
 #include <mutex>
 #include <fstream>
 #include "tools.hpp"
-
-#define leading0s(x) std::setw(x) << std::setfill('0')
-#define FIXED(x) std::fixed << std::setprecision(x)
-#define FIXED(x) std::fixed << std::setprecision(x)
 
 extern int DEBUG;
 #define DBG(x) if (DEBUG) {x;};
@@ -68,8 +64,8 @@ class Options {
 		_rules = std::vector<std::string>();
 	}
 	
-	void loadConf();
 	void askConf();
+	void loadConf();
 	
 	std::string mode() const {return _mode;}
 	std::string host() const {return _host;}

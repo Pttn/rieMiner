@@ -25,7 +25,7 @@ enum JobType {TYPE_CHECK, TYPE_MOD, TYPE_SIEVE, TYPE_DUMMY};
 
 struct MinerParameters {
 	int16_t threads;
-	uint8_t tuples;
+	uint8_t tupleLengthMin;
 	uint64_t primorialNumber, sieve;
 	bool solo;
 	int sieveWorkers;
@@ -35,7 +35,7 @@ struct MinerParameters {
 	MinerParameters() {
 		primorialNumber  = 40;
 		threads          = 8;
-		tuples           = 6;
+		tupleLengthMin   = 6;
 		sieve            = 2147483648;
 		sieveWorkers     = 2;
 		solo             = true;
@@ -44,7 +44,9 @@ struct MinerParameters {
 		sieveWords       = sieveSize/64;
 		maxIncrements    = (1ULL << 29),
 		maxIter          = maxIncrements/sieveSize;
-		primorialOffsets = {4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull, 7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull};
+		primorialOffsets =  {4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull,
+		                     7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull,
+		                     8145217177ull, 8145220537ull, 8145223897ull, 8145227257ull};
 		primeTupleOffset = {0, 4, 2, 4, 2, 4};
 	}
 };

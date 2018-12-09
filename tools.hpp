@@ -19,9 +19,13 @@
 #include <gmpxx.h>
 #include <cpuid.h>
 
+#define leading0s(x) std::setw(x) << std::setfill('0')
+#define FIXED(x) std::fixed << std::setprecision(x)
+
+uint8_t rand(uint8_t, uint8_t);
+
 std::array<uint8_t, 32> v8ToA8(std::vector<uint8_t>);
 std::vector<uint8_t> a8ToV8(std::array<uint8_t, 32>);
-
 
 inline std::vector<uint8_t> reverse(const std::vector<uint8_t> &v0) {
 	std::vector<uint8_t> v;
@@ -59,7 +63,6 @@ bool addrToScriptPubKey(const std::string&, std::vector<uint8_t>&);
 // Calculate Merkle Root from a list of transactions
 std::array<uint8_t, 32> calculateMerkleRoot(const std::vector<std::array<uint8_t, 32>>&);
 std::array<uint8_t, 32> calculateMerkleRootStratum(const std::vector<std::array<uint8_t, 32>>&);
-uint8_t rand(uint8_t, uint8_t);
 
 inline double timeSince(const std::chrono::time_point<std::chrono::system_clock> &t0) {
 	const std::chrono::time_point<std::chrono::system_clock> t(std::chrono::system_clock::now());

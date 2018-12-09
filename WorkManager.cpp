@@ -4,6 +4,14 @@
 #include "GBTClient.hpp"
 #include "StratumClient.hpp"
 
+void WorkManager::_minerThread() {
+	WorkData wd;
+	while (true) {
+		if (!getWork(wd)) usleep(1000*_workRefresh/2);
+		else _miner->process(wd);
+	}
+}
+
 WorkManager::WorkManager() {
 	_options       = Options();
 	_client        = NULL;
@@ -28,17 +36,11 @@ void WorkManager::init() {
 	
 	std::cout << "Starting " << _options.threads() << " + 1 threads" << std::endl;
 	for (uint16_t i(0) ; i < _options.threads() + 1 ; i++) {
-		_threads.push_back(std::thread(&WorkManager::minerThread, shared_from_this()));
+		_threads.push_back(std::thread(&WorkManager::_minerThread, shared_from_this()));
 		_threads[i].detach();
 	}
 	
 	_inited = true;
-}
-
-void WorkManager::submitWork(const WorkData &wd) {
-	_clientMutex.lock();
-	_client->addSubmission(wd);
-	_clientMutex.unlock();
 }
 
 bool WorkManager::getWork(WorkData &wd) {
@@ -48,12 +50,10 @@ bool WorkManager::getWork(WorkData &wd) {
 	return wd.height != 0;
 }
 
-void WorkManager::minerThread() {
-	WorkData wd;
-	while (true) {
-		if (!getWork(wd)) usleep(1000*_workRefresh/2);
-		else _miner->process(wd);
-	}
+void WorkManager::submitWork(const WorkData &wd) {
+	_clientMutex.lock();
+	_client->addSubmission(wd);
+	_clientMutex.unlock();
 }
 
 void WorkManager::manage() {
@@ -106,11 +106,9 @@ void WorkManager::manage() {
 						_stats.setMiningType(_options.mode());
 						_stats.loadTuplesCounts(_options.tupleCountsFile());
 						_stats.startTimer();
-						_stats.updateHeight(_client->workData().height - 1);
 						std::cout << "-----------------------------------------------------------" << std::endl;
 						const uint32_t startHeight(_client->workData().height);
 						std::cout << "[0000:00:00] Started mining at block " << startHeight;
-						_stats.initHeight(startHeight);
 						_miner->start();
 					}
 					

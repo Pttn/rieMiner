@@ -12,7 +12,8 @@
 
 class WorkManager;
 
-struct BlockHeader { // Total 1024 bits/128 bytes (256 hex chars)
+// Blockheader structure (with nOffset and padding), total 1024 bits/128 bytes (256 hex chars)
+struct BlockHeader {
 	uint32_t version;
 	uint8_t  previousblockhash[32]; // 256 bits
 	uint8_t  merkleRoot[32];        // 256 bits
@@ -25,14 +26,15 @@ struct BlockHeader { // Total 1024 bits/128 bytes (256 hex chars)
 		version = 0;
 		bits = 0;
 		curtime = 0;
-		for (uint8_t i(0) ; i < 8 ; i++) {
+		for (uint8_t i(0) ; i < 32 ; i++) {
 			previousblockhash[i] = 0;
 			merkleRoot[i] = 0;
 			nOffset[i] = 0;
-			if (i < 4) remaining[i] = 0;
+			if (i < 16) remaining[i] = 0;
 		}
 	}
 	
+	// Gives the base prime encoded in the blockheader
 	mpz_class decodeSolution() const {
 		const std::string bhStr(binToHexStr(this, 112));
 		const uint32_t diff(getCompact(invEnd32(strtol(bhStr.substr(136, 8).c_str(), NULL, 16))));
@@ -77,22 +79,22 @@ struct WorkData {
 	}
 };
 
+// Abstract class with protocol independent member variables and functions
 // Communicates with the server to get, parse, and submit mining work
-// Absctract class with protocol independent member variables and functions
 class Client {
 	protected:
 	bool _inited, _connected;
 	CURL *_curl;
 	std::mutex _submitMutex;
 	std::vector<WorkData> _pendingSubmissions;
-	
 	std::shared_ptr<WorkManager> _manager;
+	
+	virtual bool _getWork() = 0; // Get work (block data,...) from the sever, depending on the chosen protocol
 	
 	public:
 	Client() {_inited = false;}
 	Client(const std::shared_ptr<WorkManager>&);
 	virtual bool connect(); // Returns false on error or if already connected
-	virtual bool getWork() = 0; // Get work (block data,...) from the sever, depending on the chosen protocol
 	virtual void sendWork(const WorkData&) const = 0;  // Send work (share or block) to the sever, depending on the chosen protocol
 	void addSubmission(const WorkData& work) {
 		_submitMutex.lock();
@@ -101,27 +103,31 @@ class Client {
 	}
 	virtual bool process(); // Processes submissions and updates work
 	bool connected() const {return _connected;}
-	// The WorkManager will get the work ready to send to the miner using this
-	// In particular, will do the needed endianness changes or randomizations
+	// Using this, the WorkManager will get a ready-to-send work to the miner
+	// In particular, this will do the needed endianness changes or randomizations
 	virtual WorkData workData() const = 0; // If the returned work data has height 0, it is invalid
 };
 
+// Class for RPC-based communications (for example via the GetBlockTemplate protocol , or formerly via GetWork)
 class RPCClient : public Client {
+	std::string _getUserPass() const; // Returns "username:password", for sendRPCCall(...)
+	std::string _getHostPort() const; // Returns "http://host:port/", for sendRPCCall(...)
 	public:
 	using Client::Client;
-	std::string getUserPass() const;
-	std::string getHostPort() const;
-	json_t* sendRPCCall(const std::string&) const; // Send a RPC call to the server
+	json_t* sendRPCCall(const std::string&) const; // Send a RPC call to the server and returns the response
 };
 
+// For BenchMarking, emulates a client to allow similar conditions to actual mining by providing
+// dummy randomized work at the desired difficulty
 class BMClient : public Client {
 	BlockHeader _bh;
 	uint32_t _height;
 	
+	bool _getWork();
+	
 	public:
 	using Client::Client;
 	bool connect();
-	bool getWork();
 	void sendWork(const WorkData&) const;
 	WorkData workData() const;
 };

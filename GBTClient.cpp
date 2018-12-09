@@ -4,25 +4,6 @@
 #include "GBTClient.hpp"
 #include "WorkManager.hpp"
 
-bool GBTClient::connect() {
-	if (_connected) return false;
-	if (_inited) {
-		if (!getWork()) return false;
-		_gbtd = GetBlockTemplateData();
-		if (!addrToScriptPubKey(_manager->options().payoutAddress(), _gbtd.scriptPubKey)) {
-			std::cerr << "Invalid payout address! Using donation address instead." << std::endl;
-			addrToScriptPubKey("RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB", _gbtd.scriptPubKey);
-		}
-		_pendingSubmissions = std::vector<WorkData>();
-		_connected = true;
-		return true;
-	}
-	else {
-		std::cout << "Cannot connect because the client was not inited!" << std::endl;
-		return false;
-	}
-}
-
 void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const std::string &cbMsg) {
 	coinbase = std::vector<uint8_t>();
 	std::vector<uint8_t> scriptSig;
@@ -110,7 +91,7 @@ void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0);
 }
 
-bool GBTClient::getWork() {
+bool GBTClient::_getWork() {
 	const std::vector<std::string> rules(_manager->options().rules());
 	std::string req;
 	if (rules.size() == 0) req = "{\"method\": \"getblocktemplate\", \"params\": [], \"id\": 0}\n";
@@ -168,18 +149,37 @@ bool GBTClient::getWork() {
 	}
 	
 	// Notify when the network found a block
-	if (oldHeight != _gbtd.height) _manager->updateHeight(_gbtd.height - 1);
+	if (oldHeight != _gbtd.height) _manager->newHeightMessage(_gbtd.height - 1);
 	
 	json_decref(jsonGbt);
 	
 	return true;
 }
 
+bool GBTClient::connect() {
+	if (_connected) return false;
+	if (_inited) {
+		if (!_getWork()) return false;
+		_gbtd = GetBlockTemplateData();
+		if (!addrToScriptPubKey(_manager->options().payoutAddress(), _gbtd.scriptPubKey)) {
+			std::cerr << "Invalid payout address! Using donation address instead." << std::endl;
+			addrToScriptPubKey("RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB", _gbtd.scriptPubKey);
+		}
+		_pendingSubmissions = std::vector<WorkData>();
+		_connected = true;
+		return true;
+	}
+	else {
+		std::cout << "Cannot connect because the client was not inited!" << std::endl;
+		return false;
+	}
+}
+
 void GBTClient::sendWork(const WorkData &work) const {
 	std::ostringstream oss;
 	std::string req;
 	
-	oss << "{\"method\": \"submitblock\", \"params\": [\"" << binToHexStr(&work.bh, (32 + 256 + 256 + 32 + 64 + 256)/8);
+	oss << "{\"method\": \"submitblock\", \"params\": [\"" << binToHexStr(&work.bh, 112);
 	// Using the Variable Length Integer format
 	if (work.txCount < 0xFD)
 		oss << binToHexStr((uint8_t*) &work.txCount, 1);
