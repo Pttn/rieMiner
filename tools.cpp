@@ -87,7 +87,7 @@ static std::string btc58Togmp58(const std::string &btc58Str) {
 
 static std::vector<uint8_t> b58StrToV8(const std::string &btc58Str) {
 	mpz_class data(btc58Togmp58(btc58Str).c_str(), 58);
-	uint64_t size((mpz_sizeinbase(data.get_mpz_t(), 2) + 7)/8);
+	size_t size((mpz_sizeinbase(data.get_mpz_t(), 2) + 7)/8);
 	std::vector<uint8_t> v8(size);
 	mpz_export(&v8[0], &size, 1, 1, 0, 0, data.get_mpz_t());
 	return v8;
