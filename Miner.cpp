@@ -22,14 +22,6 @@ void Miner::init() {
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, MAX_SIEVE_WORKERS);
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, int(_parameters.primorialOffsets.size()));
 	std::cout << "Sieve Workers = " << _parameters.sieveWorkers << std::endl;
-	std::cout << "Best SIMD instructions supported:";
-	if (_cpuInfo.hasAVX512()) std::cout << " AVX-512";
-	else if (_cpuInfo.hasAVX2()) std::cout << " AVX2";
-	else if (_cpuInfo.hasAVX()) std::cout << " AVX";
-	else std::cout << " AVX not suppported!";
-	if (_cpuInfo.isIntel()) std::cout << " (Intel)";
-	else std::cout << " (AMD or other)";
-	std::cout << std::endl;
 	_parameters.sieveBits = _manager->options().sieveBits();
 	_parameters.sieveSize = 1 << _parameters.sieveBits;
 	_parameters.sieveWords = _parameters.sieveSize/64;
@@ -331,57 +323,6 @@ void Miner::_processSieve(uint8_t *sieve, uint32_t* offsets, uint64_t start_i, u
 	_termPending(sieve, pending);
 }
 
-void Miner::_processSieve6(uint8_t *sieve, uint32_t* offsets, uint64_t start_i, uint64_t end_i) {
-	assert(_parameters.primeTupleOffset.size() == 6);
-	uint32_t pending[PENDING_SIZE];
-	uint64_t pending_pos(0);
-	_initPending(pending);
-
-	xmmreg_t offsetmax;
-	offsetmax.m128 = _mm_set1_epi32(_parameters.sieveSize);
-	
-	assert((start_i & 1) == 0);
-	assert((end_i & 1) == 0);
-
-	for (uint64_t i(start_i) ; i < end_i ; i += 2) {
-		xmmreg_t p1, p2, p3;
-		xmmreg_t offset1, offset2, offset3, nextIncr1, nextIncr2, nextIncr3;
-		xmmreg_t cmpres1, cmpres2, cmpres3;
-		p1.m128 = _mm_set1_epi32(_parameters.primes[i]);
-		p3.m128 = _mm_set1_epi32(_parameters.primes[i+1]);
-		p2.m128 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(p1.m128), _mm_castsi128_ps(p3.m128), _MM_SHUFFLE(0, 0, 0, 0)));
-		offset1.m128 = _mm_load_si128((__m128i const*) &offsets[i*6 + 0]);
-		offset2.m128 = _mm_load_si128((__m128i const*) &offsets[i*6 + 4]);
-		offset3.m128 = _mm_load_si128((__m128i const*) &offsets[i*6 + 8]);
-		while (true) {
-			cmpres1.m128 = _mm_cmpgt_epi32(offsetmax.m128, offset1.m128);
-			cmpres2.m128 = _mm_cmpgt_epi32(offsetmax.m128, offset2.m128);
-			cmpres3.m128 = _mm_cmpgt_epi32(offsetmax.m128, offset3.m128);
-			const int mask1 = _mm_movemask_epi8(cmpres1.m128);
-			const int mask2 = _mm_movemask_epi8(cmpres2.m128);
-			const int mask3 = _mm_movemask_epi8(cmpres3.m128);
-			if ((mask1 == 0) && (mask2 == 0) && (mask3 == 0)) break;
-			_addRegToPending(sieve, pending, pending_pos, offset1, mask1);
-			_addRegToPending(sieve, pending, pending_pos, offset2, mask2);
-			_addRegToPending(sieve, pending, pending_pos, offset3, mask3);
-			nextIncr1.m128 = _mm_and_si128(cmpres1.m128, p1.m128);
-			nextIncr2.m128 = _mm_and_si128(cmpres2.m128, p2.m128);
-			nextIncr3.m128 = _mm_and_si128(cmpres3.m128, p3.m128);
-			offset1.m128 = _mm_add_epi32(offset1.m128, nextIncr1.m128);
-			offset2.m128 = _mm_add_epi32(offset2.m128, nextIncr2.m128);
-			offset3.m128 = _mm_add_epi32(offset3.m128, nextIncr3.m128);
-		}
-		offset1.m128 = _mm_sub_epi32(offset1.m128, offsetmax.m128);
-		offset2.m128 = _mm_sub_epi32(offset2.m128, offsetmax.m128);
-		offset3.m128 = _mm_sub_epi32(offset3.m128, offsetmax.m128);
-		_mm_store_si128((__m128i*)&offsets[i*6 + 0], offset1.m128);
-		_mm_store_si128((__m128i*)&offsets[i*6 + 4], offset2.m128);
-		_mm_store_si128((__m128i*)&offsets[i*6 + 8], offset3.m128);
-	}
-
-	_termPending(sieve, pending);
-}
-
 void Miner::_runSieve(SieveInstance& sieve, uint32_t workDataIndex) {
 	std::unique_lock<std::mutex> modLock(sieve.modLock, std::defer_lock);
 	for (uint64_t loop(0) ; loop < _parameters.maxIter ; loop++) {
@@ -406,10 +347,7 @@ void Miner::_runSieve(SieveInstance& sieve, uint32_t workDataIndex) {
 		}
 
 		// Main sieve
-		if (tupleSize == 6)
-			_processSieve6(sieve.sieve, sieve.offsets, start_i, _sparseLimit);
-		else
-			_processSieve(sieve.sieve, sieve.offsets, start_i, _sparseLimit);
+		_processSieve(sieve.sieve, sieve.offsets, start_i, _sparseLimit);
 
 		// Must now have all segments populated.
 		if (loop == 0) modLock.lock();

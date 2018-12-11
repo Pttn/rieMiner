@@ -14,7 +14,6 @@ struct WorkData;
 union xmmreg_t {
 	uint32_t v[4];
 	uint64_t v64[2];
-	__m128i m128;
 };
 
 #define PENDING_SIZE 16
@@ -91,7 +90,6 @@ class Miner {
 	bool _inited, _running;
 	volatile uint32_t _currentHeight;
 	MinerParameters _parameters;
-	CpuID _cpuInfo;
 	
 	tsQueue<primeTestWork, 1024> _modWorkQueue;
 	tsQueue<primeTestWork, 4096> _verifyWorkQueue;
@@ -146,7 +144,6 @@ class Miner {
 	void _putOffsetsInSegments(SieveInstance& sieve, uint64_t *offsets, uint64_t* counts, int n_offsets);
 	void _updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t end_i);
 	void _processSieve(uint8_t *sieve, uint32_t* offsets, uint64_t start_i, uint64_t end_i);
-	void _processSieve6(uint8_t *sieve, uint32_t* offsets, uint64_t start_i, uint64_t end_i);
 	void _runSieve(SieveInstance& sieve, uint32_t workDataIndex);
 	void _verifyThread();
 	void _getTargetFromBlock(mpz_t z_target, const WorkData& block);
