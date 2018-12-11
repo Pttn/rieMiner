@@ -4,14 +4,12 @@
 
 #include "Miner.hpp"
 #include "external/gmp_util.h"
-#include "ispc/fermat.h"
 
 thread_local bool isMaster(false);
 thread_local uint64_t** offsetStack(NULL);
 thread_local uint64_t** offsetCount(NULL);
 
 #define MAX_SIEVE_WORKERS 16
-#define NUM_PRIMES_TO_2P32 203280222
 #define	zeroesBeforeHashInPrime	8
 
 extern "C" {
@@ -239,16 +237,6 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 	// On Windows, caching these thread_local pointers on the stack makes a noticeable perf difference.
 	uint64_t **offsets(offsetStack), **counts(offsetCount);
 	const uint64_t precompLimit(_parameters.modPrecompute.size());
-
-	uint64_t avxLimit(0);
-	const uint64_t avxWidth(_cpuInfo.hasAVX2() ? 8 : 4);
-	if (_cpuInfo.hasAVX()) {
-		avxLimit = NUM_PRIMES_TO_2P32 - avxWidth;
-		avxLimit -= (avxLimit - start_i) & (avxWidth - 1);  // Must be enough primes in range to use AVX
-	}
-
-	uint64_t nextRemainder[8];
-	uint64_t nextRemainderIdx(8);
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
 		const uint64_t p(_parameters.primes[i]);
 
@@ -262,29 +250,6 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		uint64_t index, cnt(0), ps(0);
 		if (i < precompLimit) {
 			bool haveRemainder(false);
-			if (nextRemainderIdx < avxWidth) {
-				index = nextRemainder[nextRemainderIdx++];
-				cnt = __builtin_clzll(p);
-				ps = p << cnt;
-				haveRemainder = true;
-			}
-			else if (i < avxLimit) {
-				cnt = __builtin_clz((uint32_t) p);
-				if (__builtin_clz((uint32_t) _parameters.primes[i + avxWidth - 1]) == cnt) {
-					uint32_t ps32[8];
-					for (uint64_t j(0) ; j < avxWidth; j++) {
-						ps32[j] = (uint32_t) _parameters.primes[i + j] << cnt;
-						nextRemainder[j] = _parameters.inverts[i + j];
-					}
-					if (_cpuInfo.hasAVX2()) rie_mod_1s_2p_8times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
-					else rie_mod_1s_2p_4times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
-					haveRemainder = true;
-					index = nextRemainder[0];
-					nextRemainderIdx = 1;
-					cnt += 32;
-					ps = (uint64_t) ps32[0] << 32;
-				}
-			}
 			
 			if (!haveRemainder) {
 				cnt = __builtin_clzll(p);
@@ -559,28 +524,6 @@ void Miner::_runSieve(SieveInstance& sieve, uint32_t workDataIndex) {
 	}
 }
 
-bool Miner::_testPrimesIspc(uint32_t indexes[WORK_INDEXES], uint32_t is_prime[WORK_INDEXES], mpz_t z_ploop, mpz_t z_tmp) {
-	uint32_t M[WORK_INDEXES * MAX_N_SIZE], bits(0), N_Size;
-	uint32_t *mp(&M[0]);
-	for (uint32_t i(0); i < WORK_INDEXES; ++i) {
-		mpz_mul_ui(z_tmp, _primorial, indexes[i]);
-		mpz_add(z_tmp, z_tmp, z_ploop);
-
-		if (bits == 0) {
-			bits = mpz_sizeinbase(z_tmp, 2);
-			N_Size = (bits >> 5) + ((bits & 0x1f) > 0);
-			if (N_Size > MAX_N_SIZE) return false;
-		}
-		else assert(bits == mpz_sizeinbase(z_tmp, 2));
-
-		memcpy(mp, z_tmp->_mp_d, N_Size * 4);
-		mp += N_Size;
-	}
-
-	fermatTest(N_Size, WORK_INDEXES, M, is_prime, _cpuInfo.hasAVX512());
-	return true;
-}
-
 void Miner::_verifyThread() {
 /* Check for a prime cluster. Uses the fermat test - jh's code noted that it is
 slightly faster. Could do an MR test as a follow-up, but the server can do this
@@ -622,27 +565,6 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 			mpz_add_ui(z_ploop, z_ploop, _primorialOffsetDiffToFirst[job.testWork.offsetId]);
 
 			bool firstTestDone(false);
-			if (_cpuInfo.hasAVX2() && _cpuInfo.isIntel() && job.testWork.n_indexes == WORK_INDEXES) {
-				uint32_t isPrime[WORK_INDEXES];
-				firstTestDone = _testPrimesIspc(job.testWork.indexes, isPrime, z_ploop, z_tmp);
-
-				if (firstTestDone) {
-					job.testWork.n_indexes = 0;
-					for (uint32_t i(0) ; i < WORK_INDEXES ; i++) {
-						DBG_VERIFY(({
-							mpz_mul_ui(z_tmp, _primorial, job.testWork.indexes[i]);
-							mpz_add(z_tmp, z_tmp, z_ploop);
-							mpz_sub_ui(z_ft_n, z_tmp, 1);
-							mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
-							if (mpz_cmp_ui(z_ft_r, 1) == 0) assert(isPrime[i]);
-							else assert(!isPrime[i]);
-						}));
-
-						if (isPrime[i])
-							job.testWork.indexes[job.testWork.n_indexes++] = job.testWork.indexes[i];
-					}
-				}
-			}
 
 			for (uint32_t idx(0) ; idx < job.testWork.n_indexes ; idx++) {
 				if (_currentHeight != _workData[job.workDataIndex].verifyBlock.height) break;
