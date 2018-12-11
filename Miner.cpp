@@ -12,13 +12,6 @@ thread_local uint64_t** offsetCount(NULL);
 #define MAX_SIEVE_WORKERS 16
 #define	zeroesBeforeHashInPrime	8
 
-extern "C" {
-	void rie_mod_1s_4p_cps(uint64_t *cps, uint64_t p);
-	mp_limb_t rie_mod_1s_4p(mp_srcptr ap, mp_size_t n, uint64_t ps, uint64_t cnt, uint64_t* cps);
-	mp_limb_t rie_mod_1s_2p_4times(mp_srcptr ap, mp_size_t n, uint32_t* ps, uint32_t cnt, uint64_t* cps, uint64_t* remainders);
-	mp_limb_t rie_mod_1s_2p_8times(mp_srcptr ap, mp_size_t n, uint32_t* ps, uint32_t cnt, uint64_t* cps, uint64_t* remainders);
-}
-
 void Miner::init() {
 	_parameters.threads = _manager->options().threads();
 	_parameters.primorialOffsets = _manager->options().primorialOffsets();
@@ -89,16 +82,13 @@ void Miner::init() {
 	for (uint64_t i(1) ; i < _parameters.primorialNumber ; i++)
 		mpz_mul_ui(_primorial, _primorial, _parameters.primes[i]);
 	
-	// Estimate memory usage, precomputation only works up to p = 2^37
+	// Estimate memory usage
 	const uint64_t primeMult(16 + 8*_parameters.sieveWorkers),
-	               precompPrimes(std::min(_nPrimes, 5586502348UL)),
-	               memUsage(128ULL*1048576ULL + 650ULL*1048576ULL*_parameters.sieveWorkers + _nPrimes*primeMult + precompPrimes*8);
+	               memUsage(128ULL*1048576ULL + 650ULL*1048576ULL*_parameters.sieveWorkers + _nPrimes*primeMult);
 	
 	std::cout << "Estimated memory usage: " << ((float) memUsage)/1048576. << " MiB" << std::endl;
 	std::cout << "Reduce prime table limit to lower this, if needed." << std::endl;
-	std::cout << "Precomputing division data..." << std::endl;
 	_parameters.inverts.resize(_nPrimes);
-	_parameters.modPrecompute.resize(precompPrimes);
 	
 	_startingPrimeIndex = _parameters.primorialNumber;
 	const uint64_t blockSize((_nPrimes - _startingPrimeIndex + _parameters.threads - 1)/_parameters.threads);
@@ -113,8 +103,6 @@ void Miner::init() {
 				mpz_set_ui(z_p, _parameters.primes[i]);
 				mpz_invert(z_tmp, _primorial, z_p);
 				_parameters.inverts[i] = mpz_get_ui(z_tmp);
-				if (i < precompPrimes)
-					rie_mod_1s_4p_cps(&_parameters.modPrecompute[i], _parameters.primes[i]);
 			}
 			mpz_clear(z_p);
 			mpz_clear(z_tmp);
@@ -236,7 +224,6 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 
 	// On Windows, caching these thread_local pointers on the stack makes a noticeable perf difference.
 	uint64_t **offsets(offsetStack), **counts(offsetCount);
-	const uint64_t precompLimit(_parameters.modPrecompute.size());
 	for (uint64_t i(start_i) ; i < end_i ; i++) {
 		const uint64_t p(_parameters.primes[i]);
 
@@ -245,39 +232,11 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 
 		uint64_t invert[4];
 		invert[0] = _parameters.inverts[i];
-
-		// Compute the index, using precomputation speed up if available.
-		uint64_t index, cnt(0), ps(0);
-		if (i < precompLimit) {
-			bool haveRemainder(false);
-			
-			if (!haveRemainder) {
-				cnt = __builtin_clzll(p);
-				ps = p << cnt;
-				const uint64_t remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, cnt, &_parameters.modPrecompute[i]));
-				DBG_VERIFY(if (remainder >> cnt != mpz_tdiv_ui(tar, p)) {std::cerr << "Remainder check fail " << (remainder >> cnt) << " != " << mpz_tdiv_ui(tar, p) << std::endl; abort();});
-
-				const uint64_t pa(ps - remainder);
-				uint64_t r, nh, nl;
-				umul_ppmm(nh, nl, pa, invert[0]);
-				udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i]);
-				index = r >> cnt;
-				DBG_VERIFY(if (p < 0x100000000ull && (r >> cnt) != ((pa >> cnt)*invert[0]) % p) {std::cerr << "Remainder check fail" << std::endl; abort();});
-			}
-			DBG_VERIFY(({
-				const uint64_t remainder(mpz_tdiv_ui(tar, p)), pa(p - remainder);
-				uint64_t q, nh, nl, indexCheck;
-				umul_ppmm(nh, nl, pa, invert[0]);
-				udiv_qrnnd(q, indexCheck, nh, nl, p);
-				if (index != indexCheck) {std::cerr << "Index check fail, p = " << p << ", i = " << i << ", start_i = " << start_i << std::endl; abort();}
-			}));
-		}
-		else {
-			const uint64_t remainder(mpz_tdiv_ui(tar, p)), pa(p - remainder);
-			uint64_t q, nh, nl;
-			umul_ppmm(nh, nl, pa, invert[0]);
-			udiv_qrnnd(q, index, nh, nl, p);
-		}
+		
+		const uint64_t remainder(mpz_tdiv_ui(tar, p)), pa(p - remainder);
+		uint64_t index, q, nh, nl;
+		umul_ppmm(nh, nl, pa, invert[0]);
+		udiv_qrnnd(q, index, nh, nl, p);
 
 		invert[1] = (invert[0] << 1);
 		if (invert[1] >= p) invert[1] -= p;
@@ -326,19 +285,9 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 
 		uint64_t r;
 #define recomputeRemainder(j) { \
-			if (i < precompLimit && _primorialOffsetDiff[j - 1] < p) { \
-				uint64_t nh, nl; \
-				uint64_t os(_primorialOffsetDiff[j - 1] << cnt); \
-				umul_ppmm(nh, nl, os, invert[0]); \
-				udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i]); \
-				r >>= cnt; \
-				/* if (r != (_primorialOffsetDiff[j-1]*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); } */ \
-			} \
-			else { \
-				uint64_t q, nh, nl; \
-				umul_ppmm(nh, nl, _primorialOffsetDiff[j - 1], invert[0]); \
-				udiv_qrnnd(q, r, nh, nl, p); \
-			} \
+			uint64_t q, nh, nl; \
+			umul_ppmm(nh, nl, _primorialOffsetDiff[j - 1], invert[0]); \
+			udiv_qrnnd(q, r, nh, nl, p); \
 		}
 		recomputeRemainder(1);
 		if (index < r) index += p;

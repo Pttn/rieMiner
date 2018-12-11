@@ -30,7 +30,7 @@ struct MinerParameters {
 	bool solo;
 	int sieveWorkers;
 	uint64_t sieveBits, sieveSize, sieveWords, maxIncrements, maxIter, denseLimit;
-	std::vector<uint64_t> primes, inverts, modPrecompute, primeTupleOffset, primorialOffsets;
+	std::vector<uint64_t> primes, inverts, primeTupleOffset, primorialOffsets;
 	
 	MinerParameters() {
 		primorialNumber  = 40;
