@@ -3,7 +3,6 @@
 #include "Stats.hpp"
 
 Stats::Stats(uint8_t tupleLength) {
-	_totalTuples = std::vector<std::vector<uint64_t>>();
 	for (uint8_t i(0) ; i <= tupleLength ; i++) {
 		_tuples.push_back(0);
 		_tuplesSinceLastDiff.push_back(0);
@@ -13,7 +12,6 @@ Stats::Stats(uint8_t tupleLength) {
 	_rejectedShares = 0;
 	_lastDiffChangeTp = std::chrono::system_clock::now();
 	_solo = true;
-	_saveTuplesCounts = false;
 }
 
 void Stats::startTimer() {
@@ -33,30 +31,11 @@ void Stats::newHeightMessage(const uint32_t height) {
 	}
 }
 
-void Stats::updateTotalTuplesCounts() {
-	bool found(false);
-	for (std::vector<std::vector<uint64_t>>::size_type i(0) ; i < _totalTuples.size() ; i++) {
-		if (_totalTuples[i][0] == _difficulty) {
-			found = true;
-			for (std::vector<uint64_t>::size_type j(1) ; j < _totalTuples[i].size() ; j++) {
-				_totalTuples[i][j] += _tuplesSinceLastDiff[j];
-				_tuplesSinceLastDiff[j] = 0;
-			}
-		}
-	}
-	if (!found && _inited()) {
-		_totalTuples.push_back(_tuplesSinceLastDiff);
-		for (std::vector<uint64_t>::size_type i(0) ; i < _tuplesSinceLastDiff.size() ; i++)
-			_tuplesSinceLastDiff[i] = 0;
-		_totalTuples[_totalTuples.size() - 1][0] = _difficulty;
-	}
-	std::sort(_totalTuples.begin(), _totalTuples.end(), _tuplesDiffSortComp);
-}
-
 void Stats::updateDifficulty(const uint32_t newDifficulty, const uint32_t height) {
 	if (_difficulty != newDifficulty) {
 		printTuplesStats();
-		updateTotalTuplesCounts();
+		for (std::vector<uint64_t>::size_type i(0) ; i < _tuplesSinceLastDiff.size() ; i++)
+			_tuplesSinceLastDiff[i] = 0;
 		_difficulty = newDifficulty;
 		_heightAtDiffChange = height;
 		_lastDiffChangeTp = std::chrono::system_clock::now();
@@ -74,8 +53,9 @@ void Stats::printStats() const {
 	if (elapsedSecs > 1 && timeSince(_miningStartTp) > 1) {
 		printTime();
 		if (_solo) {
-			std::cout << " (1-3t/s) = (" << FIXED(1) << _tuplesSinceLastDiff[1]/elapsedSecs << " " << FIXED(2) << _tuplesSinceLastDiff[2]/elapsedSecs << " " << FIXED(3) << _tuplesSinceLastDiff[3]/elapsedSecs << ") ; ";
-			std::cout << "(2-" << _tuples.size() - 1 << "t) = (";
+			std::cout << " " << FIXED(2) << _tuplesSinceLastDiff[1]/elapsedSecs << " pps";
+			if (_tuplesSinceLastDiff[2] > 0) std::cout << ", r " << ((double) _tuplesSinceLastDiff[1])/((double) _tuplesSinceLastDiff[2]);
+			std::cout << " ; (2-" << _tuples.size() - 1 << "t) = (";
 			for (uint32_t i(2) ; i < _tuples.size() ; i++) {
 				std::cout << _tuples[i];
 				if (i != _tuples.size() - 1) std::cout << " ";
@@ -147,64 +127,5 @@ void Stats::printBenchmarkResults() const {
 		             s1(((double) _tuplesSinceLastDiff[1])/elapsedSecs),
 		             bpd(86400.*s1/std::pow(r12, _tuples.size() - 2));
 		std::cout << "BENCHMARK RESULTS: " << FIXED(6) << s1 << " primes/s with ratio " << r12 << " -> " << bpd << " block(s)/day" << std::endl;
-	}
-}
-
-void Stats::loadTuplesCounts(const std::string &tcFilename) {
-	if (tcFilename != "None" && _solo) {
-		std::ifstream tcfile(tcFilename, std::ios::in);
-		std::cout << "Opening tuples counts file " << tcFilename << "..." << std::endl;
-		if (tcfile) {
-			std::cout << "Success! Loading data..." << std::endl;
-			_saveTuplesCounts = true;
-			std::string lineStr;
-			while (std::getline(tcfile, lineStr)) {
-				std::stringstream line(lineStr);
-				std::vector<uint64_t> tupleCount;
-				uint64_t tmp;
-				if (!(line >> tmp))
-					std::cerr << "Unable to read the tuples count difficulty :|" << std::endl;
-				else {
-					tupleCount.push_back(tmp);
-					bool ok(true);
-					for (uint16_t i(1) ; i < _tuples.size() ; i++) {
-						if (!(line >> tmp)) {
-							std::cerr << "Unable to read the " << i << "-tuples count for difficulty " << tupleCount[0] << " :|" << std::endl;
-							ok = false;
-							break;
-						}
-						else tupleCount.push_back(tmp);
-					}
-					if (ok) _totalTuples.push_back(tupleCount);
-				}
-			}
-		}
-		else {
-			std::cout << "Not found or unreadable, creating... ";
-			std::ofstream tcFile2(tcFilename);
-			if (tcFile2) {
-				std::cout << "Done!" << std::endl;
-				_saveTuplesCounts = true;
-			}
-			else std::cerr << "Failure :|" << std::endl;
-		}
-	}
-}
-
-void Stats::saveTuplesCounts(const std::string &tcFilename) {
-	if (_saveTuplesCounts && _inited()) {
-		updateTotalTuplesCounts();
-		std::ofstream tcfile(tcFilename, std::ofstream::out | std::ofstream::trunc);
-		if (tcfile) {
-			for (std::vector<std::vector<uint64_t>>::size_type i(0) ; i < _totalTuples.size() ; i++) {
-				for (std::vector<uint64_t>::size_type j(0) ; j < _totalTuples[i].size() ; j++) {
-					tcfile << _totalTuples[i][j];
-					if (j < _totalTuples[i].size() - 1) tcfile << " ";
-				}
-				tcfile << std::endl;
-			}
-			std::cout << "Tuples counts saved." << std::endl;
-		}
-		else std::cerr << "Unable to open or write to the tuples counts file :|" << std::endl;
 	}
 }

@@ -42,7 +42,6 @@ class WorkManager : public std::enable_shared_from_this<WorkManager> {
 	void incRejectedShares() {_stats.incRejectedShares();}
 	void newHeightMessage(const uint32_t height) {_stats.newHeightMessage(height);}
 	void updateDifficulty(const uint32_t newDifficulty, const uint32_t height) {_stats.updateDifficulty(newDifficulty, height);}
-	void saveTuplesCounts() {_stats.saveTuplesCounts(_options.tupleCountsFile());}
 };
 
 #endif

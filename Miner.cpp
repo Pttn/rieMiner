@@ -97,7 +97,7 @@ void Miner::init() {
 	               memUsage(128ULL*1048576ULL + 650ULL*1048576ULL*_parameters.sieveWorkers + _nPrimes*primeMult + precompPrimes*8);
 	
 	std::cout << "Estimated memory usage: " << ((float) memUsage)/1048576. << " MiB" << std::endl;
-	std::cout << "Reduce Sieve option value to lower this, if needed." << std::endl;
+	std::cout << "Reduce prime table limit to lower this, if needed." << std::endl;
 	std::cout << "Precomputing division data..." << std::endl;
 	_parameters.inverts.resize(_nPrimes);
 	_parameters.modPrecompute.resize(precompPrimes);
@@ -712,13 +712,9 @@ void Miner::_getTargetFromBlock(mpz_t z_target, const WorkData &block) {
 	
 	const uint64_t difficulty(mpz_sizeinbase(z_target, 2));
 	if (_manager->difficulty() != difficulty) {
-		bool save(true);
-		if (_manager->difficulty() == 1) {
+		if (_manager->difficulty() == 1)
 			std::cout << ", difficulty " << difficulty << std::endl;
-			save = false;
-		}
 		_manager->updateDifficulty(difficulty, block.height);
-		if (save) _manager->saveTuplesCounts();
 	}
 }
 

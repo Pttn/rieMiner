@@ -9,11 +9,10 @@
 // Contains stats data like: tuple counts, time elapsed since mining or latest difficulty change
 // Provides useful stats displaying features
 class Stats {
-	std::vector<std::vector<uint64_t>> _totalTuples;
 	std::vector<uint64_t> _tuples, _tuplesSinceLastDiff;
 	uint32_t _difficulty, _heightAtDiffChange, _rejectedShares;
 	std::chrono::time_point<std::chrono::system_clock> _miningStartTp, _lastDiffChangeTp;
-	bool _solo, _saveTuplesCounts;
+	bool _solo;
 	
 	bool _inited() const {return _difficulty != 1;}
 	static bool _tuplesDiffSortComp(const std::vector<uint64_t> &a, const std::vector<uint64_t> &b) {return a[0] < b[0];}
@@ -27,7 +26,6 @@ class Stats {
 	void incRejectedShares() {_rejectedShares++;}
 	
 	void newHeightMessage(const uint32_t);
-	void updateTotalTuplesCounts();
 	
 	uint32_t difficulty() const {return _difficulty;}
 	void updateDifficulty(const uint32_t, const uint32_t);
@@ -41,9 +39,6 @@ class Stats {
 	void printTuplesStats() const;
 	void printEstimatedTimeToBlock() const;
 	void printBenchmarkResults() const;
-	
-	void loadTuplesCounts(const std::string&);
-	void saveTuplesCounts(const std::string&);
 };
 
 #endif

@@ -65,7 +65,6 @@ void WorkManager::manage() {
 				if (timeSince(_stats.miningStartTp()) > _options.benchmarkTimeLimit() && _options.benchmarkTimeLimit() != 0) {
 					std::cout << timeSince(_stats.miningStartTp()) << " s elapsed, test finished. " << versionString << ", difficulty " << _options.benchmarkDifficulty() << ", PTL " << _options.primeTableLimit() << std::endl;
 					_stats.printTuplesStats();
-					_stats.saveTuplesCounts(_options.tupleCountsFile());
 					_exit(0);
 				}
 				if (_stats.tuplesCount()[2] >= _options.benchmark2tupleCountLimit() && _options.benchmark2tupleCountLimit() != 0) {
@@ -74,7 +73,6 @@ void WorkManager::manage() {
 					if (_options.benchmarkDifficulty() == 1600 && _options.primeTableLimit() == 2147483648 && _options.benchmark2tupleCountLimit() >= 50000 && _options.benchmarkTimeLimit() == 0)
 						std::cout << "VALID parameters for Standard Benchmark" << std::endl;
 					_stats.printTuplesStats();
-					_stats.saveTuplesCounts(_options.tupleCountsFile());
 					_exit(0);
 				}
 			}
@@ -95,7 +93,6 @@ void WorkManager::manage() {
 					std::cout << "Connection lost :|, reconnecting in 10 seconds..." << std::endl;
 					_miner->pause();
 					_stats.printTuplesStats();
-					_stats.saveTuplesCounts(_options.tupleCountsFile());
 					_clientMutex.unlock();
 					usleep(1000000*_waitReconnect);
 				}
@@ -104,7 +101,6 @@ void WorkManager::manage() {
 					if (!_miner->running() && _client->workData().height != 0) {
 						_stats = Stats(offsets().size());
 						_stats.setMiningType(_options.mode());
-						_stats.loadTuplesCounts(_options.tupleCountsFile());
 						_stats.startTimer();
 						std::cout << "-----------------------------------------------------------" << std::endl;
 						const uint32_t startHeight(_client->workData().height);

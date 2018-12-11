@@ -251,7 +251,6 @@ void Options::loadConf() {
 						std::cout << "Too short or invalid primorial offsets, ignoring." << std::endl;
 					else _primorialOffsets = primorialOffsets;
 				}
-				else if (key == "TupleCountsFile") _tupleCountsFile = value;
 				else if (key == "Rules") {
 					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
 					std::stringstream offsets(value);
@@ -341,7 +340,6 @@ void Options::loadConf() {
 		if (i != _primorialOffsets.size() - 1) std::cout << ", ";
 	}
 	std::cout << ")" << std::endl;
-	if (_tupleCountsFile != "None") std::cout << "Tuple counts file: " << _tupleCountsFile << std::endl;
 }
 
 void Options::setPayoutAddress(const std::string& address) {
@@ -375,7 +373,6 @@ void Options::setPayoutAddress(const std::string& address) {
 void signalHandler(int signum) {
 	std::cout << std::endl << "Signal " << signum << " received, terminating rieMiner." << std::endl;
 	manager->printTuplesStats();
-	manager->saveTuplesCounts();
 	_exit(0);
 }
 

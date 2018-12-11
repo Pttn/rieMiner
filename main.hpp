@@ -24,7 +24,7 @@ extern int DEBUG;
 enum AddressFormat {INVALID, P2PKH, P2SH, BECH32};
 
 class Options {
-	std::string _host, _username, _password, _mode, _payoutAddress, _secret, _tupleCountsFile;
+	std::string _host, _username, _password, _mode, _payoutAddress, _secret;
 	AddressFormat _payoutAddressFormat;
 	uint16_t _debug, _port, _threads, _sieveWorkers, _sieveBits, _refreshInterval, _tupleLengthMin;
 	uint32_t _benchmarkDifficulty, _benchmarkTimeLimit, _benchmark2tupleCountLimit;
@@ -60,7 +60,6 @@ class Options {
 		_primorialOffsets = {4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull,
 		                     7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull,
 		                     8145217177ull, 8145220537ull, 8145223897ull, 8145227257ull}; // Primorial Offsets
-		_tupleCountsFile = "None";
 		_rules = std::vector<std::string>();
 	}
 	
@@ -88,7 +87,6 @@ class Options {
 	std::vector<uint64_t> constellationType() const {return _constellationType;}
 	uint64_t primorialNumber() const {return _primorialNumber;}
 	std::vector<uint64_t> primorialOffsets() const {return _primorialOffsets;}
-	std::string tupleCountsFile() const {return _tupleCountsFile;}
 	std::vector<std::string> rules() const {return _rules;}
 };
 
