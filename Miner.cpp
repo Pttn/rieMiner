@@ -367,7 +367,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 				umul_ppmm(nh, nl, os, invert[0]); \
 				udiv_rnnd_preinv(r, nh, nl, ps, _parameters.modPrecompute[i]); \
 				r >>= cnt; \
-				/* if (r != (_primorialOffsetDiff[j-1]*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); } */ \
+				/* if (r != (_primorialOffsetDiff[j - 1]*invert[0]) % p) {  printf("Remainder check fail\n"); exit(-1); } */ \
 			} \
 			else { \
 				uint64_t q, nh, nl; \
@@ -381,17 +381,15 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		addToOffsets(1);
 
 		for (int j(2) ; j < _parameters.sieveWorkers ; j++) {
-			if (_primorialOffsetDiff[j - 1] != _primorialOffsetDiff[j - 2]) {
+			if (_primorialOffsetDiff[j - 1] != _primorialOffsetDiff[j - 2])
 				recomputeRemainder(j);
-			}
 			if (index < r) index += p;
 			index -= r;
 			addToOffsets(j);
 		}
 	}
 
-	if (end_i > _sparseLimit)
-	{
+	if (end_i > _sparseLimit) {
 		for (int j(0) ; j < _parameters.sieveWorkers ; j++) {
 			if (n_offsets[j] > 0) {
 				_putOffsetsInSegments(_sieves[j], offsets[j], counts[j], n_offsets[j]);
