@@ -3,7 +3,6 @@
 (c) 2018 Michael Bell/Rockhawk (assembly optimizations, improvements of work management between threads, and some more) (https://github.com/MichaelBell/) */
 
 #include "Miner.hpp"
-#include "external/gmp_util.h"
 
 thread_local bool isMaster(false);
 thread_local uint64_t** offsetStack(NULL);
@@ -234,9 +233,8 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		invert[0] = _parameters.inverts[i];
 		
 		const uint64_t remainder(mpz_tdiv_ui(tar, p)), pa(p - remainder);
-		uint64_t index, q, nh, nl;
-		umul_ppmm(nh, nl, pa, invert[0]);
-		udiv_qrnnd(q, index, nh, nl, p);
+		uint64_t index(pa*invert[0]);
+		index %= p;
 
 		invert[1] = (invert[0] << 1);
 		if (invert[1] >= p) invert[1] -= p;
@@ -284,11 +282,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 		if (_parameters.sieveWorkers == 1) continue;
 
 		uint64_t r;
-#define recomputeRemainder(j) { \
-			uint64_t q, nh, nl; \
-			umul_ppmm(nh, nl, _primorialOffsetDiff[j - 1], invert[0]); \
-			udiv_qrnnd(q, r, nh, nl, p); \
-		}
+#define recomputeRemainder(j) {r = (_primorialOffsetDiff[j - 1]*invert[0]) % p;}
 		recomputeRemainder(1);
 		if (index < r) index += p;
 		index -= r;
