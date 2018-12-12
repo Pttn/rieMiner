@@ -96,7 +96,9 @@ void Miner::init() {
 	               precompPrimes(std::min(_nPrimes, 5586502348UL)),
 	               memUsage(128ULL*1048576ULL + 650ULL*1048576ULL*_parameters.sieveWorkers + _nPrimes*primeMult + precompPrimes*8);
 	
-	std::cout << "Estimated memory usage: " << ((float) memUsage)/1048576. << " MiB" << std::endl;
+	std::cout << "Estimated memory usage: ";
+	if (memUsage < 1073741824) std::cout << "< 1024 MiB" << std::endl;
+	else std::cout << ((float) memUsage)/1048576. << " MiB" << std::endl;
 	std::cout << "Reduce prime table limit to lower this, if needed." << std::endl;
 	std::cout << "Precomputing division data..." << std::endl;
 	_parameters.inverts.resize(_nPrimes);
@@ -165,7 +167,7 @@ void Miner::init() {
 	}
 
 	try {
-		DBG(std::cout << "Allocating " << 6*4*(_primeTestStoreOffsetsSize + 1024) << " bytes for the offsets..." << std::endl;);
+		DBG(std::cout << "Allocating " << _parameters.primeTupleOffset.size()*4*(_primeTestStoreOffsetsSize + 1024) << " bytes for the offsets..." << std::endl;);
 		for (int i(0) ; i < _parameters.sieveWorkers ; i++)
 			_sieves[i].offsets = new uint32_t[(_primeTestStoreOffsetsSize + 1024)*_parameters.primeTupleOffset.size()];
 	}
