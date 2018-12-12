@@ -121,7 +121,7 @@ Then, follow the instructions for 64 bits systems. If you do not do this, the co
 You can finally run the newly created rieMiner executable using
 
 ```bash
-./rieMiner
+./rieMinerL
 ```
 
 If no "rieMiner.conf" next to the executable was found, you will be assisted to configure rieMiner. Answer to its questions to start mining. If there is a "rieMiner.conf" file next to the executable with incorrect information that was read, you can delete this to get the assistant.
