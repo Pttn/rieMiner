@@ -16,17 +16,20 @@ I provide a Profitability Calculator [here](https://ric.pttn.me/page.php?n=Profi
 
 ## Minimum requirements
 
-Only x64 systems with SSE are supported.
+In the Light branch, the minimum requirements are... very light.
 
 * Windows 7 or later, or recent enough Linux;
-* x64 CPU with SSE instruction set;
-* 1 GiB of RAM (the prime table limit must be manually set at a lower value in the options).
+* Virtually any 32 or 64 bits CPU;
+* 384 MiB of RAM (the prime table limit must be manually set at a lower value in the options).
 
-Recommended:
+A Pentium III @700 MHz with 384 MB of RAM will still be able to mine Testnet Blocks in minutes.
+
+Recommended (for actual mining):
 
 * Windows 10 or Debian 9;
 * Intel Core i7 6700 or better, or AMD Ryzen R5 1600 or better;
-* 8 GiB of RAM.
+* 8 GiB of RAM;
+* For x64 CPUs, You should use the optimized code instead (master branch) for better performance.
 
 ## Compile this program
 
@@ -96,6 +99,22 @@ Then, compile libcurl with make. We now need to replace the existing libcurl hea
 * Do the same with the file "libcurl.a" in the libs/.lib folder to replace the one in X:\path\to\msys64\mingw64\lib (make a backup if needed).
 
 Now, you should be able to compile rieMiner with make and produce a standalone executable.
+
+### For 32 bits computers
+
+First, go to the file main.hpp and change
+
+```
+#define BITS	64
+```
+
+to
+
+```
+#define BITS	32
+```
+
+Then, follow the instructions for 64 bits systems. If you do not do this, the compilation will work, but the blocks produced will be invalid.
 
 ## Run and configure this program
 
