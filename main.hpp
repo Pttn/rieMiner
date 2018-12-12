@@ -48,8 +48,8 @@ class Options {
 		_secret = "/rieMiner/";
 		_threads = 8;
 		_sieveWorkers = 0;
-		_primeTableLimit = 2147483648;
-		_sieveBits = 25;
+		_primeTableLimit = 536870912;
+		_sieveBits = 23;
 		_refreshInterval = 30;
 		_tupleLengthMin = 6;
 		_benchmarkDifficulty = 1600;

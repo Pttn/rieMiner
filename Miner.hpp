@@ -35,10 +35,10 @@ struct MinerParameters {
 		primorialNumber  = 40;
 		threads          = 8;
 		tupleLengthMin   = 6;
-		sieve            = 2147483648;
+		sieve            = 536870912;
 		sieveWorkers     = 2;
 		solo             = true;
-		sieveBits        = 25;
+		sieveBits        = 23;
 		sieveSize        = 1UL << sieveBits;
 		sieveWords       = sieveSize/64;
 		maxIncrements    = (1ULL << 29),
