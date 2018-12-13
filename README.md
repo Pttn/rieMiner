@@ -35,7 +35,7 @@ Recommended (for actual mining):
 
 ### In Debian/Ubuntu x64
 
-You can compile this C++ program with g++, as, m4 and make, install them if needed. Then, get if needed the following dependencies:
+You can compile this C++ program with g++ and make, install them if needed. Then, get if needed the following dependencies:
 
 * Jansson
 * cURL
@@ -45,7 +45,7 @@ You can compile this C++ program with g++, as, m4 and make, install them if need
 On a recent enough Debian or Ubuntu, you can easily install these by doing as root:
 
 ```bash
-apt install g++ make m4 git libjansson-dev libcurl4-openssl-dev libssl-dev libgmp-dev
+apt install g++ make git libjansson-dev libcurl4-openssl-dev libssl-dev libgmp-dev
 ```
 
 Then, just download the source files, go/cd to the directory, and do a simple make:
@@ -80,9 +80,9 @@ The produced executable will only run in the MSYS console, or if all the needed 
 First, edit the Makefile to add "-D CURL_STATICLIB" at the end of the CFLAGS line and "-static" just after the "LIBS =" in the first LIBS line. You might also want to change the march argument to support other/olders processors.
 
 ```
-CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native -fno-pie -no-pie -D CURL_STATICLIB
+CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native -D CURL_STATICLIB
 [...]
-LIBS   = -static -pthread -ljansson -lcurl -lcrypto -lgmpxx -lgmp -lws2_32 -Wl,--image-base -Wl,0x10000000
+LIBS   = -static -pthread -ljansson -lcurl -lcrypto -lgmpxx -lgmp -lws2_32
 ```
 
 Then, download the [latest official libcurl code](https://curl.haxx.se/download.html) on their website, under "Source Archives", and decompress the folder somewhere (for example, next to the rieMiner's one).

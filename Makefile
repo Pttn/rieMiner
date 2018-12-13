@@ -2,13 +2,13 @@ CXX    = g++
 M4     = m4
 AS     = as
 SED    = sed
-CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native -fno-pie -no-pie
+CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native
 
 msys_version := $(if $(findstring Msys, $(shell uname -o)),$(word 1, $(subst ., ,$(shell uname -r))),0)
 ifneq ($(msys_version), 0)
-LIBS   = -pthread -ljansson -lcurl -lcrypto -lgmpxx -lgmp -lws2_32 -Wl,--image-base -Wl,0x10000000
+LIBS   = -pthread -ljansson -lcurl -lcrypto -lgmpxx -lgmp -lws2_32
 else
-LIBS   = -pthread -ljansson -lcurl -lcrypto -Wl,-Bstatic -lgmpxx -lgmp -Wl,-Bdynamic
+LIBS   = -pthread -ljansson -lcurl -lcrypto -lgmpxx -lgmp
 endif
 
 all: rieMinerL
