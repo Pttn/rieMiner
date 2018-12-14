@@ -13,11 +13,12 @@ endif
 
 all: rieMinerL
 
-release: CFLAGS += -DNDEBUG
-release: rieMinerL
-
 debug: CFLAGS += -g
 debug: rieMinerL
+
+static: CFLAGS += -D CURL_STATICLIB -I incs/
+static: LIBS   := -static -L libs/ $(LIBS)
+static: rieMinerL
 
 rieMinerL: main.o Miner.o StratumClient.o GBTClient.o Client.o WorkManager.cpp Stats.cpp tools.o
 	$(CXX) $(CFLAGS) -o rieMinerL $^ $(LIBS)
