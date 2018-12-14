@@ -377,7 +377,10 @@ void signalHandler(int signum) {
 }
 
 int main(int argc, char** argv) {
-#ifndef _WIN32
+#ifdef _WIN32
+	// Set lower priority, else the whole Windows system would lag a lot if using all threads
+	SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
+#else
 	struct sigaction SIGINTHandler;
 	SIGINTHandler.sa_handler = signalHandler;
 	sigemptyset(&SIGINTHandler.sa_mask);
