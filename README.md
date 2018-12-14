@@ -72,30 +72,24 @@ Clone rieMiner with git like for Linux, go to its directory with cd, and compile
 
 #### Static building
 
-The produced executable will only run in the MSYS console, or if all the needed DLLs are next to the executable. To obtain a standalone executable, you need to link statically the dependencies. Normally, this is done just by adding "-static" at the LIBS line in the Makefile. Unfortunately, libcurl will give you a hard time, and you need to compile it yourself.
+The produced executable will only run in the MSYS console, or if all the needed DLLs are next to the executable. To obtain a standalone executable, you need to link statically the dependencies. Unfortunately, libcurl will give you a hard time, and you need to compile it yourself.
 
-First, edit the Makefile to add "-D CURL_STATICLIB" at the end of the CFLAGS line and "-static" just after the "LIBS =" in the first LIBS line. You might also want to change the march argument to support other/olders processors.
+First, download the [latest official libcurl code](https://curl.haxx.se/download.html) on their website, under "Source Archives", and decompress the folder somewhere (for example, next to the rieMiner's one).
 
-```
-CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native -fno-pie -no-pie -D CURL_STATICLIB
-[...]
-LIBS   = -static -pthread -ljansson -lcurl -lcrypto -lgmpxx -lgmp -lws2_32 -Wl,--image-base -Wl,0x10000000
-```
-
-Then, download the [latest official libcurl code](https://curl.haxx.se/download.html) on their website, under "Source Archives", and decompress the folder somewhere (for example, next to the rieMiner's one).
-
-In the MSYS MinGW-w64 console, cd to the libcurl directory. We will now configure it to not build unused features:
+In the MSYS MinGW-w64 console, cd to the libcurl directory. We will now configure it to not build unused features, then compile it:
 
 ```bash
 ./configure --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-ldap --disable-ldaps --disable-pop3 --disable-rtsp --disable-smtp --disable-telnet --disable-tftp --without-ssl --without-libssh2 --without-zlib --without-brotli --without-libidn2  --without-ldap  --without-ldaps --without-rtsp --without-psl --without-librtmp --without-libpsl --without-nghttp2 --disable-shared --disable-libcurl-option
+make
 ```
 
-Then, compile libcurl with make. We now need to replace the existing libcurl headers and libs provided by MinGW:
+Once done:
 
-* In the downloaded libcurl directory, go to the include directory and copy the "curl" folder to replace the one in X:\path\to\msys64\mingw64\include (make a backup if needed);
-* Do the same with the file "libcurl.a" in the libs/.lib folder to replace the one in X:\path\to\msys64\mingw64\lib (make a backup if needed).
+* Create "incs" and "libs" folders in the rieMiner directory;
+* In the downloaded libcurl directory, go to the include directory and copy the "curl" folder to the "incs" folder;
+* Do the same with the file "libcurl.a" from the libs/.lib folder to the rieMiner's "libs" folder.
 
-Now, you should be able to compile rieMiner with make and produce a standalone executable.
+Now, you should be able to compile rieMiner with "make static" and produce a standalone executable.
 
 ## Run and configure this program
 
