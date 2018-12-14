@@ -377,7 +377,10 @@ void signalHandler(int signum) {
 }
 
 int main(int argc, char** argv) {
-#ifndef _WIN32
+#ifdef _WIN32
+	// Set lower priority, else the whole Windows system would lag a lot if using all threads
+	SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
+#else
 	struct sigaction SIGINTHandler;
 	SIGINTHandler.sa_handler = signalHandler;
 	sigemptyset(&SIGINTHandler.sa_mask);
@@ -386,7 +389,6 @@ int main(int argc, char** argv) {
 #endif
 	
 	std::cout << versionString << ", Riecoin miner by Pttn and contributors" << std::endl;
-	std::cout << "Assembly code by Michael Bell (Rockhawk)" << std::endl;
 	std::cout << "Project page: https://github.com/Pttn/rieMiner" << std::endl;
 	std::cout << "Go to project page or open README.md for usage information" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
