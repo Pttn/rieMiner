@@ -4,11 +4,11 @@ rieMiner is a Riecoin miner supporting both solo and pooled mining. It was origi
 
 Solo mining is done using the GetBlockTemplate protocol, while pooled mining is via the Stratum protocol. A benchmark mode is also proposed to compare more easily the performance between different computers.
 
-Direct link to the latest official [Windows x64 standalone executable](https://ric.pttn.me/file.php?d=rieMinerWin64).
+Direct links to the latest official [Windows x64](https://ric.pttn.me/file.php?d=rieMinerWin64) and [Win32](https://ric.pttn.me/file.php?d=rieMinerWin32) standalone executables. Binaries built on Debian 9 with almost complete static linking also available (these should run on fresh Debian and Ubuntu installations): [Deb64](https://ric.pttn.me/file.php?d=rieMinerDeb64) and [Deb32](https://ric.pttn.me/file.php?d=rieMinerDeb32). Also note that 32 bits builds are much slower.
 
-This README also serves as manual for rieMiner. I hope that this program will be useful for you! Happy mining!
+This README serves as manual for rieMiner, and you can also find a [PDF version](https://ric.pttn.me/file.php?d=rieMinerManual) (without build instructions). I hope that this program will be useful for you!
 
-The Riecoin community thanks you for your participation, you will be a contributor to the robustness of the Riecoin network.
+The Riecoin community thanks you for your participation, you will be a contributor to the robustness of the Riecoin network. Happy mining!
 
 ![rieMiner just found a block](https://ric.pttn.me/file.php?d=rieMiner)
 
@@ -37,10 +37,10 @@ Recommended (for actual mining):
 
 You can compile this C++ program with g++ and make, install them if needed. Then, get if needed the following dependencies:
 
-* Jansson
-* cURL
-* libSSL
-* GMP
+* [Jansson](http://www.digip.org/jansson/)
+* [cURL](https://curl.haxx.se/)
+* [libSSL](https://www.openssl.org/)
+* [GMP](https://gmplib.org/)
 
 On a recent enough Debian or Ubuntu, you can easily install these by doing as root:
 
@@ -48,30 +48,32 @@ On a recent enough Debian or Ubuntu, you can easily install these by doing as ro
 apt install g++ make git libjansson-dev libcurl4-openssl-dev libssl-dev libgmp-dev
 ```
 
-Then, just download the source files, go/cd to the directory, and do a simple make:
+Then, just download the source files, go/`cd` to the directory, and do a simple make:
 
 ```bash
 git clone https://github.com/Pttn/rieMiner.git
+git checkout Light
 cd rieMiner
 make
 ```
 
-For other Linux, executing equivalent commands (using pacman instead of apt,...) should work.
+For other Linux, executing equivalent commands (using `pacman` instead of `apt`,...) should work.
 
-If you get a warning after the compilation that there may be a conflict between libcrypto.so files, install libssl1.0-dev instead of libssl-dev.
+If you get a warning after the compilation that there may be a conflict between libcrypto.so files, install `libssl1.0-dev` instead of `libssl-dev`.
 
 ### In Windows x64
 
 You can compile rieMiner in Windows, and here is one way to do this. First, install [MSYS2](http://www.msys2.org/) (follow the instructions on the website), then enter in the MSYS **MinGW-w64** console, and install the tools and dependencies:
 
 ```bash
-pacman -S make
-pacman -S git
+pacman -S make git
 pacman -S mingw64/mingw-w64-x86_64-gcc
 pacman -S mingw64/mingw-w64-x86_64-curl
 ```
 
-Clone rieMiner with git like for Linux, go to its directory with cd, and compile with make.
+Note that you must install the `mingw64/mingw-w64-x86_64-...` packages and not just `gcc` or `curl`.
+
+Clone rieMiner with `git` like for Linux, go to its directory with `cd`, and compile with `make`.
 
 #### Static building
 
@@ -92,7 +94,7 @@ Once done:
 * In the downloaded libcurl directory, go to the include directory and copy the "curl" folder to the "incs" folder;
 * Do the same with the file "libcurl.a" from the libs/.lib folder to the rieMiner's "libs" folder.
 
-Now, you should be able to compile rieMiner with "make static" and produce a standalone executable.
+Now, you should be able to compile rieMiner with `make static` and produce a standalone executable.
 
 ### For 32 bits computers
 
@@ -108,7 +110,9 @@ to
 #define BITS	32
 ```
 
-Then, follow the instructions for 64 bits systems. If you do not do this, the compilation will work, but the blocks produced will be invalid.
+If you do not do this, the compilation will work, but the blocks produced will be invalid.
+
+Then, follow the instructions for 64 bits systems and adapt if needed (for example, in MSYS, the packages will be `mingw32/mingw-w64-i686-...`).
 
 ## Run and configure this program
 
@@ -163,6 +167,17 @@ TupleLengthMin = 4
 # For solo mining, add consensus rules in the GetBlockTemplate RPC call, each separated by a comma.
 # Useful for softforks, for example, to mine SegWit transactions, you would need the following line. Default: no rule
 # Rules = segwit
+
+# Other options
+# BenchmarkDifficulty = 800
+# BenchmarkTimeLimit = 0
+# Benchmark2tupleCountLimit = 100000
+# SieveBits = 23
+# SieveWorkers = 0
+# ConstellationType = 0, 4, 2, 4, 2, 4
+# PrimorialNumber = 40
+# PrimorialOffsets = 4209995887, 4209999247, 4210002607, 4210005967, 7452755407, 7452758767, 7452762127, 7452765487, 8145217177, 8145220537, 8145223897, 8145227257
+# Debug = 0
 ```
 
 It is also possible to use custom configuration file paths, examples:
@@ -212,7 +227,7 @@ Also see the constellationsGen tool in my rieTools repository (https://github.co
 
 ### Memory problems
 
-If you have memory errors, try to lower the PrimeTableLimit value in the configuration file.
+If you have memory errors (Unable to allocate... or Bad Allocs), try to lower the PrimeTableLimit value in the configuration file.
 
 ## Statistics
 
