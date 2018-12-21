@@ -654,6 +654,7 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				if (!firstTestDone) {
 					mpz_sub_ui(z_ft_n, z_tmp, 1);
 					mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
+					_manager->incTupleCount(tupleLength);
 					if (mpz_cmp_ui(z_ft_r, 1) != 0) continue;
 				}
 
