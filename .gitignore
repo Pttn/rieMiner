@@ -2,6 +2,8 @@
 *.o
 rieMiner
 rieMiner.exe
+rieMinerL
+rieMinerL.exe
 
 # Per user configuration
 rieMiner.conf
