@@ -235,31 +235,13 @@ rpcpassword=(password)
 rpcport=28332
 port=28333
 rpcallowip=127.0.0.1
-connect=(nodeip)
-...
-connect=(nodeip)
 server=1
 daemon=1
 ```
 
-The (nodeip) after connect are nodes' IP, you can find a list of the nodes connected the last 24 h here: https://chainz.cryptoid.info/ric/#!network. The wallet will connect to these IP to sync. The following always worked fine for me:
+If you feel the need, you can add more nodes manually with `connect=(nodeip)`, (nodeip) after connect being a node's IP. You can find a list of the nodes connected the last 24 h here: https://chainz.cryptoid.info/ric/#!network.
 
-```
-connect=nodes.riecoin-community.com
-﻿connect=5.9.39.9
-connect=37.59.143.10
-﻿connect=78.83.27.28
-connect=144.217.15.39
-connect=149.14.200.26
-connect=178.251.25.240
-connect=193.70.33.8
-connect=195.138.71.80
-connect=198.251.84.221
-connect=199.126.33.5
-connect=217.182.76.201
-```
-
-If you wish to mine from another computer, add another rpcallowip=ip.of.the.computer, or else the connection will be refused. Choose a username and a password and replace (username) and (password).
+If you wish to mine from another computer, add another `rpcallowip=ip.of.the.computer`, or else the connection will be refused. Choose a username and a password and replace (username) and (password).
 
 ### Work control
 
@@ -275,7 +257,7 @@ ERROR: CheckProofOfWork() : n+10 not prime
 
 Remember that the miner searches numbers n such that n, n + 2, n + 6, n + 10, n + 12 and n + 16 are prime, so if you set the TupleLengthMin option to for example 3, rieMiner will submit a n such that n, n + 2 and n + 6 are prime, but not necessarily the other numbers, so you can conclude that the wallet successfully decoded the submission here, and that everything works fine. If you see nothing or another error message, then something is wrong (possible example would be an unstable overclock)...
 
-Also watch regularly if the wallet is correctly syncing, especially if the message "Blockheight = ..." did not appear since a very long time (except if the network is mining the superblock). In Riecoin-Qt, this can be done by hovering the check at the lower right corner, and comparing the number with the latest block found in a Riecoin explorer. If something is wrong, try to change the nodes in riecoin.conf or check your connection.
+Also watch regularly if the wallet is correctly syncing, especially if the message `Blockheight = ...` did not appear since a very long time (except if the network is mining the superblock). In Riecoin-Qt, this can be done by hovering the check at the lower right corner, and comparing the number with the latest block found in a Riecoin explorer. If something is wrong, try to change the nodes in riecoin.conf or check your connection.
 
 ## Pooled mining specific information
 
@@ -286,15 +268,14 @@ Existing pools:
   * Port = 5000
   * Owner: [xpoolx](https://bitcointalk.org/index.php?action=profile;u=605189) - info@xpoolx.com 
   * They also support Solo mining via Stratum with a 5% fee
-* [RiePool](http://riepool.ovh/)
-  * Host = riepool.ovh
-  * Port = 8000
-  * Owner: [Simba84](https://bitcointalk.org/index.php?action=profile;u=349865) - inforiepool@gmail.com 
 * [uBlock.it](https://ublock.it/index.php)
   * Host = mine.ublock.it or mine.blockocean.com
   * Port = 5000
   * Owner: [ziiip](https://bitcointalk.org/index.php?action=profile;u=864739) - netops.ublock.it@gmail.com
-  * Invitation needed to join (contact the owner)
+* [RiePool](http://riepool.ovh/)
+  * Host = riepool.ovh
+  * Port = 8000
+  * Owner: [Simba84](https://bitcointalk.org/index.php?action=profile;u=349865) - inforiepool@gmail.com 
 
 The miner will disconnect if it did not receive anything during 3 minutes (time out).
 
@@ -371,6 +352,7 @@ Donations welcome:
 
 * Bitcoin: 1PttnMeD9X6imTsRojmhHa1rjudW8Bjok5
 * Riecoin: RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB
+* Gapcoin: GgCyVr6y6beBbTofmTLJHvGc1NCWynQyvw
 * Ethereum: 0x32de6b854b6a05448b4f25d4496990bece8a2862
 
 ### Quick contributor's checklist
