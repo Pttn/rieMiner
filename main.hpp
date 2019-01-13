@@ -3,7 +3,6 @@
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
 
-#define BITS	64
 #define versionString	"rieMiner 0.9L"
 
 #include <unistd.h>

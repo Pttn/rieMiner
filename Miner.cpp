@@ -488,13 +488,9 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				else if (tupleLength < 4) continue;
 	
 				// Generate nOffset and submit
-#if BITS == 32
-				for (uint32_t d(0) ; d < (uint32_t) std::min(32/4, z_tmp2->_mp_size) ; d++)
-					*(uint32_t*) (_workData[job.workDataIndex].verifyBlock.bh.nOffset + d*4) = z_tmp2->_mp_d[d];
-#else
-				for (uint32_t d(0) ; d < (uint32_t) std::min(32/8, z_tmp2->_mp_size) ; d++)
-					*(uint64_t*) (_workData[job.workDataIndex].verifyBlock.bh.nOffset + d*8) = z_tmp2->_mp_d[d];
-#endif
+				for (uint32_t d(0) ; d < (uint32_t) std::min(32/sizeof(mp_limb_t), (uint32_t)z_tmp2->_mp_size) ; d++)
+					*(mp_limb_t*) (_workData[job.workDataIndex].verifyBlock.bh.nOffset + d*sizeof(mp_limb_t)) = z_tmp2->_mp_d[d];
+
 				_workData[job.workDataIndex].verifyBlock.primes = tupleLength;
 				_manager->submitWork(_workData[job.workDataIndex].verifyBlock);
 			}

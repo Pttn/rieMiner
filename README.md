@@ -98,21 +98,9 @@ Now, you should be able to compile rieMiner with `make static` and produce a sta
 
 ### For 32 bits computers
 
-First, go to the file main.hpp and change
+rieMiner should work seamlessly on 32 bit systems.
 
-```
-#define BITS	64
-```
-
-to
-
-```
-#define BITS	32
-```
-
-If you do not do this, the compilation will work, but the blocks produced will be invalid.
-
-Then, follow the instructions for 64 bits systems and adapt if needed (for example, in MSYS, the packages will be `mingw32/mingw-w64-i686-...`).
+To build it, follow the instructions for 64 bits systems and adapt if needed (for example, in MSYS, the packages will be `mingw32/mingw-w64-i686-...`).
 
 ## Run and configure this program
 
