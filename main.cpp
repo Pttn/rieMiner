@@ -299,6 +299,7 @@ void Options::loadConf() {
 			if (_payoutAddressFormat == AddressFormat::P2PKH) std::cout << " (P2PKH)";
 			else if (_payoutAddressFormat == AddressFormat::P2SH) std::cout << " (P2SH)";
 			else {
+				if (_payoutAddressFormat == AddressFormat::BECH32) std::cout << " (Bech32)";
 				std::cout << std::endl << "Invalid or unsupported payout address! Exiting." << std::endl;
 				exit(0);
 			}
@@ -344,30 +345,7 @@ void Options::loadConf() {
 
 void Options::setPayoutAddress(const std::string& address) {
 	_payoutAddress = address;
-	if (address.size() < 26) {
-		std::cerr << __func__ << ": empty or too short address!" << std::endl;
-		_payoutAddressFormat = AddressFormat::INVALID;
-	}
-	else {
-		if (address[0] == 'R' || address[0] == 'r')
-			_payoutAddressFormat = AddressFormat::P2PKH;
-		else if (address[0] == 'T' || address[0] == 't')
-			_payoutAddressFormat = AddressFormat::P2SH;
-		else if (address.substr(0, 3) == "bcR" || address.substr(0, 3) == "bcr")
-			_payoutAddressFormat = AddressFormat::BECH32;
-		else {
-			std::cerr << __func__ << ": invalid address prefix!" << std::endl;
-			_payoutAddressFormat = AddressFormat::INVALID;
-		}
-		
-		if (_payoutAddressFormat == AddressFormat::P2PKH || _payoutAddressFormat == AddressFormat::P2SH) {
-			std::vector<uint8_t> spk;
-			if (!addrToScriptPubKey(address, spk)) {
-				std::cerr << __func__ << ": invalid payout address!" << std::endl;
-				_payoutAddressFormat = AddressFormat::INVALID;
-			}
-		}
-	}
+	_payoutAddressFormat = addressFormatOf(_payoutAddress);
 }
 
 void signalHandler(int signum) {

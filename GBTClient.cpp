@@ -195,7 +195,7 @@ void GBTClient::sendWork(const WorkData &work) const {
 	else {
 		std::cout << ", this is a block!" << std::endl;
 		std::cout << "Base prime: " << work.bh.decodeSolution() << std::endl;
-		std::cout << "Sent: " << req;
+		DBG(std::cout << "Sent: " << req;);
 		if (jsonSb == NULL) std::cerr << "Failure submiting block :|" << std::endl;
 		else {
 			json_t *jsonSb_Res(json_object_get(jsonSb, "result")),

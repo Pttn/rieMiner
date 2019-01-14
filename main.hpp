@@ -3,7 +3,7 @@
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
 
-#define versionString	"rieMiner 0.9"
+#define versionString	"rieMiner 0.9a'"
 
 #include <unistd.h>
 #include <string>
@@ -20,8 +20,6 @@
 extern int DEBUG;
 #define DBG(x) if (DEBUG) {x;};
 #define DBG_VERIFY(x) if (DEBUG > 1) { x; };
-
-enum AddressFormat {INVALID, P2PKH, P2SH, BECH32};
 
 class Options {
 	std::string _host, _username, _password, _mode, _payoutAddress, _secret;

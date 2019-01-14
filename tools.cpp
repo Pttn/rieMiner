@@ -93,18 +93,32 @@ static std::vector<uint8_t> b58StrToV8(const std::string &btc58Str) {
 	return v8;
 }
 
-bool addrToScriptPubKey(const std::string &address, std::vector<uint8_t> &spk) {
+AddressFormat addressFormatOf(const std::string &address) {
+	std::vector<uint8_t> spk;
+	if (addrToScriptPubKey(address, spk, false)) { // Valid Mainnet or Testnet address
+		if (address[0] == 'R' || address[0] == 'r')
+			return AddressFormat::P2PKH;
+		else if (address[0] == 'T' || address[0] == 't')
+			return AddressFormat::P2SH;
+	}
+	// Addresses starting with ric1 and tric1 are assumed valid
+	else if (address.substr(0, 4) == "ric1" || address.substr(0, 5) == "tric1")
+		return AddressFormat::BECH32;
+	return AddressFormat::INVALID;
+}
+
+bool addrToScriptPubKey(const std::string &address, std::vector<uint8_t> &spk, bool verbose) {
 	spk = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 	const std::vector<uint8_t> addr(b58StrToV8(address));
 	
 	if (addr.size() != 25) {
-		std::cerr << __func__ << ": invalid address length!" << std::endl;
+		if (verbose) std::cerr << __func__ << ": invalid address length!" << std::endl;
 		return false;
 	}
 	else {
 		std::vector<uint8_t> addressHash(sha256sha256(addr.data(), 21));
 		if (*((uint32_t*) &addr[21]) != *((uint32_t*) &addressHash[0])) {
-			std::cerr << __func__ << ": invalid checksum!" << std::endl;
+			if (verbose) std::cerr << __func__ << ": invalid checksum!" << std::endl;
 			return false;
 		}
 		else {

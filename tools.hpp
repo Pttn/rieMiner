@@ -22,6 +22,8 @@
 #define leading0s(x) std::setw(x) << std::setfill('0')
 #define FIXED(x) std::fixed << std::setprecision(x)
 
+enum AddressFormat {INVALID, P2PKH, P2SH, BECH32};
+
 uint8_t rand(uint8_t, uint8_t);
 
 std::array<uint8_t, 32> v8ToA8(std::vector<uint8_t>);
@@ -58,8 +60,10 @@ inline uint32_t getCompact(uint32_t nCompact) {
 	else return nWord << 8*(nSize - 3); // warning: this has problems if difficulty (uncompacted) ever goes past the 2^32 boundary
 }
 
+// Get address type (P2PKH, P2SH, Bech32), no proper support for Bech32 currently
+AddressFormat addressFormatOf(const std::string&);
 // Convert address to ScriptPubKey used for building the Coinbase Transaction
-bool addrToScriptPubKey(const std::string&, std::vector<uint8_t>&);
+bool addrToScriptPubKey(const std::string&, std::vector<uint8_t>&, bool = true);
 // Calculate Merkle Root from a list of transactions
 std::array<uint8_t, 32> calculateMerkleRoot(const std::vector<std::array<uint8_t, 32>>&);
 std::array<uint8_t, 32> calculateMerkleRootStratum(const std::vector<std::array<uint8_t, 32>>&);
