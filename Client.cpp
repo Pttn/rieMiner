@@ -112,9 +112,9 @@ bool BMClient::connect() {
 
 void BMClient::sendWork(const WorkData &work) const {
 	_manager->printTime();
-	std::cout << " " << work.primes << "-tuple found: ";
-	std::cout << "Base prime: " << work.bh.decodeSolution() << std::endl;
+	std::cout << " " << work.primes << "-tuple found" << std::endl;
 	DBG(std::cout << "Dummy block header: " << binToHexStr(&work.bh, 112) << std::endl;);
+	DBG(std::cout << "Decoded base prime: " << work.bh.decodeSolution() << std::endl;);
 }
 
 WorkData BMClient::workData() const {

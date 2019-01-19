@@ -1,9 +1,9 @@
-// (c) 2017-2018 Pttn and contributors (https://github.com/Pttn/rieMiner)
+// (c) 2017-2019 Pttn and contributors (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
 
-#define versionString	"rieMiner 0.9a'"
+#define versionString	"rieMiner 0.9b"
 
 #include <unistd.h>
 #include <string>

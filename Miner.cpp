@@ -1,6 +1,8 @@
 /* (c) 2014-2017 dave-andersen (base code) (http://www.cs.cmu.edu/~dga/)
-(c) 2017-2018 Pttn (refactoring and porting to modern C++) (https://ric.pttn.me/)
+(c) 2017-2019 Pttn (refactoring and porting to modern C++) (https://ric.pttn.me/)
 (c) 2018 Michael Bell/Rockhawk (assembly optimizations, improvements of work management between threads, and some more) (https://github.com/MichaelBell/) */
+
+// TODO: always use the GMP's C++ interface (mpz_class instead of mpz_t, etc.)
 
 #include "Miner.hpp"
 #include "external/gmp_util.h"
@@ -662,8 +664,10 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				tupleLength++;
 				_manager->incTupleCount(tupleLength);
 				// Note start at 1 - we've already tested bias 0
+				uint64_t offsetSum(0);
 				for (std::vector<uint64_t>::size_type i(1) ; i < _parameters.primeTupleOffset.size() ; i++) {
 					mpz_add_ui(z_tmp, z_tmp, _parameters.primeTupleOffset[i]);
+					offsetSum += _parameters.primeTupleOffset[i];
 					mpz_sub_ui(z_ft_n, z_tmp, 1);
 					mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
 					if (mpz_cmp_ui(z_ft_r, 1) == 0) {
@@ -686,6 +690,10 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				for (uint32_t d(0) ; d < (uint32_t) std::min(32/((uint32_t) sizeof(mp_limb_t)), (uint32_t) z_tmp2->_mp_size) ; d++)
 					*(mp_limb_t*) (_workData[job.workDataIndex].verifyBlock.bh.nOffset + d*sizeof(mp_limb_t)) = z_tmp2->_mp_d[d];
 				_workData[job.workDataIndex].verifyBlock.primes = tupleLength;
+				if (_manager->options().mode() == "Benchmark") {
+					mpz_class n(z_tmp);
+					std::cout << "Found n = " << n - offsetSum << std::endl;
+				}
 				_manager->submitWork(_workData[job.workDataIndex].verifyBlock);
 			}
 			
