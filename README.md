@@ -319,7 +319,7 @@ Done with rieMiner 0.9, 100000 2-tuples. Unit: primes/s
 * AMD Ryzen R7 2700X @3 GHz, DDR4 2400 CL15, Debian 9: 177.234506
 * Intel Core i7 6700K @3 GHz, DDR4 2400 CL15, Debian 9: 89.288621
 
-As said, we should use the blocks/day metric for fixed difficulty and PTL. The ratio for the Standard Benchmark is about 28.9.
+As said, we should use the primes/s metric for fixed difficulty and PTL. The ratio for the Standard Benchmark is about 28.9.
 
 We notice that much better RAM don't really matter.
 
