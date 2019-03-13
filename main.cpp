@@ -91,7 +91,6 @@ void Options::askConf() {
 			else {
 				std::cout << "Current pools " << std::endl;
 				std::cout << "     XPoolX: mining.xpoolx.com:5000" << std::endl;
-				std::cout << "    riePool: riepool.ovh:8000" << std::endl;
 				std::cout << "  uBlock.it: mine.ublock.it:5000" << std::endl;
 				std::cout << "Pool address (without port): ";
 				std::cin >> value;

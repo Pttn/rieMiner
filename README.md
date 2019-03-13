@@ -272,10 +272,6 @@ Existing pools:
   * Host = mine.ublock.it or mine.blockocean.com
   * Port = 5000
   * Owner: [ziiip](https://bitcointalk.org/index.php?action=profile;u=864739) - netops.ublock.it@gmail.com
-* [RiePool](http://riepool.ovh/)
-  * Host = riepool.ovh
-  * Port = 8000
-  * Owner: [Simba84](https://bitcointalk.org/index.php?action=profile;u=349865) - inforiepool@gmail.com 
 
 The miner will disconnect if it did not receive anything during 3 minutes (time out).
 
@@ -316,11 +312,16 @@ You could stop before 50000 2-tuples, for example at 10000, if you just want a r
 
 ### A few results
 
-Done with rieMiner 0.9, 100000 2-tuples. Data: primes/s, ratio -> block(s)/day.
+Done with rieMiner 0.9, 100000 2-tuples. Unit: primes/s
 
-* AMD Ryzen R7 2700X @4 GHz, DDR4 2400 CL15, Debian 9: 233.354130, 28.955020 -> 0.990626
-* AMD Ryzen R7 2700X @3 GHz, DDR4 2400 CL15, Debian 9: 177.234506, 28.988780 -> 0.748018
-* Intel Core i7 6700K @3 GHz, DDR4 2400 CL15, Debian 9: 89.288621, 28.883051 -> 0.383791
+* AMD Ryzen R7 2700X @4 GHz, DDR4 3200 CL14, Debian 9: 235.856209
+* AMD Ryzen R7 2700X @4 GHz, DDR4 2400 CL15, Debian 9: 233.354130
+* AMD Ryzen R7 2700X @3 GHz, DDR4 2400 CL15, Debian 9: 177.234506
+* Intel Core i7 6700K @3 GHz, DDR4 2400 CL15, Debian 9: 89.288621
+
+As said, we should use the blocks/day metric for fixed difficulty and PTL. The ratio for the Standard Benchmark is about 28.9.
+
+We notice that much better RAM don't really matter.
 
 ## Miscellaneous
 
@@ -340,7 +341,7 @@ Parts coming from other projects and libraries are subject to their respective l
 
 ### Versioning
 
-The version naming scheme is 0.9, 0.99, 0.999 and so on for major versions, analogous to 1.0, 2.0, 3.0,.... The first non 9 decimal digit is minor, etc. For example, the version 0.9925a can be though as 2.2.5a. A perfect bug-free software will be version 1. No precise criteria have been decided about incrementing major or minor versions for now.
+The version naming scheme is 0.9, 0.99, 0.999 and so on for major versions, analogous to 1.0, 2.0, 3.0,.... The first non 9 decimal digit is minor, etc. For example, the version 0.9925a can be thought as 2.2.5a. A perfect bug-free software will be version 1. No precise criteria have been decided about incrementing major or minor versions for now.
 
 ## Contributing
 
