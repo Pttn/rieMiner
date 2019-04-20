@@ -116,9 +116,16 @@ class Miner {
 
 	void _addToPending(uint8_t *sieve, uint32_t pending[PENDING_SIZE], uint64_t &pos, uint32_t ent) {
 		__builtin_prefetch(&(sieve[ent >> 3]));
-		const uint32_t old(pending[pos]);
+		uint32_t old(pending[pos]);
 		if (old != 0) {
-			assert(old < _parameters.sieveSize);
+			// assert(old < _parameters.sieveSize);
+			if (old >= _parameters.sieveSize) {
+				std::cerr << "_addToPending: old = " << old << " is bigger than _parameters.sieveSize = " << _parameters.sieveSize << ", which should never happen!" << std::endl;
+				std::cout << "This may happen in an unstable or faulty computer. Please check your hardware or CPU/RAM frequency/voltage settings." << std::endl;
+				std::cout << "If you just worked on the code, you likely broke something." << std::endl;
+				std::cout << "Temporarily changing old to dummy value of " << _parameters.sieveSize - 1 << " to allow mining to continue." << std::endl;
+				old = _parameters.sieveSize - 1;
+			}
 			sieve[old >> 3] |= (1 << (old & 7));
 		}
 		pending[pos] = ent;
