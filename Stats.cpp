@@ -65,7 +65,7 @@ void Stats::printStats() const {
 		else {
 			std::cout << " Shares: " << _tuples[4] - _rejectedShares << "/" << _tuples[4];
 			if (_tuples[4] > 0) std::cout << " (" << FIXED(1) << 100.*((double) _tuples[4] - _rejectedShares)/((double) _tuples[4]) << "%)";
-			std::cout << ", sh/min = " << FIXED(1) << 60.*((double) _tuples[4])/elapsedSecs;
+			std::cout << ", sh/min = " << FIXED(1) << 60.*((double) _tuplesSinceLastDiff[4])/elapsedSecs;
 		}
 	}
 }

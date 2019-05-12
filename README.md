@@ -312,17 +312,18 @@ You could stop before 50000 2-tuples, for example at 10000, if you just want a r
 
 ### A few results
 
-Done with rieMiner 0.9, 100000 2-tuples. Unit: primes/s
+Done with rieMiner 0.9, 100000 2-tuples except otherwise said. Unit: primes/s
 
 * AMD Ryzen R7 2700X @4 GHz, DDR4 3200 CL14, Debian 9: 235.856209
 * AMD Ryzen R7 2700X @4 GHz, DDR4 2400 CL15, Debian 9: 233.354130
 * AMD Ryzen R7 2700X @3 GHz, DDR4 2400 CL15, Debian 9: 177.234506
 * Intel Core i7 6700K @3 GHz, DDR4 2400 CL15, Debian 9: 89.288621
 * Intel Core 2 Quad Q9650 @3 GHz, DDR3 1067 CL6, Debian 9: 40.673097
+* Intel Pentium D 925 @3 GHz, DDR3 1000 CL6, Debian 9: 7.466797 (10000 2-tuples)
 
 As said, we should use the primes/s metric for fixed difficulty and PTL. The ratio for the Standard Benchmark is about 28.9.
 
-We notice that much better RAM don't really matter.
+For a given architecture, the performance is basically proportional to the number of cores and frequency. However, we notice that much better RAM doesn't really matter.
 
 ## Miscellaneous
 
