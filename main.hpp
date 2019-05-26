@@ -3,7 +3,7 @@
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
 
-#define versionString	"rieMiner 0.9c"
+#define versionString	"rieMiner 0.9d"
 
 #include <unistd.h>
 #include <string>
@@ -58,7 +58,7 @@ class Options {
 		_primorialOffsets = {4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull,
 		                     7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull,
 		                     8145217177ull, 8145220537ull, 8145223897ull, 8145227257ull}; // Primorial Offsets
-		_rules = std::vector<std::string>();
+		_rules = {"segwit"};
 	}
 	
 	void askConf();

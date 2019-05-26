@@ -311,6 +311,7 @@ void Options::loadConf() {
 				}
 				std::cout << std::endl;
 			}
+			else std::cout << "No consensus rules (in particular, will not mine Segwit transactions)" << std::endl;
 		}
 	}
 	

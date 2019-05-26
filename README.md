@@ -143,7 +143,7 @@ RefreshInterval = 60
 TupleLengthMin = 4
 
 # For solo mining, add consensus rules in the GetBlockTemplate RPC call, each separated by a comma.
-# Useful for softforks, for example, to mine SegWit transactions, you would need the following line. Default: no rule
+# Default: segwit
 # Rules = segwit
 
 # Other options
