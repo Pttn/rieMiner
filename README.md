@@ -1,18 +1,18 @@
 # rieMiner 0.9
 
-rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's cpuminer-rminerd (https://github.com/gatra/cpuminer-rminerd) and dave-andersen's fastrie (https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
+rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's [cpuminer-rminerd](https://github.com/gatra/cpuminer-rminerd) and dave-andersen's [fastrie](https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
 Solo mining is done using the GetBlockTemplate protocol, while pooled mining is via the Stratum protocol. A benchmark mode is also proposed to compare more easily the performance between different computers.
 
-Direct links to the latest official [Windows x64](https://ric.pttn.me/file.php?d=rieMinerWin64) and [Win32](https://ric.pttn.me/file.php?d=rieMinerWin32) standalone executables. Binaries built on Debian 9 with almost complete static linking also available (these should run on fresh Debian and Ubuntu installations): [Deb64](https://ric.pttn.me/file.php?d=rieMinerDeb64) and [Deb32](https://ric.pttn.me/file.php?d=rieMinerDeb32). Also note that 32 bits builds are much slower.
+Find the latest binaries [here](https://github.com/Pttn/rieMiner/releases) for Linux and Windows. Note that 32 bits builds are much slower.
 
-This README serves as manual for rieMiner, and you can also find a [PDF version](https://ric.pttn.me/file.php?d=rieMinerManual) (without build instructions). I hope that this program will be useful for you!
+This README serves as manual for rieMiner, and you can also find a PDF version (without build instructions) in the release page. I hope that this program will be useful for you!
 
 The Riecoin community thanks you for your participation, you will be a contributor to the robustness of the Riecoin network. Happy mining!
 
-![rieMiner just found a block](https://ric.pttn.me/file.php?d=rieMiner)
+![rieMiner just found a block](https://riecoin.dev/wp-content/uploads/2019/06/rieMiner.png)
 
-I provide a Profitability Calculator [here](https://ric.pttn.me/page.php?n=ProfitabilityCalculator).
+Suggestions? Having issues with rieMiner? Join us in [Discord](https://discordapp.com/channels/525275069946003457) ([invite](https://discord.gg/2sJEayC))!
 
 ## Minimum requirements
 
@@ -54,8 +54,6 @@ make
 ```
 
 For other Linux, executing equivalent commands (using `pacman` instead of `apt`,...) should work.
-
-If you get a warning after the compilation that there may be a conflict between libcrypto.so files, install `libssl1.0-dev` instead of `libssl-dev`.
 
 ### In Windows x64
 
@@ -375,11 +373,9 @@ Donations welcome:
 
 ## Resources
 
-* [rieMiner thread on Riecoin-Community.com forum](https://forum.riecoin-community.com/viewtopic.php?f=16&t=15)
-* [My personal website about Riecoin](http://ric.Pttn.me/)
-* [Get the Riecoin wallet](http://riecoin.org/download.html)
+* [Get the Riecoin wallet](https://riecoin.dev/download/)
 * [Fast prime cluster search - or building a fast Riecoin miner (part 1)](https://da-data.blogspot.ch/2014/03/fast-prime-cluster-search-or-building.html), nice article by dave-andersen explaining how Riecoin works and how to build an efficient miner and the algorithms. Unfortunately, he never published part 2...
-* [Riecoin FAQ](http://riecoin.org/faq.html) and [technical aspects](http://riecoin.org/about.html#tech)
+* [Technical resources about Riecoin](https://riecoin.dev/resources/)
 * [Bitcoin Wiki - Getblocktemplate](https://en.bitcoin.it/wiki/Getblocktemplate)
 * [BIP141](https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki) (Segwit)
 * [Bitcoin Wiki - Stratum](https://en.bitcoin.it/wiki/Stratum_mining_protocol)
