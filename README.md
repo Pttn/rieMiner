@@ -24,9 +24,9 @@ Only x64 systems with SSE are supported.
 
 Recommended:
 
-* Windows 10 or Debian 9;
-* Intel Core i7 6700 or better, or AMD Ryzen R5 1600 or better;
-* 8 GiB of RAM.
+* Windows 10 or Debian 10;
+* Recent Intel or AMD, with 8 cores or more;
+* 8 GiB of RAM or more.
 
 ## Compile this program
 
@@ -182,7 +182,8 @@ These ones should never be modified outside developing purposes and research for
 * ConstellationType : set your Constellation Type, i. e. the primes tuple offsets, each separated by a comma. Default: 0, 4, 2, 4, 2, 4 (values for Riecoin mining);
 * PrimorialNumber : Primorial Number for the Wheel Factorization. Default: 40;
 * PrimorialOffsets : list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConsType. Default: carefully chosen offsets;
-* Debug : activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, 0 to disable. Other values may introduce some more specific debug messages. Default : 0.
+* Debug : activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, 0 to disable. Other values may introduce some more specific debug messages. Default : 0;
+* ForceAVX2 : when an Intel processor supporting AVX2 is used, rieMiner will take advantage of this instruction set. Otherwise, it will not use AVX2. Indeed, the Zen and Zen+'s AVX2 implementation does not seem to work well, decreasing a lot the performance. In Zen2, it seems be better, but also consumes significantly more power for a very small increase in comparison. You have the possibility to force the AVX2 usage anyway in these cases by setting this option to `Yes`. If the processor does not supports AVX2 or is an Intel, nothing changes.
 
 Some possible constellations types (format: (type) -> offsets to put for ConstellationType ; 3 first constellations (n + 0) which can be used for PrimorialOffsets, though some might not work)
 
@@ -312,6 +313,7 @@ You could stop before 50000 2-tuples, for example at 10000, if you just want a r
 
 Done with rieMiner 0.9, 100000 2-tuples except otherwise said. Unit: primes/s
 
+* AMD Ryzen R7 3700X @4 GHz, DDR4 3200 CL14, Debian 10: 278.002651
 * AMD Ryzen R7 2700X @4 GHz, DDR4 3200 CL14, Debian 9: 235.856209
 * AMD Ryzen R7 2700X @4 GHz, DDR4 2400 CL15, Debian 9: 233.354130
 * AMD Ryzen R7 2700X @3 GHz, DDR4 2400 CL15, Debian 9: 177.234506
@@ -325,7 +327,7 @@ For a given architecture, the performance is basically proportional to the numbe
 
 ## Miscellaneous
 
-Unless the weather is very cold, I do not recommend to overclock a CPU for mining, unless you can do that without increasing noticeably the power consumption. My 2700X computer would draw much, much more power at 4 GHz/1.2875 V instead of 3.7 GHz/1.08125 V, which is certainly absurd for a mere 8% increase. To get maximum efficiency, you might want to find the frequency with the best performance/power consumption ratio (which could also be obtained by underclocking the processor).
+Unless the weather is very cold, I do not recommend to overclock a CPU for mining, unless you can do that without increasing noticeably the power consumption. To get maximum efficiency, you might want to find the frequency with the best performance/power consumption ratio (which could also be obtained by underclocking the processor).
 
 If you can, try to undervolt the CPU to reduce power consumption, heat and noise.
 

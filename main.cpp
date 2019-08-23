@@ -186,6 +186,7 @@ void Options::loadConf() {
 				else if (key == "Username") _username = value;
 				else if (key == "Password") _password = value;
 				else if (key == "PayoutAddress") setPayoutAddress(value);
+				else if (key == "ForceAVX2") _forceAvx2 = (value == "Yes");
 				else if (key == "Secret!!!") _secret = value;
 				else if (key == "Threads") {
 					try {_threads = std::stoi(value);}
@@ -341,6 +342,7 @@ void Options::loadConf() {
 		if (i != _primorialOffsets.size() - 1) std::cout << ", ";
 	}
 	std::cout << ")" << std::endl;
+	if (_forceAvx2) std::cout << "Forcing AVX2 usage if non Intel processor proposes it" << std::endl;
 }
 
 void Options::setPayoutAddress(const std::string& address) {

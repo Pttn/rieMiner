@@ -624,7 +624,7 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 			mpz_add_ui(z_ploop, z_ploop, _primorialOffsetDiffToFirst[job.testWork.offsetId]);
 
 			bool firstTestDone(false);
-			if (_cpuInfo.hasAVX2() && _cpuInfo.isIntel() && job.testWork.n_indexes == WORK_INDEXES) {
+			if (_cpuInfo.hasAVX2() && (_cpuInfo.isIntel() || _manager->options().forceAVX2()) && job.testWork.n_indexes == WORK_INDEXES) {
 				uint32_t isPrime[WORK_INDEXES];
 				firstTestDone = _testPrimesIspc(job.testWork.indexes, isPrime, z_ploop, z_tmp);
 

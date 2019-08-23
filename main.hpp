@@ -3,7 +3,7 @@
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
 
-#define versionString	"rieMiner 0.9d"
+#define versionString	"rieMiner 0.9e"
 
 #include <unistd.h>
 #include <string>
@@ -22,6 +22,7 @@ extern int DEBUG;
 #define DBG_VERIFY(x) if (DEBUG > 1) { x; };
 
 class Options {
+	bool _forceAvx2;
 	std::string _host, _username, _password, _mode, _payoutAddress, _secret;
 	AddressFormat _payoutAddressFormat;
 	uint16_t _debug, _port, _threads, _sieveWorkers, _sieveBits, _refreshInterval, _tupleLengthMin;
@@ -35,6 +36,7 @@ class Options {
 	
 	public:
 	Options() { // Default options: Standard Benchmark with 8 threads
+		_forceAvx2 = false;
 		_debug = 0;
 		_mode = "Benchmark";
 		_host = "127.0.0.1";
@@ -64,6 +66,7 @@ class Options {
 	void askConf();
 	void loadConf();
 	
+	bool forceAVX2() const {return _forceAvx2;}
 	std::string mode() const {return _mode;}
 	std::string host() const {return _host;}
 	uint16_t port() const {return _port;}
