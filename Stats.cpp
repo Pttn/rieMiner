@@ -53,8 +53,10 @@ void Stats::printStats() const {
 	if (elapsedSecs > 1 && timeSince(_miningStartTp) > 1) {
 		printTime();
 		if (_solo) {
-			std::cout << " " << FIXED(2) << _tuplesSinceLastDiff[1]/elapsedSecs << " pps";
-			if (_tuplesSinceLastDiff[2] > 0) std::cout << ", r " << ((double) _tuplesSinceLastDiff[1])/((double) _tuplesSinceLastDiff[2]);
+			// 0-tuples/s metric is not more precise than the 1-tuples/s one (except for huge Difficulties), but helps a lot for the ratio
+			std::cout << " "/* << FIXED(1) << _tuplesSinceLastDiff[0]/elapsedSecs << " nps";
+			std::cout << ", " */<< FIXED(2) << _tuplesSinceLastDiff[1]/elapsedSecs << " pps";
+			if (_tuplesSinceLastDiff[1] > 0) std::cout << ", r " << ((double) _tuplesSinceLastDiff[0])/((double) _tuplesSinceLastDiff[1]);
 			std::cout << " ; (2-" << _tuples.size() - 1 << "t) = (";
 			for (uint32_t i(2) ; i < _tuples.size() ; i++) {
 				std::cout << _tuples[i];
@@ -105,15 +107,15 @@ void Stats::printEstimatedTimeToBlock() const {
 	const double elapsedSecs(timeSince(_lastDiffChangeTp));
 	if (elapsedSecs > 1 && timeSince(_miningStartTp) > 1) {
 		if (_solo) {
-			if (_tuplesSinceLastDiff[3] > 0) {
-				const double r12(((double) _tuplesSinceLastDiff[1])/((double) _tuplesSinceLastDiff[2])),
-				             s1(((double) _tuplesSinceLastDiff[1])/elapsedSecs),
-				             t(std::pow(r12, _tuples.size() - 2)/(86400.*s1));
-				if (t < 1./1440.) std::cout << FIXED(1 + (86400.*t < 10.)) << " | " << 86400.*t << " s";
-				else if (t < 1./24.) std::cout << FIXED(1 + (1440.*t < 10.)) << " | " << 1440.*t << " min";
-				else if (t < 1.) std::cout << FIXED(1 + (24.*t < 10.)) << " | " << 24.*t << " h";
-				else if (t < 365.2425) std::cout << FIXED(2) << " | " << t << " d";
-				else std::cout << FIXED(2) << " | " << t/365.2425 << " y";
+			if (_tuplesSinceLastDiff[2] > 0) {
+				const double r01(((double) _tuplesSinceLastDiff[0])/((double) _tuplesSinceLastDiff[1])),
+				             s0(((double) _tuplesSinceLastDiff[0])/elapsedSecs),
+				             t(std::pow(r01, _tuples.size() - 1)/(86400.*s0));
+				if (t < 1./1440.) std::cout << FIXED(2 + (86400.*t < 10.)) << " | " << 86400.*t << " s";
+				else if (t < 1./24.) std::cout << FIXED(2 + (1440.*t < 10.)) << " | " << 1440.*t << " min";
+				else if (t < 1.) std::cout << FIXED(2 + (24.*t < 10.)) << " | " << 24.*t << " h";
+				else if (t < 365.2425) std::cout << FIXED(3) << " | " << t << " d";
+				else std::cout << FIXED(3) << " | " << t/365.2425 << " y";
 			}
 		}
 		std::cout << std::endl;
