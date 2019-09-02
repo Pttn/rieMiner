@@ -183,7 +183,7 @@ These ones should never be modified outside developing purposes and research for
 * PrimorialNumber : Primorial Number for the Wheel Factorization. Default: 40;
 * PrimorialOffsets : list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConsType. Default: carefully chosen offsets;
 * Debug : activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, 0 to disable. Other values may introduce some more specific debug messages. Default : 0;
-* ForceAVX2 : when an Intel processor supporting AVX2 is used, rieMiner will take advantage of this instruction set. Otherwise, it will not use AVX2. Indeed, the Zen and Zen+'s AVX2 implementation does not seem to work well, decreasing a lot the performance. In Zen2, it seems be better, but also consumes significantly more power for a very small increase in comparison. You have the possibility to force the AVX2 usage anyway in these cases by setting this option to `Yes`. If the processor does not supports AVX2 or is an Intel, nothing changes.
+* ForceAVX2 : when an Intel processor supporting AVX2 is used, rieMiner will take advantage of this instruction set. Otherwise, it will not use AVX2. Indeed, the Zen and Zen+'s AVX2 implementation does not seem to work well, decreasing a lot the performance. In Zen2, it seems be better, but also consumes significantly more power for a small increase in comparison. You have the possibility to force the AVX2 usage anyway in these cases by setting this option to `Yes`. If the processor does not supports AVX2 or is an Intel, nothing changes.
 
 Some possible constellations types (format: (type) -> offsets to put for ConstellationType ; 3 first constellations (n + 0) which can be used for PrimorialOffsets, though some might not work)
 
@@ -210,9 +210,7 @@ If you have memory errors (Unable to allocate... or Bad Allocs), try to lower th
 
 rieMiner will regularly print some stats, and the frequency of this can be changed with the RefreshInterval parameter as said earlier.
 
-For solo mining, rieMiner will regularly show the primes per second speed, and the 1 to 2-tuples/s ratio. From this, it will also estimate the average time to find a block (note that all the ratios are the same, and the estimation should be fairly precise). Of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week. The number of 2 to 6-tuples found since the start of the mining is also shown.
-
-For pooled mining, the shares per minute metric and the numbers of valid and total shares are shown instead. As it is hard to get a correct earnings estimation from k-shares, no other metric is shown. The Benchmark Mode (or solo mining) can be used to get better figures for comparisons.
+rieMiner will regularly show the primes per second speed, and the 0 to 1-tuples/s ratio. It will also estimate the average time to find a block (for pooled mining, the earnings in RIC/day). Of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week. The number of 2 to 6-tuples found since the start of the mining is also shown (for pooled mining, the numbers of valid and total shares, as well as the shares/min metric).
 
 rieMiner will also notify if it found a k-tuple (k >= Tuples option value) in solo mining or a share in pooled mining, and if the network found a new block. If it finds a block or a share, it will tell if the submission was accepted (solo mining only) or not. For solo mining, if the block was accepted, the reward will be generated for the address specified in the options. You can then spend it after 100 confirmations. Note that orphaned blocks will be shown as accepted.
 
