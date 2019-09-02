@@ -623,11 +623,10 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 			mpz_add(z_ploop, z_ploop, _workData[job.workDataIndex].z_verifyTarget);
 			mpz_add_ui(z_ploop, z_ploop, _primorialOffsetDiffToFirst[job.testWork.offsetId]);
 
-			bool firstTestDone(false), avx2Used(false);
+			bool firstTestDone(false);
 			if (_cpuInfo.hasAVX2() && (_cpuInfo.isIntel() || _manager->options().forceAVX2()) && job.testWork.n_indexes == WORK_INDEXES) {
 				uint32_t isPrime[WORK_INDEXES];
 				firstTestDone = _testPrimesIspc(job.testWork.indexes, isPrime, z_ploop, z_tmp);
-				avx2Used = true;
 				if (firstTestDone) {
 					job.testWork.n_indexes = 0;
 					for (uint32_t i(0) ; i < WORK_INDEXES ; i++) {
@@ -656,7 +655,7 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				if (!firstTestDone) {
 					mpz_sub_ui(z_ft_n, z_tmp, 1);
 					mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
-					if (!avx2Used) _manager->incTupleCount(tupleLength);
+					_manager->incTupleCount(tupleLength);
 					if (mpz_cmp_ui(z_ft_r, 1) != 0) continue;
 				}
 
