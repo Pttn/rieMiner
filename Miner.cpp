@@ -72,6 +72,7 @@ void Miner::init() {
 	}
 	
 	{
+		std::chrono::time_point<std::chrono::system_clock> t0(std::chrono::system_clock::now());
 		std::cout << "Generating prime table using sieve of Eratosthenes..." << std::endl;
 		std::vector<uint8_t> vfComposite;
 		vfComposite.resize((_parameters.sieve + 15)/16, 0);
@@ -86,7 +87,7 @@ void Miner::init() {
 				_parameters.primes.push_back((n << 1) + 1);
 		}
 		_nPrimes = _parameters.primes.size();
-		std::cout << "Table with all " << _nPrimes << " first primes generated." << std::endl;
+		std::cout << "Table with all " << _nPrimes << " first primes generated in " << timeSince(t0) << " s." << std::endl;
 	}
 	
 	mpz_init_set_ui(_primorial, _parameters.primes[0]);

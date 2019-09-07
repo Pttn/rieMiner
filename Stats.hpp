@@ -15,7 +15,6 @@ class Stats {
 	bool _solo;
 	
 	bool _inited() const {return _difficulty != 1;}
-	static bool _tuplesDiffSortComp(const std::vector<uint64_t> &a, const std::vector<uint64_t> &b) {return a[0] < b[0];}
 	
 	public:
 	Stats(uint8_t tupleLength = 6);
