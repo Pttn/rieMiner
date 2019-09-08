@@ -52,6 +52,15 @@ void Miner::init() {
 	_parameters.primorialNumber  = _manager->options().primorialNumber();
 	_parameters.primeTupleOffset = _manager->options().constellationType();
 	
+	// Empirical formula, should work well in most cases.
+	double ptlM(((double) _parameters.sieve)/1048576.), baseMemUsage(1.68*std::pow(ptlM, 0.954)), sieveWorkerMemUsage, memUsage;
+	if (ptlM < 768.) sieveWorkerMemUsage = 1.26*ptlM + 16.;
+	else sieveWorkerMemUsage = 560.*std::log(ptlM) - 2780.;
+	memUsage = baseMemUsage + ((double) _parameters.sieveWorkers)*sieveWorkerMemUsage;
+	if (memUsage < 128.) std::cout << "Estimated memory usage: < 128 MiB" << std::endl;
+	else std::cout << "Estimated memory usage: " << memUsage << " MiB" << std::endl;
+	std::cout << "Reduce prime table limit to lower this, if needed." << std::endl;
+	
 	for (uint32_t i(0) ; i < WORK_DATAS ; i++) {
 		mpz_init(_workData[i].z_verifyTarget);
 		mpz_init(_workData[i].z_verifyRemainderPrimorial);
@@ -94,15 +103,7 @@ void Miner::init() {
 	for (uint64_t i(1) ; i < _parameters.primorialNumber ; i++)
 		mpz_mul_ui(_primorial, _primorial, _parameters.primes[i]);
 	
-	// Estimate memory usage, precomputation only works up to p = 2^37
-	const uint64_t primeMult(16 + 8*_parameters.sieveWorkers),
-	               precompPrimes(std::min(_nPrimes, 5586502348UL)),
-	               memUsage(128ULL*1048576ULL + 650ULL*1048576ULL*_parameters.sieveWorkers + _nPrimes*primeMult + precompPrimes*8);
-	
-	std::cout << "Estimated memory usage: ";
-	if (memUsage < 1073741824) std::cout << "< 1024 MiB" << std::endl;
-	else std::cout << ((float) memUsage)/1048576. << " MiB" << std::endl;
-	std::cout << "Reduce prime table limit to lower this, if needed." << std::endl;
+	const uint64_t precompPrimes(std::min(_nPrimes, 5586502348UL)); // Precomputation only works up to p = 2^37
 	std::cout << "Precomputing division data..." << std::endl;
 	_parameters.inverts.resize(_nPrimes);
 	_parameters.modPrecompute.resize(precompPrimes);
