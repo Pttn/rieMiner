@@ -26,7 +26,7 @@ struct GetBlockTemplateData {
 		height = 0;
 		primes = 6;
 		coinbase = std::vector<uint8_t>();
-		scriptPubKey = std::vector<uint8_t>(20, 0);
+		scriptPubKey = std::vector<uint8_t>();
 		rules = std::vector<std::string>();
 	}
 	

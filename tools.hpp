@@ -64,6 +64,7 @@ inline uint32_t getCompact(uint32_t nCompact) {
 AddressFormat addressFormatOf(const std::string&);
 // Convert address to ScriptPubKey used for building the Coinbase Transaction
 bool addrToScriptPubKey(const std::string&, std::vector<uint8_t>&, bool = true);
+bool bech32ToScriptPubKey(const std::string&, std::vector<uint8_t>&, bool = true);
 // Calculate Merkle Root from a list of transactions
 std::array<uint8_t, 32> calculateMerkleRoot(const std::vector<std::array<uint8_t, 32>>&);
 std::array<uint8_t, 32> calculateMerkleRootStratum(const std::vector<std::array<uint8_t, 32>>&);

@@ -55,21 +55,26 @@ void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const
 	}
 	
 	if (addressFormat == AddressFormat::P2SH) {
-		coinbase.push_back(23);   // Output Length
+		coinbase.push_back(scriptPubKey.size() + 3); // Output Length
 		coinbase.push_back(0xA9); // OP_HASH160
 		coinbase.push_back(0x14); // Bytes Pushed on Stack
 	}
+	else if (addressFormat == AddressFormat::BECH32) {
+		coinbase.push_back(scriptPubKey.size() + 2); // Output Length
+		coinbase.push_back(0x00); // OP_0
+		coinbase.push_back(scriptPubKey.size()); // Script Length
+	}
 	else {
-		coinbase.push_back(25);   // Output Length
+		coinbase.push_back(scriptPubKey.size() + 5); // Output Length
 		coinbase.push_back(0x76); // OP_DUP
 		coinbase.push_back(0xA9); // OP_HASH160
 		coinbase.push_back(0x14); // Bytes Pushed on Stack
 	}
 	// ScriptPubKey (for payout address)
-	for (uint32_t i(0) ; i < 20 ; i++) coinbase.push_back(scriptPubKey[i]);
+	for (uint32_t i(0) ; i < scriptPubKey.size() ; i++) coinbase.push_back(scriptPubKey[i]);
 	if (addressFormat == AddressFormat::P2SH)
 		coinbase.push_back(0x87); // OP_EQUAL
-	else {
+	else if (addressFormat == AddressFormat::P2PKH) {
 		coinbase.push_back(0x88); // OP_EQUALVERIFY
 		coinbase.push_back(0xAC); // OP_CHECKSIG
 	}
@@ -161,7 +166,9 @@ bool GBTClient::connect() {
 	if (_inited) {
 		if (!_getWork()) return false;
 		_gbtd = GetBlockTemplateData();
-		if (!addrToScriptPubKey(_manager->options().payoutAddress(), _gbtd.scriptPubKey)) {
+		if (addrToScriptPubKey(_manager->options().payoutAddress(), _gbtd.scriptPubKey, false));
+		else if (bech32ToScriptPubKey(_manager->options().payoutAddress(), _gbtd.scriptPubKey, false));
+		else {
 			std::cerr << "Invalid payout address! Using donation address instead." << std::endl;
 			addrToScriptPubKey("RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB", _gbtd.scriptPubKey);
 		}

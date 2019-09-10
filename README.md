@@ -1,4 +1,4 @@
-# rieMiner 0.9
+# rieMiner 0.91 (RC)
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's [cpuminer-rminerd](https://github.com/gatra/cpuminer-rminerd) and dave-andersen's [fastrie](https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
@@ -121,7 +121,9 @@ Port = 28332
 Username = user
 Password = /70P$€CR€7/
 
-# Custom payout address for solo mining (GetBlockTemplate only). Default: this donation address
+# Custom payout address for solo mining (GetBlockTemplate only).
+# You can use legacy P2PKH "R", P2SH "T", or Bech32 P2WPKH "ric1" addresses. Bech32 P2WSH is not supported for now.
+# Default: this donation address
 PayoutAddress = RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB
 
 # Number of threads used for mining. Default: 8

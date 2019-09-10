@@ -298,8 +298,8 @@ void Options::loadConf() {
 			std::cout << "Payout address: " << _payoutAddress;
 			if (_payoutAddressFormat == AddressFormat::P2PKH) std::cout << " (P2PKH)";
 			else if (_payoutAddressFormat == AddressFormat::P2SH) std::cout << " (P2SH)";
+			else if (_payoutAddressFormat == AddressFormat::BECH32) std::cout << " (Bech32 P2WPKH)";
 			else {
-				if (_payoutAddressFormat == AddressFormat::BECH32) std::cout << " (Bech32)";
 				std::cout << std::endl << "Invalid or unsupported payout address! Exiting." << std::endl;
 				exit(0);
 			}
