@@ -103,7 +103,7 @@ inline uint32_t toBEnd32(uint32_t n) {
 }
 
 class CpuID {
-	bool _avx, _avx2, _avx512, _intel;
+	bool _avx, _avx2, _avx512;
 	
 public:
 	CpuID();
@@ -111,7 +111,6 @@ public:
 	bool hasAVX() const {return _avx;}
 	bool hasAVX2() const {return _avx2;}
 	bool hasAVX512() const {return _avx512;}
-	bool isIntel() const {return _intel;}
 };
 
 #endif

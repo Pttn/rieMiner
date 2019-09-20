@@ -176,7 +176,8 @@ It is also possible to use custom configuration file paths, examples:
 
 They can be useful to get better performance depending on your computer.
 
-* SieveBits : size of the segment sieve is 2^SieveBits bits, e.g. 25 means the segment sieve size is 4 MiB. Choose this so that SieveWorkers*SieveBits fits in your L3 cache. Default: 25;
+* EnableAVX2 : by default, AVX2 is disabled, as it may increase the power consumption more than the performance improvements. If your processor supports AVX2, you can choose to take advantage of this instruction set if you wish by setting this option to `Yes`. Do your own testing to find out if it is worth it;
+* SieveBits : size of the segment sieve is 2^SieveBits bits, e.g. 25 means the segment sieve size is 4 MiB. Choose this so that SieveWorkers*2^SieveBits fits in your L3 cache. Default: 25;
 * SieveWorkers : the number of threads to use for sieving. Increasing it may solve some CPU underuse problems, but will use more memory. 0 for choosing automatically based on number of Threads and PrimeTableLimit. Default: 0.
 
 These ones should never be modified outside developing purposes and research for now.
@@ -185,7 +186,6 @@ These ones should never be modified outside developing purposes and research for
 * PrimorialNumber : Primorial Number for the Wheel Factorization. Default: 40;
 * PrimorialOffsets : list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConsType. Default: carefully chosen offsets;
 * Debug : activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, 0 to disable. Other values may introduce some more specific debug messages. Default : 0;
-* ForceAVX2 : when an Intel processor supporting AVX2 is used, rieMiner will take advantage of this instruction set. Otherwise, it will not use AVX2. Indeed, the Zen and Zen+'s AVX2 implementation does not seem to work well, decreasing a lot the performance. In Zen2, it seems be better, but also consumes significantly more power for a small increase in comparison. You have the possibility to force the AVX2 usage anyway in these cases by setting this option to `Yes`. If the processor does not supports AVX2 or is an Intel, nothing changes.
 
 Some possible constellations types (format: (type) -> offsets to put for ConstellationType ; 3 first constellations (n + 0) which can be used for PrimorialOffsets, though some might not work)
 

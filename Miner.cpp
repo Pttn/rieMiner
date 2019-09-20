@@ -36,11 +36,12 @@ void Miner::init() {
 	std::cout << "Sieve Workers = " << _parameters.sieveWorkers << std::endl;
 	std::cout << "Best SIMD instructions supported:";
 	if (_cpuInfo.hasAVX512()) std::cout << " AVX-512";
-	else if (_cpuInfo.hasAVX2()) std::cout << " AVX2";
+	else if (_cpuInfo.hasAVX2()) {
+		std::cout << " AVX2";
+		if (!_manager->options().enableAvx2()) std::cout << " (disabled -> AVX)";
+	}
 	else if (_cpuInfo.hasAVX()) std::cout << " AVX";
 	else std::cout << " AVX not suppported!";
-	if (_cpuInfo.isIntel()) std::cout << " (Intel)";
-	else std::cout << " (AMD or other)";
 	std::cout << std::endl;
 	_parameters.sieveBits = _manager->options().sieveBits();
 	_parameters.sieveSize = 1 << _parameters.sieveBits;
@@ -626,7 +627,7 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 			mpz_add_ui(z_ploop, z_ploop, _primorialOffsetDiffToFirst[job.testWork.offsetId]);
 
 			bool firstTestDone(false);
-			if (_cpuInfo.hasAVX2() && (_cpuInfo.isIntel() || _manager->options().forceAVX2()) && job.testWork.n_indexes == WORK_INDEXES) {
+			if (_cpuInfo.hasAVX2() && _manager->options().enableAvx2() && job.testWork.n_indexes == WORK_INDEXES) {
 				uint32_t isPrime[WORK_INDEXES];
 				firstTestDone = _testPrimesIspc(job.testWork.indexes, isPrime, z_ploop, z_tmp);
 				if (firstTestDone) {
