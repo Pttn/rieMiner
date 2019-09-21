@@ -1,19 +1,19 @@
-// (c) 2017-2018 Pttn and contributors (https://github.com/Pttn/rieMiner)
+// (c) 2017-2019 Pttn and contributors (https://github.com/Pttn/rieMiner)
 
-#include "main.hpp"
-#include "Client.hpp"
-#include "Miner.hpp"
-#include "WorkManager.hpp"
-#include "tools.hpp"
 #include <iomanip>
 #include <unistd.h>
 #ifndef _WIN32
-	#include <signal.h>
 	#include <arpa/inet.h>
 	#include <netdb.h>
+	#include <signal.h>
 #else
 	#include <winsock2.h>
 #endif
+#include "Client.hpp"
+#include "main.hpp"
+#include "Miner.hpp"
+#include "tools.hpp"
+#include "WorkManager.hpp"
 
 int DEBUG(0);
 
@@ -370,7 +370,7 @@ int main(int argc, char** argv) {
 	std::cout << versionString << ", Riecoin miner by Pttn and contributors" << std::endl;
 	std::cout << "Assembly code by Michael Bell (Rockhawk)" << std::endl;
 	std::cout << "Project page: https://github.com/Pttn/rieMiner" << std::endl;
-	std::cout << "Go to project page or open README.md for usage information" << std::endl;
+	std::cout << "Go to the project page or open README.md for usage information" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
 	std::cout << "GMP " << __GNU_MP_VERSION << "." << __GNU_MP_VERSION_MINOR << "." << __GNU_MP_VERSION_PATCHLEVEL << std::endl;
 	std::cout << "LibCurl " << LIBCURL_VERSION << std::endl;

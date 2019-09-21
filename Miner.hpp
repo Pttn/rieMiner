@@ -1,12 +1,12 @@
-// (c) 2017-2018 Pttn and contributors (https://github.com/Pttn/rieMiner)
+// (c) 2017-2019 Pttn and contributors (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_Miner_hpp
 #define HEADER_Miner_hpp
 
-#include <cassert>
 #include <atomic>
-#include "WorkManager.hpp"
+#include <cassert>
 #include "tsQueue.hpp"
+#include "WorkManager.hpp"
 
 class WorkManager;
 struct WorkData;
@@ -26,29 +26,23 @@ enum JobType {TYPE_CHECK, TYPE_MOD, TYPE_SIEVE, TYPE_DUMMY};
 struct MinerParameters {
 	int16_t threads;
 	uint8_t tupleLengthMin;
-	uint64_t primorialNumber, sieve;
+	uint64_t primorialNumber, primeTableLimit;
 	bool solo;
 	int sieveWorkers;
-	uint64_t sieveBits, sieveSize, sieveWords, maxIncrements, maxIter, denseLimit;
+	uint64_t sieveBits, sieveSize, sieveWords, maxIncrements, maxIter;
 	std::vector<uint64_t> primes, inverts, modPrecompute, primeTupleOffset, primorialOffsets;
 	
-	MinerParameters() {
-		primorialNumber  = 40;
-		threads          = 8;
-		tupleLengthMin   = 6;
-		sieve            = 2147483648;
-		sieveWorkers     = 2;
-		solo             = true;
-		sieveBits        = 25;
-		sieveSize        = 1UL << sieveBits;
-		sieveWords       = sieveSize/64;
-		maxIncrements    = (1ULL << 29),
-		maxIter          = maxIncrements/sieveSize;
-		primorialOffsets =  {4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull,
-		                     7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull,
-		                     8145217177ull, 8145220537ull, 8145223897ull, 8145227257ull};
-		primeTupleOffset = {0, 4, 2, 4, 2, 4};
-	}
+	MinerParameters() :
+		threads(8),
+		tupleLengthMin(6),
+		primorialNumber(40), primeTableLimit(2147483648),
+		solo(true),
+		sieveWorkers(2),
+		sieveBits(25), sieveSize(1UL << sieveBits), sieveWords(sieveSize/64), maxIncrements(1ULL << 29), maxIter(maxIncrements/sieveSize),
+		primeTupleOffset{0, 4, 2, 4, 2, 4},
+		primorialOffsets{4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull,
+		                 7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull,
+		                 8145217177ull, 8145220537ull, 8145223897ull, 8145227257ull} {}
 };
 
 struct primeTestWork {

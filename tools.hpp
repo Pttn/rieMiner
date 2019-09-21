@@ -1,23 +1,23 @@
-// (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2019 Pttn (https://github.com/Pttn/rieMiner)
 // (c) 2018 Michael Bell/Rockhawk (CPUID tools)
 
 #ifndef HEADER_tools_hpp
 #define HEADER_tools_hpp
 
-#include <iostream>
-#include <cstdio>
-#include <cstdint>
-#include <cstring>
-#include <string>
-#include <sstream>
-#include <iomanip>
 #include <array>
-#include <vector>
 #include <chrono>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <iomanip>
+#include <iostream>
 #include <openssl/sha.h>
 #include <random>
-#include <gmpxx.h>
+#include <sstream>
+#include <string>
+#include <vector>
 #include <cpuid.h>
+#include <gmpxx.h>
 
 #define leading0s(x) std::setw(x) << std::setfill('0')
 #define FIXED(x) std::fixed << std::setprecision(x)
@@ -104,10 +104,8 @@ inline uint32_t toBEnd32(uint32_t n) {
 
 class CpuID {
 	bool _avx, _avx2, _avx512;
-	
 public:
 	CpuID();
-	
 	bool hasAVX() const {return _avx;}
 	bool hasAVX2() const {return _avx2;}
 	bool hasAVX512() const {return _avx512;}

@@ -1,17 +1,16 @@
-// (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2019 Pttn (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_StratumClient_hpp
 #define HEADER_StratumClient_hpp
 
-#include "Client.hpp"
 #include <fcntl.h>
-
 #ifdef _WIN32
 	#include <winsock2.h>
 #else
 	#include <arpa/inet.h>
 	#include <netdb.h>
 #endif
+#include "Client.hpp"
 
 // Stores the Stratum data got from the RPC call
 struct StratumData {
@@ -25,19 +24,7 @@ struct StratumData {
 	std::string jobId; // This will never be converted to binary, so we can store this in a string; this will also help when there are leading zeros
 	uint16_t extraNonce2Len;
 	
-	StratumData() {
-		bh = BlockHeader();
-		txHashes = std::vector<std::array<uint8_t, 32>>();
-		height = 0;
-		coinbase1 = std::vector<uint8_t>();
-		coinbase2 = std::vector<uint8_t>();
-		sids = std::vector<std::pair<std::string, std::vector<uint8_t>>>();
-		extraNonce1 = std::vector<uint8_t>();
-		extraNonce2 = std::vector<uint8_t>();
-		jobId = std::string();
-		extraNonce2Len = 0;
-	}
-	
+	StratumData() : height(0), extraNonce2Len(0) {}
 	void merkleRootGen();
 };
 

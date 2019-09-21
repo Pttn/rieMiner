@@ -1,16 +1,16 @@
-# rieMiner 0.91 (RC)
+# rieMiner 0.91
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's [cpuminer-rminerd](https://github.com/gatra/cpuminer-rminerd) and dave-andersen's [fastrie](https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
 Solo mining is done using the GetBlockTemplate protocol, while pooled mining is via the Stratum protocol. A benchmark mode is also proposed to compare more easily the performance between different computers.
 
-Find the latest binaries [here](https://github.com/Pttn/rieMiner/releases) for Linux and Windows. Note that 32 bits builds are much slower.
+Find the latest binaries [here](https://github.com/Pttn/rieMiner/releases) for Linux and Windows.
 
 This README serves as manual for rieMiner, and you can also find a PDF version (without build instructions) in the release page. I hope that this program will be useful for you!
 
 The Riecoin community thanks you for your participation, you will be a contributor to the robustness of the Riecoin network. Happy mining!
 
-![rieMiner just found a block](https://riecoin.dev/wp-content/uploads/2019/06/rieMiner.png)
+![rieMiner just found a block](https://riecoin.dev/wp-content/uploads/2019/09/rieMiner.png)
 
 Suggestions? Having issues with rieMiner? Join us in [Discord](https://discordapp.com/channels/525275069946003457) ([invite](https://discord.gg/2sJEayC))!
 
@@ -24,7 +24,7 @@ Only x64 systems with SSE are supported.
 
 Recommended:
 
-* Windows 10 or Debian 10;
+* Windows 10 >= 1903 or Debian 10;
 * Recent Intel or AMD, with 8 cores or more;
 * 8 GiB of RAM or more.
 

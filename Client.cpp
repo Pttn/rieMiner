@@ -1,15 +1,7 @@
-// (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2017-2019 Pttn (https://github.com/Pttn/rieMiner)
 
 #include "Client.hpp"
 #include "WorkManager.hpp"
-
-Client::Client(const std::shared_ptr<WorkManager> &manager) {
-	_manager = manager;
-	_connected = false;
-	_pendingSubmissions = std::vector<WorkData>();
-	_curl = curl_easy_init();
-	_inited = true;
-}
 
 bool Client::connect() {
 	if (_connected) return false;

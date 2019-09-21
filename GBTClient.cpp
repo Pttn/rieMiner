@@ -1,7 +1,7 @@
-// (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2019 Pttn (https://github.com/Pttn/rieMiner)
 
-#include "main.hpp"
 #include "GBTClient.hpp"
+#include "main.hpp"
 #include "WorkManager.hpp"
 
 void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const std::string &cbMsg) {

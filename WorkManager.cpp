@@ -12,16 +12,6 @@ void WorkManager::_minerThread() {
 	}
 }
 
-WorkManager::WorkManager() {
-	_options       = Options();
-	_client        = NULL;
-	_miner         = NULL;
-	_inited        = false;
-	_waitReconnect = 10;
-	_workRefresh   = 500;
-	_stats         = Stats(offsets().size());
-}
-
 void WorkManager::init() {
 	_options.loadConf();
 	std::cout << "-----------------------------------------------------------" << std::endl;

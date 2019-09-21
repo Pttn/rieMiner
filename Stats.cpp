@@ -1,18 +1,6 @@
-// (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2017-2019 Pttn (https://github.com/Pttn/rieMiner)
 
 #include "Stats.hpp"
-
-Stats::Stats(uint8_t tupleLength) {
-	for (uint8_t i(0) ; i <= tupleLength ; i++) {
-		_tuples.push_back(0);
-		_tuplesSinceLastDiff.push_back(0);
-	}
-	_difficulty = 1;
-	_heightAtDiffChange = 0;
-	_rejectedShares = 0;
-	_lastDiffChangeTp = std::chrono::system_clock::now();
-	_solo = true;
-}
 
 void Stats::startTimer() {
 	_miningStartTp = std::chrono::system_clock::now();

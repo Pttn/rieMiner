@@ -1,4 +1,4 @@
-// (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2019 Pttn (https://github.com/Pttn/rieMiner)
 // (c) 2018 Michael Bell/Rockhawk (CPUID tools)
 
 #include "tools.hpp"

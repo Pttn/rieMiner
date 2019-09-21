@@ -1,4 +1,4 @@
-// (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2017-2019 Pttn (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_WorkManager_hpp
 #define HEADER_WorkManager_hpp
@@ -25,7 +25,7 @@ class WorkManager : public std::enable_shared_from_this<WorkManager> {
 	void _minerThread();
 	
 	public:
-	WorkManager();
+	WorkManager() : _stats(offsets().size()), _client(nullptr), _miner(nullptr), _inited(false), _waitReconnect(10), _workRefresh(500) {}
 	void init();
 	
 	// The Miner will use these to get ready work from Client, and to submit solutions to it

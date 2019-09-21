@@ -1,21 +1,19 @@
-// (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2019 Pttn (https://github.com/Pttn/rieMiner)
 
 #include "main.hpp"
 #include "StratumClient.hpp"
 #include "WorkManager.hpp"
 
-#define USER_AGENT "rieMiner/0.9"
+#define USER_AGENT "rieMiner/0.91"
 
 void StratumData::merkleRootGen() {
 	std::vector<uint8_t> coinbase;
 	extraNonce2 = std::vector<uint8_t>();
-	for (uint32_t i(0) ; i < coinbase1.size() ; i++)   coinbase.push_back(coinbase1[i]);
-	for (uint32_t i(0) ; i < extraNonce1.size() ; i++) coinbase.push_back(extraNonce1[i]);
-	for (uint32_t i(0) ; i < extraNonce2Len ; i++) {
-		extraNonce2.push_back(rand(0x00, 0xFF));
-		coinbase.push_back(extraNonce2[i]);
-	}
-	for (uint32_t i(0) ; i < coinbase2.size() ; i++) coinbase.push_back(coinbase2[i]);
+	coinbase.insert(coinbase.end(), coinbase1.begin(), coinbase1.end());
+	coinbase.insert(coinbase.end(), extraNonce1.begin(), extraNonce1.end());
+	for (uint32_t i(0) ; i < extraNonce2Len ; i++) extraNonce2.push_back(rand(0x00, 0xFF));
+	coinbase.insert(coinbase.end(), extraNonce2.begin(), extraNonce2.end());
+	coinbase.insert(coinbase.end(), coinbase2.begin(), coinbase2.end());
 	
 	std::array<uint8_t, 32> cbHash(v8ToA8(sha256sha256(coinbase.data(), coinbase.size())));
 	txHashes.insert(txHashes.begin(), cbHash);
@@ -79,12 +77,9 @@ bool StratumClient::_getWork() {
 			// Get Transactions Hashes
 			for (uint32_t i(0) ; i < json_array_size(jsonTxs) ; i++) {
 				std::array<uint8_t, 32> txHash;
-				uint8_t txHashTmp[32];
-				hexStrToBin(json_string_value(json_array_get(jsonTxs, i)), txHashTmp);
-				for (uint8_t j(0) ; j < 32 ; j++) txHash[j] = txHashTmp[j];
+				hexStrToBin(json_string_value(json_array_get(jsonTxs, i)), txHash.data());
 				_sd.txHashes.push_back(txHash);
 			}
-			
 			// Extract BlockHeight from Coinbase
 			_sd.height = _sd.coinbase1[43] + 256*_sd.coinbase1[44] + 65536*_sd.coinbase1[45] - 1;
 			// Notify when the network found a block

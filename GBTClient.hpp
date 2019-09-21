@@ -1,4 +1,4 @@
-// (c) 2018 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2019 Pttn (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_GBTClient_hpp
 #define HEADER_GBTClient_hpp
@@ -17,19 +17,7 @@ struct GetBlockTemplateData {
 	                     scriptPubKey; // Calculated from custom payout address for Coinbase Transaction
 	std::vector<std::string> rules; // From GetBlockTemplate response
 	
-	GetBlockTemplateData() {
-		bh = BlockHeader();
-		transactions = std::string();
-		txHashes = std::vector<std::array<uint8_t, 32>>();
-		default_witness_commitment = std::string();
-		coinbasevalue = 0;
-		height = 0;
-		primes = 6;
-		coinbase = std::vector<uint8_t>();
-		scriptPubKey = std::vector<uint8_t>();
-		rules = std::vector<std::string>();
-	}
-	
+	GetBlockTemplateData() : coinbasevalue(0), height(0), primes(6) {}
 	void coinBaseGen(const AddressFormat&, const std::string& = "");
 	std::array<uint8_t, 32> coinBaseHash() const {
 		if (default_witness_commitment.size() > 0) { // For SegWit, hash to get txid rather than just hash the whole Coinbase

@@ -3,19 +3,19 @@
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
 
-#define versionString	"rieMiner 0.91RC1a"
-
-#include <unistd.h>
-#include <string>
-#include <array>
-#include <vector>
 #include <algorithm>
-#include <iomanip>
+#include <array>
 #include <chrono>
-#include <thread>
-#include <mutex>
 #include <fstream>
+#include <iomanip>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <unistd.h>
+#include <vector>
 #include "tools.hpp"
+
+#define versionString	"rieMiner 0.91"
 
 extern int DEBUG;
 #define DBG(x) if (DEBUG) {x;};
@@ -35,33 +35,32 @@ class Options {
 	void _stopConfig() const;
 	
 	public:
-	Options() { // Default options: Standard Benchmark with 8 threads
-		_enableAvx2 = false;
-		_debug = 0;
-		_mode = "Benchmark";
-		_host = "127.0.0.1";
-		_port = 28332;
-		_username = "";
-		_password = "";
-		_payoutAddress = "RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB";
-		_payoutAddressFormat = AddressFormat::P2PKH;
-		_secret = "/rM/";
-		_threads = 8;
-		_sieveWorkers = 0;
-		_primeTableLimit = 2147483648;
-		_sieveBits = 25;
-		_refreshInterval = 30;
-		_tupleLengthMin = 6;
-		_benchmarkDifficulty = 1600;
-		_benchmarkTimeLimit = 0;
-		_benchmark2tupleCountLimit = 50000;
-		_constellationType = {0, 4, 2, 4, 2, 4}; // What type of constellations are we mining (offsets)
-		_primorialNumber = 40; // Primorial Number
-		_primorialOffsets = {4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull,
-		                     7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull,
-		                     8145217177ull, 8145220537ull, 8145223897ull, 8145227257ull}; // Primorial Offsets
-		_rules = {"segwit"};
-	}
+	Options() : // Default options: Standard Benchmark with 8 threads
+		_enableAvx2(false),
+		_host("127.0.0.1"),
+		_username(""),
+		_password(""),
+		_mode("Benchmark"),
+		_payoutAddress("RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB"),
+		_secret("/rM0.91/"),
+		_payoutAddressFormat(AddressFormat::P2PKH),
+		_debug(0),
+		_port(28332),
+		_threads(8),
+		_sieveWorkers(0),
+		_sieveBits(25),
+		_refreshInterval(30),
+		_tupleLengthMin(6),
+		_benchmarkDifficulty(1600),
+		_benchmarkTimeLimit(0),
+		_benchmark2tupleCountLimit(50000),
+		_primeTableLimit(2147483648),
+		_primorialNumber(40),
+		_primorialOffsets{4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull,
+		                  7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull,
+		                  8145217177ull, 8145220537ull, 8145223897ull, 8145227257ull},
+		_constellationType{0, 4, 2, 4, 2, 4}, // What type of constellations are we mining (offsets)
+		_rules{"segwit"} {}
 	
 	void askConf();
 	void loadConf();

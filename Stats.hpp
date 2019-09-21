@@ -1,9 +1,8 @@
-// (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2017-2019 Pttn (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_Stats_hpp
 #define HEADER_Stats_hpp
 
-#include <fstream>
 #include "tools.hpp"
 
 // Contains stats data like: tuple counts, time elapsed since mining or latest difficulty change
@@ -17,7 +16,12 @@ class Stats {
 	bool _inited() const {return _difficulty != 1;}
 	
 	public:
-	Stats(uint8_t tupleLength = 6);
+	Stats(uint8_t tupleLength = 6) :
+		_tuples(tupleLength + 1, 0), _tuplesSinceLastDiff(tupleLength + 1, 0),
+		_difficulty(1), _heightAtDiffChange(0), _rejectedShares(0),
+		_lastDiffChangeTp(std::chrono::system_clock::now()),
+		_solo(true) {}
+	
 	void startTimer();
 	void setMiningType(const std::string &protocol) {_solo = !(protocol == "Pool");}
 	

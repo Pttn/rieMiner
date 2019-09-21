@@ -1,12 +1,12 @@
 /* (c) 2014-2017 dave-andersen (base code) (http://www.cs.cmu.edu/~dga/)
-(c) 2017-2019 Pttn (refactoring and porting to modern C++) (https://ric.pttn.me/)
+(c) 2017-2019 Pttn (refactoring and porting to modern C++) (https://github.com/Pttn/rieMiner)
 (c) 2018 Michael Bell/Rockhawk (assembly optimizations, improvements of work management between threads, and some more) (https://github.com/MichaelBell/) */
 
 // TODO: always use the GMP's C++ interface (mpz_class instead of mpz_t, etc.)
 
-#include "Miner.hpp"
 #include "external/gmp_util.h"
 #include "ispc/fermat.h"
+#include "Miner.hpp"
 
 thread_local bool isMaster(false);
 thread_local uint64_t** offsetStack(NULL);
@@ -49,13 +49,13 @@ void Miner::init() {
 	_parameters.maxIter = _parameters.maxIncrements/_parameters.sieveSize;
 	_parameters.solo = !(_manager->options().mode() == "Pool");
 	_parameters.tupleLengthMin = _manager->options().tupleLengthMin();
-	_parameters.sieve = _manager->options().primeTableLimit();
+	_parameters.primeTableLimit = _manager->options().primeTableLimit();
 	_parameters.primorialNumber  = _manager->options().primorialNumber();
 	_parameters.primeTupleOffset = _manager->options().constellationType();
 	
 	// Empirical formula, should work well in most cases for 6-tuples.
 	if (_manager->options().constellationType().size() == 6) {
-		double ptlM(((double) _parameters.sieve)/1048576.), baseMemUsage(1.68*std::pow(ptlM, 0.954)), sieveWorkerMemUsage, memUsage;
+		double ptlM(((double) _parameters.primeTableLimit)/1048576.), baseMemUsage(1.68*std::pow(ptlM, 0.954)), sieveWorkerMemUsage, memUsage;
 		if (ptlM < 768.) sieveWorkerMemUsage = 1.26*ptlM + 16.;
 		else sieveWorkerMemUsage = 560.*std::log(ptlM) - 2780.;
 		memUsage = baseMemUsage + ((double) _parameters.sieveWorkers)*sieveWorkerMemUsage;
@@ -87,14 +87,14 @@ void Miner::init() {
 		std::chrono::time_point<std::chrono::system_clock> t0(std::chrono::system_clock::now());
 		std::cout << "Generating prime table using sieve of Eratosthenes..." << std::endl;
 		std::vector<uint8_t> vfComposite;
-		vfComposite.resize((_parameters.sieve + 15)/16, 0);
-		for (uint64_t nFactor(3) ; nFactor*nFactor < _parameters.sieve ; nFactor += 2) {
+		vfComposite.resize((_parameters.primeTableLimit + 15)/16, 0);
+		for (uint64_t nFactor(3) ; nFactor*nFactor < _parameters.primeTableLimit ; nFactor += 2) {
 			if (vfComposite[nFactor >> 4] & (1 << ((nFactor >> 1) & 7))) continue;
-			for (uint64_t nComposite((nFactor*nFactor) >> 1) ; nComposite < (_parameters.sieve >> 1) ; nComposite += nFactor)
+			for (uint64_t nComposite((nFactor*nFactor) >> 1) ; nComposite < (_parameters.primeTableLimit >> 1) ; nComposite += nFactor)
 				vfComposite[nComposite >> 3] |= 1 << (nComposite & 7);
 		}
 		_parameters.primes.push_back(2);
-		for (uint64_t n(1) ; (n << 1) + 1 < _parameters.sieve ; n++) {
+		for (uint64_t n(1) ; (n << 1) + 1 < _parameters.primeTableLimit ; n++) {
 			if (!(vfComposite[n >> 3] & (1 << (n & 7))))
 				_parameters.primes.push_back((n << 1) + 1);
 		}
@@ -668,8 +668,8 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				
 				tupleLength++;
 				_manager->incTupleCount(tupleLength);
+				uint16_t offsetSum(0);
 				// Note start at 1 - we've already tested bias 0
-				uint64_t offsetSum(0);
 				for (std::vector<uint64_t>::size_type i(1) ; i < _parameters.primeTupleOffset.size() ; i++) {
 					mpz_add_ui(z_tmp, z_tmp, _parameters.primeTupleOffset[i]);
 					offsetSum += _parameters.primeTupleOffset[i];
@@ -832,7 +832,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 				if (--allowedFails == 0) {
 					allowedFails = 5;
 					DBG(std::cout << "Unable to generate enough verification work to keep threads busy." << std::endl;
-					    std::cout << "Sieve = " << _parameters.sieve << ", SieveWorkers = " << _parameters.sieveWorkers << std::endl;);
+					    std::cout << "PTL = " << _parameters.primeTableLimit << ", sieve workers = " << _parameters.sieveWorkers << std::endl;);
 				}
 			}
 			_maxWorkOut = std::min(_maxWorkOut, _workDoneQueue.size() - 9*_parameters.threads);
