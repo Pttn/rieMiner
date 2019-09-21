@@ -125,15 +125,11 @@ void Options::askConf() {
 			
 			if (_mode == "Solo") {
 				std::vector<uint8_t> spk;
-				std::cout << "Payout address (P2PKH or P2SH): ";
+				std::cout << "Payout address: ";
 				std::cin >> value;
 				setPayoutAddress(value);
 				if (_payoutAddressFormat == AddressFormat::INVALID) {
 					std::cerr << "Invalid payout address!" << std::endl;
-					_stopConfig();
-				}
-				else if (_payoutAddressFormat == AddressFormat::BECH32) {
-					std::cout << "Sorry, Bech32 addresses are currently not supported." << std::endl;
 					_stopConfig();
 				}
 				
