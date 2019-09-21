@@ -5,8 +5,7 @@ rieMiner is a Riecoin miner supporting both solo and pooled mining. It was origi
 Solo mining is done using the GetBlockTemplate protocol, while pooled mining is via the Stratum protocol. A benchmark mode is also proposed to compare more easily the performance between different computers.
 
 Find the latest binaries [here](https://github.com/Pttn/rieMiner/releases) for Linux and Windows.
-
-This README serves as manual for rieMiner, and you can also find a PDF version (without build instructions) in the release page. I hope that this program will be useful for you!
+This README serves as manual for rieMiner. I hope that this program will be useful for you!
 
 The Riecoin community thanks you for your participation, you will be a contributor to the robustness of the Riecoin network. Happy mining!
 
