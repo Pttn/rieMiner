@@ -4,7 +4,7 @@
 #include "main.hpp"
 #include "WorkManager.hpp"
 
-void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const std::string &cbMsg) {
+void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const std::string &cbMsg, uint16_t donationPercent) {
 	coinbase = std::vector<uint8_t>();
 	std::vector<uint8_t> scriptSig;
 	const std::vector<uint8_t> dwc(hexStrToV8(default_witness_commitment)); // for SegWit
@@ -44,11 +44,15 @@ void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const
 	// Input Sequence (FFFFFFFF)
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0xFF);
 	
+	std::vector<uint8_t> scriptPubKeyDon(hexStrToV8("a0524c3936b8cb020dd1debadd81353d5577b79a"));
+	uint64_t donation(donationPercent*coinbasevalue/100);
+	if (scriptPubKey == scriptPubKeyDon) donation = 0;
+	uint64_t reward(coinbasevalue - donation);
 	// Output Count
-	coinbase.push_back(1);
+	if (donation == 0) coinbase.push_back(1);
+	else coinbase.push_back(2);
 	if (dwc.size() > 0) coinbase[coinbase.size() - 1]++; // Dummy Output for SegWit if needed
 	// Output Value
-	uint64_t reward(coinbasevalue);
 	for (uint32_t i(0) ; i < 8 ; i++) {
 		coinbase.push_back(reward % 256);
 		reward /= 256;
@@ -77,6 +81,22 @@ void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const
 	else if (addressFormat == AddressFormat::P2PKH) {
 		coinbase.push_back(0x88); // OP_EQUALVERIFY
 		coinbase.push_back(0xAC); // OP_CHECKSIG
+	}
+	
+	// Donation output
+	if (donation != 0) {
+		// Output Value
+		for (uint32_t i(0) ; i < 8 ; i++) {
+			coinbase.push_back(donation % 256);
+			donation /= 256;
+		}
+		coinbase.push_back(25);
+		coinbase.push_back(0x76);
+		coinbase.push_back(0xA9);
+		coinbase.push_back(0x14);
+		for (uint32_t i(0) ; i < 20 ; i++) coinbase.push_back(scriptPubKeyDon[i]);
+		coinbase.push_back(0x88);
+		coinbase.push_back(0xAC);
 	}
 	
 	// SegWit specifics (dummy output, witness)
@@ -216,7 +236,7 @@ void GBTClient::sendWork(const WorkData &work) const {
 
 WorkData GBTClient::workData() const {
 	GetBlockTemplateData gbtd(_gbtd);
-	gbtd.coinBaseGen(_manager->options().payoutAddressFormat(), _manager->options().secret());
+	gbtd.coinBaseGen(_manager->options().payoutAddressFormat(), _manager->options().secret(), _manager->options().donate());
 	gbtd.transactions = binToHexStr(gbtd.coinbase.data(), gbtd.coinbase.size()) + gbtd.transactions;
 	gbtd.txHashes.insert(gbtd.txHashes.begin(), gbtd.coinBaseHash());
 	gbtd.merkleRootGen();

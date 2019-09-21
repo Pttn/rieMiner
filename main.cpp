@@ -213,6 +213,12 @@ void Options::loadConf() {
 					try {_tupleLengthMin = std::stoi(value);}
 					catch (...) {_tupleLengthMin = 6;}
 				}
+				else if (key == "Donate") {
+					try {_donate = std::stoi(value);}
+					catch (...) {_donate = 2;}
+					if (_donate == 0) _donate = 1;
+					if (_donate > 99) _donate = 99;
+				}
 				else if (key == "BenchmarkDifficulty") {
 					try {_benchmarkDifficulty = std::stoll(value);}
 					catch (...) {_benchmarkDifficulty = 304;}
@@ -304,6 +310,8 @@ void Options::loadConf() {
 				exit(0);
 			}
 			std::cout << std::endl;
+			if (_donate > 0) std::cout << "Donating " << _donate << "%" << std::endl;
+			else std::cout << "Had fun looking into the source code? If so, consider contributing code!" << std::endl;
 			if (_rules.size() > 0) {
 				std::cout << "Consensus rules: ";
 				for (std::vector<std::string>::size_type i(0) ; i < _rules.size() ; i++) {

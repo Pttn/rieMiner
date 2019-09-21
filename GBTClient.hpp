@@ -18,7 +18,7 @@ struct GetBlockTemplateData {
 	std::vector<std::string> rules; // From GetBlockTemplate response
 	
 	GetBlockTemplateData() : coinbasevalue(0), height(0), primes(6) {}
-	void coinBaseGen(const AddressFormat&, const std::string& = "");
+	void coinBaseGen(const AddressFormat&, const std::string&, uint16_t);
 	std::array<uint8_t, 32> coinBaseHash() const {
 		if (default_witness_commitment.size() > 0) { // For SegWit, hash to get txid rather than just hash the whole Coinbase
 			std::vector<uint8_t> coinbase2;
