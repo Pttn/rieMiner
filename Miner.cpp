@@ -105,7 +105,7 @@ void Miner::init() {
 	mpz_init_set_ui(_primorial, _parameters.primes[0]);
 	for (uint64_t i(1) ; i < _parameters.primorialNumber ; i++)
 		mpz_mul_ui(_primorial, _primorial, _parameters.primes[i]);
-	
+	std::cout << "Primorial has " << mpz_sizeinbase(_primorial, 2) << " binary digits" << std::endl;
 	const uint64_t precompPrimes(std::min(_nPrimes, 5586502348UL)); // Precomputation only works up to p = 2^37
 	std::cout << "Precomputing division data..." << std::endl;
 	_parameters.inverts.resize(_nPrimes);
