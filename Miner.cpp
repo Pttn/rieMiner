@@ -679,7 +679,7 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 						tupleLength++;
 						_manager->incTupleCount(tupleLength);
 					}
-					else if (!_parameters.solo) {
+					else if (!_parameters.solo && tupleLength > 1) { // Conditions to be a share: 2 first numbers are prime and at least 4 primes in total
 						int candidatesRemaining(5 - i);
 						if ((tupleLength + candidatesRemaining) < 4) continue;
 					}
