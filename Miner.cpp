@@ -681,7 +681,7 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 					}
 					else if (!_parameters.solo) {
 						int candidatesRemaining(5 - i);
-						if ((tupleLength + candidatesRemaining) < 4) continue;
+						if ((tupleLength + candidatesRemaining) < 4) break;
 					}
 					else break;
 				}
