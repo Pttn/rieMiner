@@ -1,4 +1,4 @@
-// (c) 2017-2019 Pttn and contributors (https://github.com/Pttn/rieMiner)
+// (c) 2017-2020 Pttn and contributors (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
@@ -15,7 +15,7 @@
 #include <vector>
 #include "tools.hpp"
 
-#define versionString	"rieMiner 0.91"
+#define versionString	"rieMiner 0.91a"
 
 extern int DEBUG;
 #define DBG(x) if (DEBUG) {x;};
@@ -23,7 +23,7 @@ extern int DEBUG;
 
 class Options {
 	bool _enableAvx2;
-	std::string _host, _username, _password, _mode, _payoutAddress, _secret;
+	std::string _host, _username, _password, _mode, _payoutAddress, _secret, _tuplesFile;
 	AddressFormat _payoutAddressFormat;
 	uint16_t _debug, _port, _threads, _sieveWorkers, _sieveBits, _refreshInterval, _tupleLengthMin, _donate;
 	uint32_t _benchmarkDifficulty, _benchmarkTimeLimit, _benchmark2tupleCountLimit;
@@ -43,6 +43,7 @@ class Options {
 		_mode("Benchmark"),
 		_payoutAddress("RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB"),
 		_secret("/rM0.91/"),
+		_tuplesFile("None"),
 		_payoutAddressFormat(AddressFormat::P2PKH),
 		_debug(0),
 		_port(28332),
@@ -76,6 +77,7 @@ class Options {
 	AddressFormat payoutAddressFormat() const {return _payoutAddressFormat;}
 	void setPayoutAddress(const std::string&);
 	std::string secret() const {return _secret;}
+	std::string tuplesFile() const {return _tuplesFile;}
 	uint16_t threads() const {return _threads;}
 	uint16_t sieveWorkers() const {return _sieveWorkers;}
 	uint64_t primeTableLimit() const {return _primeTableLimit;}

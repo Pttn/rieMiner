@@ -1,4 +1,4 @@
-// (c) 2017-2019 Pttn and contributors (https://github.com/Pttn/rieMiner)
+// (c) 2017-2020 Pttn and contributors (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_Miner_hpp
 #define HEADER_Miner_hpp
@@ -98,7 +98,7 @@ class Miner {
 	std::chrono::microseconds _modTime, _sieveTime, _verifyTime;
 	
 	bool _masterExists;
-	std::mutex _masterLock;
+	std::mutex _masterLock, _tupleFileLock;
 
 	uint64_t _curWorkDataIndex;
 	MinerWorkData _workData[WORK_DATAS];

@@ -1,4 +1,4 @@
-// (c) 2017-2019 Pttn and contributors (https://github.com/Pttn/rieMiner)
+// (c) 2017-2020 Pttn and contributors (https://github.com/Pttn/rieMiner)
 
 #include <iomanip>
 #include <unistd.h>
@@ -229,6 +229,8 @@ void Options::loadConf() {
 					try {_benchmark2tupleCountLimit = std::stoll(value);}
 					catch (...) {_benchmark2tupleCountLimit = 50000;}
 				}
+				else if (key == "TuplesFile")
+					_tuplesFile = value;
 				else if (key == "ConstellationType") {
 					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
 					std::stringstream offsetsSS(value);
@@ -280,7 +282,7 @@ void Options::loadConf() {
 	if (_mode == "Benchmark") {
 		std::cout << "Benchmark Mode at difficulty " << _benchmarkDifficulty << " (" << std::log(2.)*static_cast<double>(_benchmarkDifficulty)/std::log(10.) << " decimal digits)" << std::endl;
 		if (_benchmarkTimeLimit != 0) std::cout << " Time limit: " << _benchmarkTimeLimit << " s" << std::endl;
-		if (_benchmark2tupleCountLimit   != 0) std::cout << " 2-tuple count limit: " << _benchmark2tupleCountLimit << " 2-tuples" << std::endl;
+		if (_benchmark2tupleCountLimit != 0) std::cout << " 2-tuple count limit: " << _benchmark2tupleCountLimit << " 2-tuples" << std::endl;
 		if (_benchmarkDifficulty == 1600 && _primeTableLimit == 2147483648 && _benchmark2tupleCountLimit >= 50000 && _benchmarkTimeLimit == 0)
 			std::cout << " VALID parameters for Standard Benchmark" << std::endl;
 	}
@@ -327,7 +329,10 @@ void Options::loadConf() {
 	std::cout << "Threads: " << _threads << std::endl;
 	std::cout << "Prime table limit: " << _primeTableLimit << std::endl;
 	std::cout << "Sieve bits: " <<  _sieveBits << std::endl;
-	if (_mode == "Benchmark") std::cout << "Will show tuples of at least length " << _tupleLengthMin << std::endl;
+	if (_mode == "Benchmark") {
+		std::cout << "Will show tuples of at least length " << _tupleLengthMin << std::endl;
+		if (_tuplesFile != "None") std::cout << " Will write them to file " << _tuplesFile << std::endl;
+	}
 	else if (_mode == "Solo") std::cout << "Will submit tuples of at least length " << _tupleLengthMin << std::endl;
 	std::cout << "Stats refresh interval: " << _refreshInterval << " s" << std::endl;
 	std::cout << "Constellation type: " << "(";

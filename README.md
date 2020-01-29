@@ -17,13 +17,13 @@ Suggestions? Having issues with rieMiner? Join us in [Discord](https://discordap
 
 Only x64 systems with SSE are supported.
 
-* Windows 7 or later, or recent enough Linux;
+* Windows 8.1 or recent enough Linux;
 * x64 CPU with SSE instruction set;
 * 1 GiB of RAM (the prime table limit must be manually set at a lower value in the options).
 
 Recommended:
 
-* Windows 10 >= 1903 or Debian 10;
+* Windows 10 (latest version) or Debian 10;
 * Recent Intel or AMD, with 8 cores or more;
 * 8 GiB of RAM or more.
 
@@ -172,7 +172,8 @@ It is also possible to use custom configuration file paths, examples:
 
 * BenchmarkDifficulty : sets the testing difficulty (must be from 265 to 32767). Default: 1600;
 * BenchmarkTimeLimit : sets the testing duration in s. 0 for no time limit. Default: 0;
-* Benchmark2tupleCountLimit : stops testing after finding this number of 2-tuples. 0 for no limit. Default: 50000.
+* Benchmark2tupleCountLimit : stops testing after finding this number of 2-tuples. 0 for no limit. Default: 50000;
+* TuplesFile : write tuples of at least length TupleLengthMin to the given file. Default: None (special value that disables this feature).
 
 ### Advanced/Tweaking/Dev options
 

@@ -1,5 +1,5 @@
 /* (c) 2014-2017 dave-andersen (base code) (http://www.cs.cmu.edu/~dga/)
-(c) 2017-2019 Pttn (refactoring and porting to modern C++) (https://github.com/Pttn/rieMiner)
+(c) 2017-2020 Pttn (refactoring and porting to modern C++) (https://github.com/Pttn/rieMiner)
 (c) 2018 Michael Bell/Rockhawk (assembly optimizations, improvements of work management between threads, and some more) (https://github.com/MichaelBell/) */
 
 // TODO: always use the GMP's C++ interface (mpz_class instead of mpz_t, etc.)
@@ -698,6 +698,15 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				if (_manager->options().mode() == "Benchmark") {
 					mpz_class n(z_tmp);
 					std::cout << "Found n = " << n - offsetSum << std::endl;
+					if (_manager->options().tuplesFile() != "None") {
+						_tupleFileLock.lock();
+						std::ofstream file(_manager->options().tuplesFile(), std::ios::app);
+						if (file)
+							file << static_cast<uint16_t>(tupleLength) << "-tuple: " << n - offsetSum << std::endl;
+						else
+							std::cerr << "Unable to write file " << _manager->options().tuplesFile() << " in order to write a tuple :|" << std::endl;
+						_tupleFileLock.unlock();
+					}
 				}
 				_manager->submitWork(_workData[job.workDataIndex].verifyBlock);
 			}
