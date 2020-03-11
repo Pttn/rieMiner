@@ -1,4 +1,4 @@
-// (c) 2017-2018 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2017-2020 Pttn (https://github.com/Pttn/rieMiner)
 
 #include "WorkManager.hpp"
 #include "GBTClient.hpp"
@@ -80,7 +80,7 @@ void WorkManager::manage() {
 				_clientMutex.lock();
 				_client->process();
 				if (!_client->connected()) {
-					std::cout << "Connection lost :|, reconnecting in 10 seconds..." << std::endl;
+					std::cout << "Connection lost :|, reconnecting in " << _waitReconnect << " s..." << std::endl;
 					_miner->pause();
 					_stats.printTuplesStats();
 					_clientMutex.unlock();
@@ -109,12 +109,12 @@ void WorkManager::manage() {
 				_clientMutex.lock();
 				if (!_client->connect()) {
 					_clientMutex.unlock();
-					std::cout << "Failure :| ! Retry in 10 seconds..." << std::endl;
+					std::cout << "Failure :| ! Check your connection, configuration or credentials. Retry in " << _waitReconnect << " s..." << std::endl;
 					usleep(1000000*_waitReconnect);
 				}
 				else {
 					_clientMutex.unlock();
-					std::cout << "Connected!" << std::endl;
+					std::cout << "Success!" << std::endl;
 				}
 				usleep(10000);
 			}

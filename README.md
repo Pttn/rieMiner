@@ -105,7 +105,7 @@ Alternatively, you can create or edit this "rieMiner.conf" file next to the exec
 Option type = Option value
 ```
 
-It is case sensitive, but spaces and invalid lines are ignored. A line starting with "#" will also be ignored. **Do not put ; at the end or use other delimiters than =** for each line, and **do not confuse rieMiner.conf with riecoin.conf**! If an option is missing, the default value(s) will be used. If there are duplicate lines, the last one will be used. Here is a sample configuration file for solo mining, with comments explaining the main available options.
+It is case sensitive. A line starting with "#" will be ignored, as well as invalid ones. A single space or tab before or after "=" is also ignored. **Do not put ; at the end or use other delimiters than =** for each line, and **do not confuse rieMiner.conf with riecoin.conf**! If an option is missing, the default value(s) will be used. If there are duplicate lines, the last one will be used. Here is a sample configuration file for solo mining, with comments explaining the main available options.
 
 ```
 # Mining mode: Solo for solo mining via GetBlockTemplate, Pool for pooled mining using Stratum, Benchmark for testing. Default: Benchmark

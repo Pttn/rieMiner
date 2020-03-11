@@ -21,20 +21,21 @@ std::shared_ptr<WorkManager> manager;
 static std::string confPath("rieMiner.conf");
 
 void Options::_parseLine(std::string line, std::string& key, std::string& value) const {
-	for (uint16_t i(0) ; i < line.size() ; i++) { // Delete spaces
-		if (line[i] == ' ' || line[i] == '\t') {
-			line.erase (i, 1);
-			i--;
-		}
-	}
-	
 	const auto pos(line.find('='));
 	if (pos != std::string::npos) {
 		key   = line.substr(0, pos);
 		value = line.substr(pos + 1, line.size() - pos - 1);
+		if (key.size() > 0) { // Delete possible space before '='
+			if (key.back() == ' ' || key.back() == '\t')
+				key.pop_back();
+		}
+		if (value.size() > 0) { // Delete possible space after '='
+			if (value.front() == ' ' || value.front() == '\t')
+				value.erase(0, 1);
+		}
 	}
 	else {
-		std::cerr << "Ill formed configuration line: " << line << std::endl;
+		std::cerr << "Cannot find the delimiter '=' for line: '" << line << "'" << std::endl;
 		key   = "Error";
 		value = "Ill formed configuration line";
 	}
@@ -263,7 +264,7 @@ void Options::loadConf() {
 					while (offsets >> tmp) _rules.push_back(tmp);
 				}
 				else if (key == "Error") std::cout << "Ignoring invalid line" << std::endl;
-				else std::cout << "Ignoring line with unused key " << key << std::endl;
+				else std::cout << "Ignoring line with unused key '" << key << "'" << std::endl;
 			}
 		}
 		
@@ -335,12 +336,11 @@ void Options::loadConf() {
 	}
 	else if (_mode == "Solo") std::cout << "Will submit tuples of at least length " << _tupleLengthMin << std::endl;
 	std::cout << "Stats refresh interval: " << _refreshInterval << " s" << std::endl;
-	std::cout << "Constellation type: " << "(";
+	std::cout << "Constellation type: n + " << "(";
 	uint64_t offsetTemp(0);
 	for (std::vector<uint64_t>::size_type i(0) ; i < _constellationType.size() ; i++) {
 		offsetTemp += _constellationType[i];
-		if (offsetTemp == 0) std::cout << "n";
-		else std::cout << "n + " << offsetTemp;
+		std::cout << offsetTemp;
 		if (i != _constellationType.size() - 1) std::cout << ", ";
 	}
 	std::cout << "), length " << _constellationType.size() << std::endl;
