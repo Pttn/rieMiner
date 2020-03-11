@@ -94,7 +94,8 @@ void WorkManager::manage() {
 						_stats.startTimer();
 						std::cout << "-----------------------------------------------------------" << std::endl;
 						const uint32_t startHeight(_client->workData().height);
-						std::cout << "[0000:00:00] Started mining at block " << startHeight;
+						_stats.printTime();
+						std::cout << " Started mining at block " << startHeight;
 						_miner->start();
 					}
 					

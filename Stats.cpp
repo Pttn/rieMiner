@@ -1,4 +1,4 @@
-// (c) 2017-2019 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2017-2020 Pttn (https://github.com/Pttn/rieMiner)
 
 #include "Stats.hpp"
 
@@ -33,7 +33,7 @@ void Stats::updateDifficulty(const uint32_t newDifficulty, const uint32_t height
 void Stats::printTime() const {
 	const double elapsedSecs(timeSince(_miningStartTp));
 	const uint32_t elapsedSecsInt(elapsedSecs);
-	std::cout << "[" << leading0s(4) << (elapsedSecsInt/3600) % 10000 << ":" << leading0s(2) << (elapsedSecsInt/60) % 60 << ":" << leading0s(2) << elapsedSecsInt % 60 << "]";
+	std::cout << "[" << (elapsedSecsInt/86400) << ":" << leading0s(2) << (elapsedSecsInt/3600) % 24 << ":" << leading0s(2) << (elapsedSecsInt/60) % 60 << ":" << leading0s(2) << elapsedSecsInt % 60 << "]";
 }
 
 void Stats::printStats() const {
