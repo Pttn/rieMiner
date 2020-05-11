@@ -1,4 +1,4 @@
-// (c) 2018-2019 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2020 Pttn (https://github.com/Pttn/rieMiner)
 
 #include "main.hpp"
 #include "StratumClient.hpp"
@@ -121,9 +121,11 @@ void StratumClient::_getSubscribeInfo() {
 			else {
 				_sd.sids = std::vector<std::pair<std::string, std::vector<uint8_t>>>();
 				if (json_array_size(jsonSids) == 2 && !json_is_array(json_array_get(jsonSids, 0)) && !json_is_array(json_array_get(jsonSids, 1))) {
-					_sd.sids.push_back(std::make_pair(
-								json_string_value(json_array_get(jsonSids, 0)),
-								hexStrToV8(json_string_value(json_array_get(jsonSids, 1)))));
+					std::string key;
+					std::vector<uint8_t> value;
+					if (json_string_value(json_array_get(jsonSids, 0)) != NULL) key   = json_string_value(json_array_get(jsonSids, 0));
+					if (json_string_value(json_array_get(jsonSids, 1)) != NULL) value = hexStrToV8(json_string_value(json_array_get(jsonSids, 1)));
+					_sd.sids.push_back(std::make_pair(key, value));
 				}
 				else {
 					for (uint16_t i(0) ; i < json_array_size(jsonSids) ; i++) {
@@ -133,10 +135,11 @@ void StratumClient::_getSubscribeInfo() {
 						else if (json_array_size(jsonSid) != 2)
 							std::cerr << __func__ << ": invalid Subscribtion Id " << i << " array size!" << std::endl;
 						else {
-							_sd.sids.push_back(std::make_pair(
-								json_string_value(json_array_get(jsonSid, 0)),
-								hexStrToV8(json_string_value(json_array_get(jsonSid, 1)))));
-							
+							std::string key;
+							std::vector<uint8_t> value;
+							if (json_string_value(json_array_get(jsonSid, 0)) != NULL) key   = json_string_value(json_array_get(jsonSid, 0));
+							if (json_string_value(json_array_get(jsonSid, 1)) != NULL) value = hexStrToV8(json_string_value(json_array_get(jsonSid, 1)));
+							_sd.sids.push_back(std::make_pair(key, value));
 						}
 						if (jsonSid != NULL) json_decref(jsonSid);
 					}
