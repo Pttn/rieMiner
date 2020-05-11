@@ -1,4 +1,4 @@
-// (c) 2018-2019 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2020 Pttn (https://github.com/Pttn/rieMiner)
 
 #include "GBTClient.hpp"
 #include "main.hpp"
@@ -177,7 +177,9 @@ bool GBTClient::_getWork() {
 	}
 	
 	// Notify when the network found a block
-	if (oldHeight != _gbtd.height && oldHeight != 0) _manager->newHeightMessage(_gbtd.height - 1);
+	const uint64_t difficulty(getCompact(invEnd32(_gbtd.bh.bits)));
+	if (_manager->difficulty() != difficulty) _manager->updateDifficulty(difficulty, _gbtd.height);
+	if (oldHeight != _gbtd.height && oldHeight != 0) _manager->newHeightMessage(_gbtd.height);
 	
 	json_decref(jsonGbt);
 	
@@ -246,7 +248,7 @@ WorkData GBTClient::workData() const {
 	
 	WorkData wd;
 	memcpy(&wd.bh, &gbtd.bh, 128);
-	if (gbtd.height != 0) wd.height = gbtd.height - 1;
+	wd.height = gbtd.height;
 	wd.bh.bits       = invEnd32(wd.bh.bits);
 	wd.targetCompact = getCompact(wd.bh.bits);
 	wd.transactions  = gbtd.transactions;

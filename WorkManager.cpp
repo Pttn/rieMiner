@@ -90,7 +90,6 @@ void WorkManager::manage() {
 				else {
 					assert(_miner->inited());
 					if (!_miner->running() && _client->workData().height != 0) {
-						_stats = Stats(offsets().size());
 						_stats.setMiningType(_options.mode());
 						_stats.startTimer();
 						timer = std::chrono::system_clock::now();
@@ -117,6 +116,7 @@ void WorkManager::manage() {
 				}
 				else {
 					_clientMutex.unlock();
+					_stats = Stats(offsets().size());
 					std::cout << "Success!" << std::endl;
 				}
 				usleep(10000);

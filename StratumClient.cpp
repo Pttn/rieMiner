@@ -76,8 +76,10 @@ bool StratumClient::_getWork() {
 						_sd.txHashes.push_back(txHash);
 					}
 					// Extract BlockHeight from Coinbase
-					_sd.height = _sd.coinbase1[43] + 256*_sd.coinbase1[44] + 65536*_sd.coinbase1[45] - 1;
+					_sd.height = _sd.coinbase1[43] + 256*_sd.coinbase1[44] + 65536*_sd.coinbase1[45];
 					// Notify when the network found a block
+					const uint64_t difficulty(getCompact(invEnd32(_sd.bh.bits)));
+					if (_manager->difficulty() != difficulty) _manager->updateDifficulty(difficulty, _sd.height);
 					if (oldHeight != _sd.height && oldHeight != 0) _manager->newHeightMessage(_sd.height);
 					json_decref(jsonMn);
 					success = true;
