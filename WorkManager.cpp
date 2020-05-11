@@ -83,6 +83,7 @@ void WorkManager::manage() {
 					std::cout << "Connection lost :|, reconnecting in " << _waitReconnect << " s..." << std::endl;
 					_miner->pause();
 					_stats.printTuplesStats();
+					_stats = Stats(offsets().size());
 					_clientMutex.unlock();
 					usleep(1000000*_waitReconnect);
 				}
@@ -92,10 +93,11 @@ void WorkManager::manage() {
 						_stats = Stats(offsets().size());
 						_stats.setMiningType(_options.mode());
 						_stats.startTimer();
+						timer = std::chrono::system_clock::now();
 						std::cout << "-----------------------------------------------------------" << std::endl;
-						const uint32_t startHeight(_client->workData().height);
+						const WorkData workData(_client->workData());
 						_stats.printTime();
-						std::cout << " Started mining at block " << startHeight;
+						std::cout << " Started mining at block " << workData.height << ", difficulty " << workData.targetCompact << std::endl;
 						_miner->start();
 					}
 					

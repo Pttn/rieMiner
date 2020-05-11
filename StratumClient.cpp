@@ -21,19 +21,17 @@ void StratumData::merkleRootGen() {
 }
 
 bool StratumClient::_getWork() {
+	bool success(false);
 	json_t *jsonMn(NULL), *jsonMn_params(NULL); // Mining.notify results
 	json_error_t err;
 	jsonMn = json_loads(_result.c_str(), 0, &err);
-	if (jsonMn == NULL) {
+	if (jsonMn == NULL)
 		std::cerr << __func__ << ": invalid or no mining.notify result received!" << std::endl;
-		return false;
-	}
 	else {
 		jsonMn_params = json_object_get(jsonMn, "params");
 		if (jsonMn_params == NULL) {
 			std::cerr << __func__ << ": invalid or no params in mining.notify received!" << std::endl;
 			json_decref(jsonMn);
-			return false;
 		}
 		else {
 			uint32_t oldHeight(_sd.height);
@@ -48,47 +46,47 @@ bool StratumClient::_getWork() {
 			if (!jsonTxs || !json_is_array(jsonTxs)) {
 				std::cerr << __func__ << ": missing or invalid Merkle data for params in mining.notify!" << std::endl;
 				json_decref(jsonMn);
-				return false;
 			}
-			version = json_string_value(json_array_get(jsonMn_params, 5));
-			nbits   = json_string_value(json_array_get(jsonMn_params, 6));
-			ntime   = json_string_value(json_array_get(jsonMn_params, 7));
-
-			if (jobId == NULL || prevhash == NULL || coinbase1 == NULL || coinbase2 == NULL || version == NULL || nbits == NULL || ntime == NULL) {
-				std::cerr << __func__ << ": missing params in mining.notify!" << std::endl;
-				json_decref(jsonMn);
-				return false;
+			else {
+				version = json_string_value(json_array_get(jsonMn_params, 5));
+				nbits   = json_string_value(json_array_get(jsonMn_params, 6));
+				ntime   = json_string_value(json_array_get(jsonMn_params, 7));
+				if (jobId == NULL || prevhash == NULL || coinbase1 == NULL || coinbase2 == NULL || version == NULL || nbits == NULL || ntime == NULL) {
+					std::cerr << __func__ << ": missing params in mining.notify!" << std::endl;
+					json_decref(jsonMn);
+				}
+				else if (strlen(prevhash) != 64 || strlen(version) != 8 || strlen(nbits) != 8 || strlen(ntime) != 8) {
+					std::cerr << __func__ << ": invalid params in mining.notify!" << std::endl;
+					json_decref(jsonMn);
+				}
+				else {
+					_sd.bh = BlockHeader();
+					_sd.txHashes = std::vector<std::array<uint8_t, 32>>();
+					hexStrToBin(version,  (uint8_t*) &_sd.bh.version);
+					hexStrToBin(prevhash, _sd.bh.previousblockhash);
+					hexStrToBin(nbits,    (uint8_t*) &_sd.bh.bits);
+					hexStrToBin(ntime,    (uint8_t*) &_sd.bh.curtime);
+					_sd.coinbase1 = hexStrToV8(coinbase1);
+					_sd.coinbase2 = hexStrToV8(coinbase2);
+					_sd.jobId     = jobId;
+					// Get Transactions Hashes
+					for (uint32_t i(0) ; i < json_array_size(jsonTxs) ; i++) {
+						std::array<uint8_t, 32> txHash;
+						hexStrToBin(json_string_value(json_array_get(jsonTxs, i)), txHash.data());
+						_sd.txHashes.push_back(txHash);
+					}
+					// Extract BlockHeight from Coinbase
+					_sd.height = _sd.coinbase1[43] + 256*_sd.coinbase1[44] + 65536*_sd.coinbase1[45] - 1;
+					// Notify when the network found a block
+					if (oldHeight != _sd.height && oldHeight != 0) _manager->newHeightMessage(_sd.height);
+					json_decref(jsonMn);
+					success = true;
+				}
 			}
-			else if (strlen(prevhash) != 64 || strlen(version) != 8 || strlen(nbits) != 8 || strlen(ntime) != 8) {
-				std::cerr << __func__ << ": invalid params in mining.notify!" << std::endl;
-				json_decref(jsonMn);
-				return false;
-			}
-			
-			_sd.bh = BlockHeader();
-			_sd.txHashes = std::vector<std::array<uint8_t, 32>>();
-			hexStrToBin(version,  (uint8_t*) &_sd.bh.version);
-			hexStrToBin(prevhash, _sd.bh.previousblockhash);
-			hexStrToBin(nbits,    (uint8_t*) &_sd.bh.bits);
-			hexStrToBin(ntime,    (uint8_t*) &_sd.bh.curtime);
-			_sd.coinbase1 = hexStrToV8(coinbase1);
-			_sd.coinbase2 = hexStrToV8(coinbase2);
-			_sd.jobId     = jobId;
-			// Get Transactions Hashes
-			for (uint32_t i(0) ; i < json_array_size(jsonTxs) ; i++) {
-				std::array<uint8_t, 32> txHash;
-				hexStrToBin(json_string_value(json_array_get(jsonTxs, i)), txHash.data());
-				_sd.txHashes.push_back(txHash);
-			}
-			// Extract BlockHeight from Coinbase
-			_sd.height = _sd.coinbase1[43] + 256*_sd.coinbase1[44] + 65536*_sd.coinbase1[45] - 1;
-			// Notify when the network found a block
-			if (oldHeight != _sd.height) _manager->newHeightMessage(_sd.height);
-			
-			json_decref(jsonMn);
-			return true;
 		}
 	}
+	if (!success) _sd = StratumData();
+	return success;
 }
 
 void StratumClient::_getSubscribeInfo() {

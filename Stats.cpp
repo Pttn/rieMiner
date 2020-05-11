@@ -11,11 +11,11 @@ void Stats::newHeightMessage(const uint32_t height) {
 	if (_inited()) {
 		printTime();
 		if (height - _heightAtDiffChange != 0) {
-			std::cout << " Blockheight " << height << ", average "
+			std::cout << " Block " << height << ", average "
 				      << FIXED(1) << timeSince(_lastDiffChangeTp)/(height - _heightAtDiffChange)
 				      << " s, difficulty " << _difficulty << std::endl;
 		}
-		else std::cout << " Blockheight " << height << ", new difficulty " << _difficulty << std::endl;
+		else std::cout << " Block " << height << ", new difficulty " << _difficulty << std::endl;
 	}
 }
 

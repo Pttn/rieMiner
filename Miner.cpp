@@ -733,11 +733,8 @@ void Miner::_getTargetFromBlock(mpz_t z_target, const WorkData &block) {
 	mpz_mul_2exp(z_target, z_target, trailingZeros);
 	
 	const uint64_t difficulty(mpz_sizeinbase(z_target, 2));
-	if (_manager->difficulty() != difficulty) {
-		if (_manager->difficulty() == 1)
-			std::cout << ", difficulty " << difficulty << std::endl;
+	if (_manager->difficulty() != difficulty)
 		_manager->updateDifficulty(difficulty, block.height);
-	}
 }
 
 void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {

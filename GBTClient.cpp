@@ -138,7 +138,10 @@ bool GBTClient::_getWork() {
 	       *jsonGbt_Res_Dwc(json_object_get(jsonGbt_Res, "default_witness_commitment"));
 	
 	// Failure to GetBlockTemplate
-	if (jsonGbt == NULL || jsonGbt_Res == NULL || jsonGbt_Res_Txs == NULL) return false;
+	if (jsonGbt == NULL || jsonGbt_Res == NULL || jsonGbt_Res_Txs == NULL) {
+		_gbtd = GetBlockTemplateData();
+		return false;
+	}
 	
 	const uint32_t oldHeight(_gbtd.height);
 	uint8_t bitsTmp[4];
@@ -174,7 +177,7 @@ bool GBTClient::_getWork() {
 	}
 	
 	// Notify when the network found a block
-	if (oldHeight != _gbtd.height) _manager->newHeightMessage(_gbtd.height - 1);
+	if (oldHeight != _gbtd.height && oldHeight != 0) _manager->newHeightMessage(_gbtd.height - 1);
 	
 	json_decref(jsonGbt);
 	
