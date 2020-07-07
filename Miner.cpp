@@ -2,7 +2,7 @@
 (c) 2017-2020 Pttn (refactoring and porting to modern C++) (https://github.com/Pttn/rieMiner)
 (c) 2018 Michael Bell/Rockhawk (assembly optimizations, improvements of work management between threads, and some more) (https://github.com/MichaelBell/) */
 
-// TODO: always use the GMP's C++ interface (mpz_class instead of mpz_t, etc.)
+#include <gmpxx.h> // With Uint64_Ts, we still need to use the Mpz_ functions, otherwise there are "ambiguous overload" errors on Windows...
 
 #include "external/gmp_util.h"
 #include "ispc/fermat.h"
@@ -21,6 +21,13 @@ extern "C" {
 	mp_limb_t rie_mod_1s_4p(mp_srcptr ap, mp_size_t n, uint64_t ps, uint64_t cnt, uint64_t* cps);
 	mp_limb_t rie_mod_1s_2p_4times(mp_srcptr ap, mp_size_t n, uint32_t* ps, uint32_t cnt, uint64_t* cps, uint64_t* remainders);
 	mp_limb_t rie_mod_1s_2p_8times(mp_srcptr ap, mp_size_t n, uint32_t* ps, uint32_t cnt, uint64_t* cps, uint64_t* remainders);
+}
+
+static const mpz_class mpz2(2);
+bool isPrimeFermat(const mpz_class& n) {
+	mpz_class r, nm1(n - 1);
+	mpz_powm(r.get_mpz_t(), mpz2.get_mpz_t(), nm1.get_mpz_t(), n.get_mpz_t());
+	return r == 1;
 }
 
 void Miner::init() {
@@ -63,11 +70,6 @@ void Miner::init() {
 		else std::cout << "Estimated memory usage: " << memUsage << " MiB" << std::endl;
 		std::cout << "Reduce prime table limit to lower this, if needed." << std::endl;
 	}
-	
-	for (uint32_t i(0) ; i < WORK_DATAS ; i++) {
-		mpz_init(_workData[i].z_verifyTarget);
-		mpz_init(_workData[i].z_verifyRemainderPrimorial);
-	}
 
 	// For larger ranges of offsets, need to add more inverts in _updateRemainders().
 	std::transform(_parameters.primeTupleOffset.begin(),
@@ -102,10 +104,10 @@ void Miner::init() {
 		std::cout << "Table with all " << _nPrimes << " first primes generated in " << timeSince(t0) << " s." << std::endl;
 	}
 	
-	mpz_init_set_ui(_primorial, _parameters.primes[0]);
+	mpz_set_ui(_primorial.get_mpz_t(), _parameters.primes[0]);
 	for (uint64_t i(1) ; i < _parameters.primorialNumber ; i++)
-		mpz_mul_ui(_primorial, _primorial, _parameters.primes[i]);
-	std::cout << "Primorial has " << mpz_sizeinbase(_primorial, 2) << " binary digits" << std::endl;
+		mpz_mul_ui(_primorial.get_mpz_t(), _primorial.get_mpz_t(), _parameters.primes[i]);
+	std::cout << "Primorial has " << mpz_sizeinbase(_primorial.get_mpz_t(), 2) << " binary digits" << std::endl;
 	const uint64_t precompPrimes(std::min(_nPrimes, 5586502348UL)); // Precomputation only works up to p = 2^37
 	std::cout << "Precomputing division data..." << std::endl;
 	_parameters.inverts.resize(_nPrimes);
@@ -116,19 +118,15 @@ void Miner::init() {
 	std::thread threads[_parameters.threads];
 	for (int16_t j(0) ; j < _parameters.threads ; j++) {
 		threads[j] = std::thread([&, j]() {
-			mpz_t z_tmp, z_p;
-			mpz_init(z_tmp);
-			mpz_init(z_p);
+			mpz_class candidate, prime;
 			const uint64_t endIndex(std::min(_startingPrimeIndex + (j + 1)*blockSize, _nPrimes));
 			for (uint64_t i(_startingPrimeIndex + j*blockSize) ; i < endIndex ; i++) {
-				mpz_set_ui(z_p, _parameters.primes[i]);
-				mpz_invert(z_tmp, _primorial, z_p);
-				_parameters.inverts[i] = mpz_get_ui(z_tmp);
+				mpz_set_ui(prime.get_mpz_t(), _parameters.primes[i]);
+				mpz_invert(candidate.get_mpz_t(), _primorial.get_mpz_t(), prime.get_mpz_t());
+				_parameters.inverts[i] = mpz_get_ui(candidate.get_mpz_t());
 				if (i < precompPrimes)
 					rie_mod_1s_4p_cps(&_parameters.modPrecompute[i], _parameters.primes[i]);
 			}
-			mpz_clear(z_p);
-			mpz_clear(z_tmp);
 		});
 	}
 	for (int16_t j(0) ; j < _parameters.threads ; j++) threads[j].join();
@@ -227,10 +225,8 @@ void Miner::_putOffsetsInSegments(SieveInstance& sieve, uint64_t *offsets, uint6
 }
 
 void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t end_i) {
-	mpz_t tar;
-	mpz_init(tar);
-	mpz_set(tar, _workData[workDataIndex].z_verifyTarget);
-	mpz_add(tar, tar, _workData[workDataIndex].z_verifyRemainderPrimorial);
+	mpz_class tar(_workData[workDataIndex].verifyTarget);
+	tar += _workData[workDataIndex].verifyRemainderPrimorial;
 	int n_offsets[MAX_SIEVE_WORKERS] = {0};
 	static const int OFFSET_STACK_SIZE(16384);
 	const uint64_t tupleSize(_parameters.primeTupleOffset.size());
@@ -285,8 +281,8 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 						ps32[j] = (uint32_t) _parameters.primes[i + j] << cnt;
 						nextRemainder[j] = _parameters.inverts[i + j];
 					}
-					if (_cpuInfo.hasAVX2()) rie_mod_1s_2p_8times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
-					else rie_mod_1s_2p_4times(tar->_mp_d, tar->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
+					if (_cpuInfo.hasAVX2()) rie_mod_1s_2p_8times(tar.get_mpz_t()->_mp_d, tar.get_mpz_t()->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
+					else rie_mod_1s_2p_4times(tar.get_mpz_t()->_mp_d, tar.get_mpz_t()->_mp_size, &ps32[0], cnt, &_parameters.modPrecompute[i], &nextRemainder[0]);
 					haveRemainder = true;
 					index = nextRemainder[0];
 					nextRemainderIdx = 1;
@@ -298,8 +294,8 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 			if (!haveRemainder) {
 				cnt = __builtin_clzll(p);
 				ps = p << cnt;
-				const uint64_t remainder(rie_mod_1s_4p(tar->_mp_d, tar->_mp_size, ps, cnt, &_parameters.modPrecompute[i]));
-				DBG_VERIFY(if (remainder >> cnt != mpz_tdiv_ui(tar, p)) {std::cerr << "Remainder check fail " << (remainder >> cnt) << " != " << mpz_tdiv_ui(tar, p) << std::endl; abort();});
+				const uint64_t remainder(rie_mod_1s_4p(tar.get_mpz_t()->_mp_d, tar.get_mpz_t()->_mp_size, ps, cnt, &_parameters.modPrecompute[i]));
+				DBG_VERIFY(if (remainder >> cnt != mpz_tdiv_ui(tar.get_mpz_t(), p)) {std::cerr << "Remainder check fail " << (remainder >> cnt) << " != " << mpz_tdiv_ui(tar.get_mpz_t(), p) << std::endl; abort();});
 
 				const uint64_t pa(ps - remainder);
 				uint64_t r, nh, nl;
@@ -309,7 +305,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 				DBG_VERIFY(if (p < 0x100000000ull && (r >> cnt) != ((pa >> cnt)*invert[0]) % p) {std::cerr << "Remainder check fail" << std::endl; abort();});
 			}
 			DBG_VERIFY(({
-				const uint64_t remainder(mpz_tdiv_ui(tar, p)), pa(p - remainder);
+				const uint64_t remainder(mpz_tdiv_ui(tar.get_mpz_t(), p)), pa(p - remainder);
 				uint64_t q, nh, nl, indexCheck;
 				umul_ppmm(nh, nl, pa, invert[0]);
 				udiv_qrnnd(q, indexCheck, nh, nl, p);
@@ -317,7 +313,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 			}));
 		}
 		else {
-			const uint64_t remainder(mpz_tdiv_ui(tar, p)), pa(p - remainder);
+			const uint64_t remainder(mpz_tdiv_ui(tar.get_mpz_t(), p)), pa(p - remainder);
 			uint64_t q, nh, nl;
 			umul_ppmm(nh, nl, pa, invert[0]);
 			udiv_qrnnd(q, index, nh, nl, p);
@@ -345,7 +341,6 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 			else { \
 				if (n_offsets[j] + _halfPrimeTupleOffset.size() >= OFFSET_STACK_SIZE) { \
 					if (_workData[workDataIndex].verifyBlock.height != _currentHeight) { \
-						mpz_clear(tar); \
 						return; \
 					} \
 					_putOffsetsInSegments(_sieves[j], offsets[j], counts[j], n_offsets[j]); \
@@ -406,8 +401,6 @@ void Miner::_updateRemainders(uint32_t workDataIndex, uint64_t start_i, uint64_t
 			}
 		}
 	}
-
-	mpz_clear(tar);
 }
 
 void Miner::_processSieve(uint8_t *sieve, uint32_t* offsets, uint64_t start_i, uint64_t end_i) {
@@ -566,21 +559,21 @@ void Miner::_runSieve(SieveInstance& sieve, uint32_t workDataIndex) {
 	}
 }
 
-bool Miner::_testPrimesIspc(uint32_t indexes[WORK_INDEXES], uint32_t is_prime[WORK_INDEXES], mpz_t z_ploop, mpz_t z_tmp) {
+bool Miner::_testPrimesIspc(uint32_t indexes[WORK_INDEXES], uint32_t is_prime[WORK_INDEXES], const mpz_class &ploop, mpz_class &candidate) {
 	uint32_t M[WORK_INDEXES * MAX_N_SIZE], bits(0), N_Size;
 	uint32_t *mp(&M[0]);
 	for (uint32_t i(0); i < WORK_INDEXES; ++i) {
-		mpz_mul_ui(z_tmp, _primorial, indexes[i]);
-		mpz_add(z_tmp, z_tmp, z_ploop);
+		candidate = _primorial*indexes[i];
+		candidate += ploop;
 
 		if (bits == 0) {
-			bits = mpz_sizeinbase(z_tmp, 2);
+			bits = mpz_sizeinbase(candidate.get_mpz_t(), 2);
 			N_Size = (bits >> 5) + ((bits & 0x1f) > 0);
 			if (N_Size > MAX_N_SIZE) return false;
 		}
-		else assert(bits == mpz_sizeinbase(z_tmp, 2));
+		else assert(bits == mpz_sizeinbase(candidate.get_mpz_t(), 2));
 
-		memcpy(mp, z_tmp->_mp_d, N_Size * 4);
+		memcpy(mp, candidate.get_mpz_t()->_mp_d, N_Size*4);
 		mp += N_Size;
 	}
 
@@ -592,13 +585,7 @@ void Miner::_verifyThread() {
 /* Check for a prime cluster. Uses the fermat test - jh's code noted that it is
 slightly faster. Could do an MR test as a follow-up, but the server can do this
 too for the one-in-a-whatever case that Fermat is wrong. */
-	mpz_t z_ft_r, z_ft_b, z_ft_n, z_tmp, z_tmp2, z_ploop;
-	mpz_init(z_ft_r);
-	mpz_init_set_ui(z_ft_b, 2);
-	mpz_init(z_ft_n);
-	mpz_init(z_tmp);
-	mpz_init(z_tmp2);
-	mpz_init(z_ploop);
+	mpz_class candidate, candidateOffset, ploop;
 
 	while (_running) {
 		primeTestWork job;
@@ -623,24 +610,20 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 		}
 		
 		if (job.type == TYPE_CHECK) { // fallthrough: job.type == TYPE_CHECK
-			mpz_mul_ui(z_ploop, _primorial, job.testWork.loop*_parameters.sieveSize);
-			mpz_add(z_ploop, z_ploop, _workData[job.workDataIndex].z_verifyRemainderPrimorial);
-			mpz_add(z_ploop, z_ploop, _workData[job.workDataIndex].z_verifyTarget);
-			mpz_add_ui(z_ploop, z_ploop, _primorialOffsetDiffToFirst[job.testWork.offsetId]);
+			mpz_mul_ui(ploop.get_mpz_t(), _primorial.get_mpz_t(), job.testWork.loop*_parameters.sieveSize);
+			ploop += _workData[job.workDataIndex].verifyRemainderPrimorial;
+			ploop += _workData[job.workDataIndex].verifyTarget;
+			mpz_add_ui(ploop.get_mpz_t(), ploop.get_mpz_t(), _primorialOffsetDiffToFirst[job.testWork.offsetId]);
 
 			bool firstTestDone(false);
 			if (_cpuInfo.hasAVX2() && _manager->options().enableAvx2() && job.testWork.n_indexes == WORK_INDEXES) {
 				uint32_t isPrime[WORK_INDEXES];
-				firstTestDone = _testPrimesIspc(job.testWork.indexes, isPrime, z_ploop, z_tmp);
+				firstTestDone = _testPrimesIspc(job.testWork.indexes, isPrime, ploop, candidate);
 				if (firstTestDone) {
 					job.testWork.n_indexes = 0;
 					for (uint32_t i(0) ; i < WORK_INDEXES ; i++) {
 						DBG_VERIFY(({
-							mpz_mul_ui(z_tmp, _primorial, job.testWork.indexes[i]);
-							mpz_add(z_tmp, z_tmp, z_ploop);
-							mpz_sub_ui(z_ft_n, z_tmp, 1);
-							mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
-							if (mpz_cmp_ui(z_ft_r, 1) == 0) assert(isPrime[i]);
+							if (isPrimeFermat(candidate)) assert(isPrime[i]);
 							else assert(!isPrime[i]);
 						}));
 						_manager->incTupleCount(0);
@@ -654,28 +637,24 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				if (_currentHeight != _workData[job.workDataIndex].verifyBlock.height) break;
 
 				uint8_t tupleLength(0);
-				mpz_mul_ui(z_tmp, _primorial, job.testWork.indexes[idx]);
-				mpz_add(z_tmp, z_tmp, z_ploop);
+				candidate = _primorial*job.testWork.indexes[idx];
+				candidate += ploop;
 				
 				if (!firstTestDone) {
-					mpz_sub_ui(z_ft_n, z_tmp, 1);
-					mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
 					_manager->incTupleCount(tupleLength);
-					if (mpz_cmp_ui(z_ft_r, 1) != 0) continue;
+					if (!isPrimeFermat(candidate)) continue;
 				}
 
-				mpz_sub(z_tmp2, z_tmp, _workData[job.workDataIndex].z_verifyTarget); // offset = tested - target
+				candidateOffset = candidate - _workData[job.workDataIndex].verifyTarget; // offset = tested - target
 				
 				tupleLength++;
 				_manager->incTupleCount(tupleLength);
 				uint16_t offsetSum(0);
 				// Note start at 1 - we've already tested bias 0
 				for (std::vector<uint64_t>::size_type i(1) ; i < _parameters.primeTupleOffset.size() ; i++) {
-					mpz_add_ui(z_tmp, z_tmp, _parameters.primeTupleOffset[i]);
 					offsetSum += _parameters.primeTupleOffset[i];
-					mpz_sub_ui(z_ft_n, z_tmp, 1);
-					mpz_powm(z_ft_r, z_ft_b, z_ft_n, z_tmp);
-					if (mpz_cmp_ui(z_ft_r, 1) == 0) {
+					mpz_add_ui(candidate.get_mpz_t(), candidate.get_mpz_t(), _parameters.primeTupleOffset[i]);
+					if (isPrimeFermat(mpz_class(candidate))) {
 						tupleLength++;
 						_manager->incTupleCount(tupleLength);
 					}
@@ -692,17 +671,17 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 				else if (tupleLength < 4) continue;
 	
 				// Generate nOffset and submit
-				for (uint32_t d(0) ; d < (uint32_t) std::min(32/((uint32_t) sizeof(mp_limb_t)), (uint32_t) z_tmp2->_mp_size) ; d++)
-					*(mp_limb_t*) (_workData[job.workDataIndex].verifyBlock.bh.nOffset + d*sizeof(mp_limb_t)) = z_tmp2->_mp_d[d];
+				for (uint32_t d(0) ; d < (uint32_t) std::min(32/((uint32_t) sizeof(mp_limb_t)), (uint32_t) candidateOffset.get_mpz_t()->_mp_size) ; d++)
+					*(mp_limb_t*) (_workData[job.workDataIndex].verifyBlock.bh.nOffset + d*sizeof(mp_limb_t)) = candidateOffset.get_mpz_t()->_mp_d[d];
 				_workData[job.workDataIndex].verifyBlock.primes = tupleLength;
 				if (_manager->options().mode() == "Benchmark") {
-					mpz_class n(z_tmp);
-					std::cout << "Found n = " << n - offsetSum << std::endl;
+					mpz_class n(candidate - offsetSum);
+					std::cout << "Found n = " << n << std::endl;
 					if (_manager->options().tuplesFile() != "None") {
 						_tupleFileLock.lock();
 						std::ofstream file(_manager->options().tuplesFile(), std::ios::app);
 						if (file)
-							file << static_cast<uint16_t>(tupleLength) << "-tuple: " << n - offsetSum << std::endl;
+							file << static_cast<uint16_t>(tupleLength) << "-tuple: " << n << std::endl;
 						else
 							std::cerr << "Unable to write file " << _manager->options().tuplesFile() << " in order to write a tuple :|" << std::endl;
 						_tupleFileLock.unlock();
@@ -717,40 +696,35 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 	}
 }
 
-void Miner::_getTargetFromBlock(mpz_t z_target, const WorkData &block) {
+void Miner::_getTargetFromBlock(mpz_class &target, const WorkData &block) {
 	std::vector<uint8_t> powHash(sha256sha256((uint8_t*) &block, 80));
-	
-	mpz_init_set_ui(z_target, 1);
-	mpz_mul_2exp(z_target, z_target, zeroesBeforeHashInPrime);
+	target = 1;
+	target <<= zeroesBeforeHashInPrime;
 	for (uint64_t i(0) ; i < 256 ; i++) {
-		mpz_mul_2exp(z_target, z_target, 1);
+		target <<= 1;
 		if ((powHash[i/8] >> (i % 8)) & 1)
-			z_target->_mp_d[0]++;
+			target.get_mpz_t()->_mp_d[0]++;
 	}
 	
 	const uint64_t searchBits(block.targetCompact);
 	const uint64_t trailingZeros(searchBits - 1 - zeroesBeforeHashInPrime - 256);
-	mpz_mul_2exp(z_target, z_target, trailingZeros);
+	target <<= trailingZeros;
 }
 
 void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
-	mpz_t z_target, z_tmp, z_remainderPrimorial;
-	mpz_init(z_tmp);
-	mpz_init(z_remainderPrimorial);
-	
-	_getTargetFromBlock(z_target, _workData[workDataIndex].verifyBlock);
+	mpz_class target, candidate, remainderPrimorial;
+	_getTargetFromBlock(target, _workData[workDataIndex].verifyBlock);
 	if (_running) {
 		// find first offset where target%primorial = _parameters.primorialOffset
-		mpz_tdiv_r(z_remainderPrimorial, z_target, _primorial);
-		mpz_abs(z_remainderPrimorial, z_remainderPrimorial);
-		mpz_sub(z_remainderPrimorial, _primorial, z_remainderPrimorial);
-		mpz_tdiv_r(z_remainderPrimorial, z_remainderPrimorial, _primorial);
-		mpz_abs(z_remainderPrimorial, z_remainderPrimorial);
-		mpz_add_ui(z_remainderPrimorial, z_remainderPrimorial, _parameters.primorialOffsets[0]);
-		mpz_add(z_tmp, z_target, z_remainderPrimorial);
+		remainderPrimorial = target % _primorial;
+		mpz_abs(remainderPrimorial.get_mpz_t(), remainderPrimorial.get_mpz_t());
+		remainderPrimorial = (_primorial - remainderPrimorial) % _primorial;
+		mpz_abs(remainderPrimorial.get_mpz_t(), remainderPrimorial.get_mpz_t());
+		mpz_add_ui(remainderPrimorial.get_mpz_t(), remainderPrimorial.get_mpz_t(), _parameters.primorialOffsets[0]);
+		candidate = target + remainderPrimorial;
 		
-		mpz_set(_workData[workDataIndex].z_verifyTarget, z_target);
-		mpz_set(_workData[workDataIndex].z_verifyRemainderPrimorial, z_remainderPrimorial);
+		_workData[workDataIndex].verifyTarget = target;
+		_workData[workDataIndex].verifyRemainderPrimorial = remainderPrimorial;
 		
 		for (int i(0) ; i < _parameters.sieveWorkers ; i++)
 			for (uint64_t j(0) ; j < _parameters.maxIter; j++) _sieves[i].segmentCounts[j] = 0;
@@ -840,8 +814,6 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 			_maxWorkOut = std::min(_maxWorkOut, _workDoneQueue.size() - 9*_parameters.threads);
 			DBG(std::cout << "Work target before starting next block now: " << _maxWorkOut << std::endl;);
 		}
-
-		mpz_clears(z_target, z_tmp, z_remainderPrimorial, NULL);
 	}
 }
 

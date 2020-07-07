@@ -66,7 +66,7 @@ struct primeTestWork {
 };
 
 struct MinerWorkData {
-	mpz_t z_verifyTarget, z_verifyRemainderPrimorial;
+	mpz_class verifyTarget, verifyRemainderPrimorial;
 	WorkData verifyBlock;
 	std::atomic<uint64_t> outstandingTests{0};
 };
@@ -90,7 +90,7 @@ class Miner {
 	tsQueue<primeTestWork, 1024> _modWorkQueue;
 	tsQueue<primeTestWork, 4096> _verifyWorkQueue;
 	tsQueue<int64_t, 9216> _workDoneQueue;
-	mpz_t _primorial;
+	mpz_class _primorial;
 	uint64_t _nPrimes, _entriesPerSegment, _primeTestStoreOffsetsSize, _startingPrimeIndex, _sparseLimit;
 	std::vector<uint64_t> _halfPrimeTupleOffset, _primorialOffsetDiff, _primorialOffsetDiffToFirst;
 	SieveInstance* _sieves;
@@ -149,9 +149,9 @@ class Miner {
 	void _processSieve(uint8_t *sieve, uint32_t* offsets, uint64_t start_i, uint64_t end_i);
 	void _processSieve6(uint8_t *sieve, uint32_t* offsets, uint64_t start_i, uint64_t end_i);
 	void _runSieve(SieveInstance& sieve, uint32_t workDataIndex);
-	bool _testPrimesIspc(uint32_t indexes[WORK_INDEXES], uint32_t is_prime[WORK_INDEXES], mpz_t z_ploop, mpz_t z_temp);
+	bool _testPrimesIspc(uint32_t indexes[WORK_INDEXES], uint32_t is_prime[WORK_INDEXES], const mpz_class &ploop, mpz_class &candidate);
 	void _verifyThread();
-	void _getTargetFromBlock(mpz_t z_target, const WorkData& block);
+	void _getTargetFromBlock(mpz_class &target, const WorkData& block);
 	void _processOneBlock(uint32_t workDataIndex, bool isNewHeight);
 	
 	public:
