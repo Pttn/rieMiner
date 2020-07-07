@@ -28,17 +28,29 @@ void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const
 	// Input VOUT (FFFFFFFF)
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0xFF);
 	// ScriptSig Size
-	coinbase.push_back(4 + scriptSig.size()); // Block Height Push (4) + scriptSig.size()
-	// Block Height Length
-	if (height/65536 == 0) {
-		if (height/256 == 0) coinbase.push_back(1);
-		else coinbase.push_back(2);
+	coinbase.push_back(scriptSig.size()); // Block Height Push Size (1-4 added later) + scriptSig.size()
+	if (height < 17) {
+		coinbase.back()++;
+		coinbase.push_back(80 + height);
 	}
-	else coinbase.push_back(3);
-	// Block Height
-	coinbase.push_back(height % 256);
-	coinbase.push_back((height/256) % 256);
-	coinbase.push_back((height/65536) % 256);
+	else if (height < 128) {
+		coinbase.back() += 2;
+		coinbase.push_back(1);
+		coinbase.push_back(height);
+	}
+	else if (height < 32768) {
+		coinbase.back() += 3;
+		coinbase.push_back(2);
+		coinbase.push_back(height % 256);
+		coinbase.push_back((height/256) % 256);
+	}
+	else {
+		coinbase.back() += 4;
+		coinbase.push_back(3);
+		coinbase.push_back(height % 256);
+		coinbase.push_back((height/256) % 256);
+		coinbase.push_back((height/65536) % 256);
+	}
 	// ScriptSig
 	for (uint32_t i(0) ; i < scriptSig.size() ; i++) coinbase.push_back(scriptSig[i]);
 	// Input Sequence (FFFFFFFF)
