@@ -90,8 +90,11 @@ void Options::askConf() {
 				std::cout << "RPC port: ";
 			}
 			else {
+				std::cout << "Please choose a pool that does not already have a lot of mining power to prevent centralization." << std::endl;
 				std::cout << "Current pools " << std::endl;
-				std::cout << "     XPoolX: mining.xpoolx.com:5000" << std::endl;
+				std::cout << "     XPoolX: mining.xpoolx.com:2090" << std::endl;
+				std::cout << "  PikaPools: ric.pikapools.com:5000" << std::endl;
+				std::cout << "   SuprNova: ric.suprnova.cc:5000" << std::endl;
 				std::cout << "  uBlock.it: mine.ublock.it:5000" << std::endl;
 				std::cout << "Pool address (without port): ";
 				std::cin >> value;

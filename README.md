@@ -263,13 +263,22 @@ Also watch regularly if the wallet is correctly syncing, especially if the messa
 
 ## Pooled mining specific information
 
-Existing pools:
+Please choose a pool that does not already have a lot of mining power to prevent centralization. List:
 
-* [XPoolX](https://xpoolx.com/ricindex.php)
+* [XPoolX](https://xpoolx.com/), no account needed
   * Host = mining.xpoolx.com
-  * Port = 5000
+  * Port = 2090
+  * User = (Riecoin address)
   * Owner: [xpoolx](https://bitcointalk.org/index.php?action=profile;u=605189) - info@xpoolx.com 
-  * They also support Solo mining via Stratum with a 5% fee
+* [PikaPools](http://ric.pikapools.com/), no account needed
+  * Host = ric.pikapools.com
+  * Port = 5000
+  * User = (Riecoin address)
+  * Owner: [1AndOnlyPika](https://bitcointalk.org/index.php?action=profile;u=2803096)
+* [Suprnova](https://ric.suprnova.cc/)
+  * Host = ric.suprnova.cc
+  * Port = 5000
+  * Owner: [OcMiner](https://twitter.com/SuprnovaPools)
 * [uBlock.it](https://ublock.it/index.php)
   * Host = mine.ublock.it or mine.blockocean.com
   * Port = 5000
