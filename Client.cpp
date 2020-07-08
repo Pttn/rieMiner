@@ -1,4 +1,4 @@
-// (c) 2017-2019 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2017-2020 Pttn (https://github.com/Pttn/rieMiner)
 
 #include "Client.hpp"
 #include "WorkManager.hpp"
@@ -112,9 +112,9 @@ void BMClient::sendWork(const WorkData &work) const {
 WorkData BMClient::workData() const {
 	WorkData wd;
 	if (_height == 1) {
-		memcpy(&wd.bh, &_bh, 128);
+		wd.bh = _bh;
 		wd.height = _height;
-		wd.targetCompact = getCompact(wd.bh.bits);
+		wd.difficulty = decodeCompact(wd.bh.bits);
 		for (uint32_t i(0) ; i < 32 ; i++) wd.bh.merkleRoot[i] = rand(0x00, 0xFF);
 	}
 	return wd;

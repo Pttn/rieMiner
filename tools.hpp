@@ -1,4 +1,4 @@
-// (c) 2018-2019 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2020 Pttn (https://github.com/Pttn/rieMiner)
 // (c) 2018 Michael Bell/Rockhawk (CPUID tools)
 
 #ifndef HEADER_tools_hpp
@@ -54,7 +54,7 @@ inline void hexStrToBin(std::string str, uint8_t* data) {
 	for (uint16_t i(0) ; i < v.size() ; i++) data[i] = v[i];
 }
 
-inline uint32_t getCompact(uint32_t nCompact) {
+inline uint32_t decodeCompact(uint32_t nCompact) {
 	const uint32_t nSize(nCompact >> 24), nWord(nCompact & 0x007fffff);
 	if (nSize <= 3) return nWord >> 8*(3 - nSize);
 	else return nWord << 8*(nSize - 3); // warning: this has problems if difficulty (uncompacted) ever goes past the 2^32 boundary

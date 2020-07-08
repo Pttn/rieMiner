@@ -189,7 +189,7 @@ bool GBTClient::_getWork() {
 	}
 	
 	// Notify when the network found a block
-	const uint64_t difficulty(getCompact(invEnd32(_gbtd.bh.bits)));
+	const uint64_t difficulty(decodeCompact(invEnd32(_gbtd.bh.bits)));
 	if (_manager->difficulty() != difficulty) _manager->updateDifficulty(difficulty, _gbtd.height);
 	if (oldHeight != _gbtd.height && oldHeight != 0) _manager->newHeightMessage(_gbtd.height);
 	
@@ -223,7 +223,7 @@ void GBTClient::sendWork(const WorkData &work) const {
 	std::ostringstream oss;
 	std::string req;
 	
-	oss << "{\"method\": \"submitblock\", \"params\": [\"" << binToHexStr(&work.bh, 112);
+	oss << "{\"method\": \"submitblock\", \"params\": [\"" << v8ToHexStr(work.bh.toV8());
 	// Using the Variable Length Integer format
 	if (work.txCount < 0xFD)
 		oss << binToHexStr((uint8_t*) &work.txCount, 1);
@@ -259,12 +259,12 @@ WorkData GBTClient::workData() const {
 	gbtd.merkleRootGen();
 	
 	WorkData wd;
-	memcpy(&wd.bh, &gbtd.bh, 128);
+	wd.bh = gbtd.bh;
 	wd.height = gbtd.height;
-	wd.bh.bits       = invEnd32(wd.bh.bits);
-	wd.targetCompact = getCompact(wd.bh.bits);
-	wd.transactions  = gbtd.transactions;
-	wd.txCount       = gbtd.txHashes.size();
+	wd.bh.bits      = invEnd32(wd.bh.bits);
+	wd.difficulty   = decodeCompact(wd.bh.bits);
+	wd.transactions = gbtd.transactions;
+	wd.txCount      = gbtd.txHashes.size();
 	// Change endianness for mining (will revert back when submit share)
 	for (uint8_t i(0) ; i < 32; i++) wd.bh.previousblockhash[i] = gbtd.bh.previousblockhash[31 - i];
 	return wd;

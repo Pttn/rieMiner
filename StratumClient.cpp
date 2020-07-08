@@ -81,7 +81,7 @@ bool StratumClient::_getWork() {
 					else if (heightLength == 2) _sd.height = _sd.coinbase1[43] + 256*_sd.coinbase1[44];
 					else _sd.height = _sd.coinbase1[43] + 256*_sd.coinbase1[44] + 65536*_sd.coinbase1[45];
 					// Notify when the network found a block
-					const uint64_t difficulty(getCompact(invEnd32(_sd.bh.bits)));
+					const uint64_t difficulty(decodeCompact(invEnd32(_sd.bh.bits)));
 					if (_manager->difficulty() != difficulty) _manager->updateDifficulty(difficulty, _sd.height);
 					if (oldHeight != _sd.height && oldHeight != 0) _manager->newHeightMessage(_sd.height);
 					json_decref(jsonMn);
@@ -352,12 +352,12 @@ WorkData StratumClient::workData() const {
 	
 	WorkData wd;
 	wd.height = sd.height;
-	memcpy(&wd.bh, &sd.bh, 128);
-	wd.bh.bits       = invEnd32(wd.bh.bits);
-	wd.targetCompact = getCompact(wd.bh.bits);
-	wd.extraNonce1   = sd.extraNonce1;
-	wd.extraNonce2   = sd.extraNonce2;
-	wd.jobId         = sd.jobId;
+	wd.bh          = sd.bh;
+	wd.bh.bits     = invEnd32(wd.bh.bits);
+	wd.difficulty  = decodeCompact(wd.bh.bits);
+	wd.extraNonce1 = sd.extraNonce1;
+	wd.extraNonce2 = sd.extraNonce2;
+	wd.jobId       = sd.jobId;
 	// Change endianness for mining (will revert back when submit share)
 	for (uint8_t i(0) ; i < 8 ; i++) ((uint32_t*) wd.bh.previousblockhash)[i] = toBEnd32(((uint32_t*) wd.bh.previousblockhash)[i]);
 	wd.bh.curtime = toBEnd32(wd.bh.curtime);

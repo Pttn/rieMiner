@@ -96,7 +96,7 @@ void WorkManager::manage() {
 						std::cout << "-----------------------------------------------------------" << std::endl;
 						const WorkData workData(_client->workData());
 						_stats.printTime();
-						std::cout << " Started mining at block " << workData.height << ", difficulty " << workData.targetCompact << std::endl;
+						std::cout << " Started mining at block " << workData.height << ", difficulty " << workData.difficulty << std::endl;
 						_miner->start();
 					}
 					

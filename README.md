@@ -1,4 +1,4 @@
-# rieMiner 0.91
+# rieMiner 0.92α0
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's [cpuminer-rminerd](https://github.com/gatra/cpuminer-rminerd) and dave-andersen's [fastrie](https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
@@ -223,43 +223,41 @@ rieMiner will also notify if it found a k-tuple (k >= Tuples option value) in so
 
 Note that other ways for solo mining (protocol proxies,...) were never tested with rieMiner. It was written specifically for the official wallet and the existing Riecoin pools.
 
+Also, rieMiner 0.92 is no longer compatible with Riecoin Core 0.16.3, and is required for 0.20.0.
+
 ### Configure the Riecoin wallet for solo mining
 
 We assume that Riecoin Core is already working and synced. To solo mine with it, you have to configure it.
 
 * Find the riecoin.conf configuration file. It should be located in /home/username/.riecoin or equivalent in Windows;
 * **Do not confuse this file with the rieMiner.conf**!
-* An example of riecoin.conf content suitable for mining is
+* Here is a template of riecoin.conf suitable for mining (if mining from the same computer that runs Riecoin Core).
 
 ```
 rpcuser=(username)
 rpcpassword=(password)
-rpcport=28332
-port=28333
-rpcallowip=127.0.0.1
 server=1
 daemon=1
+rpcallowip=127.0.0.1
+
+[main]
+rpcport=28332
+port=28333
+
+[test]
+rpcport=38332
+port=38333
 ```
 
-If you feel the need, you can add more nodes manually with `connect=(nodeip)`, (nodeip) after connect being a node's IP. You can find a list of the nodes connected the last 24 h here: https://chainz.cryptoid.info/ric/#!network.
+Choose a username and a password and replace (username) and (password). The ones in `rieMiner.conf` must match with them.
 
-If you wish to mine from another computer, add another `rpcallowip=ip.of.the.computer`, or else the connection will be refused. Choose a username and a password and replace (username) and (password).
+If mining for the first time, you should try to mine a few blocks in Testnet to ensure that everything works fine. To use Testnet, either add `testnet=1` at the beginning of `riecoin.conf` before running Riecoin Core, or start it with the command line option `-testnet`.
 
-### Work control
+#### Mine with another or multiple computer(s)
 
-You might have to wait some consequent time before finding a block. What if something is actually wrong and then the time the miner finally found a block, the submission fails?
+If you wish to mine from another computer, add another `rpcallowip=ip.of.the.miningcomputer`, or else the connection will be refused. You will also need to add the option `rpcbind=ip.of.the.server`, where `ip.of.the.server` is the IP or the computer running the Riecoin Core node.
 
-First, if for some reason rieMiner disconnects from the wallet (you killed it or its computer crashed), it will detect that it has not received the mining data and then just stop mining: so if it is currently mining, everything should be fine.
-
-If you are worried about the fact that the block will be incorrectly submitted, here comes the TupleLengthMin option. Indeed, you can send invalid blocks to the wallet (after all, it is yours), and check if the wallet actually received them and if these submissions are properly processed. When such invalid block is submitted, you can check the debug.log file in the same location as riecoin.conf, and then, you should see something like
-
-```
-ERROR: CheckProofOfWork() : n+10 not prime
-```
-
-Remember that the miner searches numbers n such that n, n + 2, n + 6, n + 10, n + 12 and n + 16 are prime, so if you set the TupleLengthMin option to for example 3, rieMiner will submit a n such that n, n + 2 and n + 6 are prime, but not necessarily the other numbers, so you can conclude that the wallet successfully decoded the submission here, and that everything works fine. If you see nothing or another error message, then something is wrong (possible example would be an unstable overclock)...
-
-Also watch regularly if the wallet is correctly syncing, especially if the message `Blockheight = ...` did not appear since a very long time (except if the network is mining the superblock). In Riecoin-Qt, this can be done by hovering the check at the lower right corner, and comparing the number with the latest block found in a Riecoin explorer. If something is wrong, try to change the nodes in riecoin.conf or check your connection.
+For example, if your computer running Riecoin has the local IP `192.168.1.100`, and you wish to mine with multiple computers from the local network, you can use `rpcallowip=192.168.1.0/24` to allow all these computers, and also need to add `rpcbind=192.168.1.100` in the `riecoin.conf` file. The miners' `rieMiner.conf` must have the setting `Host = 192.168.1.100`.
 
 ## Pooled mining specific information
 

@@ -14,7 +14,7 @@ thread_local uint64_t** offsetCount(NULL);
 
 #define MAX_SIEVE_WORKERS 16
 #define NUM_PRIMES_TO_2P32 203280222
-#define	zeroesBeforeHashInPrime	8
+#define	ZEROS_BEFORE_HASH	8
 
 extern "C" {
 	void rie_mod_1s_4p_cps(uint64_t *cps, uint64_t p);
@@ -697,17 +697,16 @@ too for the one-in-a-whatever case that Fermat is wrong. */
 }
 
 void Miner::_getTargetFromBlock(mpz_class &target, const WorkData &block) {
-	std::vector<uint8_t> powHash(sha256sha256((uint8_t*) &block, 80));
+	std::vector<uint8_t> powHash(block.bh.powHash());
 	target = 1;
-	target <<= zeroesBeforeHashInPrime;
+	target <<= ZEROS_BEFORE_HASH;
 	for (uint64_t i(0) ; i < 256 ; i++) {
 		target <<= 1;
 		if ((powHash[i/8] >> (i % 8)) & 1)
 			target.get_mpz_t()->_mp_d[0]++;
 	}
 	
-	const uint64_t searchBits(block.targetCompact);
-	const uint64_t trailingZeros(searchBits - 1 - zeroesBeforeHashInPrime - 256);
+	const uint64_t trailingZeros(block.difficulty - 1 - ZEROS_BEFORE_HASH - 256);
 	target <<= trailingZeros;
 }
 
