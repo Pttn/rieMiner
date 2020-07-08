@@ -257,7 +257,10 @@ void Options::loadConf() {
 					while (offsets >> tmp) primorialOffsets.push_back(tmp);
 					if (primorialOffsets.size() < 1)
 						std::cout << "Too short or invalid primorial offsets, ignoring." << std::endl;
-					else _primorialOffsets = primorialOffsets;
+					else {
+						_primorialOffsets = primorialOffsets;
+						_customPrimorialOffsets = true;
+					}
 				}
 				else if (key == "Rules") {
 					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
@@ -273,6 +276,20 @@ void Options::loadConf() {
 		
 		if (_tupleLengthMin < 2 || _tupleLengthMin > _constellationType.size())
 			_tupleLengthMin = _constellationType.size();
+		if (!_customPrimorialOffsets) {
+			bool defaultPrimorialOffsetsFound(false);
+			for (const auto &constellationData : defaultConstellationData) {
+				if (_constellationType == constellationData.first) {
+					_primorialOffsets = constellationData.second;
+					defaultPrimorialOffsetsFound = true;
+					break;
+				}
+			}
+			if (!defaultPrimorialOffsetsFound) {
+				std::cout << "Not hardcoded Constellation Type chosen and no Primorial Offset set. rieMiner cannot continue." << std::endl;
+				exit(0);
+			}
+		}
 		file.close();
 	}
 	else {

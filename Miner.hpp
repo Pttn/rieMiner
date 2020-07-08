@@ -39,10 +39,8 @@ struct MinerParameters {
 		solo(true),
 		sieveWorkers(2),
 		sieveBits(25), sieveSize(1UL << sieveBits), sieveWords(sieveSize/64), maxIncrements(1ULL << 29), maxIter(maxIncrements/sieveSize),
-		primeTupleOffset{0, 4, 2, 4, 2, 4},
-		primorialOffsets{4209995887ull, 4209999247ull, 4210002607ull, 4210005967ull,
-		                 7452755407ull, 7452758767ull, 7452762127ull, 7452765487ull,
-		                 8145217177ull, 8145220537ull, 8145223897ull, 8145227257ull} {}
+		primeTupleOffset(defaultConstellationData[0].first),
+		primorialOffsets(defaultConstellationData[0].second) {}
 };
 
 struct primeTestWork {

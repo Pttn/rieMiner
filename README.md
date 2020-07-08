@@ -148,13 +148,16 @@ Donate = 5
 # Default: segwit
 # Rules = segwit
 
+# Which sort of constellation the miner will mine. Currently, Riecoin MainNet accepts '0, 4, 2, 4, 2, 4' constellations, and TestNet '0, 2, 4, 2'. Default: 0, 4, 2, 4, 2, 4
+# Note that the offsets are not cumulative, so '0, 4, 2, 4, 2, 4' corresponds to n + (0, 4, 6, 10, 12, 16).
+# ConstellationType = 0, 2, 4, 2
+
 # Other options
 # BenchmarkDifficulty = 1600
 # BenchmarkTimeLimit = 0
 # Benchmark2tupleCountLimit = 100000
 # SieveBits = 25
 # SieveWorkers = 0
-# ConstellationType = 0, 4, 2, 4, 2, 4
 # PrimorialNumber = 40
 # PrimorialOffsets = 4209995887, 4209999247, 4210002607, 4210005967, 7452755407, 7452758767, 7452762127, 7452765487, 8145217177, 8145220537, 8145223897, 8145227257
 # Debug = 0
@@ -187,25 +190,8 @@ These ones should never be modified outside developing purposes and research for
 
 * ConstellationType : set your Constellation Type, i. e. the primes tuple offsets, each separated by a comma. Default: 0, 4, 2, 4, 2, 4 (values for Riecoin mining);
 * PrimorialNumber : Primorial Number for the Wheel Factorization. Default: 40;
-* PrimorialOffsets : list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConsType. Default: carefully chosen offsets;
-* Debug : activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, 0 to disable. Other values may introduce some more specific debug messages. Default : 0;
-
-Some possible constellations types (format: (type) -> offsets to put for ConstellationType ; 3 first constellations (n + 0) which can be used for PrimorialOffsets, though some might not work)
-
-* 5-tuples
-  * (0, 2, 6,  8, 12) -> 0, 2, 4, 2, 4 ; 5, 11, 101,...
-  * (0, 4, 6, 10, 12) -> 0, 4, 2, 4, 2 ; 7, 97, 1867,...
-* 6-tuples
-  * (0, 4, 6, 10, 12, 16) -> 0, 4, 2, 4, 2, 4 (Riecoin) ; 7, 97, 16057,...
-* 7-tuples
-  * (0, 2, 6,  8, 12, 18, 20) -> 0, 2, 4, 2, 4, 6, 2 ; 11, 165701, 1068701,...
-  * (0, 2, 8, 12, 14, 18, 20) -> 0, 2, 6, 4, 2, 4, 2 ; 5639, 88799, 284729,...
-* 8-tuples
-  * (0, 2, 6,  8, 12, 18, 20, 26) -> 0, 2, 4, 2, 4, 6, 2, 6 ; 11, 15760091, 25658441,...
-  * (0, 2, 6, 12, 14, 20, 24, 26) -> 0, 2, 4, 6, 2, 6, 4, 2 ; 17, 1277, 113147,...
-  * (0, 6, 8, 14, 18, 20, 24, 26) -> 0, 6, 2, 6, 4, 2, 4, 2 ; 88793, 284723, 855713,...
-
-Also see the constellationsGen tool in my rieTools repository (https://github.com/Pttn/rieTools).
+* PrimorialOffsets : list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConstellationType. Default: see main.hpp source file;
+* Debug : activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, 0 to disable. Other values may introduce some more specific debug messages. Default : 0.
 
 ### Memory problems
 
@@ -251,7 +237,7 @@ port=38333
 
 Choose a username and a password and replace (username) and (password). The ones in `rieMiner.conf` must match with them.
 
-If mining for the first time, you should try to mine a few blocks in Testnet to ensure that everything works fine. To use Testnet, either add `testnet=1` at the beginning of `riecoin.conf` before running Riecoin Core, or start it with the command line option `-testnet`.
+If mining for the first time, you should try to mine a few blocks in Testnet to ensure that everything works fine. To use Testnet, either add `testnet=1` at the beginning of `riecoin.conf` before running Riecoin Core, or start it with the command line option `-testnet`. Of course don't forget to set the appropriate Constellation Type. Note that you will probably find blocks so fast that many of them are rejected, this is normal (often, the error message will be `inconclusive`).
 
 #### Mine with another or multiple computer(s)
 
