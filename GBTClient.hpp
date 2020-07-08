@@ -1,4 +1,4 @@
-// (c) 2018-2019 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2020 Pttn (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_GBTClient_hpp
 #define HEADER_GBTClient_hpp
@@ -12,12 +12,14 @@ struct GetBlockTemplateData {
 	std::string transactions, default_witness_commitment; // In hex format
 	std::vector<std::array<uint8_t, 32>> txHashes;
 	uint64_t coinbasevalue;
-	uint32_t height, primes;
+	uint32_t height;
 	std::vector<uint8_t> coinbase, // Store Coinbase Transaction here
 	                     scriptPubKey; // Calculated from custom payout address for Coinbase Transaction
 	std::vector<std::string> rules; // From GetBlockTemplate response
+	std::vector<std::vector<uint64_t>> acceptedConstellationTypes;
+	uint64_t constellationSize;
 	
-	GetBlockTemplateData() : coinbasevalue(0), height(0), primes(6) {}
+	GetBlockTemplateData() : coinbasevalue(0), height(0), constellationSize(1) {}
 	void coinBaseGen(const AddressFormat&, const std::string&, uint16_t);
 	std::array<uint8_t, 32> coinBaseHash() const {
 		if (default_witness_commitment.size() > 0) { // For SegWit, hash to get txid rather than just hash the whole Coinbase
@@ -36,6 +38,12 @@ struct GetBlockTemplateData {
 	bool isActive(const std::string &rule) const {
 		for (uint32_t i(0) ; i < rules.size() ; i++) {
 			if (rules[i] == rule) return true;
+		}
+		return false;
+	}
+	bool acceptsConstellationType(const std::vector<uint64_t> &constellationType) const {
+		for (const auto &acceptedConstellationType : acceptedConstellationTypes) {
+			if (constellationType == acceptedConstellationType) return true;
 		}
 		return false;
 	}

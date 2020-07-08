@@ -147,11 +147,14 @@ bool GBTClient::_getWork() {
 	       *jsonGbt_Res(json_object_get(jsonGbt, "result")),
 	       *jsonGbt_Res_Txs(json_object_get(jsonGbt_Res, "transactions")),
 	       *jsonGbt_Res_Rules(json_object_get(jsonGbt_Res, "rules")),
-	       *jsonGbt_Res_Dwc(json_object_get(jsonGbt_Res, "default_witness_commitment"));
+	       *jsonGbt_Res_Dwc(json_object_get(jsonGbt_Res, "default_witness_commitment")),
+	       *jsonGbt_Res_Constellations(json_object_get(jsonGbt_Res, "constellations"));
 	
-	// Failure to GetBlockTemplate
-	if (jsonGbt == NULL || jsonGbt_Res == NULL || jsonGbt_Res_Txs == NULL) {
+	// Failure to GetBlockTemplate (or invalid response)
+	if (jsonGbt == NULL || jsonGbt_Res == NULL || jsonGbt_Res_Txs == NULL || jsonGbt_Res_Rules == NULL || json_array_size(jsonGbt_Res_Constellations) == 0) {
 		_gbtd = GetBlockTemplateData();
+		std::cerr << "Invalid GetBlockTemplate response!" << std::endl;
+		if (jsonGbt != NULL) json_decref(jsonGbt);
 		return false;
 	}
 	
@@ -167,10 +170,41 @@ bool GBTClient::_getWork() {
 	// Extract and build GetBlockTemplate data
 	_gbtd.bh.version = json_integer_value(json_object_get(jsonGbt_Res, "version"));
 	hexStrToBin(json_string_value(json_object_get(jsonGbt_Res, "previousblockhash")), (uint8_t*) &_gbtd.bh.previousblockhash);
-	_gbtd.height = json_integer_value(json_object_get(jsonGbt_Res, "height"));
+	
 	_gbtd.coinbasevalue = json_integer_value(json_object_get(jsonGbt_Res, "coinbasevalue"));
-	_gbtd.bh.bits = ((uint32_t*) &bitsTmp)[0];
 	_gbtd.bh.curtime = json_integer_value(json_object_get(jsonGbt_Res, "curtime"));
+	_gbtd.bh.bits = ((uint32_t*) &bitsTmp)[0];
+	_gbtd.height = json_integer_value(json_object_get(jsonGbt_Res, "height"));
+	
+	_gbtd.acceptedConstellationTypes = std::vector<std::vector<uint64_t>>();
+	for (uint16_t i(0) ; i < json_array_size(jsonGbt_Res_Constellations) ; i++) {
+		std::vector<uint64_t> acceptedConstellationType;
+		if (json_array_size(json_array_get(jsonGbt_Res_Constellations, i)) == 0) {
+			json_decref(jsonGbt);
+			return false;
+		}
+		json_t *json_Constellation(json_array_get(jsonGbt_Res_Constellations, i));
+		for (uint16_t j(0) ; j < json_array_size(json_Constellation) ; j++)
+			acceptedConstellationType.push_back(json_integer_value(json_array_get(json_Constellation, j)));
+		_gbtd.acceptedConstellationTypes.push_back(acceptedConstellationType);
+	}
+	if (!_gbtd.acceptsConstellationType(_manager->options().constellationType())) {
+		std::cerr << "The network does not support the miner's constellation type! Accepted constellation types(s):" << std::endl;
+		for (uint16_t i(0) ; i < _gbtd.acceptedConstellationTypes.size() ; i++) {
+			std::cout << " " << i << " - ";
+			for (uint16_t j(0) ; j < _gbtd.acceptedConstellationTypes[i].size() ; j++) {
+				std::cout << _gbtd.acceptedConstellationTypes[i][j];
+				if (j != _gbtd.acceptedConstellationTypes[i].size() - 1) std::cout << ", ";
+			}
+			std::cout << std::endl;
+		}
+		json_decref(jsonGbt);
+		return false;
+	}
+	_gbtd.constellationSize = _gbtd.acceptedConstellationTypes[0].size();
+	
+	if (jsonGbt_Res_Dwc != NULL)
+		_gbtd.default_witness_commitment = json_string_value(jsonGbt_Res_Dwc);
 	
 	for (uint32_t i(0) ; i < json_array_size(jsonGbt_Res_Rules) ; i++)
 		_gbtd.rules.push_back(json_string_value(json_array_get(jsonGbt_Res_Rules, i)));
@@ -194,7 +228,6 @@ bool GBTClient::_getWork() {
 	if (oldHeight != _gbtd.height && oldHeight != 0) _manager->newHeightMessage(_gbtd.height);
 	
 	json_decref(jsonGbt);
-	
 	return true;
 }
 
@@ -235,7 +268,7 @@ void GBTClient::sendWork(const WorkData &work) const {
 	_manager->printTime();
 	std::cout << " " << work.primes << "-tuple found";
 	json_t *jsonSb(sendRPCCall(req)); // SubmitBlock response
-	if (work.primes < _gbtd.primes) std::cout << std::endl;
+	if (work.primes < _gbtd.constellationSize) std::cout << std::endl;
 	else {
 		std::cout << ", this is a block!" << std::endl;
 		std::cout << "Base prime: " << work.bh.decodeSolution() << std::endl;
