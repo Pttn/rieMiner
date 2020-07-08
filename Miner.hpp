@@ -23,6 +23,16 @@ union xmmreg_t {
 #define WORK_INDEXES 64
 enum JobType {TYPE_CHECK, TYPE_MOD, TYPE_SIEVE, TYPE_DUMMY};
 
+inline std::vector<mpz_class> v64ToVMpz(std::vector<uint64_t> v64) {
+	std::vector<mpz_class> vMpz;
+	for (const auto & n : v64) {
+		mpz_class mpz;
+		mpz_import(mpz.get_mpz_t(), 1, 1, 8, 0, 0, &n);
+		vMpz.push_back(mpz);
+	}
+	return vMpz;
+}
+
 struct MinerParameters {
 	int16_t threads;
 	uint8_t tupleLengthMin;
@@ -30,7 +40,8 @@ struct MinerParameters {
 	bool solo;
 	int sieveWorkers;
 	uint64_t sieveBits, sieveSize, sieveWords, maxIncrements, maxIter;
-	std::vector<uint64_t> primes, inverts, modPrecompute, primeTupleOffset, primorialOffsets;
+	std::vector<uint64_t> primes, inverts, modPrecompute, primeTupleOffset;
+	std::vector<mpz_class> primorialOffsets;
 	
 	MinerParameters() :
 		threads(8),
@@ -40,7 +51,7 @@ struct MinerParameters {
 		sieveWorkers(2),
 		sieveBits(25), sieveSize(1UL << sieveBits), sieveWords(sieveSize/64), maxIncrements(1ULL << 29), maxIter(maxIncrements/sieveSize),
 		primeTupleOffset(defaultConstellationData[0].first),
-		primorialOffsets(defaultConstellationData[0].second) {}
+		primorialOffsets(v64ToVMpz(defaultConstellationData[0].second)) {}
 };
 
 struct primeTestWork {

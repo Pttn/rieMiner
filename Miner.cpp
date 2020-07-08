@@ -32,7 +32,7 @@ bool isPrimeFermat(const mpz_class& n) {
 
 void Miner::init() {
 	_parameters.threads = _manager->options().threads();
-	_parameters.primorialOffsets = _manager->options().primorialOffsets();
+	_parameters.primorialOffsets = v64ToVMpz(_manager->options().primorialOffsets());
 	_parameters.sieveWorkers = _manager->options().sieveWorkers();
 	if (_parameters.sieveWorkers == 0) {
 		_parameters.sieveWorkers = std::max(_manager->options().threads()/5, 1);
@@ -81,8 +81,8 @@ void Miner::init() {
 	_primorialOffsetDiffToFirst[0] = 0;
 	const uint64_t tupleSpan(std::accumulate(_parameters.primeTupleOffset.begin(), _parameters.primeTupleOffset.end(), 0));
 	for (int j(1) ; j < _parameters.sieveWorkers ; j++) {
-		_primorialOffsetDiff[j - 1] = _parameters.primorialOffsets[j] - _parameters.primorialOffsets[j - 1] - tupleSpan;
-		_primorialOffsetDiffToFirst[j] = _parameters.primorialOffsets[j] - _parameters.primorialOffsets[0];
+		_primorialOffsetDiff[j - 1] = _manager->options().primorialOffsets()[j] - _manager->options().primorialOffsets()[j - 1] - tupleSpan;
+		_primorialOffsetDiffToFirst[j] = _manager->options().primorialOffsets()[j] - _manager->options().primorialOffsets()[0];
 	}
 	
 	{
@@ -719,7 +719,7 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 		mpz_abs(remainderPrimorial.get_mpz_t(), remainderPrimorial.get_mpz_t());
 		remainderPrimorial = (_primorial - remainderPrimorial) % _primorial;
 		mpz_abs(remainderPrimorial.get_mpz_t(), remainderPrimorial.get_mpz_t());
-		mpz_add_ui(remainderPrimorial.get_mpz_t(), remainderPrimorial.get_mpz_t(), _parameters.primorialOffsets[0]);
+		remainderPrimorial += _parameters.primorialOffsets[0];
 		candidate = target + remainderPrimorial;
 		
 		_workData[workDataIndex].verifyTarget = target;
