@@ -180,7 +180,7 @@ bool GBTClient::_getWork() {
 	_gbtd.transactions += binToHexStr(_gbtd.coinbase.data(), _gbtd.coinbase.size());
 	for (uint32_t i(0) ; i < json_array_size(jsonGbt_Res_Txs) ; i++) {
 		std::vector<uint8_t> txHash;
-		if (_gbtd.isActive("segwit"))
+		if (_gbtd.isActive("!segwit"))
 			txHash = reverse(hexStrToV8(json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "txid"))));
 		else
 			txHash = reverse(hexStrToV8(json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "hash"))));

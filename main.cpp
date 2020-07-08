@@ -314,15 +314,18 @@ void Options::loadConf() {
 			std::cout << std::endl;
 			if (_donate > 0) std::cout << "Donating " << _donate << "%" << std::endl;
 			else std::cout << "Had fun looking into the source code? If so, consider contributing code!" << std::endl;
-			if (_rules.size() > 0) {
-				std::cout << "Consensus rules: ";
-				for (std::vector<std::string>::size_type i(0) ; i < _rules.size() ; i++) {
-					std::cout << _rules[i];
-					if (i != _rules.size() - 1) std::cout << ", ";
-				}
-				std::cout << std::endl;
+			std::cout << "Consensus rules: ";
+			bool segwitFound(false);
+			for (std::vector<std::string>::size_type i(0) ; i < _rules.size() ; i++) {
+				std::cout << _rules[i];
+				if (_rules[i] == "segwit") segwitFound = true;
+				if (i != _rules.size() - 1) std::cout << ", ";
 			}
-			else std::cout << "No consensus rules (in particular, will not mine Segwit transactions)" << std::endl;
+			std::cout << std::endl;
+			if (!segwitFound) {
+				std::cout << "'segwit' rule must be present!" << std::endl;
+				exit(0);
+			}
 		}
 	}
 	

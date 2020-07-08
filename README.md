@@ -144,7 +144,7 @@ TupleLengthMin = 4
 # For solo mining, there is a developer fee of 1%. Choose how many % you wish to donate between 1 and 99 (only integers!). Default: 2
 Donate = 5
 
-# For solo mining, add consensus rules in the GetBlockTemplate RPC call, each separated by a comma.
+# For solo mining, add consensus rules in the GetBlockTemplate RPC call, each separated by a comma. 'segwit' must be present.
 # Default: segwit
 # Rules = segwit
 
