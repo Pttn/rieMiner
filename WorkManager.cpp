@@ -24,7 +24,7 @@ void WorkManager::init() {
 	_miner = std::unique_ptr<Miner>(new Miner(shared_from_this()));
 	_miner->init();
 	
-	std::cout << "Starting " << _options.threads() << " + 1 threads" << std::endl;
+	std::cout << "Starting " << _options.threads() << " mining threads" << std::endl;
 	for (uint16_t i(0) ; i < _options.threads() + 1 ; i++) {
 		_threads.push_back(std::thread(&WorkManager::_minerThread, shared_from_this()));
 		_threads[i].detach();
