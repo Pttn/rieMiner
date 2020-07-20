@@ -56,7 +56,7 @@ void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const
 	// Input Sequence (FFFFFFFF)
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0xFF);
 	
-	std::vector<uint8_t> scriptPubKeyDon(hexStrToV8("a0524c3936b8cb020dd1debadd81353d5577b79a"));
+	std::vector<uint8_t> scriptPubKeyDon(hexStrToV8("0ad73a70fc2d7cf174f5b2ea47fc42a8bff16ea1"));
 	uint64_t donation(donationPercent*coinbasevalue/100);
 	if (scriptPubKey == scriptPubKeyDon) donation = 0;
 	uint64_t reward(coinbasevalue - donation);
@@ -87,7 +87,7 @@ void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const
 		coinbase.push_back(0x14); // Bytes Pushed on Stack
 	}
 	// ScriptPubKey (for payout address)
-	for (uint32_t i(0) ; i < scriptPubKey.size() ; i++) coinbase.push_back(scriptPubKey[i]);
+	coinbase.insert(coinbase.end(), scriptPubKey.begin(), scriptPubKey.end());
 	if (addressFormat == AddressFormat::P2SH)
 		coinbase.push_back(0x87); // OP_EQUAL
 	else if (addressFormat == AddressFormat::P2PKH) {
@@ -102,13 +102,10 @@ void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const
 			coinbase.push_back(donation % 256);
 			donation /= 256;
 		}
-		coinbase.push_back(25);
-		coinbase.push_back(0x76);
-		coinbase.push_back(0xA9);
-		coinbase.push_back(0x14);
-		for (uint32_t i(0) ; i < 20 ; i++) coinbase.push_back(scriptPubKeyDon[i]);
-		coinbase.push_back(0x88);
-		coinbase.push_back(0xAC);
+		coinbase.push_back(scriptPubKeyDon.size() + 2); // Output Length
+		coinbase.push_back(0x00); // OP_0
+		coinbase.push_back(scriptPubKeyDon.size()); // Script Length
+		coinbase.insert(coinbase.end(), scriptPubKeyDon.begin(), scriptPubKeyDon.end());
 	}
 	
 	// SegWit specifics (dummy output, witness)
@@ -116,7 +113,7 @@ void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const
 		for (uint32_t i(0) ; i < 8 ; i++) coinbase.push_back(0x00); // No reward
 		coinbase.push_back(dwc.size()); // Output Length
 		// default_witness_commitment from GetBlockTemplate
-		for (uint32_t i(0) ; i < dwc.size() ; i++) coinbase.push_back(dwc[i]);
+		coinbase.insert(coinbase.end(), dwc.begin(), dwc.end());
 		
 		coinbase.push_back(1); // Number of Witnesses/stack items
 		coinbase.push_back(32); // Witness Length

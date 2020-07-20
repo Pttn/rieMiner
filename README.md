@@ -349,10 +349,10 @@ By contributing to rieMiner, you accept to place your code in the MIT license.
 
 Donations welcome:
 
-* Bitcoin: 1PttnMeD9X6imTsRojmhHa1rjudW8Bjok5
-* Riecoin: RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB
-* Gapcoin: GgCyVr6y6beBbTofmTLJHvGc1NCWynQyvw
-* Ethereum: 0x32de6b854b6a05448b4f25d4496990bece8a2862
+* Riecoin: ric1qpttn5u8u9470za84kt4y0lzz4zllzm4pyzhuge
+* Bitcoin: bc1qpttn5u8u9470za84kt4y0lzz4zllzm4pwvel4c
+
+Or donate directly to the Riecoin project: ric1qr3yxckxtl7lacvtuzhrdrtrlzvlydane2h37ja (RIC), bc1qr3yxckxtl7lacvtuzhrdrtrlzvlydaneqela0u (BTC).
 
 ### Quick contributor's checklist
 
