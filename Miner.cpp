@@ -41,6 +41,7 @@ void Miner::init() {
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, MAX_SIEVE_WORKERS);
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, int(_parameters.primorialOffsets.size()));
 	std::cout << "Sieve Workers = " << _parameters.sieveWorkers << std::endl;
+	std::cout << "Processor: " << _cpuInfo.getBrand() << std::endl;
 	std::cout << "Best SIMD instructions supported:";
 	if (_cpuInfo.hasAVX512()) std::cout << " AVX-512";
 	else if (_cpuInfo.hasAVX2()) {

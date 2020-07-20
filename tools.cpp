@@ -230,6 +230,16 @@ std::array<uint8_t, 32> calculateMerkleRootStratum(const std::vector<std::array<
 }
 
 CpuID::CpuID() {
+	if (!__get_cpuid_max(0x80000004, NULL))
+		_brand = "Unknown CPU";
+	else {
+		uint32_t brand[64];
+		__get_cpuid(0x80000002, brand    , brand + 1, brand +  2, brand + 3);
+		__get_cpuid(0x80000003, brand + 4, brand + 5, brand +  6, brand + 7);
+		__get_cpuid(0x80000004, brand + 8, brand + 9, brand + 10, brand + 11);
+		_brand = reinterpret_cast<char*>(brand);
+	}
+	
 	uint32_t eax(0), ebx(0), ecx(0), edx(0);
 	__get_cpuid(0, &eax, &ebx, &ecx, &edx);
 	if (eax < 7) {

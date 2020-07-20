@@ -103,9 +103,11 @@ inline uint32_t toBEnd32(uint32_t n) {
 }
 
 class CpuID {
+	std::string _brand;
 	bool _avx, _avx2, _avx512;
 public:
 	CpuID();
+	std::string getBrand() const {return _brand;}
 	bool hasAVX() const {return _avx;}
 	bool hasAVX2() const {return _avx2;}
 	bool hasAVX512() const {return _avx512;}
