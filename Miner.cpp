@@ -60,17 +60,6 @@ void Miner::init() {
 	_parameters.primeTableLimit = _manager->options().primeTableLimit();
 	_parameters.primorialNumber  = _manager->options().primorialNumber();
 	_parameters.primeTupleOffset = _manager->options().constellationType();
-	
-	// Empirical formula, should work well in most cases for 6-tuples.
-	if (_manager->options().constellationType().size() == 6) {
-		double ptlM(((double) _parameters.primeTableLimit)/1048576.), baseMemUsage(1.68*std::pow(ptlM, 0.954)), sieveWorkerMemUsage, memUsage;
-		if (ptlM < 768.) sieveWorkerMemUsage = 1.26*ptlM + 16.;
-		else sieveWorkerMemUsage = 560.*std::log(ptlM) - 2780.;
-		memUsage = baseMemUsage + ((double) _parameters.sieveWorkers)*sieveWorkerMemUsage;
-		if (memUsage < 128.) std::cout << "Estimated memory usage: < 128 MiB" << std::endl;
-		else std::cout << "Estimated memory usage: " << memUsage << " MiB" << std::endl;
-		std::cout << "Reduce prime table limit to lower this, if needed." << std::endl;
-	}
 
 	// For larger ranges of offsets, need to add more inverts in _updateRemainders().
 	std::transform(_parameters.primeTupleOffset.begin(),
