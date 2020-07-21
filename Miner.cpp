@@ -78,17 +78,16 @@ void Miner::init() {
 	{
 		std::chrono::time_point<std::chrono::system_clock> t0(std::chrono::system_clock::now());
 		std::cout << "Generating prime table using sieve of Eratosthenes..." << std::endl;
-		std::vector<uint8_t> vfComposite;
-		vfComposite.resize((_parameters.primeTableLimit + 15)/16, 0);
-		for (uint64_t nFactor(3) ; nFactor*nFactor < _parameters.primeTableLimit ; nFactor += 2) {
-			if (vfComposite[nFactor >> 4] & (1 << ((nFactor >> 1) & 7))) continue;
-			for (uint64_t nComposite((nFactor*nFactor) >> 1) ; nComposite < (_parameters.primeTableLimit >> 1) ; nComposite += nFactor)
-				vfComposite[nComposite >> 3] |= 1 << (nComposite & 7);
+		std::vector<uint64_t> compositeTable((_parameters.primeTableLimit + 127ULL)/128ULL, 0);
+		for (uint64_t f(3ULL) ; f*f < _parameters.primeTableLimit ; f += 2ULL) {
+			if (compositeTable[f >> 7ULL] & (1ULL << ((f >> 1ULL) & 63ULL))) continue;
+			for (uint64_t m((f*f) >> 1ULL) ; m < (_parameters.primeTableLimit >> 1ULL) ; m += f)
+				compositeTable[m >> 6ULL] |= 1ULL << (m & 63ULL);
 		}
-		_parameters.primes.push_back(2);
-		for (uint64_t n(1) ; (n << 1) + 1 < _parameters.primeTableLimit ; n++) {
-			if (!(vfComposite[n >> 3] & (1 << (n & 7))))
-				_parameters.primes.push_back((n << 1) + 1);
+		_parameters.primes.push_back(2ULL);
+		for (uint64_t o(1ULL) ; (o << 1ULL) + 1ULL < _parameters.primeTableLimit ; o++) {
+			if (!(compositeTable[o >> 6ULL] & (1ULL << (o & 63ULL))))
+				_parameters.primes.push_back((o << 1ULL) + 1ULL);
 		}
 		_nPrimes = _parameters.primes.size();
 		std::cout << "Table with all " << _nPrimes << " first primes generated in " << timeSince(t0) << " s." << std::endl;
