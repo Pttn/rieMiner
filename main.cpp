@@ -136,6 +136,8 @@ void Options::askConf() {
 					std::cerr << "Invalid payout address!" << std::endl;
 					_stopConfig();
 				}
+				if (_payoutAddressFormat != AddressFormat::BECH32)
+					std::cout << "Non Bech32 addresses are deprecated and their support in rieMiner will be dropped in the 0.92 stable release. Please use a Bech32 payout address." << std::endl;
 				
 				file << "PayoutAddress = " << _payoutAddress << std::endl;
 			}
@@ -328,6 +330,8 @@ void Options::loadConf() {
 				std::cout << std::endl << "Invalid or unsupported payout address! Exiting." << std::endl;
 				exit(0);
 			}
+			if (_payoutAddressFormat != AddressFormat::BECH32)
+				std::cout << std::endl << "Non Bech32 addresses are deprecated and their support in rieMiner will be dropped in the 0.92 stable release. Please use a Bech32 payout address.";
 			std::cout << std::endl;
 			if (_donate > 0) std::cout << "Donating " << _donate << "%" << std::endl;
 			else std::cout << "Had fun looking into the source code? If so, consider contributing code!" << std::endl;
