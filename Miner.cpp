@@ -183,9 +183,9 @@ void Miner::init() {
 			_sieveInstances[i].id = i;
 			_sieveInstances[i].segmentCounts = new std::atomic<uint64_t>[_parameters.maxIterations];
 		}
-		std::cout << "Allocating " << _parameters.sieveSize/8*_parameters.sieveWorkers << " bytes for the sieves..." << std::endl;
+		std::cout << "Allocating " << 8*_parameters.sieveWords*_parameters.sieveWorkers << " bytes for the sieves..." << std::endl;
 		for (int i(0) ; i < _parameters.sieveWorkers ; i++)
-			_sieveInstances[i].sieve = new uint8_t[_parameters.sieveSize/8];
+			_sieveInstances[i].sieve = new uint64_t[_parameters.sieveWords];
 	}
 	catch (std::bad_alloc& ba) {
 		ERRORMSG("Unable to allocate memory for the sieves");
@@ -394,7 +394,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, const uint64_t firstPrimeI
 	}
 }
 
-void Miner::_processSieve(uint8_t *sieve, uint32_t* offsets, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) {
+void Miner::_processSieve(uint64_t *sieve, uint32_t* offsets, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) {
 	const uint64_t tupleSize(_parameters.primeTupleOffset.size());
 	std::array<uint32_t, PENDING_SIZE> pending{0};
 	uint64_t pending_pos(0);
@@ -411,7 +411,7 @@ void Miner::_processSieve(uint8_t *sieve, uint32_t* offsets, const uint64_t firs
 	_termPending(sieve, pending);
 }
 
-void Miner::_processSieve6(uint8_t *sieve, uint32_t* offsets, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 6-tuples by Michael Bell
+void Miner::_processSieve6(uint64_t *sieve, uint32_t* offsets, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 6-tuples by Michael Bell
 	assert(_parameters.primeTupleOffset.size() == 6);
 	std::array<uint32_t, PENDING_SIZE> pending{0};
 	uint64_t pending_pos(0);
@@ -467,7 +467,7 @@ void Miner::_runSieve(SieveInstance& sieveInstance, uint32_t workDataIndex) {
 		if (_workData[workDataIndex].verifyBlock.height != _currentHeight) // Stop sieve job if new block
 			break;
 		
-		memset(sieveInstance.sieve, 0, _parameters.sieveSize/8);
+		memset(sieveInstance.sieve, 0, sizeof(uint64_t)*_parameters.sieveWords);
 		
 		// Already eliminate for the first prime to sieve if it is odd to align for the 6-tuples optimizations
 		const uint64_t tupleSize(_parameters.primeTupleOffset.size());
@@ -475,7 +475,7 @@ void Miner::_runSieve(SieveInstance& sieveInstance, uint32_t workDataIndex) {
 		if ((firstPrimeIndex & 1) != 0) {
 			for (uint64_t f(0) ; f < tupleSize ; f++) {
 				while (sieveInstance.offsets[firstPrimeIndex*tupleSize + f] < _parameters.sieveSize) {
-					sieveInstance.sieve[sieveInstance.offsets[firstPrimeIndex*tupleSize + f] >> 3] |= (1 << ((sieveInstance.offsets[firstPrimeIndex*tupleSize + f] & 7)));
+					sieveInstance.sieve[sieveInstance.offsets[firstPrimeIndex*tupleSize + f] >> 6U] |= (1ULL << ((sieveInstance.offsets[firstPrimeIndex*tupleSize + f] & 63U)));
 					sieveInstance.offsets[firstPrimeIndex*tupleSize + f] += _primes[firstPrimeIndex];
 				}
 				sieveInstance.offsets[firstPrimeIndex*tupleSize + f] -= _parameters.sieveSize;
@@ -508,9 +508,8 @@ void Miner::_runSieve(SieveInstance& sieveInstance, uint32_t workDataIndex) {
 		
 		// Extract candidates from the sieve and create verify jobs of up to maxCandidatesPerCheckJob candidates.
 		bool stop(false);
-		uint64_t *sieve64(reinterpret_cast<uint64_t*>(sieveInstance.sieve));
 		for (uint32_t b(0) ; !stop && b < _parameters.sieveWords ; b++) {
-			uint64_t sieveWord(~sieve64[b]); // ~ is the Bitwise Not: ones then indicate the candidates and zeros the previously eliminated numbers.
+			uint64_t sieveWord(~sieveInstance.sieve[b]); // ~ is the Bitwise Not: ones then indicate the candidates and zeros the previously eliminated numbers.
 			while (sieveWord != 0) {
 				const uint32_t nEliminatedUntilNext(__builtin_ctzll(sieveWord)), candidateIndex((b*64) + nEliminatedUntilNext); // __builtin_ctzll returns the number of leading 0s.
 				w.testWork.candidateIndexes[w.testWork.nCandidates] = candidateIndex;

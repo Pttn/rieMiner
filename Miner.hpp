@@ -83,7 +83,7 @@ struct MinerWorkData {
 struct SieveInstance {
 	uint32_t id;
 	std::mutex modLock;
-	uint8_t *sieve = NULL;
+	uint64_t *sieve = NULL;
 	uint32_t **segmentHits = NULL;
 	std::atomic<uint64_t> *segmentCounts = NULL;
 	uint32_t *offsets = NULL;
@@ -113,35 +113,35 @@ class Miner {
 	
 	std::chrono::microseconds _modTime, _sieveTime, _verifyTime;
 	
-	void _addToPending(uint8_t *sieve, std::array<uint32_t, PENDING_SIZE> &pending, uint64_t &pos, uint32_t ent) {
-		__builtin_prefetch(&(sieve[ent >> 3]));
+	void _addToPending(uint64_t *sieve, std::array<uint32_t, PENDING_SIZE> &pending, uint64_t &pos, uint32_t ent) {
+		__builtin_prefetch(&(sieve[ent >> 6U]));
 		uint32_t old(pending[pos]);
 		if (old != 0)
-			sieve[old >> 3] |= (1 << (old & 7));
+			sieve[old >> 6U] |= (1ULL << (old & 63U));
 		pending[pos] = ent;
 		pos++;
 		pos &= PENDING_SIZE - 1;
 	}
 
-	void _addRegToPending(uint8_t *sieve, std::array<uint32_t, PENDING_SIZE> &pending, uint64_t &pos, xmmreg_t reg, int mask) {
+	void _addRegToPending(uint64_t *sieve, std::array<uint32_t, PENDING_SIZE> &pending, uint64_t &pos, xmmreg_t reg, int mask) {
 		if (mask & 0x0008) _addToPending(sieve, pending, pos, reg.v[0]);
 		if (mask & 0x0080) _addToPending(sieve, pending, pos, reg.v[1]);
 		if (mask & 0x0800) _addToPending(sieve, pending, pos, reg.v[2]);
 		if (mask & 0x8000) _addToPending(sieve, pending, pos, reg.v[3]);
 	}
 
-	void _termPending(uint8_t *sieve, std::array<uint32_t, PENDING_SIZE> &pending) {
+	void _termPending(uint64_t *sieve, std::array<uint32_t, PENDING_SIZE> &pending) {
 		for (uint64_t i(0) ; i < PENDING_SIZE ; i++) {
 			const uint32_t old(pending[i]);
 			if (old != 0)
-				sieve[old >> 3] |= (1 << (old & 7));
+				sieve[old >> 6U] |= (1ULL << (old & 63U));
 		}
 	}
 	
 	void _putOffsetsInSegments(SieveInstance& sieveInstance, uint64_t *offsets, uint64_t* counts, int nOffsets);
 	void _updateRemainders(uint32_t workDataIndex, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex);
-	void _processSieve(uint8_t *sieve, uint32_t* offsets, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex);
-	void _processSieve6(uint8_t *sieve, uint32_t* offsets, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex);
+	void _processSieve(uint64_t *sieve, uint32_t* offsets, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex);
+	void _processSieve6(uint64_t *sieve, uint32_t* offsets, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex);
 	void _runSieve(SieveInstance& sieveInstance, uint32_t workDataIndex);
 	bool _testPrimesIspc(uint32_t candidateIndexes[maxCandidatesPerCheckJob], uint32_t is_prime[maxCandidatesPerCheckJob], const mpz_class &ploop, mpz_class &candidate);
 	void _verifyThread();
