@@ -122,14 +122,6 @@ class Miner {
 		pos++;
 		pos &= PENDING_SIZE - 1;
 	}
-
-	void _addRegToPending(uint64_t *sieve, std::array<uint32_t, PENDING_SIZE> &pending, uint64_t &pos, xmmreg_t reg, int mask) {
-		if (mask & 0x0008) _addToPending(sieve, pending, pos, reg.v[0]);
-		if (mask & 0x0080) _addToPending(sieve, pending, pos, reg.v[1]);
-		if (mask & 0x0800) _addToPending(sieve, pending, pos, reg.v[2]);
-		if (mask & 0x8000) _addToPending(sieve, pending, pos, reg.v[3]);
-	}
-
 	void _termPending(uint64_t *sieve, std::array<uint32_t, PENDING_SIZE> &pending) {
 		for (uint64_t i(0) ; i < PENDING_SIZE ; i++) {
 			const uint32_t old(pending[i]);

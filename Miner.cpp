@@ -413,15 +413,10 @@ void Miner::_processSieve(uint64_t *sieve, uint32_t* offsets, const uint64_t fir
 
 void Miner::_processSieve6(uint64_t *sieve, uint32_t* offsets, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 6-tuples by Michael Bell
 	assert(_parameters.primeTupleOffset.size() == 6);
-	std::array<uint32_t, PENDING_SIZE> pending{0};
-	uint64_t pending_pos(0);
-	
-	xmmreg_t offsetmax;
-	offsetmax.m128 = _mm_set1_epi32(_parameters.sieveSize);
-	
 	assert((firstPrimeIndex & 1) == 0);
 	assert((lastPrimeIndex  & 1) == 0);
-	
+	xmmreg_t offsetmax;
+	offsetmax.m128 = _mm_set1_epi32(_parameters.sieveSize);
 	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i += 2) {
 		xmmreg_t p1, p2, p3;
 		xmmreg_t offset1, offset2, offset3, nextIncr1, nextIncr2, nextIncr3;
@@ -440,9 +435,18 @@ void Miner::_processSieve6(uint64_t *sieve, uint32_t* offsets, const uint64_t fi
 			const int mask2 = _mm_movemask_epi8(cmpres2.m128);
 			const int mask3 = _mm_movemask_epi8(cmpres3.m128);
 			if ((mask1 == 0) && (mask2 == 0) && (mask3 == 0)) break;
-			_addRegToPending(sieve, pending, pending_pos, offset1, mask1);
-			_addRegToPending(sieve, pending, pending_pos, offset2, mask2);
-			_addRegToPending(sieve, pending, pending_pos, offset3, mask3);
+			if (mask1 & 0x0008) sieve[offset1.v[0] >> 6] |= (1ULL << (offset1.v[0] & 63ULL));
+			if (mask1 & 0x0080) sieve[offset1.v[1] >> 6] |= (1ULL << (offset1.v[1] & 63ULL));
+			if (mask1 & 0x0800) sieve[offset1.v[2] >> 6] |= (1ULL << (offset1.v[2] & 63ULL));
+			if (mask1 & 0x8000) sieve[offset1.v[3] >> 6] |= (1ULL << (offset1.v[3] & 63ULL));
+			if (mask2 & 0x0008) sieve[offset2.v[0] >> 6] |= (1ULL << (offset2.v[0] & 63ULL));
+			if (mask2 & 0x0080) sieve[offset2.v[1] >> 6] |= (1ULL << (offset2.v[1] & 63ULL));
+			if (mask2 & 0x0800) sieve[offset2.v[2] >> 6] |= (1ULL << (offset2.v[2] & 63ULL));
+			if (mask2 & 0x8000) sieve[offset2.v[3] >> 6] |= (1ULL << (offset2.v[3] & 63ULL));
+			if (mask3 & 0x0008) sieve[offset3.v[0] >> 6] |= (1ULL << (offset3.v[0] & 63ULL));
+			if (mask3 & 0x0080) sieve[offset3.v[1] >> 6] |= (1ULL << (offset3.v[1] & 63ULL));
+			if (mask3 & 0x0800) sieve[offset3.v[2] >> 6] |= (1ULL << (offset3.v[2] & 63ULL));
+			if (mask3 & 0x8000) sieve[offset3.v[3] >> 6] |= (1ULL << (offset3.v[3] & 63ULL));
 			nextIncr1.m128 = _mm_and_si128(cmpres1.m128, p1.m128);
 			nextIncr2.m128 = _mm_and_si128(cmpres2.m128, p2.m128);
 			nextIncr3.m128 = _mm_and_si128(cmpres3.m128, p3.m128);
@@ -457,8 +461,6 @@ void Miner::_processSieve6(uint64_t *sieve, uint32_t* offsets, const uint64_t fi
 		_mm_store_si128((__m128i*)&offsets[i*6 + 4], offset2.m128);
 		_mm_store_si128((__m128i*)&offsets[i*6 + 8], offset3.m128);
 	}
-	
-	_termPending(sieve, pending);
 }
 
 void Miner::_runSieve(SieveInstance& sieveInstance, uint32_t workDataIndex) {
