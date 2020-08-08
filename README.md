@@ -182,13 +182,12 @@ It is also possible to use custom configuration file paths, examples:
 
 They can be useful to get better performance depending on your computer.
 
-* EnableAVX2 : by default, AVX2 is disabled, as it may increase the power consumption more than the performance improvements. If your processor supports AVX2, you can choose to take advantage of this instruction set if you wish by setting this option to `Yes`. Do your own testing to find out if it is worth it;
+* EnableAVX2 : by default, AVX2 is disabled, as it may increase the power consumption more than the performance improvements. If your processor supports AVX2, you can choose to take advantage of this instruction set if you wish by setting this option to `Yes`. Do your own testing to find out if it is worth it. AVX2 is known to degrade performance for AMD Ryzens and similar before Zen2 (e. g. 1800X, 1950X, 2700X) and should be left disabled in these cases ;
 * SieveBits : size of the segment sieve is 2^SieveBits bits, e.g. 25 means the segment sieve size is 4 MiB. Choose this so that SieveWorkers*2^SieveBits fits in your L3 cache. Default: 25;
 * SieveWorkers : the number of threads to use for sieving. Increasing it may solve some CPU underuse problems, but will use more memory. 0 for choosing automatically based on number of Threads and PrimeTableLimit. Default: 0.
 
 These ones should never be modified outside developing purposes and research for now.
 
-* ConstellationType : set your Constellation Type, i. e. the primes tuple offsets, each separated by a comma. Default: 0, 4, 2, 4, 2, 4 (values for Riecoin mining);
 * PrimorialNumber : Primorial Number for the Wheel Factorization. Default: 40;
 * PrimorialOffsets : list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConstellationType. Default: see main.hpp source file;
 * Debug : activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, 0 to disable. Other values may introduce some more specific debug messages. Default : 0.

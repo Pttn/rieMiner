@@ -36,11 +36,13 @@ bool isPrimeFermat(const mpz_class& n) {
 void Miner::init() {
 	std::cout << "Processor: " << _cpuInfo.getBrand() << std::endl;
 	// Get settings from Configuration File.
+	_parameters.useAvx2 = false;
 	std::cout << "Best SIMD instructions supported:";
 	if (_cpuInfo.hasAVX512()) std::cout << " AVX-512";
 	else if (_cpuInfo.hasAVX2()) {
 		std::cout << " AVX2";
 		if (!_manager->options().enableAvx2()) std::cout << " (disabled -> AVX)";
+		else _parameters.useAvx2 = true;
 	}
 	else if (_cpuInfo.hasAVX()) std::cout << " AVX";
 	else std::cout << " AVX not suppported!";
@@ -252,7 +254,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, const uint64_t firstPrimeI
 	const uint64_t precompLimit(_modPrecompute.size()), tupleSize(_parameters.primeTupleOffset.size());
 
 	uint64_t avxLimit(0);
-	const uint64_t avxWidth(_cpuInfo.hasAVX2() ? 8 : 4);
+	const uint64_t avxWidth(_parameters.useAvx2 ? 8 : 4);
 	if (_cpuInfo.hasAVX()) {
 		avxLimit = nPrimesTo2p32 - avxWidth;
 		avxLimit -= (avxLimit - firstPrimeIndex) & (avxWidth - 1);  // Must be enough primes in range to use AVX
@@ -291,7 +293,7 @@ void Miner::_updateRemainders(uint32_t workDataIndex, const uint64_t firstPrimeI
 						ps32[j] = static_cast<uint32_t>(_primes[i + j]) << cnt;
 						nextRemainder[j] = _modularInverses[i + j];
 					}
-					if (_cpuInfo.hasAVX2()) rie_mod_1s_2p_8times(firstCandidate.get_mpz_t()->_mp_d, firstCandidate.get_mpz_t()->_mp_size, &ps32[0], cnt, &_modPrecompute[i], &nextRemainder[0]);
+					if (_parameters.useAvx2) rie_mod_1s_2p_8times(firstCandidate.get_mpz_t()->_mp_d, firstCandidate.get_mpz_t()->_mp_size, &ps32[0], cnt, &_modPrecompute[i], &nextRemainder[0]);
 					else rie_mod_1s_2p_4times(firstCandidate.get_mpz_t()->_mp_d, firstCandidate.get_mpz_t()->_mp_size, &ps32[0], cnt, &_modPrecompute[i], &nextRemainder[0]);
 					haveRemainder = true;
 					index = nextRemainder[0];
@@ -589,7 +591,7 @@ void Miner::_verifyThread() {
 			mpz_add_ui(ploop.get_mpz_t(), ploop.get_mpz_t(), _primorialOffsetDiffToFirst[job.testWork.offsetId]);
 			
 			bool firstTestDone(false);
-			if (_cpuInfo.hasAVX2() && _manager->options().enableAvx2() && job.testWork.nCandidates == maxCandidatesPerCheckJob) { // Test candidate + 0 primality with assembly optimizations if possible.
+			if (_parameters.useAvx2 && job.testWork.nCandidates == maxCandidatesPerCheckJob) { // Test candidates + 0 primality with assembly optimizations if possible.
 				uint32_t isPrime[maxCandidatesPerCheckJob];
 				firstTestDone = _testPrimesIspc(job.testWork.candidateIndexes, isPrime, ploop, candidate);
 				if (firstTestDone) {

@@ -34,7 +34,7 @@ struct MinerParameters {
 	uint16_t threads;
 	uint8_t tupleLengthMin;
 	uint64_t primorialNumber, primeTableLimit;
-	bool solo;
+	bool solo, useAvx2;
 	int sieveWorkers;
 	uint64_t sieveBits, sieveSize, sieveWords, maxIncrements, maxIterations;
 	std::vector<uint64_t> primeTupleOffset;
@@ -44,7 +44,7 @@ struct MinerParameters {
 		threads(8),
 		tupleLengthMin(6),
 		primorialNumber(40), primeTableLimit(2147483648),
-		solo(true),
+		solo(true), useAvx2(false),
 		sieveWorkers(2),
 		sieveBits(25), sieveSize(1UL << sieveBits), sieveWords(sieveSize/64), maxIncrements(1ULL << 29), maxIterations(maxIncrements/sieveSize),
 		primeTupleOffset(defaultConstellationData[0].first),
