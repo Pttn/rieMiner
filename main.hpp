@@ -20,6 +20,7 @@
 extern int DEBUG;
 #define DBG(x) if (DEBUG) {x;};
 #define DBG_VERIFY(x) if (DEBUG > 1) { x; };
+#define ERRORMSG(message) std::cerr << __func__ << ": " << message << " :| !" << std::endl
 
 static const std::vector<std::pair<std::vector<uint64_t>, std::vector<uint64_t>>> defaultConstellationData = {
 	// Default

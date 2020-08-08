@@ -358,6 +358,7 @@ Or donate directly to the Riecoin project: ric1qr3yxckxtl7lacvtuzhrdrtrlzvlydane
 
 * Your code must compile and work on recent Debian based distributions, and Windows using MSYS;
 * If modifying the miner, you must ensure that your changes do not cause any performance loss. You have to do proper and long enough before/after benchmarks;
+* Document well non trivial contributions to the miner so other and future developers can understand easily and quickly the code;
 * rieMiner must work for any realistic setting, at least try these in the Benchmark Mode (and do some actual mining):
   * Difficulty 304, PTL 2^20 (Testnet mining conditions);
   * Difficulty 800, PTL 2^27;
@@ -368,6 +369,8 @@ Or donate directly to the Riecoin project: ric1qr3yxckxtl7lacvtuzhrdrtrlzvlydane
   * Ensure that valid work is produced (pools and Riecoin-Qt must not reject submissions);
   * Mining must stop completely while disconnected and restart properly when connection is established again.
 * Follow the style of the rest of the code (curly braces position, camelCase variable names, tabs and not spaces, spaces around + and - but not around * and /,...).
+  * Avoid using old C style and prefer modern C++ code;
+  * Prefer longer and explicit variable names (except for loops indexes where single letter variables should be used in most cases).
 
 ## Resources
 

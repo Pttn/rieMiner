@@ -250,6 +250,7 @@ void Options::loadConf() {
 				else if (key == "PrimorialNumber") {
 					try {_primorialNumber = std::stoll(value);}
 					catch (...) {_primorialNumber = 40;}
+					if (_primorialNumber < 1) _primorialNumber = 1;
 				}
 				else if (key == "PrimorialOffsets") {
 					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
@@ -354,30 +355,12 @@ void Options::loadConf() {
 		std::cout << "At least 2 threads are needed, overriding." << std::endl;
 		_threads = 2;
 	}
-	std::cout << "Threads: " << _threads << std::endl;
-	std::cout << "Prime table limit: " << _primeTableLimit << std::endl;
-	std::cout << "Sieve bits: " <<  _sieveBits << std::endl;
 	if (_mode == "Benchmark") {
 		std::cout << "Will show tuples of at least length " << _tupleLengthMin << std::endl;
 		if (_tuplesFile != "None") std::cout << " Will write them to file " << _tuplesFile << std::endl;
 	}
 	else if (_mode == "Solo") std::cout << "Will submit tuples of at least length " << _tupleLengthMin << std::endl;
 	std::cout << "Stats refresh interval: " << _refreshInterval << " s" << std::endl;
-	std::cout << "Constellation type: n + " << "(";
-	uint64_t offsetTemp(0);
-	for (std::vector<uint64_t>::size_type i(0) ; i < _constellationType.size() ; i++) {
-		offsetTemp += _constellationType[i];
-		std::cout << offsetTemp;
-		if (i != _constellationType.size() - 1) std::cout << ", ";
-	}
-	std::cout << "), length " << _constellationType.size() << std::endl;
-	std::cout << "Primorial number: " << _primorialNumber << std::endl;
-	std::cout << "Primorial offsets: " << "(";
-	for (std::vector<uint64_t>::size_type i(0) ; i < _primorialOffsets.size() ; i++) {
-		std::cout << _primorialOffsets[i];
-		if (i != _primorialOffsets.size() - 1) std::cout << ", ";
-	}
-	std::cout << ")" << std::endl;
 }
 
 void Options::setPayoutAddress(const std::string& address) {
