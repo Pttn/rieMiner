@@ -3,8 +3,8 @@
 #include "Stats.hpp"
 
 void Stats::startTimer() {
-	_miningStartTp = std::chrono::system_clock::now();
-	_lastDiffChangeTp = std::chrono::system_clock::now();
+	_miningStartTp = std::chrono::steady_clock::now();
+	_lastDiffChangeTp = std::chrono::steady_clock::now();
 }
 
 void Stats::newHeightMessage(const uint32_t height) {
@@ -26,7 +26,7 @@ void Stats::updateDifficulty(const uint32_t newDifficulty, const uint32_t height
 			_tuplesSinceLastDiff[i] = 0;
 		_difficulty = newDifficulty;
 		_heightAtDiffChange = height;
-		_lastDiffChangeTp = std::chrono::system_clock::now();
+		_lastDiffChangeTp = std::chrono::steady_clock::now();
 	}
 }
 

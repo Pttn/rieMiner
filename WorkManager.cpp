@@ -49,7 +49,7 @@ void WorkManager::submitWork(const WorkData &wd) {
 void WorkManager::manage() {
 	if (!_inited) std::cerr << __func__ << ": manager was not inited!" << std::endl;
 	else {
-		std::chrono::time_point<std::chrono::system_clock> timer;
+		std::chrono::time_point<std::chrono::steady_clock> timer;
 		while (true) {
 			if (_options.mode() == "Benchmark" && _miner->running()) {
 				if (timeSince(_stats.miningStartTp()) > _options.benchmarkTimeLimit() && _options.benchmarkTimeLimit() != 0) {
@@ -73,7 +73,7 @@ void WorkManager::manage() {
 					if (dt > _options.refreshInterval() && _miner->inited() && _miner->running()) {
 						_stats.printStats();
 						_stats.printEstimatedTimeToBlock();
-						timer = std::chrono::system_clock::now();
+						timer = std::chrono::steady_clock::now();
 					}
 				}
 				
@@ -92,7 +92,7 @@ void WorkManager::manage() {
 					if (!_miner->running() && _client->workData().height != 0) {
 						_stats.setMiningType(_options.mode());
 						_stats.startTimer();
-						timer = std::chrono::system_clock::now();
+						timer = std::chrono::steady_clock::now();
 						std::cout << "-----------------------------------------------------------" << std::endl;
 						const WorkData workData(_client->workData());
 						_stats.printTime();

@@ -225,7 +225,7 @@ bool StratumClient::connect() {
 	if (_inited) {
 		_sd = StratumData();
 		_buffer = std::array<char, RBUFSIZE>();
-		_lastDataRecvTp = std::chrono::system_clock::now();
+		_lastDataRecvTp = std::chrono::steady_clock::now();
 		_state = INIT;
 		_result = std::string();
 		
@@ -329,7 +329,7 @@ bool StratumClient::process() {
 		return true;
 	}
 	
-	_lastDataRecvTp = std::chrono::system_clock::now();
+	_lastDataRecvTp = std::chrono::steady_clock::now();
 	_result.append(_buffer.cbegin(), _buffer.cbegin() + n);
 	DBG(std::cout << "Result = " << _result;);
 	

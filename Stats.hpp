@@ -10,7 +10,7 @@
 class Stats {
 	std::vector<uint64_t> _tuples, _tuplesSinceLastDiff;
 	uint32_t _difficulty, _heightAtDiffChange, _rejectedShares;
-	std::chrono::time_point<std::chrono::system_clock> _miningStartTp, _lastDiffChangeTp;
+	std::chrono::time_point<std::chrono::steady_clock> _miningStartTp, _lastDiffChangeTp;
 	bool _solo;
 	
 	bool _inited() const {return _difficulty != 1;}
@@ -19,7 +19,7 @@ class Stats {
 	Stats(uint8_t tupleLength = 6) :
 		_tuples(tupleLength + 1, 0), _tuplesSinceLastDiff(tupleLength + 1, 0),
 		_difficulty(1), _heightAtDiffChange(0), _rejectedShares(0),
-		_lastDiffChangeTp(std::chrono::system_clock::now()),
+		_lastDiffChangeTp(std::chrono::steady_clock::now()),
 		_solo(true) {}
 	
 	void startTimer();
@@ -34,7 +34,7 @@ class Stats {
 	void updateDifficulty(const uint32_t, const uint32_t);
 	uint32_t heightAtDiffChange() const {return _heightAtDiffChange;}
 	
-	std::chrono::time_point<std::chrono::system_clock> miningStartTp() const {return _miningStartTp;}
+	std::chrono::time_point<std::chrono::steady_clock> miningStartTp() const {return _miningStartTp;}
 	std::vector<uint64_t> tuplesCount() const {return _tuples;}
 	
 	void printTime() const;

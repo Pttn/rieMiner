@@ -96,7 +96,7 @@ void Miner::init() {
 	}
 	
 	{
-		std::chrono::time_point<std::chrono::system_clock> t0(std::chrono::system_clock::now());
+		std::chrono::time_point<std::chrono::steady_clock> t0(std::chrono::steady_clock::now());
 		std::cout << "Generating prime table using sieve of Eratosthenes..." << std::endl;
 		std::vector<uint64_t> compositeTable((_parameters.primeTableLimit + 127ULL)/128ULL, 0ULL); // Booleans indicating whether an odd number is composite: 0000100100101100...
 		for (uint64_t f(3ULL) ; f*f < _parameters.primeTableLimit ; f += 2ULL) { // Eliminate f and its multiples m for odd f from 3 to square root of the PrimeTableLimit
@@ -154,7 +154,7 @@ void Miner::init() {
 	std::cout << "Entries per segment: " << _entriesPerSegment << std::endl; // entriesPerSegment = (9/8)(highSegmentEntries/_parameters.maxIterations + 4)
 	{
 		std::cout << "Precomputing modular inverses and division data..." << std::endl; // The precomputed data is used to speed up computations in _updateRemainders.
-		std::chrono::time_point<std::chrono::system_clock> t0(std::chrono::system_clock::now());
+		std::chrono::time_point<std::chrono::steady_clock> t0(std::chrono::steady_clock::now());
 		const uint64_t precompPrimes(std::min(_nPrimes, 5586502348UL)); // Precomputation only works up to p = 2^37
 		_modularInverses.resize(_nPrimes); // Table of inverses of the primorial modulo a prime number in the table with index >= primorialNumber.
 		_modPrecompute.resize(precompPrimes);
@@ -563,7 +563,7 @@ void Miner::_verifyThread() {
 	mpz_class candidate, ploop;
 	
 	while (_running) {
-		const auto startTime(std::chrono::high_resolution_clock::now());
+		const auto startTime(std::chrono::steady_clock::now());
 		primeTestWork job;
 		if (!_modWorkQueue.pop_front_if_not_empty(job))
 			job = _verifyWorkQueue.pop_front();
@@ -571,15 +571,14 @@ void Miner::_verifyThread() {
 		if (job.type == TYPE_MOD) { // For the first part of sieving
 			_updateRemainders(job.workDataIndex, job.modWork.start, job.modWork.end);
 			_workDoneQueue.push_back(-int64_t(job.modWork.start));
-			_modTime += std::chrono::duration_cast<decltype(_modTime)>(std::chrono::high_resolution_clock::now() - startTime);
+			_modTime += std::chrono::duration_cast<decltype(_modTime)>(std::chrono::steady_clock::now() - startTime);
 			continue;
 		}
 		
 		if (job.type == TYPE_SIEVE) { // For the second part of sieving (actual sieving and generation of candidates)
 			_runSieve(_sieveInstances[job.sieveWork.sieveId], job.workDataIndex);
 			_workDoneQueue.push_back(-1);
-			const auto dt(std::chrono::duration_cast<decltype(_sieveTime)>(std::chrono::high_resolution_clock::now() - startTime));
-			_sieveTime += dt;
+			_sieveTime += std::chrono::duration_cast<decltype(_sieveTime)>(std::chrono::steady_clock::now() - startTime);
 			continue;
 		}
 		
@@ -657,7 +656,7 @@ void Miner::_verifyThread() {
 			}
 			
 			_workDoneQueue.push_back(job.workDataIndex);
-			_verifyTime += std::chrono::duration_cast<decltype(_verifyTime)>(std::chrono::high_resolution_clock::now() - startTime);
+			_verifyTime += std::chrono::duration_cast<decltype(_verifyTime)>(std::chrono::steady_clock::now() - startTime);
 		}
 	}
 }
@@ -758,8 +757,8 @@ void Miner::_processOneBlock(uint32_t workDataIndex, bool isNewHeight) {
 				static int allowedFails(5);
 				if (--allowedFails == 0) {
 					allowedFails = 5;
-					std::cout << "Unable to generate enough verification work to keep threads busy." << std::endl;
-					std::cout << "PTL = " << _parameters.primeTableLimit << ", sieve workers = " << _parameters.sieveWorkers << std::endl;
+					DBG(std::cout << "Unable to generate enough verification work to keep threads busy." << std::endl;
+					std::cout << "PTL = " << _parameters.primeTableLimit << ", sieve workers = " << _parameters.sieveWorkers << std::endl;);
 				}
 			}
 			_maxWorkOut = std::min(_maxWorkOut, _workDoneQueue.size() - 9*_parameters.threads);

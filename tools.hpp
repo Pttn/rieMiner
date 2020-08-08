@@ -69,8 +69,8 @@ bool bech32ToScriptPubKey(const std::string&, std::vector<uint8_t>&, bool = true
 std::array<uint8_t, 32> calculateMerkleRoot(const std::vector<std::array<uint8_t, 32>>&);
 std::array<uint8_t, 32> calculateMerkleRootStratum(const std::vector<std::array<uint8_t, 32>>&);
 
-inline double timeSince(const std::chrono::time_point<std::chrono::system_clock> &t0) {
-	const std::chrono::time_point<std::chrono::system_clock> t(std::chrono::system_clock::now());
+inline double timeSince(const std::chrono::time_point<std::chrono::steady_clock> &t0) {
+	const std::chrono::time_point<std::chrono::steady_clock> t(std::chrono::steady_clock::now());
 	const std::chrono::duration<double> dt(t - t0);
 	return dt.count();
 }
