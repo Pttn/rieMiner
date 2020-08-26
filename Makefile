@@ -25,10 +25,10 @@ static: rieMiner
 rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o WorkManager.cpp Stats.cpp tools.o mod_1_4.o mod_1_2_avx.o mod_1_2_avx2.o fermat.o primetest.o primetest512.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
-main.o: main.cpp main.hpp Miner.hpp StratumClient.hpp GBTClient.hpp Client.hpp WorkManager.hpp Stats.hpp tools.hpp tsQueue.hpp
+main.o: main.cpp main.hpp Miner.hpp StratumClient.hpp GBTClient.hpp Client.hpp WorkManager.hpp Stats.hpp tools.hpp
 	$(CXX) $(CFLAGS) -c -o main.o main.cpp
 
-Miner.o: Miner.cpp Miner.hpp tsQueue.hpp
+Miner.o: Miner.cpp Miner.hpp
 	$(CXX) $(CFLAGS) -c -o Miner.o Miner.cpp
 
 StratumClient.o: StratumClient.cpp

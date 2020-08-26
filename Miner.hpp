@@ -5,7 +5,6 @@
 
 #include <atomic>
 #include <cassert>
-#include "tsQueue.hpp"
 #include "WorkManager.hpp"
 
 class WorkManager;
@@ -17,8 +16,8 @@ union xmmreg_t {
 	__m128i m128;
 };
 
-constexpr uint32_t PENDING_SIZE(16);
-constexpr uint32_t WORK_DATAS(2);
+constexpr uint32_t sieveCacheSize(16);
+constexpr uint32_t nWorks(2);
 
 inline std::vector<mpz_class> v64ToVMpz(const std::vector<uint64_t> &v64) {
 	std::vector<mpz_class> vMpz;
@@ -52,10 +51,10 @@ struct MinerParameters {
 };
 
 constexpr uint32_t maxCandidatesPerCheckJob(64);
-enum JobType {TYPE_CHECK, TYPE_MOD, TYPE_SIEVE, TYPE_DUMMY};
-struct primeTestWork {
-	JobType type;
-	uint32_t workDataIndex;
+struct Job {
+	enum Type {Dummy, Presieve, Sieve, Check};
+	Type type;
+	uint64_t workIndex;
 	union {
 		struct {} dummy;
 		struct {
@@ -63,26 +62,41 @@ struct primeTestWork {
 			uint32_t offsetId;
 			uint32_t nCandidates;
 			uint32_t candidateIndexes[maxCandidatesPerCheckJob];
-		} testWork;
+		} check;
 		struct {
 			uint64_t start;
 			uint64_t end;
-		} modWork;
+		} presieve;
 		struct {
 			uint32_t sieveId;
-		} sieveWork;
+			uint64_t iteration;
+		} sieve;
 	};
 };
 
-struct MinerWorkData {
+struct JobDoneInfo {
+	Job::Type type;
+	union {
+		struct {} empty;
+		uint64_t workIndex;
+		uint64_t firstPrimeIndex;
+	};
+};
+
+struct MinerWork {
 	mpz_class target, remainderPrimorial;
 	WorkData verifyBlock;
-	std::atomic<uint64_t> outstandingTests{0};
+	std::atomic<uint64_t> nRemainingCheckJobs{0};
+	void clear() {
+		target = 0;
+		remainderPrimorial = 0;
+		nRemainingCheckJobs = 0;
+	}
 };
 
 struct SieveInstance {
 	uint32_t id;
-	std::mutex modLock;
+	std::mutex presieveLock;
 	uint64_t *sieve = NULL;
 	uint32_t **segmentHits = NULL;
 	std::atomic<uint64_t> *segmentCounts = NULL;
@@ -91,6 +105,8 @@ struct SieveInstance {
 
 class Miner {
 	std::shared_ptr<WorkManager> _manager;
+	std::thread _masterThread;
+	std::vector<std::thread> _workerThreads;
 	MinerParameters _parameters;
 	CpuID _cpuInfo;
 	// Miner data (generated in init)
@@ -100,72 +116,68 @@ class Miner {
 	std::vector<uint64_t> _halfPrimeTupleOffset, _primorialOffsetDiff, _primorialOffsetDiffToFirst;
 	// Miner state variables
 	bool _inited, _running;
-	volatile uint32_t _currentHeight;
-	tsQueue<primeTestWork, 1024> _modWorkQueue;
-	tsQueue<primeTestWork, 4096> _verifyWorkQueue;
-	tsQueue<int64_t, 9216> _workDoneQueue;
+	TsQueue<Job> _presieveJobs, _jobs;
+	TsQueue<JobDoneInfo> _jobsDoneInfos;
 	SieveInstance* _sieveInstances;
-	bool _masterExists;
-	std::mutex _masterLock, _tupleFileLock;
-	uint64_t _curWorkDataIndex;
-	MinerWorkData _workData[WORK_DATAS];
-	uint32_t _maxWorkOut;
+	std::array<MinerWork, nWorks> _works;
+	uint32_t _nRemainingCheckJobsThreshold;
+	std::mutex _tupleFileLock;
+	std::chrono::microseconds _presieveTime, _sieveTime, _verifyTime;
 	
-	std::chrono::microseconds _modTime, _sieveTime, _verifyTime;
-	
-	void _addToPending(uint64_t *sieve, std::array<uint32_t, PENDING_SIZE> &pending, uint64_t &pos, uint32_t ent) {
+	void _addToSieveCache(uint64_t *sieve, std::array<uint32_t, sieveCacheSize> &sieveCache, uint64_t &pos, uint32_t ent) {
 		__builtin_prefetch(&(sieve[ent >> 6U]));
-		uint32_t old(pending[pos]);
+		uint32_t old(sieveCache[pos]);
 		if (old != 0)
 			sieve[old >> 6U] |= (1ULL << (old & 63U));
-		pending[pos] = ent;
+		sieveCache[pos] = ent;
 		pos++;
-		pos &= PENDING_SIZE - 1;
+		pos &= sieveCacheSize - 1;
 	}
-	void _termPending(uint64_t *sieve, std::array<uint32_t, PENDING_SIZE> &pending) {
-		for (uint64_t i(0) ; i < PENDING_SIZE ; i++) {
-			const uint32_t old(pending[i]);
+	void _endSieveCache(uint64_t *sieve, std::array<uint32_t, sieveCacheSize> &sieveCache) {
+		for (uint64_t i(0) ; i < sieveCacheSize ; i++) {
+			const uint32_t old(sieveCache[i]);
 			if (old != 0)
 				sieve[old >> 6U] |= (1ULL << (old & 63U));
 		}
 	}
 	
 	void _putOffsetsInSegments(SieveInstance& sieveInstance, uint64_t *offsets, uint64_t* counts, int nOffsets);
-	void _updateRemainders(uint32_t workDataIndex, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex);
+	void _doPresieveJob(const Job&);
 	void _processSieve(uint64_t *sieve, uint32_t* offsets, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex);
 	void _processSieve6(uint64_t *sieve, uint32_t* offsets, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex);
-	void _runSieve(SieveInstance& sieveInstance, uint32_t workDataIndex);
+	void _doSieveJob(Job);
 	bool _testPrimesIspc(uint32_t candidateIndexes[maxCandidatesPerCheckJob], uint32_t is_prime[maxCandidatesPerCheckJob], const mpz_class &ploop, mpz_class &candidate);
-	void _verifyThread();
+	void _doCheckJob(Job);
+	void _doJobs(uint16_t);
+	void _manageJobs();
 	mpz_class _getTargetFromBlock(const WorkData& block);
-	void _processOneBlock(uint32_t workDataIndex, bool isNewHeight);
 	
 	public:
 	Miner(const std::shared_ptr<WorkManager> &manager) :
 		_manager(manager) {
 		_inited  = false;
 		_running = false;
-		_currentHeight = 0;
 		_parameters = MinerParameters();
 		_nPrimes = 0;
 		_entriesPerSegment = 0;
 		_primeTestStoreOffsetsSize = 0;
 		_sparseLimit = 0;
-		_masterExists = false;
 	}
 	
-	void init();
-	void process(WorkData block);
-	bool inited() {return _inited;}
-	void pause() {
-		_running = false;
-		_currentHeight = 0;
-	}
 	void start() {
-		_running = true;
+		init();
+		startThreads();
 	}
+	void init();
+	void startThreads();
+	void stop() {
+		if (_running) stopThreads();
+		if (_inited) clear();
+	}
+	void stopThreads();
+	void clear();
+	bool inited() {return _inited;}
 	bool running() {return _running;}
-	void updateHeight(uint32_t height) {_currentHeight = height;}
 };
 
 #endif

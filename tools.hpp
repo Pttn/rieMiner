@@ -6,9 +6,11 @@
 
 #include <array>
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <deque>
 #include <iomanip>
 #include <iostream>
 #include <openssl/sha.h>
@@ -111,6 +113,48 @@ public:
 	bool hasAVX() const {return _avx;}
 	bool hasAVX2() const {return _avx2;}
 	bool hasAVX512() const {return _avx512;}
+};
+
+template<class T> class TsQueue {
+	std::deque<T> _q;
+	std::mutex _m;
+	std::condition_variable _cv;
+public:
+	void push_back(T item) {
+		std::unique_lock<std::mutex> lock(_m);
+		_q.push_back(item);
+		_cv.notify_one();
+	}
+	void push_front(T item) {
+		std::unique_lock<std::mutex> lock(_m);
+		_q.push_front(item);
+		_cv.notify_one();
+	}
+	T blocking_pop_front() { // Blocks until an item is available to pop
+		std::unique_lock<std::mutex> lock(_m);
+		while (_q.empty())
+			_cv.wait(lock);
+		auto r(_q.front());
+		_q.pop_front();
+		return r;
+	}
+	bool try_pop_front(T& item) { // Pops the front and returns true if the queue isn't empty else returns false.
+		std::lock_guard<std::mutex> lock(_m);
+		if (_q.empty()) return false;
+		item = _q.front();
+		_q.pop_front();
+		return true;
+	}
+	typename std::deque<T>::size_type clear() { // Nonblocking - clears queue, returns number of items removed
+		std::unique_lock<std::mutex> lock(_m);
+		auto s(_q.size());
+		_q.clear();
+		return s;
+	}
+	uint32_t size() {
+		std::unique_lock<std::mutex> lock(_m);
+		return _q.size();
+	}
 };
 
 #endif

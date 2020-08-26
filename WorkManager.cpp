@@ -4,14 +4,6 @@
 #include "GBTClient.hpp"
 #include "StratumClient.hpp"
 
-void WorkManager::_minerThread() {
-	WorkData wd;
-	while (true) {
-		if (!getWork(wd)) usleep(1000*_workRefresh/2);
-		else _miner->process(wd);
-	}
-}
-
 void WorkManager::init() {
 	_options.loadConf();
 	std::cout << "-----------------------------------------------------------" << std::endl;
@@ -23,13 +15,6 @@ void WorkManager::init() {
 	
 	_miner = std::unique_ptr<Miner>(new Miner(shared_from_this()));
 	_miner->init();
-	
-	std::cout << "Starting " << _options.threads() << " mining threads" << std::endl;
-	for (uint16_t i(0) ; i < _options.threads() + 1 ; i++) {
-		_threads.push_back(std::thread(&WorkManager::_minerThread, shared_from_this()));
-		_threads[i].detach();
-	}
-	
 	_inited = true;
 }
 
@@ -47,10 +32,11 @@ void WorkManager::submitWork(const WorkData &wd) {
 }
 
 void WorkManager::manage() {
-	if (!_inited) std::cerr << __func__ << ": manager was not inited!" << std::endl;
+	if (!_inited) ERRORMSG("Manager was not inited!");
 	else {
+		_running = true;
 		std::chrono::time_point<std::chrono::steady_clock> timer;
-		while (true) {
+		while (_running) {
 			if (_options.mode() == "Benchmark" && _miner->running()) {
 				if (timeSince(_stats.miningStartTp()) > _options.benchmarkTimeLimit() && _options.benchmarkTimeLimit() != 0) {
 					std::cout << timeSince(_stats.miningStartTp()) << " s elapsed, test finished. " << versionString << ", difficulty " << _options.benchmarkDifficulty() << ", PTL " << _options.primeTableLimit() << std::endl;
@@ -69,8 +55,7 @@ void WorkManager::manage() {
 			
 			if (_client->connected()) {
 				if (_options.refreshInterval() != 0) {
-					const double dt(timeSince(timer));
-					if (dt > _options.refreshInterval() && _miner->inited() && _miner->running()) {
+					if (timeSince(timer) > _options.refreshInterval() && _miner->inited() && _miner->running()) {
 						_stats.printStats();
 						_stats.printEstimatedTimeToBlock();
 						timer = std::chrono::steady_clock::now();
@@ -81,15 +66,19 @@ void WorkManager::manage() {
 				_client->process();
 				if (!_client->connected()) {
 					std::cout << "Connection lost :|, reconnecting in " << _waitReconnect << " s..." << std::endl;
-					_miner->pause();
+					_miner->stopThreads();
 					_stats.printTuplesStats();
 					_stats = Stats(offsets().size());
 					_clientMutex.unlock();
 					usleep(1000000*_waitReconnect);
 				}
 				else {
-					assert(_miner->inited());
+					if (!_miner->inited()) {
+						ERRORMSG("Miner is not inited!");
+						exit(-1);
+					}
 					if (!_miner->running() && _client->workData().height != 0) {
+						_miner->startThreads();
 						_stats.setMiningType(_options.mode());
 						_stats.startTimer();
 						timer = std::chrono::steady_clock::now();
@@ -97,13 +86,10 @@ void WorkManager::manage() {
 						const WorkData workData(_client->workData());
 						_stats.printTime();
 						std::cout << " Started mining at block " << workData.height << ", difficulty " << workData.difficulty << std::endl;
-						_miner->start();
 					}
-					
-					_miner->updateHeight(_client->workData().height);
-					__sync_synchronize();
+					_currentHeight = _client->workData().height;
 					_clientMutex.unlock();
-					usleep(1000*_workRefresh);
+					usleep(10000);
 				}
 			}
 			else {
@@ -118,9 +104,17 @@ void WorkManager::manage() {
 					_clientMutex.unlock();
 					_stats = Stats(offsets().size());
 					std::cout << "Success!" << std::endl;
+					usleep(10000);
 				}
-				usleep(10000);
 			}
 		}
 	}
+}
+
+void WorkManager::stop() {
+	printTuplesStats();
+	_currentHeight = 0;
+	if (_miner->inited()) _miner->stop();
+	else exit(0);
+	_running = false;
 }

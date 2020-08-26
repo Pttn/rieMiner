@@ -350,11 +350,6 @@ void Options::loadConf() {
 			}
 		}
 	}
-	
-	if (_threads < 2) {
-		std::cout << "At least 2 threads are needed, overriding." << std::endl;
-		_threads = 2;
-	}
 	if (_mode == "Benchmark") {
 		std::cout << "Will show tuples of at least length " << _tupleLengthMin << std::endl;
 		if (_tuplesFile != "None") std::cout << " Will write them to file " << _tuplesFile << std::endl;
@@ -369,9 +364,8 @@ void Options::setPayoutAddress(const std::string& address) {
 }
 
 void signalHandler(int signum) {
-	std::cout << std::endl << "Signal " << signum << " received, terminating rieMiner." << std::endl;
-	manager->printTuplesStats();
-	_exit(0);
+	std::cout << std::endl << "Signal " << signum << " received, stopping rieMiner." << std::endl;
+	manager->stop();
 }
 
 int main(int argc, char** argv) {
@@ -391,6 +385,7 @@ int main(int argc, char** argv) {
 	std::cout << "Project page: https://github.com/Pttn/rieMiner" << std::endl;
 	std::cout << "Go to the project page or open README.md for usage information" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
+	std::cout << "G++ " << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__ << std::endl;
 	std::cout << "GMP " << __GNU_MP_VERSION << "." << __GNU_MP_VERSION_MINOR << "." << __GNU_MP_VERSION_PATCHLEVEL << std::endl;
 	std::cout << "LibCurl " << LIBCURL_VERSION << std::endl;
 	std::cout << "Jansson " << JANSSON_VERSION << std::endl;
