@@ -52,10 +52,6 @@ void Stats::printStats() const {
 			}
 			std::cout << ")";
 		}
-		else {
-			std::cout << " ; Sh: " << _tuples[4] - _rejectedShares << "/" << _tuples[4];
-			if (_tuples[4] > 0) std::cout << " (" << FIXED(1) << 100.*((double) _tuples[4] - _rejectedShares)/((double) _tuples[4]) << "%, " << 60.*((double) _tuplesSinceLastDiff[4])/elapsedSecs << " sh/min)";
-		}
 	}
 }
 
@@ -65,19 +61,19 @@ void Stats::printTuplesStats() const {
 		const double elapsedSecs(timeSince(_lastDiffChangeTp));
 		if (_solo) {
 			std::cout << "Tuples found for diff " << _difficulty <<  ": (";
-			for (uint32_t i(1) ; i < _tuples.size() ; i++) {
+			for (uint32_t i(0) ; i < _tuples.size() ; i++) {
 				std::cout << t[i];
 				if (i != _tuples.size() - 1) std::cout << " ";
 			}
 			std::cout << ") during " << FIXED(3) << elapsedSecs << " s" << std::endl;
 			std::cout << "Tuples/s: (" << FIXED(6);
-			for (uint32_t i(1) ; i < _tuples.size() ; i++) {
+			for (uint32_t i(0) ; i < _tuples.size() ; i++) {
 				std::cout << t[i]/elapsedSecs;
 				if (i != _tuples.size() - 1) std::cout << " ";
 			}
 			std::cout << ")" << std::endl;
-			std::cout << "Ratios: (" << FIXED(1);
-			for (uint32_t i(2) ; i < _tuples.size() ; i++) {
+			std::cout << "Ratios: (" << FIXED(3);
+			for (uint32_t i(1) ; i < _tuples.size() ; i++) {
 				if (t[i] != 0) std::cout << ((double) t[i - 1])/((double) t[i]);
 				else std::cout << "inf";
 				if (i != _tuples.size() - 1) std::cout << " ";
@@ -114,9 +110,9 @@ void Stats::printEstimatedTimeToBlock() const {
 void Stats::printBenchmarkResults() const {
 	const double elapsedSecs(timeSince(_lastDiffChangeTp));
 	if (_tuplesSinceLastDiff[2] > 0) {
-		const double r12(((double) _tuplesSinceLastDiff[1])/((double) _tuplesSinceLastDiff[2])),
+		const double r(((double) _tuplesSinceLastDiff[0])/((double) _tuplesSinceLastDiff[1])),
 		             s1(((double) _tuplesSinceLastDiff[1])/elapsedSecs),
-		             bpd(86400.*s1/std::pow(r12, _tuples.size() - 2));
-		std::cout << "BENCHMARK RESULTS: " << FIXED(6) << s1 << " primes/s with ratio " << r12 << " -> " << bpd << " block(s)/day" << std::endl;
+		             bpd(86400.*s1/std::pow(r, _tuples.size() - 2));
+		std::cout << "BENCHMARK RESULTS: " << FIXED(6) << s1 << " primes/s with ratio " << r << " -> " << bpd << " block(s)/day" << std::endl;
 	}
 }

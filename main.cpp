@@ -9,16 +9,17 @@
 #else
 	#include <winsock2.h>
 #endif
-#include "Client.hpp"
+#include "GBTClient.hpp"
+#include "StratumClient.hpp"
 #include "main.hpp"
 #include "Miner.hpp"
 #include "tools.hpp"
-#include "WorkManager.hpp"
 
 int DEBUG(0);
-
-std::shared_ptr<WorkManager> manager;
 static std::string confPath("rieMiner.conf");
+bool running(false);
+std::shared_ptr<Miner> miner(nullptr);
+std::shared_ptr<Client> client(nullptr);
 
 void Options::_parseLine(std::string line, std::string& key, std::string& value) const {
 	const auto pos(line.find('='));
@@ -365,7 +366,9 @@ void Options::setPayoutAddress(const std::string& address) {
 
 void signalHandler(int signum) {
 	std::cout << std::endl << "Signal " << signum << " received, stopping rieMiner." << std::endl;
-	manager->stop();
+	if (miner->inited()) miner->stop();
+	else exit(0);
+	running = false;
 }
 
 int main(int argc, char** argv) {
@@ -385,10 +388,10 @@ int main(int argc, char** argv) {
 	std::cout << "Project page: https://github.com/Pttn/rieMiner" << std::endl;
 	std::cout << "Go to the project page or open README.md for usage information" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
-	std::cout << "G++ " << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__ << std::endl;
-	std::cout << "GMP " << __GNU_MP_VERSION << "." << __GNU_MP_VERSION_MINOR << "." << __GNU_MP_VERSION_PATCHLEVEL << std::endl;
-	std::cout << "LibCurl " << LIBCURL_VERSION << std::endl;
-	std::cout << "Jansson " << JANSSON_VERSION << std::endl;
+	std::cout << "G++ " << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__ << " - https://gcc.gnu.org/" << std::endl;
+	std::cout << "GMP " << __GNU_MP_VERSION << "." << __GNU_MP_VERSION_MINOR << "." << __GNU_MP_VERSION_PATCHLEVEL << " - https://gmplib.org/" << std::endl;
+	std::cout << "Curl " << LIBCURL_VERSION << " - https://curl.haxx.se/" << std::endl;
+	std::cout << "Jansson " << JANSSON_VERSION << " - https://digip.org/jansson/" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
 	
 	if (argc >= 2) {
@@ -396,9 +399,62 @@ int main(int argc, char** argv) {
 		std::cout << "Using custom configuration file path " << confPath << std::endl;
 	}
 	
-	manager = std::shared_ptr<WorkManager>(new WorkManager);
-	manager->init();
-	manager->manage();
+	std::shared_ptr<Options> options(std::make_shared<Options>());
+	options->loadConf();
+	miner = std::make_shared<Miner>(options);
+	miner->init();
+	if (options->mode() == "Solo")
+		client = std::make_shared<GBTClient>(options);
+	else if (options->mode() == "Pool")
+		client = std::make_shared<StratumClient>(options);
+	else
+		client = std::make_shared<BMClient>(options);
+	miner->setClient(client);
+	
+	std::chrono::time_point<std::chrono::steady_clock> timer;
+	const uint32_t waitReconnect(10); // Time in s to wait before auto reconnect.
+	running = true;
+	while (running) {
+		if (options->mode() == "Benchmark" && miner->running()) {
+			if (miner->benchmarkFinishedTimeOut() || miner->benchmarkFinished2Tuples()) {
+				miner->printBenchmarkResults();
+				miner->stop();
+				running = false;
+				break;
+			}
+		}
+		
+		if (client->connected()) {
+			if (options->refreshInterval() != 0 && timeSince(timer) > options->refreshInterval() && miner->running()) {
+				miner->printStats();
+				timer = std::chrono::steady_clock::now();
+			}
+			client->process();
+			if (!client->connected()) {
+				std::cout << "Connection lost :|, reconnecting in " << waitReconnect << " s..." << std::endl;
+				miner->stopThreads();
+				usleep(1000000*waitReconnect);
+			}
+			else {
+				if (!miner->running() && client->currentHeight() != 0) {
+					miner->startThreads();
+					timer = std::chrono::steady_clock::now();
+				}
+				usleep(10000);
+			}
+		}
+		else {
+			std::cout << "Connecting to Riecoin server..." << std::endl;
+			if (!client->connect()) {
+				std::cout << "Failure :| ! Check your connection, configuration or credentials. Retry in " << waitReconnect << " s..." << std::endl;
+				usleep(1000000*waitReconnect);
+			}
+			else {
+				std::cout << "Success!" << std::endl;
+				usleep(10000);
+			}
+		}
+	}
 	
 	return 0;
 }

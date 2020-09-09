@@ -50,16 +50,21 @@ struct GetBlockTemplateData {
 };
 
 // Client for the GetBlockTemplate protocol (solo mining)
-class GBTClient : public RPCClient {
+class GBTClient : public Client {
 	GetBlockTemplateData _gbtd;
 	
+	std::string _getUserPass() const; // Returns "username:password", for sendRPCCall(...)
+	std::string _getHostPort() const; // Returns "http://host:port/", for sendRPCCall(...)
 	bool _getWork(); // Via getblocktemplate
 	
-	public:
-	using RPCClient::RPCClient;
+public:
+	using Client::Client;
 	bool connect();
+	json_t* sendRPCCall(const std::string&) const; // Send a RPC call to the server and returns the response
 	void sendWork(const WorkData&) const; // Via submitblock
 	WorkData workData() const;
+	virtual uint32_t currentHeight() const {return _gbtd.height;}
+	virtual uint32_t currentDifficulty() const {return decodeCompact(invEnd32(_gbtd.bh.bits));}
 };
 
 #endif

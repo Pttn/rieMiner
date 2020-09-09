@@ -5,9 +5,10 @@
 
 #include <atomic>
 #include <cassert>
-#include "WorkManager.hpp"
+#include "Stats.hpp"
+#include "Client.hpp"
+#include "StratumClient.hpp"
 
-class WorkManager;
 struct WorkData;
 
 union xmmreg_t {
@@ -104,7 +105,9 @@ struct SieveInstance {
 };
 
 class Miner {
-	std::shared_ptr<WorkManager> _manager;
+	std::shared_ptr<Options> _options;
+	std::shared_ptr<Client> _client;
+	Stats _stats;
 	std::thread _masterThread;
 	std::vector<std::thread> _workerThreads;
 	MinerParameters _parameters;
@@ -153,8 +156,9 @@ class Miner {
 	mpz_class _getTargetFromBlock(const WorkData& block);
 	
 	public:
-	Miner(const std::shared_ptr<WorkManager> &manager) :
-		_manager(manager) {
+	Miner(const std::shared_ptr<Options> &options) :
+		_options(options),
+		_client(nullptr) {
 		_inited  = false;
 		_running = false;
 		_parameters = MinerParameters();
@@ -164,6 +168,7 @@ class Miner {
 		_sparseLimit = 0;
 	}
 	
+	void setClient(const std::shared_ptr<Client> &client) {_client = client;}
 	void start() {
 		init();
 		startThreads();
@@ -178,6 +183,18 @@ class Miner {
 	void clear();
 	bool inited() {return _inited;}
 	bool running() {return _running;}
+	
+	bool benchmarkFinishedTimeOut() const {return _options->benchmarkTimeLimit() != 0 && timeSince(_stats.miningStartTp()) > _options->benchmarkTimeLimit();}
+	bool benchmarkFinished2Tuples() const {return _options->benchmark2tupleCountLimit() != 0 && _stats.tuplesCount()[2] >= _options->benchmark2tupleCountLimit();}
+	void printBenchmarkResults() const {
+		std::cout << timeSince(_stats.miningStartTp()) << " s elapsed, test finished. " << versionString << ", difficulty " << _options->benchmarkDifficulty() << ", PTL " << _options->primeTableLimit() << std::endl;
+		_stats.printBenchmarkResults();
+	}
+	void printStats() const {
+		_stats.printStats();
+		if (!_parameters.solo) std::dynamic_pointer_cast<StratumClient>(_client)->printSharesStats();
+		_stats.printEstimatedTimeToBlock();
+	}
 };
 
 #endif

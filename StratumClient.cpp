@@ -2,9 +2,8 @@
 
 #include "main.hpp"
 #include "StratumClient.hpp"
-#include "WorkManager.hpp"
 
-#define USER_AGENT "rieMiner/0.91"
+#define USER_AGENT "rieMiner/0.92a"
 
 void StratumData::merkleRootGen() {
 	std::vector<uint8_t> coinbase;
@@ -34,7 +33,6 @@ bool StratumClient::_getWork() {
 			json_decref(jsonMn);
 		}
 		else {
-			uint32_t oldHeight(_sd.height);
 			const char *jobId, *prevhash, *coinbase1, *coinbase2, *version, *nbits, *ntime;
 			json_t *jsonTxs;
 			
@@ -80,10 +78,6 @@ bool StratumClient::_getWork() {
 					if (heightLength == 1) _sd.height = _sd.coinbase1[43];
 					else if (heightLength == 2) _sd.height = _sd.coinbase1[43] + 256*_sd.coinbase1[44];
 					else _sd.height = _sd.coinbase1[43] + 256*_sd.coinbase1[44] + 65536*_sd.coinbase1[45];
-					// Notify when the network found a block
-					const uint64_t difficulty(decodeCompact(invEnd32(_sd.bh.bits)));
-					if (_manager->difficulty() != difficulty) _manager->updateDifficulty(difficulty, _sd.height);
-					if (oldHeight != _sd.height && oldHeight != 0) _manager->newHeightMessage(_sd.height);
 					json_decref(jsonMn);
 					success = true;
 				}
@@ -167,7 +161,7 @@ void StratumClient::_getSubscribeInfo() {
 			std::cout << "extraNonce2Len = " << _sd.extraNonce2Len << std::endl;
 			
 			std::ostringstream oss;
-			oss << "{\"id\": 2, \"method\": \"mining.authorize\", \"params\": [\"" << _manager->options().username() << "\", \"" << _manager->options().password() << "\"]}\n";
+			oss << "{\"id\": 2, \"method\": \"mining.authorize\", \"params\": [\"" << _options->username() << "\", \"" << _options->password() << "\"]}\n";
 			send(_socket, oss.str().c_str(), oss.str().size(), 0);
 			
 			_state = READY;
@@ -179,7 +173,7 @@ void StratumClient::_getSubscribeInfo() {
 	if (jsonErr == NULL) json_decref(jsonErr);
 }
 
-void StratumClient::_getSentShareResponse() {
+void StratumClient::_handleSentShareResponse() {
 	json_error_t err;
 	json_t *jsonObj(json_loads(_result.c_str(), 0, &err));
 	if (jsonObj == NULL)
@@ -189,7 +183,7 @@ void StratumClient::_getSentShareResponse() {
 		       *jsonErr(json_object_get(jsonObj, "error"));
 		if (jsonRes == NULL || json_is_null(jsonRes) || !json_is_null(jsonErr)) {
 			std::cout << "Share rejected :| ! Received: " << json_dumps(jsonObj, JSON_COMPACT) << std::endl;
-			_manager->incRejectedShares();
+			_rejectedShares++;
 		}
 		json_decref(jsonObj);
 	}
@@ -207,7 +201,7 @@ void StratumClient::_handleOther() {
 		method = json_string_value(json_object_get(jsonObj, "method"));
 		if (method == NULL) {
 			if (_state == SHARE_SENT) {
-				_getSentShareResponse();
+				_handleSentShareResponse();
 				_state = READY;
 			}
 		}
@@ -226,12 +220,14 @@ bool StratumClient::connect() {
 		_sd = StratumData();
 		_buffer = std::array<char, RBUFSIZE>();
 		_lastDataRecvTp = std::chrono::steady_clock::now();
+		_shares = 0;
+		_rejectedShares = 0;
 		_state = INIT;
 		_result = std::string();
 		
-		hostent* hostInfo = gethostbyname(_manager->options().host().c_str());
+		hostent* hostInfo = gethostbyname(_options->host().c_str());
 		if (hostInfo == NULL) {
-			std::cerr << "Unable to resolve '" << _manager->options().host() << "'. Check the URL or your connection." << std::endl;
+			std::cerr << "Unable to resolve '" << _options->host() << "'. Check the URL or your connection." << std::endl;
 			return false;
 		}
 		void** ipListPtr((void**) hostInfo->h_addr_list);
@@ -239,13 +235,13 @@ bool StratumClient::connect() {
 		if (ipListPtr[0]) ip = *(uint32_t*) ipListPtr[0];
 		std::ostringstream oss;
 		oss << ((ip >> 0) & 0xFF) << "." << ((ip >> 8) & 0xFF) << "." << ((ip >> 16) & 0xFF) << "." << ((ip >> 24) & 0xFF);
-		std::cout << "Host: " << _manager->options().host()  << " -> " << oss.str() << std::endl;
+		std::cout << "Host: " << _options->host()  << " -> " << oss.str() << std::endl;
 		
 		_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		struct sockaddr_in addr;
 		memset(&addr, 0, sizeof(sockaddr_in));
 		addr.sin_family = AF_INET;
-		addr.sin_port = htons(_manager->options().port());
+		addr.sin_port = htons(_options->port());
 		addr.sin_addr.s_addr = inet_addr(oss.str().c_str());
 		int result = ::connect(_socket, (sockaddr*) &addr, sizeof(sockaddr_in));
 		if (result != 0) {
@@ -276,10 +272,7 @@ bool StratumClient::connect() {
 }
 
 void StratumClient::sendWork(const WorkData &share) const {
-	_manager->printTime();
-	std::cout << " " << share.primes << "-share found" << std::endl;
 	WorkData wdToSend(share);
-	
 	std::ostringstream oss;
 	uint32_t nonce[8];
 	wdToSend.bh.curtime = toBEnd32(wdToSend.bh.curtime);
@@ -288,12 +281,11 @@ void StratumClient::sendWork(const WorkData &share) const {
 	for (uint32_t i(0) ; i < 8 ; i++) nonce[i] = invEnd32(((uint32_t*) wdToSend.bh.nOffset)[8 - 1 - i]);
 	
 	oss << "{\"method\": \"mining.submit\", \"params\": [\""
-	    << _manager->options().username() << "\", \""
+	    << _options->username() << "\", \""
 	    << wdToSend.jobId << "\", \""
 	    << v8ToHexStr(wdToSend.extraNonce2) << "\", \""
 	    << binToHexStr((const uint8_t*) &wdToSend.bh.curtime, 8) << "\", \""
 	    << binToHexStr(nonce, 32) << "\"], \"id\":0}\n";
-	
 	send(_socket, oss.str().c_str(), oss.str().size(), 0);
 }
 
@@ -302,6 +294,7 @@ bool StratumClient::process() {
 	if (_pendingSubmissions.size() > 0) {
 		for (uint32_t i(0) ; i < _pendingSubmissions.size() ; i++) {
 			sendWork(_pendingSubmissions[i]);
+			_shares++;
 			_state = SHARE_SENT;
 		}
 		_pendingSubmissions.clear();

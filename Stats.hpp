@@ -9,7 +9,7 @@
 // Provides useful stats displaying features
 class Stats {
 	std::vector<uint64_t> _tuples, _tuplesSinceLastDiff;
-	uint32_t _difficulty, _heightAtDiffChange, _rejectedShares;
+	uint32_t _difficulty, _heightAtDiffChange;
 	std::chrono::time_point<std::chrono::steady_clock> _miningStartTp, _lastDiffChangeTp;
 	bool _solo;
 	
@@ -18,16 +18,13 @@ class Stats {
 	public:
 	Stats(uint8_t tupleLength = 6) :
 		_tuples(tupleLength + 1, 0), _tuplesSinceLastDiff(tupleLength + 1, 0),
-		_difficulty(1), _heightAtDiffChange(0), _rejectedShares(0),
+		_difficulty(1), _heightAtDiffChange(0),
 		_lastDiffChangeTp(std::chrono::steady_clock::now()),
 		_solo(true) {}
 	
 	void startTimer();
 	void setMiningType(const std::string &protocol) {_solo = !(protocol == "Pool");}
-	
 	void incTupleCount(const uint8_t i) {_tuples[i]++; _tuplesSinceLastDiff[i]++;}
-	void incRejectedShares() {_rejectedShares++;}
-	
 	void newHeightMessage(const uint32_t);
 	
 	uint32_t difficulty() const {return _difficulty;}

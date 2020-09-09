@@ -8,7 +8,7 @@
 #include <vector>
 #include <curl/curl.h>
 #include <jansson.h>
-#include "tools.hpp"
+#include "main.hpp"
 
 class WorkManager;
 
@@ -94,18 +94,18 @@ struct WorkData {
 // Abstract class with protocol independent member variables and functions
 // Communicates with the server to get, parse, and submit mining work
 class Client {
-	protected:
+protected:
 	bool _inited, _connected;
 	CURL *_curl;
 	std::mutex _submitMutex;
 	std::vector<WorkData> _pendingSubmissions;
-	std::shared_ptr<WorkManager> _manager;
+	std::shared_ptr<Options> _options;
 	
 	virtual bool _getWork() = 0; // Get work (block data,...) from the sever, depending on the chosen protocol
 	
-	public:
+public:
 	Client() : _inited(false) {}
-	Client(const std::shared_ptr<WorkManager>& manager) : _inited(true), _connected(false), _curl(curl_easy_init()), _manager(manager) {}
+	Client(const std::shared_ptr<Options> &options) : _inited(true), _connected(false), _curl(curl_easy_init()), _options(options) {}
 	virtual bool connect(); // Returns false on error or if already connected
 	virtual void sendWork(const WorkData&) const = 0;  // Send work (share or block) to the sever, depending on the chosen protocol
 	void addSubmission(const WorkData& work) {
@@ -118,16 +118,12 @@ class Client {
 	// Using this, the WorkManager will get a ready-to-send work to the miner
 	// In particular, this will do the needed endianness changes or randomizations
 	virtual WorkData workData() const = 0; // If the returned work data has height 0, it is invalid
-};
-
-// Class for RPC-based communications (for example via the GetBlockTemplate protocol , or formerly via GetWork)
-class RPCClient : public Client {
-	std::string _getUserPass() const; // Returns "username:password", for sendRPCCall(...)
-	std::string _getHostPort() const; // Returns "http://host:port/", for sendRPCCall(...)
-	
-	public:
-	using Client::Client;
-	json_t* sendRPCCall(const std::string&) const; // Send a RPC call to the server and returns the response
+	virtual uint32_t currentHeight() const = 0;
+	virtual uint32_t currentDifficulty() const = 0;
+	bool getWork(WorkData& wd) const {
+		wd = workData();
+		return wd.height != 0;
+	}
 };
 
 // For BenchMarking, emulates a client to allow similar conditions to actual mining by providing
@@ -143,6 +139,8 @@ class BMClient : public Client {
 	bool connect();
 	void sendWork(const WorkData&) const;
 	WorkData workData() const;
+	virtual uint32_t currentHeight() const {return _height;};
+	virtual uint32_t currentDifficulty() const {return _options->benchmarkDifficulty();};
 };
 
 #endif

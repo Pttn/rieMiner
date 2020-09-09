@@ -36,15 +36,15 @@ void Miner::init() {
 	if (_cpuInfo.hasAVX512()) std::cout << " AVX-512";
 	else if (_cpuInfo.hasAVX2()) {
 		std::cout << " AVX2";
-		if (!_manager->options().enableAvx2()) std::cout << " (disabled -> AVX)";
+		if (!_options->enableAvx2()) std::cout << " (disabled -> AVX)";
 		else _parameters.useAvx2 = true;
 	}
 	else if (_cpuInfo.hasAVX()) std::cout << " AVX";
 	else std::cout << " AVX not suppported!";
 	std::cout << std::endl;
-	_parameters.threads = _manager->options().threads();
+	_parameters.threads = _options->threads();
 	std::cout << "Threads: " << _parameters.threads << std::endl;
-	_parameters.primeTupleOffset = _manager->options().constellationType();
+	_parameters.primeTupleOffset = _options->constellationType();
 	std::cout << "Constellation type: n + " << "(";
 	uint64_t offsetTemp(0);
 	for (std::vector<uint64_t>::size_type i(0) ; i < _parameters.primeTupleOffset.size() ; i++) {
@@ -53,33 +53,33 @@ void Miner::init() {
 		if (i != _parameters.primeTupleOffset.size() - 1) std::cout << ", ";
 	}
 	std::cout << "), length " << _parameters.primeTupleOffset.size() << std::endl;
-	_parameters.primorialNumber  = _manager->options().primorialNumber();
+	_parameters.primorialNumber  = _options->primorialNumber();
 	std::cout << "Primorial number: " << _parameters.primorialNumber << std::endl;
-	_parameters.primorialOffsets = v64ToVMpz(_manager->options().primorialOffsets());
+	_parameters.primorialOffsets = v64ToVMpz(_options->primorialOffsets());
 	std::cout << "Primorial offsets: ";
 	for (std::vector<uint64_t>::size_type i(0) ; i < _parameters.primorialOffsets.size() ; i++) {
 		std::cout << _parameters.primorialOffsets[i];
 		if (i != _parameters.primorialOffsets.size() - 1) std::cout << ", ";
 	}
 	std::cout << std::endl;
-	_parameters.sieveWorkers = _manager->options().sieveWorkers();
+	_parameters.sieveWorkers = _options->sieveWorkers();
 	if (_parameters.sieveWorkers == 0) {
-		_parameters.sieveWorkers = std::max(_manager->options().threads()/5, 1);
-		_parameters.sieveWorkers += (_manager->options().primeTableLimit() + 0x80000000ull) >> 33;
+		_parameters.sieveWorkers = std::max(_options->threads()/5, 1);
+		_parameters.sieveWorkers += (_options->primeTableLimit() + 0x80000000ull) >> 33;
 	}
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, maxSieveWorkers);
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, int(_parameters.primorialOffsets.size()));
 	std::cout << "Sieve Workers: " << _parameters.sieveWorkers << std::endl;
-	_parameters.sieveBits = _manager->options().sieveBits();
+	_parameters.sieveBits = _options->sieveBits();
 	_parameters.sieveSize = 1 << _parameters.sieveBits;
 	_parameters.sieveWords = _parameters.sieveSize/64;
 	std::cout << "Sieve Size: " << "2^" << _parameters.sieveBits << " = " << _parameters.sieveSize << " (" << _parameters.sieveWords << " words)" << std::endl;
 	_parameters.maxIterations = _parameters.maxIncrements/_parameters.sieveSize;
 	std::cout << "Max Increments: " << _parameters.maxIncrements << std::endl;
 	std::cout << "Max Iterations: " << _parameters.maxIterations << std::endl;
-	_parameters.solo = !(_manager->options().mode() == "Pool");
-	_parameters.tupleLengthMin = _manager->options().tupleLengthMin();
-	_parameters.primeTableLimit = _manager->options().primeTableLimit();
+	_parameters.solo = !(_options->mode() == "Pool");
+	_parameters.tupleLengthMin = _options->tupleLengthMin();
+	_parameters.primeTableLimit = _options->primeTableLimit();
 	std::cout << "Prime table limit: " << _parameters.primeTableLimit << std::endl;
 	// For larger ranges of offsets, need to add more modular inverses in _doPresieveJob().
 	std::transform(_parameters.primeTupleOffset.begin(), _parameters.primeTupleOffset.end(), std::back_inserter(_halfPrimeTupleOffset), [](uint64_t n) {return n >> 1;});
@@ -88,8 +88,8 @@ void Miner::init() {
 	_primorialOffsetDiffToFirst[0] = 0;
 	const uint64_t tupleSpan(std::accumulate(_parameters.primeTupleOffset.begin(), _parameters.primeTupleOffset.end(), 0));
 	for (int j(1) ; j < _parameters.sieveWorkers ; j++) {
-		_primorialOffsetDiff[j - 1] = _manager->options().primorialOffsets()[j] - _manager->options().primorialOffsets()[j - 1] - tupleSpan;
-		_primorialOffsetDiffToFirst[j] = _manager->options().primorialOffsets()[j] - _manager->options().primorialOffsets()[0];
+		_primorialOffsetDiff[j - 1] = _options->primorialOffsets()[j] - _options->primorialOffsets()[j - 1] - tupleSpan;
+		_primorialOffsetDiffToFirst[j] = _options->primorialOffsets()[j] - _options->primorialOffsets()[0];
 	}
 	
 	{
@@ -222,15 +222,23 @@ void Miner::init() {
 void Miner::startThreads() {
 	if (!_inited)
 		ERRORMSG("The miner is not inited");
+	else if (_client == nullptr)
+		ERRORMSG("The miner cannot start mining without a client");
 	else if (_running)
 		ERRORMSG("The miner is already running");
 	else {
 		_running = true;
+		_stats = Stats(_options->constellationType().size());
+		_stats.setMiningType(_options->mode());
+		_stats.startTimer();
 		std::cout << "Starting the miner's master thread..." << std::endl;
 		_masterThread = std::thread(&Miner::_manageJobs, this);
 		std::cout << "Starting " << _parameters.threads << " miner's worker threads..." << std::endl;
 		for (uint16_t i(0) ; i < _parameters.threads ; i++)
 			_workerThreads.push_back(std::thread(&Miner::_doJobs, this, i));
+		std::cout << "-----------------------------------------------------------" << std::endl;
+		_stats.printTime();
+		std::cout << " Started mining at block " << _client->currentHeight() << ", difficulty " << _client->currentDifficulty() << std::endl;
 	}
 }
 
@@ -239,6 +247,7 @@ void Miner::stopThreads() {
 		ERRORMSG("The miner is already not running");
 	else {
 		_running = false;
+		_stats.printTuplesStats();
 		std::cout << "Waiting for the miner's master thread to finish..." << std::endl;
 		_jobsDoneInfos.push_front(JobDoneInfo{Job::Type::Dummy, .empty = {}}); // Unblock if master thread stuck in blocking_pop_front().
 		_masterThread.join();
@@ -385,7 +394,7 @@ void Miner::_doPresieveJob(const Job &job) {
 			}                                                                                      \
 			else {                                                                                 \
 				if (nOffsets[sieveWorkerIndex] + _halfPrimeTupleOffset.size() >= offsetStackSize) { \
-					if (_works[workIndex].verifyBlock.height != _manager->getCurrentHeight()) \
+					if (_works[workIndex].verifyBlock.height != _client->currentHeight()) \
 						return;                                                                    \
 					_putOffsetsInSegments(_sieveInstances[sieveWorkerIndex], offsets[sieveWorkerIndex], counts[sieveWorkerIndex], nOffsets[sieveWorkerIndex]); \
 					nOffsets[sieveWorkerIndex] = 0;                                                \
@@ -528,7 +537,7 @@ void Miner::_doSieveJob(Job job) {
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
 	
-	if (_works[workIndex].verifyBlock.height != _manager->getCurrentHeight()) // Abort Sieve Job if new block (but count as Job done)
+	if (_works[workIndex].verifyBlock.height != _client->currentHeight()) // Abort Sieve Job if new block (but count as Job done)
 		goto sieveEnd;
 	
 	memset(sieveInstance.sieve, 0, sizeof(uint64_t)*_parameters.sieveWords);
@@ -557,7 +566,7 @@ void Miner::_doSieveJob(Job job) {
 		_addToSieveCache(sieveInstance.sieve, sieveCache, sieveCachePos, sieveInstance.segmentHits[iteration][i]);
 	_endSieveCache(sieveInstance.sieve, sieveCache);
 	
-	if (_works[workIndex].verifyBlock.height != _manager->getCurrentHeight())
+	if (_works[workIndex].verifyBlock.height != _client->currentHeight())
 		goto sieveEnd;
 	
 	checkJob.check.nCandidates = 0;
@@ -571,7 +580,7 @@ void Miner::_doSieveJob(Job job) {
 			checkJob.check.candidateIndexes[checkJob.check.nCandidates] = candidateIndex;
 			checkJob.check.nCandidates++;
 			if (checkJob.check.nCandidates == maxCandidatesPerCheckJob) {
-				if (_works[workIndex].verifyBlock.height != _manager->getCurrentHeight()) // Low overhead but still often enough
+				if (_works[workIndex].verifyBlock.height != _client->currentHeight()) // Low overhead but still often enough
 					goto sieveEnd;
 				_jobs.push_back(checkJob);
 				checkJob.check.nCandidates = 0;
@@ -580,7 +589,7 @@ void Miner::_doSieveJob(Job job) {
 			sieveWord &= sieveWord - 1; // Change the candidate's bit from 1 to 0.
 		}
 	}
-	if (_works[workIndex].verifyBlock.height != _manager->getCurrentHeight())
+	if (_works[workIndex].verifyBlock.height != _client->currentHeight())
 		goto sieveEnd;
 	if (checkJob.check.nCandidates > 0) {
 		_jobs.push_back(checkJob);
@@ -640,7 +649,7 @@ void Miner::_doCheckJob(Job job) {
 		if (firstTestDone) {
 			job.check.nCandidates = 0;
 			for (uint32_t i(0) ; i < maxCandidatesPerCheckJob ; i++) {
-				_manager->incTupleCount(0);
+				_stats.incTupleCount(0);
 				if (isPrime[i])
 					job.check.candidateIndexes[job.check.nCandidates++] = job.check.candidateIndexes[i];
 			}
@@ -648,19 +657,19 @@ void Miner::_doCheckJob(Job job) {
 	}
 	
 	for (uint32_t i(0) ; i < job.check.nCandidates ; i++) {
-		if (_works[workIndex].verifyBlock.height != _manager->getCurrentHeight()) break;
+		if (_works[workIndex].verifyBlock.height != _client->currentHeight()) break;
 		
-		uint8_t tupleLength(0);
+		uint16_t tupleLength(0);
 		candidate = _primorial*job.check.candidateIndexes[i];
 		candidate += ploop;
 		
 		if (!firstTestDone) { // Test candidate + 0 primality without optimizations if not done before.
-			_manager->incTupleCount(tupleLength);
+			_stats.incTupleCount(tupleLength);
 			if (!isPrimeFermat(candidate)) continue;
 		}
 		
 		tupleLength++;
-		_manager->incTupleCount(tupleLength);
+		_stats.incTupleCount(tupleLength);
 		uint16_t offsetSum(0);
 		// Test primality of the other elements of the tuple if candidate + 0 is prime.
 		for (std::vector<uint64_t>::size_type i(1) ; i < _parameters.primeTupleOffset.size() ; i++) {
@@ -668,7 +677,7 @@ void Miner::_doCheckJob(Job job) {
 			mpz_add_ui(candidate.get_mpz_t(), candidate.get_mpz_t(), _parameters.primeTupleOffset[i]);
 			if (isPrimeFermat(mpz_class(candidate))) {
 				tupleLength++;
-				_manager->incTupleCount(tupleLength);
+				_stats.incTupleCount(tupleLength);
 			}
 			else if (!_parameters.solo) {
 				int candidatesRemaining(5 - i);
@@ -680,24 +689,29 @@ void Miner::_doCheckJob(Job job) {
 		else if (tupleLength < 4) continue;
 		
 		// Generate nOffset and submit
+		_stats.printTime();
+		if (_parameters.solo)
+			std::cout << " " << tupleLength << "-tuple found by worker thread " << threadId << std::endl;
+		else
+			std::cout << " " << tupleLength << "-share found by worker thread " << threadId << std::endl;
 		mpz_class candidateOffset(candidate - _works[workIndex].target - offsetSum);
 		for (uint32_t d(0) ; d < (uint32_t) std::min(32/((uint32_t) sizeof(mp_limb_t)), (uint32_t) candidateOffset.get_mpz_t()->_mp_size) ; d++)
 			*(mp_limb_t*) (_works[workIndex].verifyBlock.bh.nOffset + d*sizeof(mp_limb_t)) = candidateOffset.get_mpz_t()->_mp_d[d];
 		_works[workIndex].verifyBlock.primes = tupleLength;
-		if (_manager->options().mode() == "Benchmark") {
+		if (_options->mode() == "Benchmark") {
 			mpz_class n(candidate - offsetSum);
 			std::cout << "Found n = " << n << std::endl;
-			if (_manager->options().tuplesFile() != "None") {
+			if (_options->tuplesFile() != "None") {
 				_tupleFileLock.lock();
-				std::ofstream file(_manager->options().tuplesFile(), std::ios::app);
+				std::ofstream file(_options->tuplesFile(), std::ios::app);
 				if (file)
 					file << static_cast<uint16_t>(tupleLength) << "-tuple: " << n << std::endl;
 				else
-					ERRORMSG("Unable to write file " << _manager->options().tuplesFile() << " in order to write a tuple");
+					ERRORMSG("Unable to write file " << _options->tuplesFile() << " in order to write a tuple");
 				_tupleFileLock.unlock();
 			}
 		}
-		_manager->submitWork(_works[workIndex].verifyBlock);
+		_client->addSubmission(_works[workIndex].verifyBlock);
 	}
 }
 
@@ -758,15 +772,18 @@ mpz_class Miner::_getTargetFromBlock(const WorkData &block) { // Target is in bi
 }
 
 void Miner::_manageJobs() {
-	WorkData wd; // Stores the block's information from the Manager
+	WorkData wd; // Stores the block's information from the Client
 	uint32_t currentWorkIndex(0), oldHeight(0);
-	while (_running && _manager->getWork(wd)) {
+	while (_running && _client->getWork(wd)) {
 		_presieveTime = _presieveTime.zero();
 		_sieveTime = _sieveTime.zero();
 		_verifyTime = _verifyTime.zero();
 		
 		_works[currentWorkIndex].verifyBlock = wd;
-		const bool newHeight(oldHeight != _works[currentWorkIndex].verifyBlock.height);
+		const bool isNewHeight(oldHeight != _works[currentWorkIndex].verifyBlock.height);
+		// Notify when the network found a block
+		if (_stats.difficulty() != wd.difficulty) _stats.updateDifficulty(wd.difficulty, wd.height);
+		if (isNewHeight && oldHeight != 0) _stats.newHeightMessage(wd.height);
 		// Extract the target from the block data.
 		const mpz_class target(_getTargetFromBlock(_works[currentWorkIndex].verifyBlock));
 		// Candidates are in the form a*primorial + primorialOffset. target + remainderPrimorial is the first such number starting from the target.
@@ -828,7 +845,7 @@ void Miner::_manageJobs() {
 		}
 		
 		// Adjust the Remaining Jobs Threshold
-		if (_works[currentWorkIndex].verifyBlock.height == _manager->getCurrentHeight() && !newHeight) {
+		if (_works[currentWorkIndex].verifyBlock.height == _client->currentHeight() && !isNewHeight) {
 			DBG(std::cout << "Min work outstanding during sieving: " << nRemainingJobsMin << std::endl;);
 			if (remainingJobs > _nRemainingCheckJobsThreshold - _parameters.threads*2) {
 				// If we are acheiving our work target, then adjust it towards the amount

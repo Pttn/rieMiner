@@ -22,10 +22,10 @@ static: CFLAGS += -D CURL_STATICLIB -I incs/
 static: LIBS   := -static -L libs/ $(LIBS)
 static: rieMiner
 
-rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o WorkManager.cpp Stats.cpp tools.o mod_1_4.o mod_1_2_avx.o mod_1_2_avx2.o fermat.o primetest.o primetest512.o
+rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o Stats.cpp tools.o mod_1_4.o mod_1_2_avx.o mod_1_2_avx2.o fermat.o primetest.o primetest512.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
-main.o: main.cpp main.hpp Miner.hpp StratumClient.hpp GBTClient.hpp Client.hpp WorkManager.hpp Stats.hpp tools.hpp
+main.o: main.cpp main.hpp Miner.hpp StratumClient.hpp GBTClient.hpp Client.hpp Stats.hpp tools.hpp
 	$(CXX) $(CFLAGS) -c -o main.o main.cpp
 
 Miner.o: Miner.cpp Miner.hpp
@@ -42,9 +42,6 @@ Client.o: Client.cpp
 
 Stats.o: Stats.cpp
 	$(CXX) $(CFLAGS) -c -o Stats.o Stats.cpp
-
-WorkManager.o: WorkManager.cpp
-	$(CXX) $(CFLAGS) -c -o WorkManager.o WorkManager.cpp
 
 tools.o: tools.cpp
 	$(CXX) $(CFLAGS) -c -o tools.o tools.cpp

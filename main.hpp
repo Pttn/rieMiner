@@ -15,7 +15,7 @@
 #include <vector>
 #include "tools.hpp"
 
-#define versionString	"rieMiner 0.92-alpha1a"
+#define versionString	"rieMiner 0.92-alpha1b"
 
 extern int DEBUG;
 #define DBG(x) if (DEBUG) {x;};
@@ -80,7 +80,7 @@ class Options {
 		_username(""),
 		_password(""),
 		_mode("Benchmark"),
-		_payoutAddress("RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB"),
+		_payoutAddress("ric1qpttn5u8u9470za84kt4y0lzz4zllzm4pyzhuge"),
 		_secret("/rM0.92a/"),
 		_tuplesFile("None"),
 		_payoutAddressFormat(AddressFormat::P2PKH),

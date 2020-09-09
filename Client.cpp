@@ -1,7 +1,6 @@
 // (c) 2017-2020 Pttn (https://github.com/Pttn/rieMiner)
 
 #include "Client.hpp"
-#include "WorkManager.hpp"
 
 bool Client::connect() {
 	if (_connected) return false;
@@ -33,54 +32,10 @@ bool Client::process() {
 	}
 }
 
-std::string RPCClient::_getUserPass() const {
-	std::ostringstream oss;
-	oss << _manager->options().username() << ":" << _manager->options().password();
-	return oss.str();
-}
-
-std::string RPCClient::_getHostPort() const {
-	std::ostringstream oss;
-	oss << "http://" << _manager->options().host() << ":" << _manager->options().port() << "/";
-	return oss.str();
-}
-
-static size_t curlWriteCallback(void *data, size_t size, size_t nmemb, std::string *s) {
-	s->append((char*) data, size*nmemb);
-	return size*nmemb;
-}
-
-json_t* RPCClient::sendRPCCall(const std::string& req) const {
-	std::string s;
-	json_t *jsonObj(NULL);
-	
-	if (_curl) {
-		json_error_t err;
-		curl_easy_setopt(_curl, CURLOPT_URL, _getHostPort().c_str());
-		curl_easy_setopt(_curl, CURLOPT_POSTFIELDSIZE, (long) strlen(req.c_str()));
-		curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, req.c_str());
-		curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
-		curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &s);
-		curl_easy_setopt(_curl, CURLOPT_USERPWD, _getUserPass().c_str());
-		curl_easy_setopt(_curl, CURLOPT_TIMEOUT, 10);
-		
-		const CURLcode cc(curl_easy_perform(_curl));
-		if (cc != CURLE_OK)
-			std::cerr << __func__ << ": curl_easy_perform() failed :| - " << curl_easy_strerror(cc) << std::endl;
-		else {
-			jsonObj = json_loads(s.c_str(), 0, &err);
-			if (jsonObj == NULL)
-				std::cerr << __func__ << ": JSON decoding failed :| - " << err.text << std::endl;
-		}
-	}
-	
-	return jsonObj;
-}
-
 bool BMClient::_getWork() {
 	if (_inited) {
 		_bh = BlockHeader();
-		((uint32_t*) &_bh.bits)[0] = 256*_manager->options().benchmarkDifficulty() + 33554432;
+		((uint32_t*) &_bh.bits)[0] = 256*_options->benchmarkDifficulty() + 33554432;
 		_height = 1;
 		return true;
 	}
@@ -103,8 +58,6 @@ bool BMClient::connect() {
 }
 
 void BMClient::sendWork(const WorkData &work) const {
-	_manager->printTime();
-	std::cout << " " << work.primes << "-tuple found" << std::endl;
 	DBG(std::cout << "Dummy block header: " << binToHexStr(&work.bh, 112) << std::endl;);
 	DBG(std::cout << "Decoded base prime: " << work.bh.decodeSolution() << std::endl;);
 }
