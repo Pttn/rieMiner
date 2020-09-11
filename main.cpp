@@ -177,7 +177,7 @@ void Options::loadConf() {
 					catch (...) {_debug = 0;}
 				}
 				else if (key == "Mode") {
-					if (value == "Solo" || value == "Pool" || value == "Benchmark")
+					if (value == "Solo" || value == "Pool" || value == "Benchmark" || value == "Search" || value == "Test")
 						_mode = value;
 					else std::cout << "Invalid mode!" << std::endl;
 				}
@@ -222,11 +222,16 @@ void Options::loadConf() {
 					if (_donate == 0) _donate = 1;
 					if (_donate > 99) _donate = 99;
 				}
-				else if (key == "BenchmarkDifficulty") {
-					try {_benchmarkDifficulty = std::stoll(value);}
-					catch (...) {_benchmarkDifficulty = 304;}
-					if (_benchmarkDifficulty < 265) _benchmarkDifficulty = 265;
-					else if (_benchmarkDifficulty > 32767) _benchmarkDifficulty = 32767;
+				else if (key == "Difficulty") {
+					try {_difficulty = std::stoll(value);}
+					catch (...) {_difficulty = 304;}
+					if (_difficulty < 265) _difficulty = 265;
+					else if (_difficulty > 32767) _difficulty = 32767;
+				}
+				else if (key == "BenchmarkBlockInterval") {
+					try {_benchmarkBlockInterval = std::stoll(value);}
+					catch (...) {_benchmarkBlockInterval = 150;}
+					if (_benchmarkBlockInterval == 0) _benchmarkBlockInterval = 1;
 				}
 				else if (key == "BenchmarkTimeLimit") {
 					try {_benchmarkTimeLimit = std::stoll(value);}
@@ -305,17 +310,25 @@ void Options::loadConf() {
 	DBG(std::cout << "Debug messages enabled" << std::endl;);
 	DBG_VERIFY(std::cout << "Debug verification messages enabled" << std::endl;);
 	if (_mode == "Benchmark") {
-		std::cout << "Benchmark Mode at difficulty " << _benchmarkDifficulty << " (" << std::log(2.)*static_cast<double>(_benchmarkDifficulty)/std::log(10.) << " decimal digits)" << std::endl;
+		std::cout << "Benchmark Mode at difficulty " << _difficulty << std::endl;
+		std::cout << " Block interval: " << _benchmarkBlockInterval << " s" << std::endl;
 		if (_benchmarkTimeLimit != 0) std::cout << " Time limit: " << _benchmarkTimeLimit << " s" << std::endl;
 		if (_benchmark2tupleCountLimit != 0) std::cout << " 2-tuple count limit: " << _benchmark2tupleCountLimit << " 2-tuples" << std::endl;
-		if (_benchmarkDifficulty == 1600 && _primeTableLimit == 2147483648 && _benchmark2tupleCountLimit >= 50000 && _benchmarkTimeLimit == 0)
+		if (_difficulty == 1600 && _primeTableLimit == 2147483648 && _benchmark2tupleCountLimit >= 50000 && _benchmarkTimeLimit == 0)
 			std::cout << " VALID parameters for Standard Benchmark" << std::endl;
 	}
+	else if (_mode == "Search") {
+		mpz_class target(1);
+		target <<= _difficulty;
+		std::cout << "Search Mode at difficulty " << _difficulty << " (numbers around ~" << target.get_str()[0] << "." << target.get_str().substr(1, 2) << "*10^" << target.get_str().size() - 1 << ") - Good luck!" << std::endl;
+	}
+	else if (_mode == "Test")
+		std::cout << "Test Mode" << std::endl;
 	else {
 		if (_mode == "Solo") std::cout << "Solo mining";
 		else if (_mode == "Pool") std::cout << "Pooled mining";
 		else {
-			std::cerr << "Invalid Mode! Exiting." << std::endl;
+			ERRORMSG("Invalid Mode");
 			exit(-1);
 		}
 		std::cout << " via host " << _host << ", port " << _port << std::endl;
@@ -351,7 +364,7 @@ void Options::loadConf() {
 			}
 		}
 	}
-	if (_mode == "Benchmark") {
+	if (_mode == "Search") {
 		std::cout << "Will show tuples of at least length " << _tupleLengthMin << std::endl;
 		if (_tuplesFile != "None") std::cout << " Will write them to file " << _tuplesFile << std::endl;
 	}
@@ -407,6 +420,10 @@ int main(int argc, char** argv) {
 		client = std::make_shared<GBTClient>(options);
 	else if (options->mode() == "Pool")
 		client = std::make_shared<StratumClient>(options);
+	else if (options->mode() == "Search")
+		client = std::make_shared<SearchClient>(options);
+	else if (options->mode() == "Test")
+		client = std::make_shared<TestClient>(options);
 	else
 		client = std::make_shared<BMClient>(options);
 	miner->setClient(client);

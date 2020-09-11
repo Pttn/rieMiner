@@ -120,27 +120,71 @@ public:
 	virtual WorkData workData() const = 0; // If the returned work data has height 0, it is invalid
 	virtual uint32_t currentHeight() const = 0;
 	virtual uint32_t currentDifficulty() const = 0;
-	bool getWork(WorkData& wd) const {
+	virtual bool getWork(WorkData& wd) {
 		wd = workData();
 		return wd.height != 0;
 	}
 };
 
 // For BenchMarking, emulates a client to allow similar conditions to actual mining by providing
-// dummy randomized work at the desired difficulty
+// dummy and (mostly) deterministic work at the desired difficulty.
 class BMClient : public Client {
 	BlockHeader _bh;
 	uint32_t _height;
-	
+	uint64_t _requests;
+	std::chrono::time_point<std::chrono::steady_clock> _timer;
 	bool _getWork();
 	
-	public:
+public:
 	using Client::Client;
 	bool connect();
-	void sendWork(const WorkData&) const;
+	void sendWork(const WorkData&) const {} // Ignore blocks found
 	WorkData workData() const;
+	virtual bool getWork(WorkData& wd) {
+		wd = workData();
+		_requests++;
+		return wd.height != 0;
+	}
 	virtual uint32_t currentHeight() const {return _height;};
-	virtual uint32_t currentDifficulty() const {return _options->benchmarkDifficulty();};
+	virtual uint32_t currentDifficulty() const {return _options->difficulty();};
+};
+
+// Client to use in order to break records, or to benchmark without blocks and with randomized work.
+class SearchClient : public Client {
+	BlockHeader _bh;
+	std::chrono::time_point<std::chrono::steady_clock> _startTp;
+	bool _getWork();
+	
+public:
+	using Client::Client;
+	bool connect();
+	void sendWork(const WorkData&) const {} // Ignore tuples found (the Miner shows them)
+	WorkData workData() const;
+	virtual uint32_t currentHeight() const {return _connected ? 1 : 0;};
+	virtual uint32_t currentDifficulty() const {return _options->difficulty();};
+};
+
+// Simulates various network situations to test/debug code.
+class TestClient : public Client {
+	BlockHeader _bh;
+	uint32_t _height, _difficulty;
+	uint64_t _requests;
+	std::chrono::time_point<std::chrono::steady_clock> _timer;
+	uint64_t _timeBeforeNextBlock;
+	bool _getWork();
+	
+public:
+	TestClient(const std::shared_ptr<Options> &options) : Client(options) {_height = 0;}
+	bool connect();
+	void sendWork(const WorkData&) const {} // Ignore blocks found
+	WorkData workData() const;
+	virtual bool getWork(WorkData& wd) {
+		wd = workData();
+		_requests++;
+		return wd.height != 0;
+	}
+	virtual uint32_t currentHeight() const {return _connected ? _height : 0;};
+	virtual uint32_t currentDifficulty() const {return _difficulty;};
 };
 
 #endif

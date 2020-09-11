@@ -2,7 +2,7 @@
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's [cpuminer-rminerd](https://github.com/gatra/cpuminer-rminerd) and dave-andersen's [fastrie](https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
-Solo mining is done using the GetBlockTemplate protocol, while pooled mining is via the Stratum protocol. A benchmark mode is also proposed to compare more easily the performance between different computers.
+Solo mining is done using the GetBlockTemplate protocol, while pooled mining is via the Stratum protocol. Additionally, a benchmark mode is also proposed to compare more easily the performance between different computers, as well as a pure prime constellation searching Mode for world record attempts!
 
 Find the latest binaries [here](https://github.com/Pttn/rieMiner/releases) for Linux and Windows.
 This README serves as manual for rieMiner. I hope that this program will be useful for you!
@@ -97,6 +97,18 @@ You can finally run the newly created rieMiner executable using
 ./rieMiner
 ```
 
+### Modes
+
+rieMiner proposes the following Modes depending on what you want to do.
+
+* Solo: solo mining via GetBlockTemplate;
+* Pool: pooled mining using Stratum;
+* Benchmark: test performance with a simulated and deterministic network;
+* Search: pure prime constellation search (useful for records attempts);
+* Test: simulates various network situations for testing.
+
+### Configuration
+
 If no "rieMiner.conf" next to the executable was found, you will be assisted to configure rieMiner. Answer to its questions to start mining. If there is a "rieMiner.conf" file next to the executable with incorrect information that was read, you can delete this to get the assistant.
 
 Alternatively, you can create or edit this "rieMiner.conf" file next to the executable yourself, in order to provide options to the miner. The rieMiner.conf syntax is very simple: each option is given by a line such
@@ -108,7 +120,7 @@ Option type = Option value
 It is case sensitive. A line starting with "#" will be ignored, as well as invalid ones. A single space or tab before or after "=" is also ignored. **Do not put ; at the end or use other delimiters than =** for each line, and **do not confuse rieMiner.conf with riecoin.conf**! If an option is missing, the default value(s) will be used. If there are duplicate lines, the last one will be used. Here is a sample configuration file for solo mining, with comments explaining the main available options.
 
 ```
-# Mining mode: Solo for solo mining via GetBlockTemplate, Pool for pooled mining using Stratum, Benchmark for testing. Default: Benchmark
+# The mode, see above. Default: Benchmark
 Mode = Solo
 
 # IP and port of the Riecoin wallet/server or pool. Default: 127.0.0.1 (your computer), port 28332 (default port for Riecoin-Qt)
@@ -120,10 +132,10 @@ Port = 28332
 Username = user
 Password = /70P$€CR€7/
 
-# Custom payout address for solo mining (GetBlockTemplate only).
-# You can use legacy P2PKH "R", P2SH "T", or Bech32 P2WPKH "ric1" addresses. Bech32 P2WSH is not supported for now.
+# Custom payout address for solo mining.
+# You can use Bech32 P2WPKH "ric1" addresses. Bech32 P2WSH is not supported for now.
 # Default: this donation address
-PayoutAddress = RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB
+PayoutAddress = ric1qpttn5u8u9470za84kt4y0lzz4zllzm4pyzhuge
 
 # Number of threads used for mining. Default: 8
 Threads = 8
@@ -138,22 +150,19 @@ PrimeTableLimit = 2147483648
 RefreshInterval = 60
 
 # For solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length.
-# Additionally, the base prime of such tuple will be shown in the Benchmark Mode. Default: 6
+# Additionally, the base prime of such tuple will be shown in the Search Mode. Default: 6
 TupleLengthMin = 4
 
 # For solo mining, there is a developer fee of 1%. Choose how many % you wish to donate between 1 and 99 (only integers!). Default: 2
 Donate = 5
-
-# For solo mining, add consensus rules in the GetBlockTemplate RPC call, each separated by a comma. 'segwit' must be present.
-# Default: segwit
-# Rules = segwit
 
 # Which sort of constellation the miner will mine. Currently, Riecoin MainNet accepts '0, 4, 2, 4, 2, 4' constellations, and TestNet '0, 2, 4, 2'. Default: 0, 4, 2, 4, 2, 4
 # Note that the offsets are not cumulative, so '0, 4, 2, 4, 2, 4' corresponds to n + (0, 4, 6, 10, 12, 16).
 # ConstellationType = 0, 2, 4, 2
 
 # Other options
-# BenchmarkDifficulty = 1600
+# Difficulty = 1600
+# BenchmarkBlockInterval = 150
 # BenchmarkTimeLimit = 0
 # Benchmark2tupleCountLimit = 100000
 # SieveBits = 25
@@ -161,6 +170,8 @@ Donate = 5
 # PrimorialNumber = 40
 # PrimorialOffsets = 4209995887, 4209999247, 4210002607, 4210005967, 7452755407, 7452758767, 7452762127, 7452765487, 8145217177, 8145220537, 8145223897, 8145227257
 # Debug = 0
+# For solo mining, add consensus rules in the GetBlockTemplate RPC call, each separated by a comma. 'segwit' must be present.
+# Rules = segwit
 ```
 
 It is also possible to use custom configuration file paths, examples:
@@ -171,18 +182,19 @@ It is also possible to use custom configuration file paths, examples:
 ./rieMiner /home/user/rieMiner/rieMiner.conf
 ```
 
-### Benchmark Mode options
+#### Benchmark and Search Modes options
 
-* BenchmarkDifficulty : sets the testing difficulty (must be from 265 to 32767). Default: 1600;
-* BenchmarkTimeLimit : sets the testing duration in s. 0 for no time limit. Default: 0;
-* Benchmark2tupleCountLimit : stops testing after finding this number of 2-tuples. 0 for no limit. Default: 50000;
-* TuplesFile : write tuples of at least length TupleLengthMin to the given file. Default: None (special value that disables this feature).
+* Difficulty: for Benchmark and Search Modes, sets the difficulty (must be from 265 to 32767). Default: 1600;
+* BenchmarkBlockInterval: for Benchmark Mode, sets the time between blocks in s. Default: 150;
+* BenchmarkTimeLimit: for Benchmark Mode, sets the testing duration in s. 0 for no time limit. Default: 0;
+* Benchmark2tupleCountLimit: for Benchmark Mode, stops testing after finding this number of 2-tuples. 0 for no limit. Default: 50000;
+* TuplesFile: for Search Mode, write tuples of at least length TupleLengthMin to the given file. Default: None (special value that disables this feature).
 
-### Advanced/Tweaking/Dev options
+#### Advanced/Tweaking/Dev options
 
 They can be useful to get better performance depending on your computer.
 
-* EnableAVX2 : by default, AVX2 is disabled, as it may increase the power consumption more than the performance improvements. If your processor supports AVX2, you can choose to take advantage of this instruction set if you wish by setting this option to `Yes`. Do your own testing to find out if it is worth it. AVX2 is known to degrade performance for AMD Ryzens and similar before Zen2 (e. g. 1800X, 1950X, 2700X) and should be left disabled in these cases ;
+* EnableAVX2 : by default, AVX2 is disabled, as it may increase the power consumption more than the performance improvements. If your processor supports AVX2, you can choose to take advantage of this instruction set if you wish by setting this option to `Yes`. Do your own testing to find out if it is worth it. AVX2 is known to degrade performance for AMD Ryzens and similar before Zen2 (e. g. 1800X, 1950X, 2700X) and should be left disabled in these cases;
 * SieveBits : size of the segment sieve is 2^SieveBits bits, e.g. 25 means the segment sieve size is 4 MiB. Choose this so that SieveWorkers*2^SieveBits fits in your L3 cache. Default: 25;
 * SieveWorkers : the number of threads to use for sieving. Increasing it may solve some CPU underuse problems, but will use more memory. 0 for choosing automatically based on number of Threads and PrimeTableLimit. Default: 0.
 
@@ -320,6 +332,27 @@ As said, we should use the primes/s metric for fixed difficulty and PTL. The rat
 
 For a given architecture, the performance is basically proportional to the number of cores and frequency. However, we notice that much better RAM doesn't really matter.
 
+## Search Mode
+
+rieMiner can be used to break prime constellations world records outside the Riecoin network with the Search Mode. Alternatively, it can serve as a Benchmark Mode without blocks.
+
+To attempt a new record, you have to choose a constellation type and a Difficulty that is over the current record, and tweak the advanced configuration options to get the best performance, especially for 7-tuples and longer and if you have a lot of Threads.
+
+If you have trouble doing it, you can ask for help in the #competition channel of the Riecoin's Discord. A guide will be provided later.
+
+The [list of current prime k-tuplets world records](http://anthony.d.forbes.googlepages.com/ktuplets.htm) is maintained by Tony Forbes. Contact him if you find a new record. Good luck!
+
+## Test Mode
+
+This mode can be used to test the code. It does the following:
+
+* Start at Difficulty 800;
+* Increases it by 10 every 15 s 3 times;
+* Set it at 1600 after 15 more seconds;
+* Increases it by 40 after 30 and 20 s;
+* Simulates a disconnect after 10 more seconds;
+* Repeat.
+
 ## Miscellaneous
 
 Unless the weather is very cold, I do not recommend to overclock a CPU for mining, unless you can do that without increasing noticeably the power consumption. To get maximum efficiency, you might want to find the frequency with the best performance/power consumption ratio (which could also be obtained by underclocking the processor).
@@ -358,11 +391,7 @@ Or donate directly to the Riecoin project: ric1qr3yxckxtl7lacvtuzhrdrtrlzvlydane
 * Your code must compile and work on recent Debian based distributions, and Windows using MSYS;
 * If modifying the miner, you must ensure that your changes do not cause any performance loss. You have to do proper and long enough before/after benchmarks;
 * Document well non trivial contributions to the miner so other and future developers can understand easily and quickly the code;
-* rieMiner must work for any realistic setting, at least try these in the Benchmark Mode (and do some actual mining):
-  * Difficulty 304, PTL 2^20 (Testnet mining conditions);
-  * Difficulty 800, PTL 2^27;
-  * Difficulty 1600, PTL 2^31 (Standard Benchmark, similar to real mining conditions);
-  * Difficulty 3200, PTL 2^31 or more (we will eventually reach such Difficulties someday...).
+* rieMiner must work for any realistic setting, you should test using the Test Mode with a few different settings;
 * Ensure that your changes did not break anything, even if it compiles. Examples (if applicable):
   * There should never be random (or not) segmentation faults or any other bug, try to do actual mining with Gdb, debugging symbols and Debug Mode enabled during hours or even days to catch possible bugs;
   * Ensure that valid work is produced (pools and Riecoin-Qt must not reject submissions);

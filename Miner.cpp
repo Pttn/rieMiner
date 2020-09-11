@@ -698,7 +698,7 @@ void Miner::_doCheckJob(Job job) {
 		for (uint32_t d(0) ; d < (uint32_t) std::min(32/((uint32_t) sizeof(mp_limb_t)), (uint32_t) candidateOffset.get_mpz_t()->_mp_size) ; d++)
 			*(mp_limb_t*) (_works[workIndex].verifyBlock.bh.nOffset + d*sizeof(mp_limb_t)) = candidateOffset.get_mpz_t()->_mp_d[d];
 		_works[workIndex].verifyBlock.primes = tupleLength;
-		if (_options->mode() == "Benchmark") {
+		if (_options->mode() == "Search") {
 			mpz_class n(candidate - offsetSum);
 			std::cout << "Found n = " << n << std::endl;
 			if (_options->tuplesFile() != "None") {

@@ -187,7 +187,7 @@ class Miner {
 	bool benchmarkFinishedTimeOut() const {return _options->benchmarkTimeLimit() != 0 && timeSince(_stats.miningStartTp()) > _options->benchmarkTimeLimit();}
 	bool benchmarkFinished2Tuples() const {return _options->benchmark2tupleCountLimit() != 0 && _stats.tuplesCount()[2] >= _options->benchmark2tupleCountLimit();}
 	void printBenchmarkResults() const {
-		std::cout << timeSince(_stats.miningStartTp()) << " s elapsed, test finished. " << versionString << ", difficulty " << _options->benchmarkDifficulty() << ", PTL " << _options->primeTableLimit() << std::endl;
+		std::cout << timeSince(_stats.miningStartTp()) << " s elapsed, test finished. " << versionString << ", difficulty " << _options->difficulty() << ", PTL " << _options->primeTableLimit() << std::endl;
 		_stats.printBenchmarkResults();
 	}
 	void printStats() const {

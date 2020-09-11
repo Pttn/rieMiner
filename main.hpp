@@ -64,7 +64,7 @@ class Options {
 	std::string _host, _username, _password, _mode, _payoutAddress, _secret, _tuplesFile;
 	AddressFormat _payoutAddressFormat;
 	uint16_t _debug, _port, _threads, _sieveWorkers, _sieveBits, _refreshInterval, _tupleLengthMin, _donate;
-	uint32_t _benchmarkDifficulty, _benchmarkTimeLimit, _benchmark2tupleCountLimit;
+	uint32_t _difficulty, _benchmarkBlockInterval, _benchmarkTimeLimit, _benchmark2tupleCountLimit;
 	uint64_t _primeTableLimit, _primorialNumber;
 	std::vector<uint64_t> _constellationType, _primorialOffsets;
 	std::vector<std::string> _rules;
@@ -92,7 +92,8 @@ class Options {
 		_refreshInterval(30),
 		_tupleLengthMin(6),
 		_donate(2),
-		_benchmarkDifficulty(1600),
+		_difficulty(1600),
+		_benchmarkBlockInterval(150),
 		_benchmarkTimeLimit(0),
 		_benchmark2tupleCountLimit(50000),
 		_primeTableLimit(2147483648),
@@ -122,7 +123,8 @@ class Options {
 	uint32_t refreshInterval() const {return _refreshInterval;}
 	uint16_t tupleLengthMin() const {return _tupleLengthMin;}
 	uint16_t donate() const {return _donate;}
-	uint32_t benchmarkDifficulty() const {return _benchmarkDifficulty;}
+	uint32_t difficulty() const {return _difficulty;}
+	uint32_t benchmarkBlockInterval() const {return _benchmarkBlockInterval;}
 	uint32_t benchmarkTimeLimit() const {return _benchmarkTimeLimit;}
 	uint32_t benchmark2tupleCountLimit() const {return _benchmark2tupleCountLimit;}
 	std::vector<uint64_t> constellationType() const {return _constellationType;}
