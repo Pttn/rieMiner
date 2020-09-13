@@ -38,6 +38,7 @@ bool BMClient::_getWork() {
 			_height = 1;
 		else if (timeSince(_timer) >= _options->benchmarkBlockInterval()) {
 			_height++;
+			_requests = 0;
 			_timer = std::chrono::steady_clock::now();
 		}
 		_bh = BlockHeader();
@@ -113,21 +114,23 @@ bool TestClient::_getWork() {
 			_timer = std::chrono::steady_clock::now();
 			_height = 1;
 			_difficulty = 800;
-			_timeBeforeNextBlock = 15;
+			_timeBeforeNextBlock = 10;
 		}
 		if (timeSince(_timer) >= _timeBeforeNextBlock) {
 			_height++;
+			_requests = 0;
 			_difficulty += 10;
-			if (_difficulty == 840) {
+			if (_difficulty == 860) {
 				_difficulty = 1600;
 				_timeBeforeNextBlock = 30;
+				return false; // Disconnect simulation
 			}
 			else if (_difficulty > 1600) {
 				_difficulty += 30;
 				_timeBeforeNextBlock -= 10;
 				if (_timeBeforeNextBlock == 0) {
 					_difficulty = 800;
-					_timeBeforeNextBlock = 15;
+					_timeBeforeNextBlock = 10;
 					return false; // Disconnect simulation
 				}
 			}

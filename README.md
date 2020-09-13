@@ -210,9 +210,7 @@ If you have memory errors (Unable to allocate... or Bad Allocs), try to lower th
 
 ## Statistics
 
-rieMiner will regularly print some stats, and the frequency of this can be changed with the RefreshInterval parameter as said earlier.
-
-rieMiner will regularly show the primes per second speed, and the 0 to 1-tuples/s ratio. It will also estimate the average time to find a block (for pooled mining, the earnings in RIC/day). Of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week. The number of 2 to 6-tuples found since the start of the mining is also shown (for pooled mining, the numbers of valid and total shares, as well as the shares/min metric).
+rieMiner will regularly print some statistics, and the frequency of this can be changed with the RefreshInterval parameter as said earlier. They consist of the candidates per second speed and the 0 to 1-tuples/s ratio. The estimate of the average time to find a block (for pooled mining, the earnings in RIC/day) is also shown. Of course, even if the average time to find a block is for example 2 days, you could find a block in the next hour as you could find nothing during a week. The number of tuples found since the start of the mining is also shown (for pooled mining, the numbers of valid and total shares).
 
 rieMiner will also notify if it found a k-tuple (k >= Tuples option value) in solo mining or a share in pooled mining, and if the network found a new block. If it finds a block or a share, it will tell if the submission was accepted (solo mining only) or not. For solo mining, if the block was accepted, the reward will be generated for the address specified in the options. You can then spend it after 100 confirmations. Note that orphaned blocks will be shown as accepted.
 
@@ -285,53 +283,6 @@ The miner will disconnect if it did not receive anything during 3 minutes (time 
 
 rieMiner provides a way to test the performance of a computer, and compare with others. This feature can also be used to appreciate the improvements when trying to improve the miner algorithm. When sharing benchmark results, you must always communicate the difficulty, the prime table limit (PTL), the test duration, the CPU model, the memory speeds (frequency and CL), the miner version, and the OS. Also, do not forget to precise if you changed other options, like the SieveWorkers or Bits.
 
-To compare two different platforms or settings, you must absolutely test with the same difficulty, during enough time. The proposed parameters, conditions and interpretations for serious benchmarking are:
-
-* Standard Benchmark
-  * Difficulty of 1600;
-  * PTL of 2^31 = 2147483648;
-  * No time limit;
-  * Stop after finding 50000 2-tuples or more;
-  * The computer must not do anything else during testing;
-  * The system must not swap. Else, the result would not make much sense. Ensure that you have enough memory when benchmarking.
-
-The test will be fairly long, but similar to the real mining conditions. Once the benchmark finished itself (not by the user), it will print something like:
-
-```
-100000 2-tuples found, test finished. rieMiner 0.9, difficulty 1600, PTL 2147483648
-BENCHMARK RESULTS: 233.354130 primes/s with ratio 28.955020 -> 0.990626 block(s)/day
-```
-
-Generally speaking, the block(s)/day metric is the one that should be shared or used to compare performance, though it is always good to also take in consideration the other ones. Moreover, for a given difficulty and PTL, the ratio should be the same, and the more precise primes/day metric can be used instead for comparisons.
-
-The precision will be about 2 significant digits for the block(s)/day. To get 3 solid digits, about 1 million of 2-tuples would need to be found, which would be way too long to be practical for the Standard Benchmark.
-
-A run with valid parameters for the Standard Benchmark will additionally print the message
-
-```
-VALID parameters for Standard Benchmark
-```
-
-Which should appear if you want to share your results.
-
-You could stop before 50000 2-tuples, for example at 10000, if you just want a rough estimation of the performance. However, even after this long, the values are often still very imprecise, and can lead to confusion, like a slightly slower computer getting better results. This remark is critical for people wanting to optimize the miner.
-
-### A few results
-
-Done with rieMiner 0.9, 100000 2-tuples except otherwise said. Unit: primes/s
-
-* AMD Ryzen R7 3700X @4 GHz, DDR4 3200 CL14, Debian 10: 278.002651
-* AMD Ryzen R7 2700X @4 GHz, DDR4 3200 CL14, Debian 9: 235.856209
-* AMD Ryzen R7 2700X @4 GHz, DDR4 2400 CL15, Debian 9: 233.354130
-* AMD Ryzen R7 2700X @3 GHz, DDR4 2400 CL15, Debian 9: 177.234506
-* Intel Core i7 6700K @3 GHz, DDR4 2400 CL15, Debian 9: 89.288621
-* Intel Core 2 Quad Q9650 @3 GHz, DDR3 1067 CL6, Debian 9: 40.673097
-* Intel Pentium D 925 @3 GHz, DDR3 1000 CL6, Debian 9: 7.466797 (10000 2-tuples)
-
-As said, we should use the primes/s metric for fixed difficulty and PTL. The ratio for the Standard Benchmark is about 28.9.
-
-For a given architecture, the performance is basically proportional to the number of cores and frequency. However, we notice that much better RAM doesn't really matter.
-
 ## Search Mode
 
 rieMiner can be used to break prime constellations world records outside the Riecoin network with the Search Mode. Alternatively, it can serve as a Benchmark Mode without blocks.
@@ -347,10 +298,11 @@ The [list of current prime k-tuplets world records](http://anthony.d.forbes.goog
 This mode can be used to test the code. It does the following:
 
 * Start at Difficulty 800;
-* Increases it by 10 every 15 s 3 times;
-* Set it at 1600 after 15 more seconds;
-* Increases it by 40 after 30 and 20 s;
+* Increases it by 10 every 10 s 5 times;
 * Simulates a disconnect after 10 more seconds;
+* Restart with Difficulty 1600;
+* Increases it by 40 after 30 and 20 s;
+* Simulates another disconnect after 10 more seconds;
 * Repeat.
 
 ## Miscellaneous

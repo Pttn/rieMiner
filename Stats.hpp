@@ -1,44 +1,50 @@
-// (c) 2017-2019 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2017-2020 Pttn (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_Stats_hpp
 #define HEADER_Stats_hpp
 
 #include "tools.hpp"
 
-// Contains stats data like: tuple counts, time elapsed since mining or latest difficulty change
-// Provides useful stats displaying features
+// "Raw" and immutable stats, and tools to analyze them
 class Stats {
-	std::vector<uint64_t> _tuples, _tuplesSinceLastDiff;
-	uint32_t _difficulty, _heightAtDiffChange;
-	std::chrono::time_point<std::chrono::steady_clock> _miningStartTp, _lastDiffChangeTp;
-	bool _solo;
-	
-	bool _inited() const {return _difficulty != 1;}
-	
-	public:
-	Stats(uint8_t tupleLength = 6) :
-		_tuples(tupleLength + 1, 0), _tuplesSinceLastDiff(tupleLength + 1, 0),
-		_difficulty(1), _heightAtDiffChange(0),
-		_lastDiffChangeTp(std::chrono::steady_clock::now()),
-		_solo(true) {}
-	
-	void startTimer();
-	void setMiningType(const std::string &protocol) {_solo = !(protocol == "Pool");}
-	void incTupleCount(const uint8_t i) {_tuples[i]++; _tuplesSinceLastDiff[i]++;}
-	void newHeightMessage(const uint32_t);
-	
-	uint32_t difficulty() const {return _difficulty;}
-	void updateDifficulty(const uint32_t, const uint32_t);
-	uint32_t heightAtDiffChange() const {return _heightAtDiffChange;}
-	
-	std::chrono::time_point<std::chrono::steady_clock> miningStartTp() const {return _miningStartTp;}
-	std::vector<uint64_t> tuplesCount() const {return _tuples;}
-	
-	void printTime() const;
-	void printStats() const;
-	void printTuplesStats() const;
-	void printEstimatedTimeToBlock() const;
-	void printBenchmarkResults() const;
+	std::vector<uint64_t> _counts;
+	double _duration;
+public:
+	Stats(const std::vector<uint64_t> &counts, const double &duration) : _counts(counts), _duration(duration) {};
+	std::vector<uint64_t> counts() const {return _counts;}
+	uint64_t count(const uint64_t i) const {return i < _counts.size() ? _counts[i] : 0;}
+	double duration() const {return _duration;}
+	double cps() const {return _duration > 0. ? static_cast<double>(_counts[0])/_duration : 0.;}
+	double r() const {return _counts[1] > 0 ? static_cast<double>(_counts[0])/static_cast<double>(_counts[1]) : 0.;}
+	double estimatedAverageTimeToFindBlock() const {return cps() != 0. ? std::pow(r(), _counts.size() - 1)/cps() : 0.;}
+	std::string formattedCounts(const uint64_t = 0) const;
+	std::string formattedRates(const uint64_t = 0) const;
+	std::string formattedRatios() const;
+	static std::string formattedTime(const double &time);
+	static std::string formattedDuration(const double &duration);
+};
+
+// Allows the miner to update and get stats
+constexpr uint32_t countsRecentEntries(5);
+class StatManager {
+	struct Counts {
+		std::vector<uint64_t> counts;
+		std::chrono::time_point<std::chrono::steady_clock> startTp;
+		Counts() : counts(std::vector<uint64_t>()) {};
+		Counts(const uint64_t tupleSize) : counts(tupleSize + 1, 0), startTp(std::chrono::steady_clock::now()) {}
+	};
+	uint64_t _tupleSize, _nBlocks, _countsRecentEntryPos;
+	Counts _countsSinceStart;
+	std::vector<Counts> _countsRecent; // Stores separately the counts for the last countsRecentEntries blocks
+	std::mutex _countsLock;
+public:
+	StatManager() {}
+	void start(const uint64_t);
+	void newBlock();
+	void addCounts(const std::vector<uint64_t>&);
+	double timeSinceStart() const {return timeSince(_countsSinceStart.startTp);}
+	double averageBlockTime() const {return _nBlocks > 0 ? timeSinceStart()/static_cast<double>(_nBlocks) : 0;}
+	Stats stats(const bool) const;
 };
 
 #endif

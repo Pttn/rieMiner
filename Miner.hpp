@@ -107,7 +107,7 @@ struct SieveInstance {
 class Miner {
 	std::shared_ptr<Options> _options;
 	std::shared_ptr<Client> _client;
-	Stats _stats;
+	StatManager _statManager;
 	std::thread _masterThread;
 	std::vector<std::thread> _workerThreads;
 	MinerParameters _parameters;
@@ -184,16 +184,41 @@ class Miner {
 	bool inited() {return _inited;}
 	bool running() {return _running;}
 	
-	bool benchmarkFinishedTimeOut() const {return _options->benchmarkTimeLimit() != 0 && timeSince(_stats.miningStartTp()) > _options->benchmarkTimeLimit();}
-	bool benchmarkFinished2Tuples() const {return _options->benchmark2tupleCountLimit() != 0 && _stats.tuplesCount()[2] >= _options->benchmark2tupleCountLimit();}
-	void printBenchmarkResults() const {
-		std::cout << timeSince(_stats.miningStartTp()) << " s elapsed, test finished. " << versionString << ", difficulty " << _options->difficulty() << ", PTL " << _options->primeTableLimit() << std::endl;
-		_stats.printBenchmarkResults();
-	}
 	void printStats() const {
-		_stats.printStats();
-		if (!_parameters.solo) std::dynamic_pointer_cast<StratumClient>(_client)->printSharesStats();
-		_stats.printEstimatedTimeToBlock();
+		Stats statsRecent(_statManager.stats(false)), statsSinceStart(_statManager.stats(true));
+		if (_options->mode() == "Benchmark" || _options->mode() == "Search")
+			statsRecent = statsSinceStart;
+		std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " " << FIXED(2) << statsRecent.cps() << " c/s, r " << statsRecent.r();
+		if (_options->mode() != "Pool") {
+			std::cout << " ; (1-" << _options->constellationType().size() << "t) = " << statsSinceStart.formattedCounts(1);
+			if (statsRecent.count(1) >= 10)
+				std::cout << " | " << Stats::formattedDuration(statsRecent.estimatedAverageTimeToFindBlock());
+		}
+		else {
+			std::dynamic_pointer_cast<StratumClient>(_client)->printSharesStats();
+			if (statsRecent.count(1) >= 10)
+				std::cout << " | " << 86400.*(50./static_cast<double>(1 << _client->currentHeight()/840000))/statsRecent.estimatedAverageTimeToFindBlock() << " RIC/d";
+		}
+		std::cout << std::endl;
+	}
+	bool benchmarkFinishedTimeOut() const {
+		const Stats stats(_statManager.stats(true));
+		return _options->benchmarkTimeLimit() != 0 && stats.duration() >= _options->benchmarkTimeLimit();
+	}
+	bool benchmarkFinished2Tuples() const {
+		const Stats stats(_statManager.stats(true));
+		return _options->benchmark2tupleCountLimit() != 0 && stats.count(2) >= _options->benchmark2tupleCountLimit();
+	}
+	void printBenchmarkResults() const {
+		Stats stats(_statManager.stats(true));
+		std::cout << stats.duration() << " s elapsed, test finished. " << versionString << ", difficulty " << _options->difficulty() << ", PTL " << _options->primeTableLimit() << std::endl;
+		std::cout << "BENCHMARK RESULTS: " << FIXED(6) << stats.cps() << " candidates/s, ratio " << stats.r() << " -> " << stats.estimatedAverageTimeToFindBlock()/86400. << " block(s)/day" << std::endl;
+	}
+	void printTupleStats() const {
+		Stats stats(_statManager.stats(true));
+		std::cout << "Tuples found: " << stats.formattedCounts() << " in " << FIXED(6) << stats.duration() << " s" << std::endl;
+		std::cout << "Tuple rates : " << stats.formattedRates() << std::endl;
+		std::cout << "Tuple ratios: " << stats.formattedRatios() << std::endl;
 	}
 };
 

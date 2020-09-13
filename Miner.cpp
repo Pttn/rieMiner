@@ -228,17 +228,14 @@ void Miner::startThreads() {
 		ERRORMSG("The miner is already running");
 	else {
 		_running = true;
-		_stats = Stats(_options->constellationType().size());
-		_stats.setMiningType(_options->mode());
-		_stats.startTimer();
+		_statManager.start(_options->constellationType().size());
 		std::cout << "Starting the miner's master thread..." << std::endl;
 		_masterThread = std::thread(&Miner::_manageJobs, this);
 		std::cout << "Starting " << _parameters.threads << " miner's worker threads..." << std::endl;
 		for (uint16_t i(0) ; i < _parameters.threads ; i++)
 			_workerThreads.push_back(std::thread(&Miner::_doJobs, this, i));
 		std::cout << "-----------------------------------------------------------" << std::endl;
-		_stats.printTime();
-		std::cout << " Started mining at block " << _client->currentHeight() << ", difficulty " << _client->currentDifficulty() << std::endl;
+		std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " Started mining at block " << _client->currentHeight() << ", difficulty " << _client->currentDifficulty() << std::endl;
 	}
 }
 
@@ -247,7 +244,8 @@ void Miner::stopThreads() {
 		ERRORMSG("The miner is already not running");
 	else {
 		_running = false;
-		_stats.printTuplesStats();
+		if (_options->mode() == "Benchmark" || _options->mode() == "Search")
+			printTupleStats();
 		std::cout << "Waiting for the miner's master thread to finish..." << std::endl;
 		_jobsDoneInfos.push_front(JobDoneInfo{Job::Type::Dummy, .empty = {}}); // Unblock if master thread stuck in blocking_pop_front().
 		_masterThread.join();
@@ -635,6 +633,7 @@ bool Miner::_testPrimesIspc(uint32_t candidateIndexes[maxCandidatesPerCheckJob],
 }
 
 void Miner::_doCheckJob(Job job) {
+	std::vector<uint64_t> tupleCounts(_parameters.primeTupleOffset.size() + 1, 0);
 	const uint16_t workIndex(job.workIndex);
 	mpz_class candidate, ploop;
 	mpz_mul_ui(ploop.get_mpz_t(), _primorial.get_mpz_t(), job.check.loop*_parameters.sieveSize);
@@ -649,7 +648,7 @@ void Miner::_doCheckJob(Job job) {
 		if (firstTestDone) {
 			job.check.nCandidates = 0;
 			for (uint32_t i(0) ; i < maxCandidatesPerCheckJob ; i++) {
-				_stats.incTupleCount(0);
+				tupleCounts[0]++;
 				if (isPrime[i])
 					job.check.candidateIndexes[job.check.nCandidates++] = job.check.candidateIndexes[i];
 			}
@@ -664,12 +663,12 @@ void Miner::_doCheckJob(Job job) {
 		candidate += ploop;
 		
 		if (!firstTestDone) { // Test candidate + 0 primality without optimizations if not done before.
-			_stats.incTupleCount(tupleLength);
+			tupleCounts[tupleLength]++;
 			if (!isPrimeFermat(candidate)) continue;
 		}
 		
 		tupleLength++;
-		_stats.incTupleCount(tupleLength);
+		tupleCounts[tupleLength]++;
 		uint16_t offsetSum(0);
 		// Test primality of the other elements of the tuple if candidate + 0 is prime.
 		for (std::vector<uint64_t>::size_type i(1) ; i < _parameters.primeTupleOffset.size() ; i++) {
@@ -677,7 +676,7 @@ void Miner::_doCheckJob(Job job) {
 			mpz_add_ui(candidate.get_mpz_t(), candidate.get_mpz_t(), _parameters.primeTupleOffset[i]);
 			if (isPrimeFermat(mpz_class(candidate))) {
 				tupleLength++;
-				_stats.incTupleCount(tupleLength);
+				tupleCounts[tupleLength]++;
 			}
 			else if (!_parameters.solo) {
 				int candidatesRemaining(5 - i);
@@ -689,7 +688,7 @@ void Miner::_doCheckJob(Job job) {
 		else if (tupleLength < 4) continue;
 		
 		// Generate nOffset and submit
-		_stats.printTime();
+		std::cout << Stats::formattedTime(_statManager.timeSinceStart());
 		if (_parameters.solo)
 			std::cout << " " << tupleLength << "-tuple found by worker thread " << threadId << std::endl;
 		else
@@ -713,6 +712,7 @@ void Miner::_doCheckJob(Job job) {
 		}
 		_client->addSubmission(_works[workIndex].verifyBlock);
 	}
+	_statManager.addCounts(tupleCounts);
 }
 
 void Miner::_doJobs(const uint16_t id) { // Worker Threads run here until the miner is stopped
@@ -782,8 +782,10 @@ void Miner::_manageJobs() {
 		_works[currentWorkIndex].verifyBlock = wd;
 		const bool isNewHeight(oldHeight != _works[currentWorkIndex].verifyBlock.height);
 		// Notify when the network found a block
-		if (_stats.difficulty() != wd.difficulty) _stats.updateDifficulty(wd.difficulty, wd.height);
-		if (isNewHeight && oldHeight != 0) _stats.newHeightMessage(wd.height);
+		if (isNewHeight && oldHeight != 0) {
+			_statManager.newBlock();
+			std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " Block " << wd.height << ", average " << FIXED(1) << _statManager.averageBlockTime() << " s, difficulty " << wd.difficulty << std::endl;
+		}
 		// Extract the target from the block data.
 		const mpz_class target(_getTargetFromBlock(_works[currentWorkIndex].verifyBlock));
 		// Candidates are in the form a*primorial + primorialOffset. target + remainderPrimorial is the first such number starting from the target.
