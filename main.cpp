@@ -214,7 +214,7 @@ void Options::loadConf() {
 				}
 				else if (key == "TupleLengthMin") {
 					try {_tupleLengthMin = std::stoi(value);}
-					catch (...) {_tupleLengthMin = 6;}
+					catch (...) {_tupleLengthMin = 0;}
 				}
 				else if (key == "Donate") {
 					try {_donate = std::stoi(value);}
@@ -283,8 +283,8 @@ void Options::loadConf() {
 			}
 		}
 		
-		if (_tupleLengthMin < 2 || _tupleLengthMin > _constellationType.size())
-			_tupleLengthMin = _constellationType.size();
+		if (_tupleLengthMin < 1 || _tupleLengthMin > _constellationType.size())
+			_tupleLengthMin = std::max(1ULL, static_cast<uint64_t>(_constellationType.size()) - 1ULL);
 		if (!_customPrimorialOffsets) {
 			bool defaultPrimorialOffsetsFound(false);
 			for (const auto &constellationData : defaultConstellationData) {
@@ -305,7 +305,6 @@ void Options::loadConf() {
 		std::cout << confPath << " not found or unreadable, please configure rieMiner now." << std::endl;
 		askConf();
 	}
-	
 	DEBUG = _debug;
 	DBG(std::cout << "Debug messages enabled" << std::endl;);
 	DBG_VERIFY(std::cout << "Debug verification messages enabled" << std::endl;);
@@ -319,8 +318,10 @@ void Options::loadConf() {
 	}
 	else if (_mode == "Search") {
 		mpz_class target(1);
-		target <<= _difficulty;
+		target <<= _difficulty - 1;
 		std::cout << "Search Mode at difficulty " << _difficulty << " (numbers around ~" << target.get_str()[0] << "." << target.get_str().substr(1, 2) << "*10^" << target.get_str().size() - 1 << ") - Good luck!" << std::endl;
+		std::cout << "Will show tuples of at least length " << _tupleLengthMin << std::endl;
+		if (_tuplesFile != "None") std::cout << " Will write them to file " << _tuplesFile << std::endl;
 	}
 	else if (_mode == "Test")
 		std::cout << "Test Mode" << std::endl;
@@ -364,11 +365,6 @@ void Options::loadConf() {
 			}
 		}
 	}
-	if (_mode == "Search") {
-		std::cout << "Will show tuples of at least length " << _tupleLengthMin << std::endl;
-		if (_tuplesFile != "None") std::cout << " Will write them to file " << _tuplesFile << std::endl;
-	}
-	else if (_mode == "Solo") std::cout << "Will submit tuples of at least length " << _tupleLengthMin << std::endl;
 	std::cout << "Stats refresh interval: " << _refreshInterval << " s" << std::endl;
 }
 

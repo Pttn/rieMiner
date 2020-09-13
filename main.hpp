@@ -15,7 +15,7 @@
 #include <vector>
 #include "tools.hpp"
 
-#define versionString	"rieMiner 0.92-alpha1c"
+#define versionString	"rieMiner 0.92-alpha1d"
 
 extern int DEBUG;
 #define DBG(x) if (DEBUG) {x;};
@@ -90,7 +90,7 @@ class Options {
 		_sieveWorkers(0),
 		_sieveBits(25),
 		_refreshInterval(30),
-		_tupleLengthMin(6),
+		_tupleLengthMin(0),
 		_donate(2),
 		_difficulty(1600),
 		_benchmarkBlockInterval(150),

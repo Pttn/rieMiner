@@ -678,39 +678,38 @@ void Miner::_doCheckJob(Job job) {
 				tupleLength++;
 				tupleCounts[tupleLength]++;
 			}
-			else if (!_parameters.solo) {
+			else if (_options->mode() == "Pool") {
 				int candidatesRemaining(5 - i);
 				if ((tupleLength + candidatesRemaining) < 4) break; // No chance to be a share anymore
 			}
 			else break;
 		}
-		if (_parameters.solo ? tupleLength < _parameters.tupleLengthMin : false) continue;
-		else if (tupleLength < 4) continue;
-		
-		// Generate nOffset and submit
-		std::cout << Stats::formattedTime(_statManager.timeSinceStart());
-		if (_parameters.solo)
-			std::cout << " " << tupleLength << "-tuple found by worker thread " << threadId << std::endl;
-		else
-			std::cout << " " << tupleLength << "-share found by worker thread " << threadId << std::endl;
-		mpz_class candidateOffset(candidate - _works[workIndex].target - offsetSum);
-		for (uint32_t d(0) ; d < (uint32_t) std::min(32/((uint32_t) sizeof(mp_limb_t)), (uint32_t) candidateOffset.get_mpz_t()->_mp_size) ; d++)
-			*(mp_limb_t*) (_works[workIndex].verifyBlock.bh.nOffset + d*sizeof(mp_limb_t)) = candidateOffset.get_mpz_t()->_mp_d[d];
-		_works[workIndex].verifyBlock.primes = tupleLength;
-		if (_options->mode() == "Search") {
-			mpz_class n(candidate - offsetSum);
-			std::cout << "Found n = " << n << std::endl;
-			if (_options->tuplesFile() != "None") {
-				_tupleFileLock.lock();
-				std::ofstream file(_options->tuplesFile(), std::ios::app);
-				if (file)
-					file << static_cast<uint16_t>(tupleLength) << "-tuple: " << n << std::endl;
-				else
-					ERRORMSG("Unable to write file " << _options->tuplesFile() << " in order to write a tuple");
-				_tupleFileLock.unlock();
+		// If tuple long enough or share, generate nOffset and submit
+		if (tupleLength >= _parameters.primeTupleOffset.size() ||
+		    (_options->mode() == "Search" && tupleLength >= _parameters.tupleLengthMin) ||
+		    (_options->mode() == "Pool"   && tupleLength >= 4)) {
+			mpz_class candidateOffset(candidate - _works[workIndex].target - offsetSum);
+			for (uint32_t d(0) ; d < (uint32_t) std::min(32/((uint32_t) sizeof(mp_limb_t)), (uint32_t) candidateOffset.get_mpz_t()->_mp_size) ; d++)
+				*(mp_limb_t*) (_works[workIndex].verifyBlock.bh.nOffset + d*sizeof(mp_limb_t)) = candidateOffset.get_mpz_t()->_mp_d[d];
+			std::cout << Stats::formattedTime(_statManager.timeSinceStart());
+			if (_options->mode() == "Pool")
+				std::cout << " " << tupleLength << "-share found by worker thread " << threadId << std::endl;
+			else {
+				std::cout << " " << tupleLength << "-tuple found by worker thread " << threadId << std::endl;
+				mpz_class n(candidate - offsetSum);
+				std::cout << "Base prime: " << n << std::endl;
+				if (_options->tuplesFile() != "None") {
+					_tupleFileLock.lock();
+					std::ofstream file(_options->tuplesFile(), std::ios::app);
+					if (file)
+						file << static_cast<uint16_t>(tupleLength) << "-tuple: " << n << std::endl;
+					else
+						ERRORMSG("Unable to write file " << _options->tuplesFile() << " in order to write a tuple");
+					_tupleFileLock.unlock();
+				}
 			}
+			_client->addSubmission(_works[workIndex].verifyBlock);
 		}
-		_client->addSubmission(_works[workIndex].verifyBlock);
 	}
 	_statManager.addCounts(tupleCounts);
 }

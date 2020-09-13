@@ -299,16 +299,14 @@ void GBTClient::sendWork(const WorkData &work) const {
 	req = oss.str();
 	
 	json_t *jsonSb(sendRPCCall(req)); // SubmitBlock response
-	if (work.primes >= _gbtd.constellationSize) {
-		std::cout << "Base prime: " << work.bh.decodeSolution() << std::endl;
-		DBG(std::cout << "Sent: " << req;);
-		if (jsonSb == NULL) std::cerr << "Failure submiting block :|" << std::endl;
-		else {
-			json_t *jsonSb_Res(json_object_get(jsonSb, "result")),
-			       *jsonSb_Err(json_object_get(jsonSb, "error"));
-			if (json_is_null(jsonSb_Res) && json_is_null(jsonSb_Err)) std::cout << "Submission accepted :D !" << std::endl;
-			else std::cout << "Submission rejected :| ! Received: " << json_dumps(jsonSb, JSON_COMPACT) << std::endl;
-		}
+	DBG(std::cout << "Decoded solution: " << work.bh.decodeSolution() << std::endl;);
+	DBG(std::cout << "Sent: " << req;);
+	if (jsonSb == NULL) std::cerr << "Failure submitting block :|" << std::endl;
+	else {
+		json_t *jsonSb_Res(json_object_get(jsonSb, "result")),
+			    *jsonSb_Err(json_object_get(jsonSb, "error"));
+		if (json_is_null(jsonSb_Res) && json_is_null(jsonSb_Err)) std::cout << "Submission accepted :D !" << std::endl;
+		else std::cout << "Submission rejected :| ! Received: " << json_dumps(jsonSb, JSON_COMPACT) << std::endl;
 	}
 	if (jsonSb != NULL) json_decref(jsonSb);
 }

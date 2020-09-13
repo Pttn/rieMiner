@@ -149,10 +149,6 @@ PrimeTableLimit = 2147483648
 # Refresh rate of the stats in seconds. 0 to disable them and only notify when a long enough tuple or share is found, or when the network finds a block. Default: 30
 RefreshInterval = 60
 
-# For solo mining, submit not only blocks (6-tuples) but also k-tuples of at least the given length.
-# Additionally, the base prime of such tuple will be shown in the Search Mode. Default: 6
-TupleLengthMin = 4
-
 # For solo mining, there is a developer fee of 1%. Choose how many % you wish to donate between 1 and 99 (only integers!). Default: 2
 Donate = 5
 
@@ -162,6 +158,7 @@ Donate = 5
 
 # Other options
 # Difficulty = 1600
+# TupleLengthMin = 4
 # BenchmarkBlockInterval = 150
 # BenchmarkTimeLimit = 0
 # Benchmark2tupleCountLimit = 100000
@@ -185,6 +182,7 @@ It is also possible to use custom configuration file paths, examples:
 #### Benchmark and Search Modes options
 
 * Difficulty: for Benchmark and Search Modes, sets the difficulty (must be from 265 to 32767). Default: 1600;
+* TupleLengthMin: for Search Mode, the base prime of tuples of at least this length will be shown. 0 for the length of the constellation type - 1 (default or provided one, minimum 1). Default: 0;
 * BenchmarkBlockInterval: for Benchmark Mode, sets the time between blocks in s. Default: 150;
 * BenchmarkTimeLimit: for Benchmark Mode, sets the testing duration in s. 0 for no time limit. Default: 0;
 * Benchmark2tupleCountLimit: for Benchmark Mode, stops testing after finding this number of 2-tuples. 0 for no limit. Default: 50000;
