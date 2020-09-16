@@ -272,20 +272,20 @@ bool StratumClient::connect() {
 }
 
 void StratumClient::sendWork(const WorkData &share) const {
-	WorkData wdToSend(share);
 	std::ostringstream oss;
-	uint32_t nonce[8];
-	wdToSend.bh.curtime = toBEnd32(wdToSend.bh.curtime);
-	wdToSend.bh.curtime <<= 32;
-	
-	for (uint32_t i(0) ; i < 8 ; i++) nonce[i] = invEnd32(((uint32_t*) wdToSend.bh.nOffset)[8 - 1 - i]);
-	
+	std::string nonce(mpz_class(share.result - share.target).get_str(16)); // Offset in hexadecimal (usual read order), padded with 0s
+	if (nonce.size() > 64) {
+		ERRORMSG("The offset is too large");
+		return;
+	}
+	nonce.insert(nonce.begin(), 64 - nonce.size(), '0');
+	const uint64_t curtime(static_cast<uint64_t>(toBEnd32(share.bh.curtime)) << 32ULL);
 	oss << "{\"method\": \"mining.submit\", \"params\": [\""
 	    << _options->username() << "\", \""
-	    << wdToSend.jobId << "\", \""
-	    << v8ToHexStr(wdToSend.extraNonce2) << "\", \""
-	    << binToHexStr((const uint8_t*) &wdToSend.bh.curtime, 8) << "\", \""
-	    << binToHexStr(nonce, 32) << "\"], \"id\":0}\n";
+	    << share.jobId << "\", \""
+	    << v8ToHexStr(share.extraNonce2) << "\", \""
+	    << binToHexStr(reinterpret_cast<const uint8_t*>(&curtime), 8) << "\", \""
+	    << nonce << "\"], \"id\":0}\n";
 	send(_socket, oss.str().c_str(), oss.str().size(), 0);
 }
 
@@ -312,9 +312,9 @@ bool StratumClient::process() {
 		if (errno != EWOULDBLOCK || n == 0 || timeSince(_lastDataRecvTp) > STRATUMTIMEOUT) { // ...but else, this is an error! Or a timeout.
 #endif
 			if (timeSince(_lastDataRecvTp) > STRATUMTIMEOUT)
-				std::cerr << __func__ << ": no server response since a very long time, disconnection assumed." << std::endl;
+				std::cout << __func__ << ": no server response since a very long time, disconnection assumed." << std::endl;
 			else
-				std::cerr << __func__ << ": error receiving work data :| - " << std::strerror(errno) << std::endl;
+				ERRORMSG("Error receiving work data - " << std::strerror(errno));
 			_socket = -1;
 			_connected = false;
 			return false;
@@ -351,10 +351,10 @@ WorkData StratumClient::workData() const {
 	wd.extraNonce1 = sd.extraNonce1;
 	wd.extraNonce2 = sd.extraNonce2;
 	wd.jobId       = sd.jobId;
-	// Change endianness for mining (will revert back when submit share)
+	// Change endianness for correct target computation
 	for (uint8_t i(0) ; i < 8 ; i++) ((uint32_t*) wd.bh.previousblockhash)[i] = toBEnd32(((uint32_t*) wd.bh.previousblockhash)[i]);
 	wd.bh.curtime = toBEnd32(wd.bh.curtime);
 	wd.bh.version = invEnd32(wd.bh.version);
-	
+	wd.target      = wd.bh.target();
 	return wd;
 }

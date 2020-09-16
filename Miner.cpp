@@ -16,7 +16,6 @@ extern "C" {
 }
 
 constexpr uint64_t nPrimesTo2p32(203280222);
-constexpr uint64_t zerosBeforeHash(8);
 constexpr int offsetStackSize(16384);
 constexpr int maxSieveWorkers(16); // There is a noticeable performance penalty using Vector so we are using Arrays.
 thread_local std::array<uint64_t*, maxSieveWorkers> threadOffsetStack{nullptr};
@@ -306,7 +305,7 @@ void Miner::_putOffsetsInSegments(SieveInstance& sieveInstance, uint64_t *offset
 
 void Miner::_doPresieveJob(const Job &job) {
 	const uint64_t workIndex(job.workIndex), firstPrimeIndex(job.presieve.start), lastPrimeIndex(job.presieve.end);
-	const mpz_class firstCandidate(_works[workIndex].target + _works[workIndex].remainderPrimorial);
+	const mpz_class firstCandidate(_works[workIndex].data.target  + _works[workIndex].remainderPrimorial);
 	std::array<int, maxSieveWorkers> nOffsets{0}; // Number of offsets
 	std::array<uint64_t*, maxSieveWorkers> &offsets(threadOffsetStack), &counts(threadOffsetCount); // On Windows, caching these thread_local pointers on the stack makes a noticeable perf difference.
 	const uint64_t precompLimit(_modPrecompute.size()), tupleSize(_parameters.primeTupleOffset.size());
@@ -392,7 +391,7 @@ void Miner::_doPresieveJob(const Job &job) {
 			}                                                                                      \
 			else {                                                                                 \
 				if (nOffsets[sieveWorkerIndex] + _halfPrimeTupleOffset.size() >= offsetStackSize) { \
-					if (_works[workIndex].verifyBlock.height != _client->currentHeight()) \
+					if (_works[workIndex].data.height != _client->currentHeight()) \
 						return;                                                                    \
 					_putOffsetsInSegments(_sieveInstances[sieveWorkerIndex], offsets[sieveWorkerIndex], counts[sieveWorkerIndex], nOffsets[sieveWorkerIndex]); \
 					nOffsets[sieveWorkerIndex] = 0;                                                \
@@ -535,7 +534,7 @@ void Miner::_doSieveJob(Job job) {
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
 	
-	if (_works[workIndex].verifyBlock.height != _client->currentHeight()) // Abort Sieve Job if new block (but count as Job done)
+	if (_works[workIndex].data.height != _client->currentHeight()) // Abort Sieve Job if new block (but count as Job done)
 		goto sieveEnd;
 	
 	memset(sieveInstance.sieve, 0, sizeof(uint64_t)*_parameters.sieveWords);
@@ -564,7 +563,7 @@ void Miner::_doSieveJob(Job job) {
 		_addToSieveCache(sieveInstance.sieve, sieveCache, sieveCachePos, sieveInstance.segmentHits[iteration][i]);
 	_endSieveCache(sieveInstance.sieve, sieveCache);
 	
-	if (_works[workIndex].verifyBlock.height != _client->currentHeight())
+	if (_works[workIndex].data.height != _client->currentHeight())
 		goto sieveEnd;
 	
 	checkJob.check.nCandidates = 0;
@@ -578,7 +577,7 @@ void Miner::_doSieveJob(Job job) {
 			checkJob.check.candidateIndexes[checkJob.check.nCandidates] = candidateIndex;
 			checkJob.check.nCandidates++;
 			if (checkJob.check.nCandidates == maxCandidatesPerCheckJob) {
-				if (_works[workIndex].verifyBlock.height != _client->currentHeight()) // Low overhead but still often enough
+				if (_works[workIndex].data.height != _client->currentHeight()) // Low overhead but still often enough
 					goto sieveEnd;
 				_jobs.push_back(checkJob);
 				checkJob.check.nCandidates = 0;
@@ -587,7 +586,7 @@ void Miner::_doSieveJob(Job job) {
 			sieveWord &= sieveWord - 1; // Change the candidate's bit from 1 to 0.
 		}
 	}
-	if (_works[workIndex].verifyBlock.height != _client->currentHeight())
+	if (_works[workIndex].data.height != _client->currentHeight())
 		goto sieveEnd;
 	if (checkJob.check.nCandidates > 0) {
 		_jobs.push_back(checkJob);
@@ -637,7 +636,7 @@ void Miner::_doCheckJob(Job job) {
 	const uint16_t workIndex(job.workIndex);
 	mpz_class candidate, ploop;
 	mpz_mul_ui(ploop.get_mpz_t(), _primorial.get_mpz_t(), job.check.loop*_parameters.sieveSize);
-	ploop += _works[workIndex].target;
+	ploop += _works[workIndex].data.target;
 	ploop += _works[workIndex].remainderPrimorial;
 	mpz_add_ui(ploop.get_mpz_t(), ploop.get_mpz_t(), _primorialOffsetDiffToFirst[job.check.offsetId]);
 	
@@ -656,9 +655,9 @@ void Miner::_doCheckJob(Job job) {
 	}
 	
 	for (uint32_t i(0) ; i < job.check.nCandidates ; i++) {
-		if (_works[workIndex].verifyBlock.height != _client->currentHeight()) break;
+		if (_works[workIndex].data.height != _client->currentHeight()) break;
 		
-		uint16_t tupleLength(0);
+		uint32_t tupleLength(0);
 		candidate = _primorial*job.check.candidateIndexes[i];
 		candidate += ploop;
 		
@@ -669,7 +668,7 @@ void Miner::_doCheckJob(Job job) {
 		
 		tupleLength++;
 		tupleCounts[tupleLength]++;
-		uint16_t offsetSum(0);
+		uint32_t offsetSum(0);
 		// Test primality of the other elements of the tuple if candidate + 0 is prime.
 		for (std::vector<uint64_t>::size_type i(1) ; i < _parameters.primeTupleOffset.size() ; i++) {
 			offsetSum += _parameters.primeTupleOffset[i];
@@ -684,31 +683,29 @@ void Miner::_doCheckJob(Job job) {
 			}
 			else break;
 		}
-		// If tuple long enough or share, generate nOffset and submit
+		// If tuple long enough or share, submit
 		if (tupleLength >= _parameters.primeTupleOffset.size() ||
 		    (_options->mode() == "Search" && tupleLength >= _parameters.tupleLengthMin) ||
 		    (_options->mode() == "Pool"   && tupleLength >= 4)) {
-			mpz_class candidateOffset(candidate - _works[workIndex].target - offsetSum);
-			for (uint32_t d(0) ; d < (uint32_t) std::min(32/((uint32_t) sizeof(mp_limb_t)), (uint32_t) candidateOffset.get_mpz_t()->_mp_size) ; d++)
-				*(mp_limb_t*) (_works[workIndex].verifyBlock.bh.nOffset + d*sizeof(mp_limb_t)) = candidateOffset.get_mpz_t()->_mp_d[d];
-			std::cout << Stats::formattedTime(_statManager.timeSinceStart());
+			const mpz_class basePrime(candidate - offsetSum);
+			std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " " << tupleLength;
 			if (_options->mode() == "Pool")
-				std::cout << " " << tupleLength << "-share found by worker thread " << threadId << std::endl;
+				std::cout << "-share found by worker thread " << threadId << std::endl;
 			else {
-				std::cout << " " << tupleLength << "-tuple found by worker thread " << threadId << std::endl;
-				mpz_class n(candidate - offsetSum);
-				std::cout << "Base prime: " << n << std::endl;
+				std::cout << "-tuple found by worker thread " << threadId << std::endl;
+				std::cout << "Base prime: " << basePrime << std::endl;
 				if (_options->tuplesFile() != "None") {
 					_tupleFileLock.lock();
 					std::ofstream file(_options->tuplesFile(), std::ios::app);
 					if (file)
-						file << static_cast<uint16_t>(tupleLength) << "-tuple: " << n << std::endl;
+						file << tupleLength << "-tuple: " << basePrime << std::endl;
 					else
 						ERRORMSG("Unable to write file " << _options->tuplesFile() << " in order to write a tuple");
 					_tupleFileLock.unlock();
 				}
 			}
-			_client->addSubmission(_works[workIndex].verifyBlock);
+			_works[workIndex].data.result = basePrime;
+			_client->addSubmission(_works[workIndex].data);
 		}
 	}
 	_statManager.addCounts(tupleCounts);
@@ -756,20 +753,6 @@ void Miner::_doJobs(const uint16_t id) { // Worker Threads run here until the mi
 	}
 }
 
-mpz_class Miner::_getTargetFromBlock(const WorkData &block) { // Target is in binary 1 . 00000000 (zerosBeforeHash zeros) . PoWHash . 00...0 (number of zeros such that the length of Target is the Difficulty)
-	mpz_class target(1);
-	target <<= zerosBeforeHash;
-	std::vector<uint8_t> powHash(block.bh.powHash());
-	for (uint64_t i(0) ; i < 256 ; i++) {
-		target <<= 1;
-		if ((powHash[i/8] >> (i % 8)) & 1)
-			target.get_mpz_t()->_mp_d[0]++;
-	}
-	const uint64_t trailingZeros(block.difficulty - 1 - zerosBeforeHash - 256);
-	target <<= trailingZeros;
-	return target;
-}
-
 void Miner::_manageJobs() {
 	WorkData wd; // Stores the block's information from the Client
 	uint32_t currentWorkIndex(0), oldHeight(0);
@@ -778,18 +761,15 @@ void Miner::_manageJobs() {
 		_sieveTime = _sieveTime.zero();
 		_verifyTime = _verifyTime.zero();
 		
-		_works[currentWorkIndex].verifyBlock = wd;
-		const bool isNewHeight(oldHeight != _works[currentWorkIndex].verifyBlock.height);
+		_works[currentWorkIndex].data = wd;
+		const bool isNewHeight(oldHeight != _works[currentWorkIndex].data.height);
 		// Notify when the network found a block
 		if (isNewHeight && oldHeight != 0) {
 			_statManager.newBlock();
 			std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " Block " << wd.height << ", average " << FIXED(1) << _statManager.averageBlockTime() << " s, difficulty " << wd.difficulty << std::endl;
 		}
-		// Extract the target from the block data.
-		const mpz_class target(_getTargetFromBlock(_works[currentWorkIndex].verifyBlock));
 		// Candidates are in the form a*primorial + primorialOffset. target + remainderPrimorial is the first such number starting from the target.
-		_works[currentWorkIndex].target = target;
-		_works[currentWorkIndex].remainderPrimorial = _primorial - (target % _primorial) + _parameters.primorialOffsets[0];
+		_works[currentWorkIndex].remainderPrimorial = _primorial - (_works[currentWorkIndex].data.target % _primorial) + _parameters.primorialOffsets[0];
 		// Reset Segment Counts and create Presieve Jobs
 		for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
 			for (uint64_t j(0) ; j < _parameters.maxIterations; j++)
@@ -846,7 +826,7 @@ void Miner::_manageJobs() {
 		}
 		
 		// Adjust the Remaining Jobs Threshold
-		if (_works[currentWorkIndex].verifyBlock.height == _client->currentHeight() && !isNewHeight) {
+		if (_works[currentWorkIndex].data.height == _client->currentHeight() && !isNewHeight) {
 			DBG(std::cout << "Min work outstanding during sieving: " << nRemainingJobsMin << std::endl;);
 			if (remainingJobs > _nRemainingCheckJobsThreshold - _parameters.threads*2) {
 				// If we are acheiving our work target, then adjust it towards the amount
@@ -874,7 +854,7 @@ void Miner::_manageJobs() {
 			DBG(std::cout << "Work target before starting next block now: " << _nRemainingCheckJobsThreshold << std::endl;);
 		}
 		
-		oldHeight = _works[currentWorkIndex].verifyBlock.height;
+		oldHeight = _works[currentWorkIndex].data.height;
 		
 		while (_works[currentWorkIndex].nRemainingCheckJobs > _nRemainingCheckJobsThreshold) {
 			const JobDoneInfo jobDoneInfo(_jobsDoneInfos.blocking_pop_front());

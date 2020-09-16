@@ -15,7 +15,7 @@
 #include <vector>
 #include "tools.hpp"
 
-#define versionString	"rieMiner 0.92-alpha1d"
+#define versionString	"rieMiner 0.92-alpha1e"
 
 extern int DEBUG;
 #define DBG(x) if (DEBUG) {x;};

@@ -10,9 +10,8 @@
 #include <jansson.h>
 #include "main.hpp"
 
-class WorkManager;
-
 // Blockheader structure (with nOffset and padding), total 896 bits/112 bytes (224 hex chars)
+constexpr uint64_t zerosBeforeHash(8);
 struct BlockHeader {
 	uint32_t version;
 	uint8_t  previousblockhash[32]; // 256 bits
@@ -72,13 +71,27 @@ struct BlockHeader {
 		for (uint32_t i(0) ; i < 32 ; i++) bhForPow.push_back(nOffset[i]);
 		return sha256sha256(bhForPow.data(), 80);
 	}
+	
+	mpz_class target() const {
+		mpz_class target(1);
+		target <<= zerosBeforeHash;
+		std::vector<uint8_t> hash(powHash());
+		for (uint64_t i(0) ; i < 256 ; i++) {
+			target <<= 1;
+			if ((hash[i/8] >> (i % 8)) & 1)
+				target.get_mpz_t()->_mp_d[0]++;
+		}
+		const uint64_t trailingZeros(decodeCompact(bits) - 1 - zerosBeforeHash - 256);
+		target <<= trailingZeros;
+		return target;
+	}
 };
 
 // Stores all the information needed for the miner and submissions
 struct WorkData {
 	BlockHeader bh;
 	uint32_t height, difficulty;
-	uint16_t primes;
+	mpz_class target, result;
 	
 	// For GetBlockTemplate
 	std::string transactions; // Store the concatenation in hex format
@@ -88,7 +101,7 @@ struct WorkData {
 	std::vector<uint8_t> extraNonce1, extraNonce2;
 	std::string jobId;
 	
-	WorkData() : height(0), difficulty(0), primes(0), txCount(0) {}
+	WorkData() : height(0), txCount(0) {}
 };
 
 // Abstract class with protocol independent member variables and functions

@@ -71,6 +71,7 @@ WorkData BMClient::workData() const {
 	wd.bh = _bh;
 	wd.height = _height;
 	wd.difficulty = decodeCompact(wd.bh.bits);
+	wd.target = wd.bh.target();
 	return wd;
 }
 
@@ -105,6 +106,7 @@ WorkData SearchClient::workData() const {
 	wd.bh = _bh;
 	wd.height = _connected ? 1 : 0;
 	wd.difficulty = decodeCompact(wd.bh.bits);
+	wd.target = wd.bh.target();
 	return wd;
 }
 
@@ -165,5 +167,6 @@ WorkData TestClient::workData() const {
 	wd.bh = _bh;
 	wd.height = _connected ? _height : 0;
 	wd.difficulty = decodeCompact(wd.bh.bits);
+	wd.target = wd.bh.target();
 	return wd;
 }

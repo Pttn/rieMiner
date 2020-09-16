@@ -85,11 +85,10 @@ struct JobDoneInfo {
 };
 
 struct MinerWork {
-	mpz_class target, remainderPrimorial;
-	WorkData verifyBlock;
+	mpz_class remainderPrimorial;
+	WorkData data;
 	std::atomic<uint64_t> nRemainingCheckJobs{0};
 	void clear() {
-		target = 0;
 		remainderPrimorial = 0;
 		nRemainingCheckJobs = 0;
 	}
@@ -153,7 +152,6 @@ class Miner {
 	void _doCheckJob(Job);
 	void _doJobs(uint16_t);
 	void _manageJobs();
-	mpz_class _getTargetFromBlock(const WorkData& block);
 	
 	public:
 	Miner(const std::shared_ptr<Options> &options) :

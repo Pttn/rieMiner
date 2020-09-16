@@ -208,11 +208,12 @@ bool GBTClient::_getWork() {
 	
 	// Extract and build GetBlockTemplate data
 	_gbtd.bh.version = json_integer_value(json_object_get(jsonGbt_Res, "version"));
-	hexStrToBin(json_string_value(json_object_get(jsonGbt_Res, "previousblockhash")), (uint8_t*) &_gbtd.bh.previousblockhash);
-	
+	uint8_t previousblockhashTmp[32];
+	hexStrToBin(json_string_value(json_object_get(jsonGbt_Res, "previousblockhash")), previousblockhashTmp);
+	for (uint8_t i(0) ; i < 32; i++) _gbtd.bh.previousblockhash[i] = previousblockhashTmp[31 - i];
 	_gbtd.coinbasevalue = json_integer_value(json_object_get(jsonGbt_Res, "coinbasevalue"));
 	_gbtd.bh.curtime = json_integer_value(json_object_get(jsonGbt_Res, "curtime"));
-	_gbtd.bh.bits = ((uint32_t*) &bitsTmp)[0];
+	_gbtd.bh.bits = invEnd32(reinterpret_cast<uint32_t*>(&bitsTmp)[0]);
 	_gbtd.height = json_integer_value(json_object_get(jsonGbt_Res, "height"));
 	
 	_gbtd.acceptedConstellationTypes = std::vector<std::vector<uint64_t>>();
@@ -272,8 +273,8 @@ bool GBTClient::connect() {
 		if (addrToScriptPubKey(_options->payoutAddress(), _gbtd.scriptPubKey, false));
 		else if (bech32ToScriptPubKey(_options->payoutAddress(), _gbtd.scriptPubKey, false));
 		else {
-			std::cerr << "Invalid payout address! Using donation address instead." << std::endl;
-			addrToScriptPubKey("RPttnMeDWkzjqqVp62SdG2ExtCor9w54EB", _gbtd.scriptPubKey);
+			std::cout << "Invalid payout address! Using donation address instead." << std::endl;
+			addrToScriptPubKey("ric1qpttn5u8u9470za84kt4y0lzz4zllzm4pyzhuge", _gbtd.scriptPubKey);
 		}
 		_pendingSubmissions = std::vector<WorkData>();
 		_connected = true;
@@ -286,10 +287,15 @@ bool GBTClient::connect() {
 }
 
 void GBTClient::sendWork(const WorkData &work) const {
+	std::cout << "Submitting block with " << work.txCount << " transaction(s) (including coinbase)..." << std::endl;
 	std::ostringstream oss;
 	std::string req;
 	
-	oss << "{\"method\": \"submitblock\", \"params\": [\"" << v8ToHexStr(work.bh.toV8());
+	BlockHeader bh(work.bh);
+	mpz_class offset(work.result - work.target);
+	for (uint32_t d(0) ; d < std::min(32/static_cast<uint32_t>(sizeof(mp_limb_t)), static_cast<uint32_t>(offset.get_mpz_t()->_mp_size)) ; d++)
+		*reinterpret_cast<mp_limb_t*>(bh.nOffset + d*sizeof(mp_limb_t)) = offset.get_mpz_t()->_mp_d[d];
+	oss << "{\"method\": \"submitblock\", \"params\": [\"" << v8ToHexStr(bh.toV8());
 	// Using the Variable Length Integer format
 	if (work.txCount < 0xFD)
 		oss << binToHexStr((uint8_t*) &work.txCount, 1);
@@ -299,7 +305,7 @@ void GBTClient::sendWork(const WorkData &work) const {
 	req = oss.str();
 	
 	json_t *jsonSb(sendRPCCall(req)); // SubmitBlock response
-	DBG(std::cout << "Decoded solution: " << work.bh.decodeSolution() << std::endl;);
+	DBG(std::cout << "Decoded solution: " << bh.decodeSolution() << std::endl;);
 	DBG(std::cout << "Sent: " << req;);
 	if (jsonSb == NULL) std::cerr << "Failure submitting block :|" << std::endl;
 	else {
@@ -319,13 +325,11 @@ WorkData GBTClient::workData() const {
 	gbtd.merkleRootGen();
 	
 	WorkData wd;
-	wd.bh = gbtd.bh;
-	wd.height = gbtd.height;
-	wd.bh.bits      = invEnd32(wd.bh.bits);
+	wd.bh           = gbtd.bh;
+	wd.height       = gbtd.height;
 	wd.difficulty   = decodeCompact(wd.bh.bits);
+	wd.target       = wd.bh.target();
 	wd.transactions = gbtd.transactions;
 	wd.txCount      = gbtd.txHashes.size();
-	// Change endianness for mining (will revert back when submit share)
-	for (uint8_t i(0) ; i < 32; i++) wd.bh.previousblockhash[i] = gbtd.bh.previousblockhash[31 - i];
 	return wd;
 }
