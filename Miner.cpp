@@ -22,73 +22,86 @@ thread_local std::array<uint64_t*, maxSieveWorkers> threadOffsetStack{nullptr};
 thread_local std::array<uint64_t*, maxSieveWorkers> threadOffsetCount{nullptr};
 thread_local uint16_t threadId(65535);
 
-void Miner::init() {
+void Miner::init(const MinerParameters &minerParameters) {
 	if (_inited) {
 		ERRORMSG("The miner is already inited!");
 		return;
 	}
 	std::cout << "Initializing miner..." << std::endl;
 	std::cout << "Processor: " << _cpuInfo.getBrand() << std::endl;
+	_parameters = minerParameters;
 	// Get settings from Configuration File.
 	_parameters.useAvx2 = false;
 	std::cout << "Best SIMD instructions supported:";
 	if (_cpuInfo.hasAVX512()) std::cout << " AVX-512";
 	else if (_cpuInfo.hasAVX2()) {
 		std::cout << " AVX2";
-		if (!_options->enableAvx2()) std::cout << " (disabled -> AVX)";
+		if (!_parameters.useAvx2) std::cout << " (disabled -> AVX)";
 		else _parameters.useAvx2 = true;
 	}
 	else if (_cpuInfo.hasAVX()) std::cout << " AVX";
 	else std::cout << " AVX not suppported!";
 	std::cout << std::endl;
-	_parameters.threads = _options->threads();
 	std::cout << "Threads: " << _parameters.threads << std::endl;
-	_parameters.primeTupleOffset = _options->constellationType();
 	std::cout << "Constellation type: n + " << "(";
 	uint64_t offsetTemp(0);
-	for (std::vector<uint64_t>::size_type i(0) ; i < _parameters.primeTupleOffset.size() ; i++) {
-		offsetTemp += _parameters.primeTupleOffset[i];
+	for (std::vector<uint64_t>::size_type i(0) ; i < _parameters.constellationOffsets.size() ; i++) {
+		offsetTemp += _parameters.constellationOffsets[i];
 		std::cout << offsetTemp;
-		if (i != _parameters.primeTupleOffset.size() - 1) std::cout << ", ";
+		if (i != _parameters.constellationOffsets.size() - 1) std::cout << ", ";
 	}
-	std::cout << "), length " << _parameters.primeTupleOffset.size() << std::endl;
-	_parameters.primorialNumber  = _options->primorialNumber();
+	std::cout << "), length " << _parameters.constellationOffsets.size() << std::endl;
+	if (_options->mode() == "Search") {
+		if (_parameters.tupleLengthMin < 1 || _parameters.tupleLengthMin > _parameters.constellationOffsets.size())
+			_parameters.tupleLengthMin = std::max(1ULL, static_cast<uint64_t>(_parameters.constellationOffsets.size()) - 1ULL);
+		std::cout << "Will show tuples of at least length " << _parameters.tupleLengthMin << std::endl;
+		if (_options->tuplesFile() != "None") std::cout << " Will write them to file " << _options->tuplesFile() << std::endl;
+	}
 	std::cout << "Primorial number: " << _parameters.primorialNumber << std::endl;
-	_parameters.primorialOffsets = v64ToVMpz(_options->primorialOffsets());
 	std::cout << "Primorial offsets: ";
-	for (std::vector<uint64_t>::size_type i(0) ; i < _parameters.primorialOffsets.size() ; i++) {
-		std::cout << _parameters.primorialOffsets[i];
-		if (i != _parameters.primorialOffsets.size() - 1) std::cout << ", ";
+	if (_parameters.primorialOffsets.size() == 0) { // Set the default Primorial Offsets if not chosen (must be chosen if the chosen pattern is not hardcoded)
+		bool defaultPrimorialOffsetsFound(false);
+		for (const auto &constellationData : defaultConstellationData) {
+			if (_parameters.constellationOffsets == constellationData.first) {
+				_parameters.primorialOffsets = constellationData.second;
+				defaultPrimorialOffsetsFound = true;
+				break;
+			}
+		}
+		if (!defaultPrimorialOffsetsFound) {
+			std::cout << "None" << std::endl << "Not hardcoded Constellation Offsets chosen and no Primorial Offset set." << std::endl;
+			return;
+		}
+	}
+	_primorialOffsets = v64ToVMpz(_parameters.primorialOffsets);
+	for (std::vector<uint64_t>::size_type i(0) ; i < _primorialOffsets.size() ; i++) {
+		std::cout << _primorialOffsets[i];
+		if (i != _primorialOffsets.size() - 1) std::cout << ", ";
 	}
 	std::cout << std::endl;
-	_parameters.sieveWorkers = _options->sieveWorkers();
 	if (_parameters.sieveWorkers == 0) {
-		_parameters.sieveWorkers = std::max(_options->threads()/5, 1);
-		_parameters.sieveWorkers += (_options->primeTableLimit() + 0x80000000ull) >> 33;
+		_parameters.sieveWorkers = std::max(_parameters.threads/5, 1);
+		_parameters.sieveWorkers += (_parameters.primeTableLimit + 0x80000000ull) >> 33;
 	}
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, maxSieveWorkers);
-	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, int(_parameters.primorialOffsets.size()));
+	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, int(_primorialOffsets.size()));
 	std::cout << "Sieve Workers: " << _parameters.sieveWorkers << std::endl;
-	_parameters.sieveBits = _options->sieveBits();
 	_parameters.sieveSize = 1 << _parameters.sieveBits;
 	_parameters.sieveWords = _parameters.sieveSize/64;
 	std::cout << "Sieve Size: " << "2^" << _parameters.sieveBits << " = " << _parameters.sieveSize << " (" << _parameters.sieveWords << " words)" << std::endl;
 	_parameters.maxIterations = _parameters.maxIncrements/_parameters.sieveSize;
 	std::cout << "Max Increments: " << _parameters.maxIncrements << std::endl;
 	std::cout << "Max Iterations: " << _parameters.maxIterations << std::endl;
-	_parameters.solo = !(_options->mode() == "Pool");
-	_parameters.tupleLengthMin = _options->tupleLengthMin();
-	_parameters.primeTableLimit = _options->primeTableLimit();
 	std::cout << "Prime table limit: " << _parameters.primeTableLimit << std::endl;
 	// For larger ranges of offsets, need to add more modular inverses in _doPresieveJob().
-	std::transform(_parameters.primeTupleOffset.begin(), _parameters.primeTupleOffset.end(), std::back_inserter(_halfPrimeTupleOffset), [](uint64_t n) {return n >> 1;});
+	std::transform(_parameters.constellationOffsets.begin(), _parameters.constellationOffsets.end(), std::back_inserter(_halfConstellationOffsets), [](uint64_t n) {return n >> 1;});
 	_primorialOffsetDiff.resize(_parameters.sieveWorkers - 1);
 	_primorialOffsetDiffToFirst.resize(_parameters.sieveWorkers);
 	_primorialOffsetDiffToFirst[0] = 0;
-	const uint64_t tupleSpan(std::accumulate(_parameters.primeTupleOffset.begin(), _parameters.primeTupleOffset.end(), 0));
+	const uint64_t tupleSpan(std::accumulate(_parameters.constellationOffsets.begin(), _parameters.constellationOffsets.end(), 0));
 	for (int j(1) ; j < _parameters.sieveWorkers ; j++) {
-		_primorialOffsetDiff[j - 1] = _options->primorialOffsets()[j] - _options->primorialOffsets()[j - 1] - tupleSpan;
-		_primorialOffsetDiffToFirst[j] = _options->primorialOffsets()[j] - _options->primorialOffsets()[0];
+		_primorialOffsetDiff[j - 1] = _parameters.primorialOffsets[j] - _parameters.primorialOffsets[j - 1] - tupleSpan;
+		_primorialOffsetDiffToFirst[j] = _parameters.primorialOffsets[j] - _parameters.primorialOffsets[0];
 	}
 	
 	{
@@ -106,7 +119,7 @@ void Miner::init() {
 				_primes.push_back((i << 1ULL) + 1ULL); // Add prime number 2i + 1
 		}
 		std::cout << "Table with all " << _primes.size() << " first primes generated in " << timeSince(t0) << " s." << std::endl;
-		if (_primes.size() % 2 == 1 && _parameters.primeTupleOffset.size() == 6) // Needs to be even to use optimizations for 6-tuples
+		if (_primes.size() % 2 == 1 && _parameters.constellationOffsets.size() == 6) // Needs to be even to use optimizations for 6-tuples
 			_primes.pop_back();
 		_nPrimes = _primes.size();
 	}
@@ -122,7 +135,7 @@ void Miner::init() {
 	std::cout << " (" << mpz_sizeinbase(_primorial.get_mpz_t(), 2) << " bits)" << std::endl;
 	
 	uint64_t highSegmentEntries(0); // highSegmentEntries: sum of tupleSize*maxIncrements/p for p in the prime table greater or equal than maxIncrements
-	double highFloats(0.), tupleSizeAsDouble(_parameters.primeTupleOffset.size());
+	double highFloats(0.), tupleSizeAsDouble(_parameters.constellationOffsets.size());
 	_primeTestStoreOffsetsSize = 0; // primeTestStoreOffsetsSize: (number of prime numbers in the table smaller than maxIncrements) - 5
 	_sparseLimit = 0; // sparseLimit: number of prime numbers smaller than maxIncrements in the table
 	for (uint64_t i(5) ; i < _nPrimes ; i++) {
@@ -131,7 +144,7 @@ void Miner::init() {
 		else {
 			if (_sparseLimit == 0) {
 				_sparseLimit = i;
-				if (_sparseLimit % 2 == 1 && _parameters.primeTupleOffset.size() == 6) // Needs to be even to use optimizations for 6-tuples
+				if (_sparseLimit % 2 == 1 && _parameters.constellationOffsets.size() == 6) // Needs to be even to use optimizations for 6-tuples
 					_sparseLimit--;
 			}
 			highFloats += ((tupleSizeAsDouble*_parameters.maxIncrements)/static_cast<double>(p));
@@ -189,16 +202,16 @@ void Miner::init() {
 	}
 	
 	try {
-		std::cout << "Allocating " << sizeof(uint32_t)*_parameters.sieveWorkers*_parameters.primeTupleOffset.size()*(_primeTestStoreOffsetsSize + 1024) << " bytes for the offsets..." << std::endl;
+		std::cout << "Allocating " << sizeof(uint32_t)*_parameters.sieveWorkers*_parameters.constellationOffsets.size()*(_primeTestStoreOffsetsSize + 1024) << " bytes for the offsets..." << std::endl;
 		for (int i(0) ; i < _parameters.sieveWorkers ; i++)
-			_sieveInstances[i].offsets = new uint32_t[(_primeTestStoreOffsetsSize + 1024)*_parameters.primeTupleOffset.size()];
+			_sieveInstances[i].offsets = new uint32_t[(_primeTestStoreOffsetsSize + 1024)*_parameters.constellationOffsets.size()];
 	}
 	catch (std::bad_alloc& ba) {
 		ERRORMSG("Unable to allocate memory for the offsets");
 		exit(-1);
 	}
 	for (int i(0) ; i < _parameters.sieveWorkers ; i++)
-		memset(_sieveInstances[i].offsets, 0, sizeof(uint32_t)*_parameters.primeTupleOffset.size()*(_primeTestStoreOffsetsSize + 1024));
+		memset(_sieveInstances[i].offsets, 0, sizeof(uint32_t)*_parameters.constellationOffsets.size()*(_primeTestStoreOffsetsSize + 1024));
 	
 	try {
 		std::cout << "Allocating " << sizeof(uint32_t)*_parameters.sieveWorkers*_parameters.maxIterations*_entriesPerSegment << " bytes for the segment hits..." << std::endl;
@@ -227,7 +240,7 @@ void Miner::startThreads() {
 		ERRORMSG("The miner is already running");
 	else {
 		_running = true;
-		_statManager.start(_options->constellationType().size());
+		_statManager.start(_parameters.constellationOffsets.size());
 		std::cout << "Starting the miner's master thread..." << std::endl;
 		_masterThread = std::thread(&Miner::_manageJobs, this);
 		std::cout << "Starting " << _parameters.threads << " miner's worker threads..." << std::endl;
@@ -282,6 +295,7 @@ void Miner::clear() {
 		_primes.clear();
 		_modularInverses.clear();
 		_modPrecompute.clear();
+		_halfConstellationOffsets.clear();
 		_primorialOffsetDiff.clear();
 		_primorialOffsetDiffToFirst.clear();
 		_parameters = MinerParameters();
@@ -308,7 +322,7 @@ void Miner::_doPresieveJob(const Job &job) {
 	const mpz_class firstCandidate(_works[workIndex].data.target  + _works[workIndex].remainderPrimorial);
 	std::array<int, maxSieveWorkers> nOffsets{0}; // Number of offsets
 	std::array<uint64_t*, maxSieveWorkers> &offsets(threadOffsetStack), &counts(threadOffsetCount); // On Windows, caching these thread_local pointers on the stack makes a noticeable perf difference.
-	const uint64_t precompLimit(_modPrecompute.size()), tupleSize(_parameters.primeTupleOffset.size());
+	const uint64_t precompLimit(_modPrecompute.size()), tupleSize(_parameters.constellationOffsets.size());
 
 	uint64_t avxLimit(0);
 	const uint64_t avxWidth(_parameters.useAvx2 ? 8 : 4);
@@ -383,14 +397,14 @@ void Miner::_doPresieveJob(const Job &job) {
 #define addToOffsets(sieveWorkerIndex) {                                                           \
 			if (i < _sparseLimit) {                                                                \
 				_sieveInstances[sieveWorkerIndex].offsets[tupleSize*i] = index;                    \
-				for (std::vector<uint64_t>::size_type f(1) ; f < _halfPrimeTupleOffset.size() ; f++) { \
-					if (index < mi[_halfPrimeTupleOffset[f]]) index += p;                          \
-					index -= mi[_halfPrimeTupleOffset[f]];                                         \
+				for (std::vector<uint64_t>::size_type f(1) ; f < _halfConstellationOffsets.size() ; f++) { \
+					if (index < mi[_halfConstellationOffsets[f]]) index += p;                          \
+					index -= mi[_halfConstellationOffsets[f]];                                         \
 					_sieveInstances[sieveWorkerIndex].offsets[tupleSize*i + f] = index;            \
 				}                                                                                  \
 			}                                                                                      \
 			else {                                                                                 \
-				if (nOffsets[sieveWorkerIndex] + _halfPrimeTupleOffset.size() >= offsetStackSize) { \
+				if (nOffsets[sieveWorkerIndex] + _halfConstellationOffsets.size() >= offsetStackSize) { \
 					if (_works[workIndex].data.height != _client->currentHeight()) \
 						return;                                                                    \
 					_putOffsetsInSegments(_sieveInstances[sieveWorkerIndex], offsets[sieveWorkerIndex], counts[sieveWorkerIndex], nOffsets[sieveWorkerIndex]); \
@@ -400,9 +414,9 @@ void Miner::_doPresieveJob(const Job &job) {
 					offsets[sieveWorkerIndex][nOffsets[sieveWorkerIndex]++] = index;               \
 					counts[sieveWorkerIndex][index >> _parameters.sieveBits]++;                    \
 				}                                                                                  \
-				for (std::vector<uint64_t>::size_type f(1) ; f < _halfPrimeTupleOffset.size() ; f++) { \
-					if (index < mi[_halfPrimeTupleOffset[f]]) index += p;                          \
-					index -= mi[_halfPrimeTupleOffset[f]];                                         \
+				for (std::vector<uint64_t>::size_type f(1) ; f < _halfConstellationOffsets.size() ; f++) { \
+					if (index < mi[_halfConstellationOffsets[f]]) index += p;                          \
+					index -= mi[_halfConstellationOffsets[f]];                                         \
 					if (index < _parameters.maxIncrements) {                                       \
 						offsets[sieveWorkerIndex][nOffsets[sieveWorkerIndex]++] = index;           \
 						counts[sieveWorkerIndex][index >> _parameters.sieveBits]++;                \
@@ -454,7 +468,7 @@ void Miner::_doPresieveJob(const Job &job) {
 }
 
 void Miner::_processSieve(uint64_t *sieve, uint32_t* offsets, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) {
-	const uint64_t tupleSize(_parameters.primeTupleOffset.size());
+	const uint64_t tupleSize(_parameters.constellationOffsets.size());
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
 	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i++) {
@@ -471,7 +485,7 @@ void Miner::_processSieve(uint64_t *sieve, uint32_t* offsets, const uint64_t fir
 }
 
 void Miner::_processSieve6(uint64_t *sieve, uint32_t* offsets, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 6-tuples by Michael Bell
-	assert(_parameters.primeTupleOffset.size() == 6);
+	assert(_parameters.constellationOffsets.size() == 6);
 	assert((firstPrimeIndex & 1) == 0);
 	assert((lastPrimeIndex  & 1) == 0);
 	xmmreg_t offsetmax;
@@ -527,7 +541,7 @@ void Miner::_doSieveJob(Job job) {
 	std::unique_lock<std::mutex> presieveLock(sieveInstance.presieveLock, std::defer_lock);
 	const uint64_t workIndex(job.workIndex),
 	               iteration(job.sieve.iteration),
-	               tupleSize(_parameters.primeTupleOffset.size());
+	               tupleSize(_parameters.constellationOffsets.size());
 	uint64_t firstPrimeIndex(_parameters.primorialNumber);
 	
 	Job checkJob{Job::Type::Check, workIndex, .check = {}};
@@ -632,7 +646,7 @@ bool Miner::_testPrimesIspc(uint32_t candidateIndexes[maxCandidatesPerCheckJob],
 }
 
 void Miner::_doCheckJob(Job job) {
-	std::vector<uint64_t> tupleCounts(_parameters.primeTupleOffset.size() + 1, 0);
+	std::vector<uint64_t> tupleCounts(_parameters.constellationOffsets.size() + 1, 0);
 	const uint16_t workIndex(job.workIndex);
 	mpz_class candidate, ploop;
 	mpz_mul_ui(ploop.get_mpz_t(), _primorial.get_mpz_t(), job.check.loop*_parameters.sieveSize);
@@ -670,9 +684,9 @@ void Miner::_doCheckJob(Job job) {
 		tupleCounts[tupleLength]++;
 		uint32_t offsetSum(0);
 		// Test primality of the other elements of the tuple if candidate + 0 is prime.
-		for (std::vector<uint64_t>::size_type i(1) ; i < _parameters.primeTupleOffset.size() ; i++) {
-			offsetSum += _parameters.primeTupleOffset[i];
-			mpz_add_ui(candidate.get_mpz_t(), candidate.get_mpz_t(), _parameters.primeTupleOffset[i]);
+		for (std::vector<uint64_t>::size_type i(1) ; i < _parameters.constellationOffsets.size() ; i++) {
+			offsetSum += _parameters.constellationOffsets[i];
+			mpz_add_ui(candidate.get_mpz_t(), candidate.get_mpz_t(), _parameters.constellationOffsets[i]);
 			if (isPrimeFermat(mpz_class(candidate))) {
 				tupleLength++;
 				tupleCounts[tupleLength]++;
@@ -684,7 +698,7 @@ void Miner::_doCheckJob(Job job) {
 			else break;
 		}
 		// If tuple long enough or share, submit
-		if (tupleLength >= _parameters.primeTupleOffset.size() ||
+		if (tupleLength >= _parameters.constellationOffsets.size() ||
 		    (_options->mode() == "Search" && tupleLength >= _parameters.tupleLengthMin) ||
 		    (_options->mode() == "Pool"   && tupleLength >= 4)) {
 			const mpz_class basePrime(candidate - offsetSum);
@@ -769,7 +783,7 @@ void Miner::_manageJobs() {
 			std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " Block " << wd.height << ", average " << FIXED(1) << _statManager.averageBlockTime() << " s, difficulty " << wd.difficulty << std::endl;
 		}
 		// Candidates are in the form a*primorial + primorialOffset. target + remainderPrimorial is the first such number starting from the target.
-		_works[currentWorkIndex].remainderPrimorial = _primorial - (_works[currentWorkIndex].data.target % _primorial) + _parameters.primorialOffsets[0];
+		_works[currentWorkIndex].remainderPrimorial = _primorial - (_works[currentWorkIndex].data.target % _primorial) + _primorialOffsets[0];
 		// Reset Segment Counts and create Presieve Jobs
 		for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
 			for (uint64_t j(0) ; j < _parameters.maxIterations; j++)

@@ -30,27 +30,6 @@ inline std::vector<mpz_class> v64ToVMpz(const std::vector<uint64_t> &v64) {
 	return vMpz;
 }
 
-struct MinerParameters {
-	uint16_t threads;
-	uint8_t tupleLengthMin;
-	uint64_t primorialNumber, primeTableLimit;
-	bool solo, useAvx2;
-	int sieveWorkers;
-	uint64_t sieveBits, sieveSize, sieveWords, maxIncrements, maxIterations;
-	std::vector<uint64_t> primeTupleOffset;
-	std::vector<mpz_class> primorialOffsets;
-	
-	MinerParameters() :
-		threads(8),
-		tupleLengthMin(6),
-		primorialNumber(40), primeTableLimit(2147483648),
-		solo(true), useAvx2(false),
-		sieveWorkers(2),
-		sieveBits(25), sieveSize(1UL << sieveBits), sieveWords(sieveSize/64), maxIncrements(1ULL << 29), maxIterations(maxIncrements/sieveSize),
-		primeTupleOffset(defaultConstellationData[0].first),
-		primorialOffsets(v64ToVMpz(defaultConstellationData[0].second)) {}
-};
-
 constexpr uint32_t maxCandidatesPerCheckJob(64);
 struct Job {
 	enum Type {Dummy, Presieve, Sieve, Check};
@@ -115,7 +94,8 @@ class Miner {
 	mpz_class _primorial;
 	uint64_t _nPrimes, _entriesPerSegment, _primeTestStoreOffsetsSize, _sparseLimit;
 	std::vector<uint64_t> _primes, _modularInverses, _modPrecompute;
-	std::vector<uint64_t> _halfPrimeTupleOffset, _primorialOffsetDiff, _primorialOffsetDiffToFirst;
+	std::vector<mpz_class> _primorialOffsets;
+	std::vector<uint64_t> _halfConstellationOffsets, _primorialOffsetDiff, _primorialOffsetDiffToFirst;
 	// Miner state variables
 	bool _inited, _running;
 	TsQueue<Job> _presieveJobs, _jobs;
@@ -167,11 +147,14 @@ class Miner {
 	}
 	
 	void setClient(const std::shared_ptr<Client> &client) {_client = client;}
-	void start() {
-		init();
+	bool hasAcceptedConstellationOffsets(const std::vector<std::vector<uint64_t>> &acceptedConstellationOffsets) const {
+		return std::find(acceptedConstellationOffsets.begin(), acceptedConstellationOffsets.end(), _parameters.constellationOffsets) != acceptedConstellationOffsets.end();
+	}
+	void start(const MinerParameters &minerParameters) {
+		init(minerParameters);
 		startThreads();
 	}
-	void init();
+	void init(const MinerParameters&);
 	void startThreads();
 	void stop() {
 		if (_running) stopThreads();
@@ -188,7 +171,7 @@ class Miner {
 			statsRecent = statsSinceStart;
 		std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " " << FIXED(2) << statsRecent.cps() << " c/s, r " << statsRecent.r();
 		if (_options->mode() != "Pool") {
-			std::cout << " ; (1-" << _options->constellationType().size() << "t) = " << statsSinceStart.formattedCounts(1);
+			std::cout << " ; (1-" << _parameters.constellationOffsets.size() << "t) = " << statsSinceStart.formattedCounts(1);
 			if (statsRecent.count(1) >= 10)
 				std::cout << " | " << Stats::formattedDuration(statsRecent.estimatedAverageTimeToFindBlock());
 		}
@@ -209,7 +192,7 @@ class Miner {
 	}
 	void printBenchmarkResults() const {
 		Stats stats(_statManager.stats(true));
-		std::cout << stats.duration() << " s elapsed, test finished. " << versionString << ", difficulty " << _options->difficulty() << ", PTL " << _options->primeTableLimit() << std::endl;
+		std::cout << stats.duration() << " s elapsed, test finished. " << versionString << ", difficulty " << _options->difficulty() << ", PTL " << _parameters.primeTableLimit << std::endl;
 		std::cout << "BENCHMARK RESULTS: " << FIXED(6) << stats.cps() << " candidates/s, ratio " << stats.r() << " -> " << stats.estimatedAverageTimeToFindBlock()/86400. << " block(s)/day" << std::endl;
 	}
 	void printTupleStats() const {

@@ -66,6 +66,11 @@ bool BMClient::connect() {
 	}
 }
 
+void BMClient::updateMinerParameters(MinerParameters& minerParameters) const {
+	if (minerParameters.constellationOffsets.size() == 0) // Pick a default pattern if none was chosen
+		minerParameters.constellationOffsets = {0, 2, 4, 2, 4, 6, 2};
+}
+
 WorkData BMClient::workData() const {
 	WorkData wd;
 	wd.bh = _bh;
@@ -101,6 +106,11 @@ bool SearchClient::connect() {
 	}
 }
 
+void SearchClient::updateMinerParameters(MinerParameters& minerParameters) const {
+	if (minerParameters.constellationOffsets.size() == 0) // Pick a default pattern if none was chosen
+		minerParameters.constellationOffsets = {0, 2, 4, 2, 4, 6, 2};
+}
+
 WorkData SearchClient::workData() const {
 	WorkData wd;
 	wd.bh = _bh;
@@ -117,6 +127,7 @@ bool TestClient::_getWork() {
 			_height = 1;
 			_difficulty = 800;
 			_timeBeforeNextBlock = 10;
+			_acceptedConstellationOffsets = {{0, 2, 4, 2, 4}};
 		}
 		if (timeSince(_timer) >= _timeBeforeNextBlock) {
 			_height++;
@@ -125,7 +136,10 @@ bool TestClient::_getWork() {
 			if (_difficulty == 860) {
 				_difficulty = 1600;
 				_timeBeforeNextBlock = 30;
-				return false; // Disconnect simulation
+				if (_acceptedConstellationOffsets == std::vector<std::vector<uint64_t>>{{0, 2, 4, 2, 4}})
+					_acceptedConstellationOffsets = {{0, 2, 4, 2, 4, 6, 2}}; // Fork simulation
+				else
+					return false; // Disconnect simulation
 			}
 			else if (_difficulty > 1600) {
 				_difficulty += 30;
@@ -162,11 +176,19 @@ bool TestClient::connect() {
 	}
 }
 
+void TestClient::updateMinerParameters(MinerParameters& minerParameters) const {
+	if (_acceptedConstellationOffsets.size() == 0)
+		minerParameters.constellationOffsets = {0, 2, 4, 2, 4};
+	else
+		minerParameters.constellationOffsets = _acceptedConstellationOffsets[0];
+}
+
 WorkData TestClient::workData() const {
 	WorkData wd;
 	wd.bh = _bh;
 	wd.height = _connected ? _height : 0;
 	wd.difficulty = decodeCompact(wd.bh.bits);
 	wd.target = wd.bh.target();
+	wd.acceptedConstellationOffsets = _acceptedConstellationOffsets;
 	return wd;
 }

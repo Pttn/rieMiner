@@ -90,6 +90,7 @@ struct BlockHeader {
 // Stores all the information needed for the miner and submissions
 struct WorkData {
 	BlockHeader bh;
+	std::vector<std::vector<uint64_t>> acceptedConstellationOffsets;
 	uint32_t height, difficulty;
 	mpz_class target, result;
 	
@@ -120,6 +121,7 @@ public:
 	Client() : _inited(false) {}
 	Client(const std::shared_ptr<Options> &options) : _inited(true), _connected(false), _curl(curl_easy_init()), _options(options) {}
 	virtual bool connect(); // Returns false on error or if already connected
+	virtual void updateMinerParameters(MinerParameters&) const = 0; // Sets client dependent miner parameters like the Constellation Type
 	virtual void sendWork(const WorkData&) const = 0;  // Send work (share or block) to the sever, depending on the chosen protocol
 	void addSubmission(const WorkData& work) {
 		_submitMutex.lock();
@@ -151,6 +153,7 @@ class BMClient : public Client {
 public:
 	using Client::Client;
 	bool connect();
+	void updateMinerParameters(MinerParameters&) const;
 	void sendWork(const WorkData&) const {} // Ignore blocks found
 	WorkData workData() const;
 	virtual bool getWork(WorkData& wd) {
@@ -171,6 +174,7 @@ class SearchClient : public Client {
 public:
 	using Client::Client;
 	bool connect();
+	void updateMinerParameters(MinerParameters&) const;
 	void sendWork(const WorkData&) const {} // Ignore tuples found (the Miner shows them)
 	WorkData workData() const;
 	virtual uint32_t currentHeight() const {return _connected ? 1 : 0;};
@@ -184,11 +188,13 @@ class TestClient : public Client {
 	uint64_t _requests;
 	std::chrono::time_point<std::chrono::steady_clock> _timer;
 	uint64_t _timeBeforeNextBlock;
+	std::vector<std::vector<uint64_t>> _acceptedConstellationOffsets;
 	bool _getWork();
 	
 public:
 	TestClient(const std::shared_ptr<Options> &options) : Client(options) {_height = 0;}
 	bool connect();
+	void updateMinerParameters(MinerParameters&) const;
 	void sendWork(const WorkData&) const {} // Ignore blocks found
 	WorkData workData() const;
 	virtual bool getWork(WorkData& wd) {

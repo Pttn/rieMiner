@@ -271,6 +271,10 @@ bool StratumClient::connect() {
 	}
 }
 
+void StratumClient::updateMinerParameters(MinerParameters& minerParameters) const {
+	minerParameters.constellationOffsets = {{0, 4, 2, 4, 2, 4}};
+}
+
 void StratumClient::sendWork(const WorkData &share) const {
 	std::ostringstream oss;
 	std::string nonce(mpz_class(share.result - share.target).get_str(16)); // Offset in hexadecimal (usual read order), padded with 0s
@@ -348,6 +352,7 @@ WorkData StratumClient::workData() const {
 	wd.bh          = sd.bh;
 	wd.bh.bits     = invEnd32(wd.bh.bits);
 	wd.difficulty  = decodeCompact(wd.bh.bits);
+	wd.acceptedConstellationOffsets = {{0, 4, 2, 4, 2, 4}};
 	wd.extraNonce1 = sd.extraNonce1;
 	wd.extraNonce2 = sd.extraNonce2;
 	wd.jobId       = sd.jobId;

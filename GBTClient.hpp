@@ -16,7 +16,7 @@ struct GetBlockTemplateData {
 	std::vector<uint8_t> coinbase, // Store Coinbase Transaction here
 	                     scriptPubKey; // Calculated from custom payout address for Coinbase Transaction
 	std::vector<std::string> rules; // From GetBlockTemplate response
-	std::vector<std::vector<uint64_t>> acceptedConstellationTypes;
+	std::vector<std::vector<uint64_t>> acceptedConstellationOffsets;
 	uint64_t constellationSize;
 	
 	GetBlockTemplateData() : coinbasevalue(0), height(0), constellationSize(1) {}
@@ -41,12 +41,6 @@ struct GetBlockTemplateData {
 		}
 		return false;
 	}
-	bool acceptsConstellationType(const std::vector<uint64_t> &constellationType) const {
-		for (const auto &acceptedConstellationType : acceptedConstellationTypes) {
-			if (constellationType == acceptedConstellationType) return true;
-		}
-		return false;
-	}
 };
 
 // Client for the GetBlockTemplate protocol (solo mining)
@@ -60,6 +54,7 @@ class GBTClient : public Client {
 public:
 	using Client::Client;
 	bool connect();
+	void updateMinerParameters(MinerParameters&) const;
 	json_t* sendRPCCall(const std::string&) const; // Send a RPC call to the server and returns the response
 	void sendWork(const WorkData&) const; // Via submitblock
 	WorkData workData() const;

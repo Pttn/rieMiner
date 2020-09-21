@@ -53,6 +53,7 @@ class StratumClient : public Client {
 	public:
 	using Client::Client;
 	bool connect(); // Also sends mining.subscribe
+	void updateMinerParameters(MinerParameters&) const;
 	void sendWork(const WorkData&) const; // Via mining.submit
 	bool process(); // Get data from the server and calls the adequate member function to process it
 	WorkData workData() const;

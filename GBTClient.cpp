@@ -216,7 +216,7 @@ bool GBTClient::_getWork() {
 	_gbtd.bh.bits = invEnd32(reinterpret_cast<uint32_t*>(&bitsTmp)[0]);
 	_gbtd.height = json_integer_value(json_object_get(jsonGbt_Res, "height"));
 	
-	_gbtd.acceptedConstellationTypes = std::vector<std::vector<uint64_t>>();
+	_gbtd.acceptedConstellationOffsets = std::vector<std::vector<uint64_t>>();
 	for (uint16_t i(0) ; i < json_array_size(jsonGbt_Res_Constellations) ; i++) {
 		std::vector<uint64_t> acceptedConstellationType;
 		if (json_array_size(json_array_get(jsonGbt_Res_Constellations, i)) == 0) {
@@ -226,22 +226,9 @@ bool GBTClient::_getWork() {
 		json_t *json_Constellation(json_array_get(jsonGbt_Res_Constellations, i));
 		for (uint16_t j(0) ; j < json_array_size(json_Constellation) ; j++)
 			acceptedConstellationType.push_back(json_integer_value(json_array_get(json_Constellation, j)));
-		_gbtd.acceptedConstellationTypes.push_back(acceptedConstellationType);
+		_gbtd.acceptedConstellationOffsets.push_back(acceptedConstellationType);
 	}
-	if (!_gbtd.acceptsConstellationType(_options->constellationType())) {
-		std::cerr << "The network does not support the miner's constellation type! Accepted constellation types(s):" << std::endl;
-		for (uint16_t i(0) ; i < _gbtd.acceptedConstellationTypes.size() ; i++) {
-			std::cout << " " << i << " - ";
-			for (uint16_t j(0) ; j < _gbtd.acceptedConstellationTypes[i].size() ; j++) {
-				std::cout << _gbtd.acceptedConstellationTypes[i][j];
-				if (j != _gbtd.acceptedConstellationTypes[i].size() - 1) std::cout << ", ";
-			}
-			std::cout << std::endl;
-		}
-		json_decref(jsonGbt);
-		return false;
-	}
-	_gbtd.constellationSize = _gbtd.acceptedConstellationTypes[0].size();
+	_gbtd.constellationSize = _gbtd.acceptedConstellationOffsets[0].size();
 	
 	if (jsonGbt_Res_Dwc != NULL)
 		_gbtd.default_witness_commitment = json_string_value(jsonGbt_Res_Dwc);
@@ -283,6 +270,33 @@ bool GBTClient::connect() {
 	else {
 		std::cout << "Cannot connect because the client was not inited!" << std::endl;
 		return false;
+	}
+}
+
+void GBTClient::updateMinerParameters(MinerParameters& minerParameters) const {
+	const std::vector<std::vector<uint64_t>> acceptedConstellationOffsets(_gbtd.acceptedConstellationOffsets);
+	bool acceptedPattern(false);
+	std::cout << "Accepted constellation offset(s):" << std::endl;
+	if (acceptedConstellationOffsets.size() == 0)
+		std::cout << " None - something went wrong :|" << std::endl;
+	else {
+		for (uint16_t i(0) ; i < acceptedConstellationOffsets.size() ; i++) {
+			std::cout << " " << i << " - ";
+			for (uint16_t j(0) ; j < acceptedConstellationOffsets[i].size() ; j++) {
+				std::cout << acceptedConstellationOffsets[i][j];
+				if (j != acceptedConstellationOffsets[i].size() - 1) std::cout << ", ";
+			}
+			if (acceptedConstellationOffsets[i] == minerParameters.constellationOffsets) {
+				std::cout << " <- chosen";
+				acceptedPattern = true;
+			}
+			std::cout << std::endl;
+		}
+		if (!acceptedPattern) {
+			const uint16_t patternIndex(rand(0, acceptedConstellationOffsets.size() - 1));
+			minerParameters.constellationOffsets = acceptedConstellationOffsets[patternIndex];
+			std::cout << "None or not accepted one specified, choosing a random one: pattern " << patternIndex << std::endl;
+		}
 	}
 }
 
@@ -328,6 +342,7 @@ WorkData GBTClient::workData() const {
 	wd.bh           = gbtd.bh;
 	wd.height       = gbtd.height;
 	wd.difficulty   = decodeCompact(wd.bh.bits);
+	wd.acceptedConstellationOffsets = gbtd.acceptedConstellationOffsets;
 	wd.target       = wd.bh.target();
 	wd.transactions = gbtd.transactions;
 	wd.txCount      = gbtd.txHashes.size();

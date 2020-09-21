@@ -148,7 +148,7 @@ void Options::askConf() {
 		std::cout << "Number of threads: ";
 		std::cin >> value;
 		try {
-			_threads = std::stoi(value);
+			_minerParameters.threads = std::stoi(value);
 			file << "Threads = " << value << std::endl;
 		}
 		catch (...) {
@@ -189,32 +189,32 @@ void Options::loadConf() {
 				else if (key == "Username") _username = value;
 				else if (key == "Password") _password = value;
 				else if (key == "PayoutAddress") setPayoutAddress(value);
-				else if (key == "EnableAVX2") _enableAvx2 = (value == "Yes");
+				else if (key == "EnableAVX2") _minerParameters.useAvx2 = (value == "Yes");
 				else if (key == "Secret!!!") _secret = value;
 				else if (key == "Threads") {
-					try {_threads = std::stoi(value);}
-					catch (...) {_threads = 8;}
+					try {_minerParameters.threads = std::stoi(value);}
+					catch (...) {_minerParameters.threads = 8;}
 				}
 				else if (key == "SieveWorkers") {
-					try {_sieveWorkers = std::stoi(value);}
-					catch (...) {_sieveWorkers = 0;}
+					try {_minerParameters.sieveWorkers = std::stoi(value);}
+					catch (...) {_minerParameters.sieveWorkers = 0;}
 				}
 				else if (key == "PrimeTableLimit") {
-					try {_primeTableLimit = std::stoll(value);}
-					catch (...) {_primeTableLimit = 2147483648;}
-					if (_primeTableLimit < 65536) _primeTableLimit = 65536;
+					try {_minerParameters.primeTableLimit = std::stoll(value);}
+					catch (...) {_minerParameters.primeTableLimit = 2147483648;}
+					if (_minerParameters.primeTableLimit < 65536) _minerParameters.primeTableLimit = 65536;
 				}
 				else if (key == "SieveBits") {
-					try {_sieveBits = std::stoi(value);}
-					catch (...) {_sieveBits = 25;}
+					try {_minerParameters.sieveBits = std::stoi(value);}
+					catch (...) {_minerParameters.sieveBits = 25;}
 				}
 				else if (key == "RefreshInterval") {
 					try {_refreshInterval = std::stoi(value);}
 					catch (...) {_refreshInterval = 10;}
 				}
 				else if (key == "TupleLengthMin") {
-					try {_tupleLengthMin = std::stoi(value);}
-					catch (...) {_tupleLengthMin = 0;}
+					try {_minerParameters.tupleLengthMin = std::stoi(value);}
+					catch (...) {_minerParameters.tupleLengthMin = 0;}
 				}
 				else if (key == "Donate") {
 					try {_donate = std::stoi(value);}
@@ -243,7 +243,7 @@ void Options::loadConf() {
 				}
 				else if (key == "TuplesFile")
 					_tuplesFile = value;
-				else if (key == "ConstellationType") {
+				else if (key == "ConstellationOffsets") {
 					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
 					std::stringstream offsetsSS(value);
 					std::vector<uint64_t> offsets;
@@ -251,12 +251,12 @@ void Options::loadConf() {
 					while (offsetsSS >> tmp) offsets.push_back(tmp);
 					if (offsets.size() < 2)
 						std::cout << "Too short or invalid tuple offsets, ignoring." << std::endl;
-					else _constellationType = offsets;
+					else _minerParameters.constellationOffsets = offsets;
 				}
 				else if (key == "PrimorialNumber") {
-					try {_primorialNumber = std::stoll(value);}
-					catch (...) {_primorialNumber = 40;}
-					if (_primorialNumber < 1) _primorialNumber = 1;
+					try {_minerParameters.primorialNumber = std::stoll(value);}
+					catch (...) {_minerParameters.primorialNumber = 40;}
+					if (_minerParameters.primorialNumber < 1) _minerParameters.primorialNumber = 1;
 				}
 				else if (key == "PrimorialOffsets") {
 					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
@@ -264,12 +264,7 @@ void Options::loadConf() {
 					std::vector<uint64_t> primorialOffsets;
 					uint64_t tmp;
 					while (offsets >> tmp) primorialOffsets.push_back(tmp);
-					if (primorialOffsets.size() < 1)
-						std::cout << "Too short or invalid primorial offsets, ignoring." << std::endl;
-					else {
-						_primorialOffsets = primorialOffsets;
-						_customPrimorialOffsets = true;
-					}
+					_minerParameters.primorialOffsets = primorialOffsets;
 				}
 				else if (key == "Rules") {
 					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
@@ -280,23 +275,6 @@ void Options::loadConf() {
 				}
 				else if (key == "Error") std::cout << "Ignoring invalid line" << std::endl;
 				else std::cout << "Ignoring line with unused key '" << key << "'" << std::endl;
-			}
-		}
-		
-		if (_tupleLengthMin < 1 || _tupleLengthMin > _constellationType.size())
-			_tupleLengthMin = std::max(1ULL, static_cast<uint64_t>(_constellationType.size()) - 1ULL);
-		if (!_customPrimorialOffsets) {
-			bool defaultPrimorialOffsetsFound(false);
-			for (const auto &constellationData : defaultConstellationData) {
-				if (_constellationType == constellationData.first) {
-					_primorialOffsets = constellationData.second;
-					defaultPrimorialOffsetsFound = true;
-					break;
-				}
-			}
-			if (!defaultPrimorialOffsetsFound) {
-				std::cout << "Not hardcoded Constellation Type chosen and no Primorial Offset set. rieMiner cannot continue." << std::endl;
-				exit(0);
 			}
 		}
 		file.close();
@@ -313,15 +291,13 @@ void Options::loadConf() {
 		std::cout << " Block interval: " << _benchmarkBlockInterval << " s" << std::endl;
 		if (_benchmarkTimeLimit != 0) std::cout << " Time limit: " << _benchmarkTimeLimit << " s" << std::endl;
 		if (_benchmark2tupleCountLimit != 0) std::cout << " 2-tuple count limit: " << _benchmark2tupleCountLimit << " 2-tuples" << std::endl;
-		if (_difficulty == 1600 && _primeTableLimit == 2147483648 && _benchmark2tupleCountLimit >= 50000 && _benchmarkTimeLimit == 0)
+		if (_difficulty == 1600 && _minerParameters.primeTableLimit == 2147483648 && _benchmark2tupleCountLimit >= 50000 && _benchmarkTimeLimit == 0)
 			std::cout << " VALID parameters for Standard Benchmark" << std::endl;
 	}
 	else if (_mode == "Search") {
 		mpz_class target(1);
 		target <<= _difficulty - 1;
 		std::cout << "Search Mode at difficulty " << _difficulty << " (numbers around ~" << target.get_str()[0] << "." << target.get_str().substr(1, 2) << "*10^" << target.get_str().size() - 1 << ") - Good luck!" << std::endl;
-		std::cout << "Will show tuples of at least length " << _tupleLengthMin << std::endl;
-		if (_tuplesFile != "None") std::cout << " Will write them to file " << _tuplesFile << std::endl;
 	}
 	else if (_mode == "Test")
 		std::cout << "Test Mode" << std::endl;
@@ -411,7 +387,6 @@ int main(int argc, char** argv) {
 	std::shared_ptr<Options> options(std::make_shared<Options>());
 	options->loadConf();
 	miner = std::make_shared<Miner>(options);
-	miner->init();
 	if (options->mode() == "Solo")
 		client = std::make_shared<GBTClient>(options);
 	else if (options->mode() == "Pool")
@@ -449,6 +424,21 @@ int main(int argc, char** argv) {
 				usleep(1000000*waitReconnect);
 			}
 			else {
+				WorkData wd;
+				client->getWork(wd);
+				if ((options->mode() == "Solo" || options->mode() == "Pool" || options->mode() == "Test") && !miner->hasAcceptedConstellationOffsets(wd.acceptedConstellationOffsets)) {
+					std::cout << "The current constellation type is no longer accepted, restarting the miner." << std::endl;
+					MinerParameters minerParameters(options->minerParameters());
+					miner->stop();
+					minerParameters.primorialOffsets = {};
+					client->updateMinerParameters(minerParameters);
+					miner->init(minerParameters);
+					if (!miner->inited()) {
+						std::cout << "Something went wrong during the miner reinitialization, rieMiner cannot continue." << std::endl;
+						running = false;
+						break;
+					}
+				}
 				if (!miner->running() && client->currentHeight() != 0) {
 					miner->startThreads();
 					timer = std::chrono::steady_clock::now();
@@ -464,7 +454,18 @@ int main(int argc, char** argv) {
 			}
 			else {
 				std::cout << "Success!" << std::endl;
-				usleep(10000);
+				if (!miner->inited()) {
+					MinerParameters minerParameters(options->minerParameters());
+					if (options->mode() == "Solo" || options->mode() == "Pool")
+						client->process();
+					client->updateMinerParameters(minerParameters);
+					miner->init(minerParameters);
+					if (!miner->inited()) {
+						std::cout << "Something went wrong during the miner initialization, rieMiner cannot continue." << std::endl;
+						running = false;
+						break;
+					}
+				}
 			}
 		}
 	}

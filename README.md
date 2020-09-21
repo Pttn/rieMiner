@@ -152,10 +152,6 @@ RefreshInterval = 60
 # For solo mining, there is a developer fee of 1%. Choose how many % you wish to donate between 1 and 99 (only integers!). Default: 2
 Donate = 5
 
-# Which sort of constellation the miner will mine. Currently, Riecoin MainNet accepts '0, 4, 2, 4, 2, 4' constellations, and TestNet '0, 2, 4, 2'. Default: 0, 4, 2, 4, 2, 4
-# Note that the offsets are not cumulative, so '0, 4, 2, 4, 2, 4' corresponds to n + (0, 4, 6, 10, 12, 16).
-# ConstellationType = 0, 2, 4, 2
-
 # Other options
 # Difficulty = 1600
 # TupleLengthMin = 4
@@ -165,7 +161,8 @@ Donate = 5
 # SieveBits = 25
 # SieveWorkers = 0
 # PrimorialNumber = 40
-# PrimorialOffsets = 4209995887, 4209999247, 4210002607, 4210005967, 7452755407, 7452758767, 7452762127, 7452765487, 8145217177, 8145220537, 8145223897, 8145227257
+# ConstellationOffsets = 0, 2, 4, 2, 4, 6, 2
+# PrimorialOffsets = 380284918609481, 437163765888581, 701889794782061, 980125031081081, 1277156391416021, 1487854607298791, 1833994713165731, 2115067287743141, 2325810733931801, 3056805353932061, 3252606350489381, 3360877662097841
 # Debug = 0
 # For solo mining, add consensus rules in the GetBlockTemplate RPC call, each separated by a comma. 'segwit' must be present.
 # Rules = segwit
@@ -192,15 +189,16 @@ It is also possible to use custom configuration file paths, examples:
 
 They can be useful to get better performance depending on your computer.
 
-* EnableAVX2 : by default, AVX2 is disabled, as it may increase the power consumption more than the performance improvements. If your processor supports AVX2, you can choose to take advantage of this instruction set if you wish by setting this option to `Yes`. Do your own testing to find out if it is worth it. AVX2 is known to degrade performance for AMD Ryzens and similar before Zen2 (e. g. 1800X, 1950X, 2700X) and should be left disabled in these cases;
-* SieveBits : size of the segment sieve is 2^SieveBits bits, e.g. 25 means the segment sieve size is 4 MiB. Choose this so that SieveWorkers*2^SieveBits fits in your L3 cache. Default: 25;
-* SieveWorkers : the number of threads to use for sieving. Increasing it may solve some CPU underuse problems, but will use more memory. 0 for choosing automatically based on number of Threads and PrimeTableLimit. Default: 0.
+* EnableAVX2: by default, AVX2 is disabled, as it may increase the power consumption more than the performance improvements. If your processor supports AVX2, you can choose to take advantage of this instruction set if you wish by setting this option to `Yes`. Do your own testing to find out if it is worth it. AVX2 is known to degrade performance for AMD Ryzens and similar before Zen2 (e. g. 1800X, 1950X, 2700X) and should be left disabled in these cases;
+* SieveBits: size of the segment sieve is 2^SieveBits bits, e.g. 25 means the segment sieve size is 4 MiB. Choose this so that SieveWorkers*2^SieveBits fits in your L3 cache. Default: 25;
+* SieveWorkers: the number of threads to use for sieving. Increasing it may solve some CPU underuse problems, but will use more memory. 0 for choosing automatically based on number of Threads and PrimeTableLimit. Default: 0.
 
-These ones should never be modified outside developing purposes and research for now.
+Other options:
 
-* PrimorialNumber : Primorial Number for the Wheel Factorization. Default: 40;
-* PrimorialOffsets : list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConstellationType. Default: see main.hpp source file;
-* Debug : activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, 0 to disable. Other values may introduce some more specific debug messages. Default : 0.
+* PrimorialNumber: Primorial Number for the Wheel Factorization. Default: 40;
+* ConstellationOffsets: which sort of constellations to look for, as offsets separated by commas. Note that they are not cumulative, so '0, 2, 4, 2, 4, 6, 2' corresponds to n + (0, 2, 6, 8, 12, 18, 20). If empty (or not accepted by the server), a valid pattern will be chosen (0, 2, 4, 2, 4, 6, 2 in Search and Benchmark Modes). Default: empty;
+* PrimorialOffsets: list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConstellationOffsets. If empty, a default one will be chosen if possible (see main.hpp source file), otherwise rieMiner will not start (if the chosen constellation offsets are not in main.hpp). Default: empty;
+* Debug: activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, 0 to disable. Other values may introduce some more specific debug messages. Default : 0.
 
 ### Memory problems
 
@@ -295,13 +293,12 @@ The [list of current prime k-tuplets world records](http://anthony.d.forbes.goog
 
 This mode can be used to test the code. It does the following:
 
-* Start at Difficulty 800;
-* Increases it by 10 every 10 s 5 times;
+* Start at Difficulty 800, the first time with constellation offsets 0, 2, 4, 2, 4;
+* Increases Difficulty by 10 every 10 s 5 times;
+* After 10 more seconds, set Difficulty to 1600 and the constellation offsets to 0, 2, 4, 2, 4, 6, 2 (only for the first time) or simulate a disconnect (the other times);
+* Increases Difficulty by 40 after 30 (slightly less the first time) and 20 s;
 * Simulates a disconnect after 10 more seconds;
-* Restart with Difficulty 1600;
-* Increases it by 40 after 30 and 20 s;
-* Simulates another disconnect after 10 more seconds;
-* Repeat.
+* Repeat (keeping the 7-tuple constellation).
 
 ## Miscellaneous
 
