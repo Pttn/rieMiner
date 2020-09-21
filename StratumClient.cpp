@@ -20,6 +20,7 @@ void StratumData::merkleRootGen() {
 }
 
 bool StratumClient::_getWork() {
+	std::lock_guard<std::mutex> lock(_workMutex);
 	bool success(false);
 	json_t *jsonMn(NULL), *jsonMn_params(NULL); // Mining.notify results
 	json_error_t err;
@@ -343,7 +344,8 @@ bool StratumClient::process() {
 	return true;
 }
 
-WorkData StratumClient::workData() const {
+WorkData StratumClient::workData() {
+	std::lock_guard<std::mutex> lock(_workMutex);
 	StratumData sd(_sd);
 	sd.merkleRootGen();
 	

@@ -33,6 +33,7 @@ bool Client::process() {
 }
 
 bool BMClient::_getWork() {
+	std::lock_guard<std::mutex> lock(_workMutex);
 	if (_inited) {
 		if (_height == 0)
 			_height = 1;
@@ -71,7 +72,8 @@ void BMClient::updateMinerParameters(MinerParameters& minerParameters) const {
 		minerParameters.constellationOffsets = {0, 2, 4, 2, 4, 6, 2};
 }
 
-WorkData BMClient::workData() const {
+WorkData BMClient::workData() {
+	std::lock_guard<std::mutex> lock(_workMutex);
 	WorkData wd;
 	wd.bh = _bh;
 	wd.height = _height;
@@ -81,6 +83,7 @@ WorkData BMClient::workData() const {
 }
 
 bool SearchClient::_getWork() {
+	std::lock_guard<std::mutex> lock(_workMutex);
 	if (_inited) {
 		_bh = BlockHeader();
 		_bh.curtime = timeSince(_startTp);
@@ -111,7 +114,8 @@ void SearchClient::updateMinerParameters(MinerParameters& minerParameters) const
 		minerParameters.constellationOffsets = {0, 2, 4, 2, 4, 6, 2};
 }
 
-WorkData SearchClient::workData() const {
+WorkData SearchClient::workData() {
+	std::lock_guard<std::mutex> lock(_workMutex);
 	WorkData wd;
 	wd.bh = _bh;
 	wd.height = _connected ? 1 : 0;
@@ -121,6 +125,7 @@ WorkData SearchClient::workData() const {
 }
 
 bool TestClient::_getWork() {
+	std::lock_guard<std::mutex> lock(_workMutex);
 	if (_inited) {
 		if (_height == 0) {
 			_timer = std::chrono::steady_clock::now();
@@ -183,7 +188,8 @@ void TestClient::updateMinerParameters(MinerParameters& minerParameters) const {
 		minerParameters.constellationOffsets = _acceptedConstellationOffsets[0];
 }
 
-WorkData TestClient::workData() const {
+WorkData TestClient::workData() {
+	std::lock_guard<std::mutex> lock(_workMutex);
 	WorkData wd;
 	wd.bh = _bh;
 	wd.height = _connected ? _height : 0;

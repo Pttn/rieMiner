@@ -111,7 +111,7 @@ class Client {
 protected:
 	bool _inited, _connected;
 	CURL *_curl;
-	std::mutex _submitMutex;
+	std::mutex _workMutex, _submitMutex; // _workMutex prevents _getWork() (called from main() via process())/workData() (called from the miner) concurrency problems
 	std::vector<WorkData> _pendingSubmissions;
 	std::shared_ptr<Options> _options;
 	
@@ -132,7 +132,7 @@ public:
 	bool connected() const {return _connected;}
 	// Using this, the WorkManager will get a ready-to-send work to the miner
 	// In particular, this will do the needed endianness changes or randomizations
-	virtual WorkData workData() const = 0; // If the returned work data has height 0, it is invalid
+	virtual WorkData workData() = 0; // If the returned work data has height 0, it is invalid
 	virtual uint32_t currentHeight() const = 0;
 	virtual uint32_t currentDifficulty() const = 0;
 	virtual bool getWork(WorkData& wd) {
@@ -155,7 +155,7 @@ public:
 	bool connect();
 	void updateMinerParameters(MinerParameters&) const;
 	void sendWork(const WorkData&) const {} // Ignore blocks found
-	WorkData workData() const;
+	WorkData workData();
 	virtual bool getWork(WorkData& wd) {
 		wd = workData();
 		_requests++;
@@ -176,7 +176,7 @@ public:
 	bool connect();
 	void updateMinerParameters(MinerParameters&) const;
 	void sendWork(const WorkData&) const {} // Ignore tuples found (the Miner shows them)
-	WorkData workData() const;
+	WorkData workData();
 	virtual uint32_t currentHeight() const {return _connected ? 1 : 0;};
 	virtual uint32_t currentDifficulty() const {return _options->difficulty();};
 };
@@ -196,7 +196,7 @@ public:
 	bool connect();
 	void updateMinerParameters(MinerParameters&) const;
 	void sendWork(const WorkData&) const {} // Ignore blocks found
-	WorkData workData() const;
+	WorkData workData();
 	virtual bool getWork(WorkData& wd) {
 		wd = workData();
 		_requests++;

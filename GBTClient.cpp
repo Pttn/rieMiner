@@ -169,6 +169,7 @@ json_t* GBTClient::sendRPCCall(const std::string& req) const {
 }
 
 bool GBTClient::_getWork() {
+	std::lock_guard<std::mutex> lock(_workMutex);
 	const std::vector<std::string> rules(_options->rules());
 	std::string req;
 	if (rules.size() == 0) req = "{\"method\": \"getblocktemplate\", \"params\": [], \"id\": 0}\n";
@@ -331,7 +332,8 @@ void GBTClient::sendWork(const WorkData &work) const {
 	if (jsonSb != NULL) json_decref(jsonSb);
 }
 
-WorkData GBTClient::workData() const {
+WorkData GBTClient::workData() {
+	std::lock_guard<std::mutex> lock(_workMutex);
 	GetBlockTemplateData gbtd(_gbtd);
 	gbtd.coinBaseGen(_options->payoutAddressFormat(), _options->secret(), _options->donate());
 	gbtd.transactions = binToHexStr(gbtd.coinbase.data(), gbtd.coinbase.size()) + gbtd.transactions;

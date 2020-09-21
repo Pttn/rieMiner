@@ -56,7 +56,7 @@ class StratumClient : public Client {
 	void updateMinerParameters(MinerParameters&) const;
 	void sendWork(const WorkData&) const; // Via mining.submit
 	bool process(); // Get data from the server and calls the adequate member function to process it
-	WorkData workData() const;
+	WorkData workData();
 	virtual uint32_t currentHeight() const {return _sd.height;}
 	virtual uint32_t currentDifficulty() const {return decodeCompact(invEnd32(_sd.bh.bits));}
 	void printSharesStats() const { // Must be after a Stats::printStats()

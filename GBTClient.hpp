@@ -57,7 +57,7 @@ public:
 	void updateMinerParameters(MinerParameters&) const;
 	json_t* sendRPCCall(const std::string&) const; // Send a RPC call to the server and returns the response
 	void sendWork(const WorkData&) const; // Via submitblock
-	WorkData workData() const;
+	WorkData workData();
 	virtual uint32_t currentHeight() const {return _gbtd.height;}
 	virtual uint32_t currentDifficulty() const {return decodeCompact(_gbtd.bh.bits);}
 };
