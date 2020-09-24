@@ -719,6 +719,9 @@ void Miner::_doCheckJob(Job job) {
 				}
 			}
 			_works[workIndex].data.result = basePrime;
+			_works[workIndex].data.primorialNumber = _parameters.primorialNumber;
+			_works[workIndex].data.primorialFactor = job.check.loop*_parameters.sieveSize + job.check.candidateIndexes[i];
+			_works[workIndex].data.primorialOffset = _parameters.primorialOffsets[job.check.offsetId];
 			_client->addSubmission(_works[workIndex].data);
 		}
 	}

@@ -92,7 +92,11 @@ struct WorkData {
 	BlockHeader bh;
 	std::vector<std::vector<uint64_t>> acceptedConstellationOffsets;
 	uint32_t height, difficulty;
+	int32_t powVersion;
 	mpz_class target, result;
+	// For version 1 PoW; currently rieMiner only makes use of 64 bits (out of respectively 128 and 96)
+	uint16_t primorialNumber;
+	uint64_t primorialFactor, primorialOffset;
 	
 	// For GetBlockTemplate
 	std::string transactions; // Store the concatenation in hex format

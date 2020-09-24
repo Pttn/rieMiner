@@ -194,7 +194,7 @@ bool GBTClient::_getWork() {
 	// Failure to GetBlockTemplate (or invalid response)
 	if (jsonGbt == NULL || jsonGbt_Res == NULL || jsonGbt_Res_Txs == NULL || jsonGbt_Res_Rules == NULL || json_array_size(jsonGbt_Res_Constellations) == 0) {
 		_gbtd = GetBlockTemplateData();
-		std::cerr << "Invalid GetBlockTemplate response!" << std::endl;
+		std::cout << "Invalid GetBlockTemplate response!" << std::endl;
 		if (jsonGbt != NULL) json_decref(jsonGbt);
 		return false;
 	}
@@ -217,6 +217,11 @@ bool GBTClient::_getWork() {
 	_gbtd.bh.bits = invEnd32(reinterpret_cast<uint32_t*>(&bitsTmp)[0]);
 	_gbtd.height = json_integer_value(json_object_get(jsonGbt_Res, "height"));
 	
+	_gbtd.powVersion = json_integer_value(json_object_get(jsonGbt_Res, "powversion"));
+	if (_gbtd.powVersion != -1 && _gbtd.powVersion != 1) {
+		std::cout << "Invalid PoW Version! Ensure that you are using Riecoin Core 0.20.0 beta 1 or later!" << std::endl;
+		return false;
+	}
 	_gbtd.acceptedConstellationOffsets = std::vector<std::vector<uint64_t>>();
 	for (uint16_t i(0) ; i < json_array_size(jsonGbt_Res_Constellations) ; i++) {
 		std::vector<uint64_t> acceptedConstellationType;
@@ -307,9 +312,22 @@ void GBTClient::sendWork(const WorkData &work) const {
 	std::string req;
 	
 	BlockHeader bh(work.bh);
-	mpz_class offset(work.result - work.target);
-	for (uint32_t d(0) ; d < std::min(32/static_cast<uint32_t>(sizeof(mp_limb_t)), static_cast<uint32_t>(offset.get_mpz_t()->_mp_size)) ; d++)
-		*reinterpret_cast<mp_limb_t*>(bh.nOffset + d*sizeof(mp_limb_t)) = offset.get_mpz_t()->_mp_d[d];
+	if (work.powVersion == -1) { // [31-0 Offset]
+		mpz_class offset(work.result - work.target);
+		for (uint32_t d(0) ; d < std::min(32/static_cast<uint32_t>(sizeof(mp_limb_t)), static_cast<uint32_t>(offset.get_mpz_t()->_mp_size)) ; d++)
+			*reinterpret_cast<mp_limb_t*>(bh.nOffset + d*sizeof(mp_limb_t)) = offset.get_mpz_t()->_mp_d[d];
+	}
+	else if (work.powVersion == 1) { // [31-30 Primorial Number|29-14 Primorial Factor|13-2 Primorial Offset|1-0 Reserved/Version]
+		for (uint32_t i(0) ; i < 32 ; i++) bh.nOffset[i] = 0;
+		*reinterpret_cast<uint16_t*>(&bh.nOffset[ 0]) = 2;
+		*reinterpret_cast<uint64_t*>(&bh.nOffset[ 2]) = work.primorialOffset; // Only 64 bits used out of 96
+		*reinterpret_cast<uint64_t*>(&bh.nOffset[14]) = work.primorialFactor; // Only 64 bits used out of 128
+		*reinterpret_cast<uint16_t*>(&bh.nOffset[30]) = work.primorialNumber;
+	}
+	else {
+		ERRORMSG("Invalid PoW Version " << work.powVersion);
+		return;
+	}
 	oss << "{\"method\": \"submitblock\", \"params\": [\"" << v8ToHexStr(bh.toV8());
 	// Using the Variable Length Integer format
 	if (work.txCount < 0xFD)
@@ -344,6 +362,7 @@ WorkData GBTClient::workData() {
 	wd.bh           = gbtd.bh;
 	wd.height       = gbtd.height;
 	wd.difficulty   = decodeCompact(wd.bh.bits);
+	wd.powVersion   = gbtd.powVersion;
 	wd.acceptedConstellationOffsets = gbtd.acceptedConstellationOffsets;
 	wd.target       = wd.bh.target();
 	wd.transactions = gbtd.transactions;

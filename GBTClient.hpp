@@ -16,6 +16,7 @@ struct GetBlockTemplateData {
 	std::vector<uint8_t> coinbase, // Store Coinbase Transaction here
 	                     scriptPubKey; // Calculated from custom payout address for Coinbase Transaction
 	std::vector<std::string> rules; // From GetBlockTemplate response
+	int32_t powVersion;
 	std::vector<std::vector<uint64_t>> acceptedConstellationOffsets;
 	uint64_t constellationSize;
 	
