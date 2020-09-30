@@ -691,7 +691,7 @@ void Miner::_doCheckJob(Job job) {
 				tupleLength++;
 				tupleCounts[tupleLength]++;
 			}
-			else if (_options->mode() == "Pool") {
+			else if (_options->mode() == "Pool" && tupleLength > 1) {
 				int candidatesRemaining(5 - i);
 				if ((tupleLength + candidatesRemaining) < 4) break; // No chance to be a share anymore
 			}
