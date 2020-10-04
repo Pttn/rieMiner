@@ -18,9 +18,8 @@ struct GetBlockTemplateData {
 	std::vector<std::string> rules; // From GetBlockTemplate response
 	int32_t powVersion;
 	std::vector<std::vector<uint64_t>> acceptedConstellationOffsets;
-	uint64_t constellationSize;
 	
-	GetBlockTemplateData() : coinbasevalue(0), height(0), constellationSize(1) {}
+	GetBlockTemplateData() : coinbasevalue(0), height(0) {}
 	void coinBaseGen(const AddressFormat&, const std::string&, uint16_t);
 	std::array<uint8_t, 32> coinBaseHash() const {
 		if (default_witness_commitment.size() > 0) { // For SegWit, hash to get txid rather than just hash the whole Coinbase
@@ -55,7 +54,7 @@ class GBTClient : public Client {
 public:
 	using Client::Client;
 	bool connect();
-	void updateMinerParameters(MinerParameters&) const;
+	void updateMinerParameters(MinerParameters&);
 	json_t* sendRPCCall(const std::string&) const; // Send a RPC call to the server and returns the response
 	void sendWork(const WorkData&) const; // Via submitblock
 	WorkData workData();

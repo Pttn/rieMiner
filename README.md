@@ -1,4 +1,4 @@
-# rieMiner 0.92α1
+# rieMiner 0.92α2
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's [cpuminer-rminerd](https://github.com/gatra/cpuminer-rminerd) and dave-andersen's [fastrie](https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
 
@@ -258,12 +258,7 @@ Please choose a pool that does not already have a lot of mining power to prevent
   * Host = mining.xpoolx.com
   * Port = 2090
   * User = (Riecoin address)
-  * Owner: [xpoolx](https://bitcointalk.org/index.php?action=profile;u=605189) - info@xpoolx.com 
-* [PikaPools](http://ric.pikapools.com/), no account needed
-  * Host = ric.pikapools.com
-  * Port = 5000
-  * User = (Riecoin address)
-  * Owner: [1AndOnlyPika](https://bitcointalk.org/index.php?action=profile;u=2803096)
+  * Owner: [xpoolx](https://bitcointalk.org/index.php?action=profile;u=605189) - info@xpoolx.com
 * [Suprnova](https://ric.suprnova.cc/)
   * Host = ric.suprnova.cc
   * Port = 5000

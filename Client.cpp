@@ -2,6 +2,37 @@
 
 #include "Client.hpp"
 
+std::vector<uint8_t> WorkData::encodedOffset() const {
+	std::vector<uint8_t> nOffset(32, 0);
+	if (powVersion == -1) { // [31-0 Offset]
+		const mpz_class offset(result - target);
+		for (uint32_t l(0) ; l < std::min(32/static_cast<uint32_t>(sizeof(mp_limb_t)), static_cast<uint32_t>(offset.get_mpz_t()->_mp_size)) ; l++)
+			*reinterpret_cast<mp_limb_t*>(nOffset.data() + l*sizeof(mp_limb_t)) = offset.get_mpz_t()->_mp_d[l];
+	}
+	else if (powVersion == 1) { // [31-30 Primorial Number|29-14 Primorial Factor|13-2 Primorial Offset|1-0 Reserved/Version]
+		*reinterpret_cast<uint16_t*>(&nOffset.data()[ 0]) = 2;
+		*reinterpret_cast<uint64_t*>(&nOffset.data()[ 2]) = primorialOffset; // Only 64 bits used out of 96
+		*reinterpret_cast<uint64_t*>(&nOffset.data()[14]) = primorialFactor; // Only 64 bits used out of 128
+		*reinterpret_cast<uint16_t*>(&nOffset.data()[30]) = primorialNumber;
+	}
+	else
+		ERRORMSG("Invalid PoW Version " << powVersion);
+	return nOffset;
+}
+
+void Client::_updateClient() {
+	std::chrono::time_point<std::chrono::steady_clock> timeOutTimer(std::chrono::steady_clock::now());
+	WorkData dummy;
+	while (!getWork(dummy)) { // Poll until valid work data is generated, with 1 s time out
+		process();
+		if (timeSince(timeOutTimer) > 1.) {
+			std::cout << "Unable to get mining data from the Riecoin Server :| !" << std::endl;
+			_connected = false;
+			break;
+		}
+	}
+}
+
 bool Client::connect() {
 	if (_connected) return false;
 	if (_inited) {
@@ -32,6 +63,56 @@ bool Client::process() {
 	}
 }
 
+std::vector<std::vector<uint64_t>> Client::extractAcceptedConstellationOffsets(const json_t* jsonConstellations) {
+	std::vector<std::vector<uint64_t>> acceptedConstellationOffsets;
+	if (json_array_size(jsonConstellations) == 0)
+		return acceptedConstellationOffsets;
+	for (uint16_t i(0) ; i < json_array_size(jsonConstellations) ; i++) {
+		std::vector<uint64_t> acceptedConstellationType;
+		if (json_array_size(json_array_get(jsonConstellations, i)) == 0)
+			return std::vector<std::vector<uint64_t>>();
+		json_t *json_Constellation(json_array_get(jsonConstellations, i));
+		for (uint16_t j(0) ; j < json_array_size(json_Constellation) ; j++)
+			acceptedConstellationType.push_back(json_integer_value(json_array_get(json_Constellation, j)));
+		acceptedConstellationOffsets.push_back(acceptedConstellationType);
+	}
+	return acceptedConstellationOffsets;
+}
+
+std::vector<uint64_t> Client::chooseConstellationOffsets(const std::vector<std::vector<uint64_t>>& acceptedConstellationOffsets, const std::vector<uint64_t>& givenConstellationOffsets) {
+	bool acceptedPattern(false);
+	std::cout << "Accepted constellation offset(s):" << std::endl;
+	if (acceptedConstellationOffsets.size() == 0) {
+		std::cout << " None - something went wrong :|" << std::endl;
+		return {};
+	}
+	else {
+		for (uint16_t i(0) ; i < acceptedConstellationOffsets.size() ; i++) {
+			std::cout << " " << i << " - ";
+			bool compatible(true);
+			for (uint16_t j(0) ; j < acceptedConstellationOffsets[i].size() ; j++) {
+				const auto offset(acceptedConstellationOffsets[i][j]);
+				std::cout << offset;
+				if (j >= givenConstellationOffsets.size() ? true : offset != givenConstellationOffsets[j])
+					compatible = false;
+				if (j != acceptedConstellationOffsets[i].size() - 1) std::cout << ", ";
+			}
+			if (compatible) {
+				std::cout << " <- compatible";
+				acceptedPattern = true;
+			}
+			std::cout << std::endl;
+		}
+		if (!acceptedPattern) {
+			const uint16_t patternIndex(rand(0, acceptedConstellationOffsets.size() - 1));
+			std::cout << "None or not compatible one specified, choosing a random one: pattern " << patternIndex << std::endl;
+			return acceptedConstellationOffsets[patternIndex];
+		}
+		else
+			return givenConstellationOffsets;
+	}
+}
+
 bool BMClient::_getWork() {
 	std::lock_guard<std::mutex> lock(_workMutex);
 	if (_inited) {
@@ -58,6 +139,9 @@ bool BMClient::connect() {
 		_height = 0;
 		_requests = 0;
 		_timer = std::chrono::steady_clock::now();
+		_constellationOffsets = _options->minerParameters().constellationOffsets;
+		if (_constellationOffsets.size() == 0) // Pick a default pattern if none was chosen
+			_constellationOffsets = {0, 2, 4, 2, 4, 6, 2};
 		_connected = true;
 		return true;
 	}
@@ -67,9 +151,8 @@ bool BMClient::connect() {
 	}
 }
 
-void BMClient::updateMinerParameters(MinerParameters& minerParameters) const {
-	if (minerParameters.constellationOffsets.size() == 0) // Pick a default pattern if none was chosen
-		minerParameters.constellationOffsets = {0, 2, 4, 2, 4, 6, 2};
+void BMClient::updateMinerParameters(MinerParameters& minerParameters) {
+	minerParameters.constellationOffsets = _constellationOffsets;
 }
 
 WorkData BMClient::workData() {
@@ -79,6 +162,9 @@ WorkData BMClient::workData() {
 	wd.height = _height;
 	wd.difficulty = decodeCompact(wd.bh.bits);
 	wd.target = wd.bh.target();
+	wd.acceptedConstellationOffsets = {_constellationOffsets};
+	wd.primeCountTarget = _constellationOffsets.size();
+	wd.primeCountMin = wd.primeCountTarget;
 	return wd;
 }
 
@@ -100,6 +186,9 @@ bool SearchClient::connect() {
 	if (_inited) {
 		_startTp = std::chrono::steady_clock::now();
 		_bh = BlockHeader();
+		_constellationOffsets = _options->minerParameters().constellationOffsets;
+		if (_constellationOffsets.size() == 0) // Pick a default pattern if none was chosen
+			_constellationOffsets = {0, 2, 4, 2, 4, 6, 2};
 		_connected = true;
 		return true;
 	}
@@ -109,9 +198,8 @@ bool SearchClient::connect() {
 	}
 }
 
-void SearchClient::updateMinerParameters(MinerParameters& minerParameters) const {
-	if (minerParameters.constellationOffsets.size() == 0) // Pick a default pattern if none was chosen
-		minerParameters.constellationOffsets = {0, 2, 4, 2, 4, 6, 2};
+void SearchClient::updateMinerParameters(MinerParameters& minerParameters) {
+	minerParameters.constellationOffsets = _constellationOffsets;
 }
 
 WorkData SearchClient::workData() {
@@ -121,6 +209,9 @@ WorkData SearchClient::workData() {
 	wd.height = _connected ? 1 : 0;
 	wd.difficulty = decodeCompact(wd.bh.bits);
 	wd.target = wd.bh.target();
+	wd.acceptedConstellationOffsets = {_constellationOffsets};
+	wd.primeCountTarget = _constellationOffsets.size();
+	wd.primeCountMin = wd.primeCountTarget;
 	return wd;
 }
 
@@ -181,7 +272,7 @@ bool TestClient::connect() {
 	}
 }
 
-void TestClient::updateMinerParameters(MinerParameters& minerParameters) const {
+void TestClient::updateMinerParameters(MinerParameters& minerParameters) {
 	if (_acceptedConstellationOffsets.size() == 0)
 		minerParameters.constellationOffsets = {0, 2, 4, 2, 4};
 	else
@@ -196,5 +287,7 @@ WorkData TestClient::workData() {
 	wd.difficulty = decodeCompact(wd.bh.bits);
 	wd.target = wd.bh.target();
 	wd.acceptedConstellationOffsets = _acceptedConstellationOffsets;
+	wd.primeCountTarget = _acceptedConstellationOffsets[0].size();
+	wd.primeCountMin = wd.primeCountTarget;
 	return wd;
 }

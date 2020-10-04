@@ -16,7 +16,9 @@
 struct StratumData {
 	BlockHeader bh;
 	std::vector<std::array<uint8_t, 32>> txHashes;
-	uint32_t height;
+	uint32_t height, sharePrimeCountMin;
+	int32_t powVersion;
+	std::vector<std::vector<uint64_t>> acceptedConstellationOffsets;
 	std::vector<uint8_t> coinbase1, coinbase2;
 	
 	std::vector<std::pair<std::string, std::vector<uint8_t>>> sids; // Subscription Ids
@@ -53,7 +55,7 @@ class StratumClient : public Client {
 	public:
 	using Client::Client;
 	bool connect(); // Also sends mining.subscribe
-	void updateMinerParameters(MinerParameters&) const;
+	void updateMinerParameters(MinerParameters&);
 	void sendWork(const WorkData&) const; // Via mining.submit
 	bool process(); // Get data from the server and calls the adequate member function to process it
 	WorkData workData();

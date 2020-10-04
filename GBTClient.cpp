@@ -219,22 +219,16 @@ bool GBTClient::_getWork() {
 	
 	_gbtd.powVersion = json_integer_value(json_object_get(jsonGbt_Res, "powversion"));
 	if (_gbtd.powVersion != -1 && _gbtd.powVersion != 1) {
-		std::cout << "Invalid PoW Version! Ensure that you are using Riecoin Core 0.20.0 beta 1 or later!" << std::endl;
+		std::cout << "Invalid PoW Version " << _gbtd.powVersion << "!" << std::endl;
+		json_decref(jsonGbt);
 		return false;
 	}
-	_gbtd.acceptedConstellationOffsets = std::vector<std::vector<uint64_t>>();
-	for (uint16_t i(0) ; i < json_array_size(jsonGbt_Res_Constellations) ; i++) {
-		std::vector<uint64_t> acceptedConstellationType;
-		if (json_array_size(json_array_get(jsonGbt_Res_Constellations, i)) == 0) {
-			json_decref(jsonGbt);
-			return false;
-		}
-		json_t *json_Constellation(json_array_get(jsonGbt_Res_Constellations, i));
-		for (uint16_t j(0) ; j < json_array_size(json_Constellation) ; j++)
-			acceptedConstellationType.push_back(json_integer_value(json_array_get(json_Constellation, j)));
-		_gbtd.acceptedConstellationOffsets.push_back(acceptedConstellationType);
+	_gbtd.acceptedConstellationOffsets = Client::extractAcceptedConstellationOffsets(jsonGbt_Res_Constellations);
+	if (_gbtd.acceptedConstellationOffsets.size() == 0) {
+		std::cout << "Empty or invalid accepted constellations offsets list!" << std::endl;
+		json_decref(jsonGbt);
+		return false;
 	}
-	_gbtd.constellationSize = _gbtd.acceptedConstellationOffsets[0].size();
 	
 	if (jsonGbt_Res_Dwc != NULL)
 		_gbtd.default_witness_commitment = json_string_value(jsonGbt_Res_Dwc);
@@ -279,31 +273,9 @@ bool GBTClient::connect() {
 	}
 }
 
-void GBTClient::updateMinerParameters(MinerParameters& minerParameters) const {
-	const std::vector<std::vector<uint64_t>> acceptedConstellationOffsets(_gbtd.acceptedConstellationOffsets);
-	bool acceptedPattern(false);
-	std::cout << "Accepted constellation offset(s):" << std::endl;
-	if (acceptedConstellationOffsets.size() == 0)
-		std::cout << " None - something went wrong :|" << std::endl;
-	else {
-		for (uint16_t i(0) ; i < acceptedConstellationOffsets.size() ; i++) {
-			std::cout << " " << i << " - ";
-			for (uint16_t j(0) ; j < acceptedConstellationOffsets[i].size() ; j++) {
-				std::cout << acceptedConstellationOffsets[i][j];
-				if (j != acceptedConstellationOffsets[i].size() - 1) std::cout << ", ";
-			}
-			if (acceptedConstellationOffsets[i] == minerParameters.constellationOffsets) {
-				std::cout << " <- chosen";
-				acceptedPattern = true;
-			}
-			std::cout << std::endl;
-		}
-		if (!acceptedPattern) {
-			const uint16_t patternIndex(rand(0, acceptedConstellationOffsets.size() - 1));
-			minerParameters.constellationOffsets = acceptedConstellationOffsets[patternIndex];
-			std::cout << "None or not accepted one specified, choosing a random one: pattern " << patternIndex << std::endl;
-		}
-	}
+void GBTClient::updateMinerParameters(MinerParameters& minerParameters) {
+	_updateClient();
+	minerParameters.constellationOffsets = Client::chooseConstellationOffsets(_gbtd.acceptedConstellationOffsets, minerParameters.constellationOffsets);
 }
 
 void GBTClient::sendWork(const WorkData &work) const {
@@ -312,22 +284,8 @@ void GBTClient::sendWork(const WorkData &work) const {
 	std::string req;
 	
 	BlockHeader bh(work.bh);
-	if (work.powVersion == -1) { // [31-0 Offset]
-		mpz_class offset(work.result - work.target);
-		for (uint32_t d(0) ; d < std::min(32/static_cast<uint32_t>(sizeof(mp_limb_t)), static_cast<uint32_t>(offset.get_mpz_t()->_mp_size)) ; d++)
-			*reinterpret_cast<mp_limb_t*>(bh.nOffset + d*sizeof(mp_limb_t)) = offset.get_mpz_t()->_mp_d[d];
-	}
-	else if (work.powVersion == 1) { // [31-30 Primorial Number|29-14 Primorial Factor|13-2 Primorial Offset|1-0 Reserved/Version]
-		for (uint32_t i(0) ; i < 32 ; i++) bh.nOffset[i] = 0;
-		*reinterpret_cast<uint16_t*>(&bh.nOffset[ 0]) = 2;
-		*reinterpret_cast<uint64_t*>(&bh.nOffset[ 2]) = work.primorialOffset; // Only 64 bits used out of 96
-		*reinterpret_cast<uint64_t*>(&bh.nOffset[14]) = work.primorialFactor; // Only 64 bits used out of 128
-		*reinterpret_cast<uint16_t*>(&bh.nOffset[30]) = work.primorialNumber;
-	}
-	else {
-		ERRORMSG("Invalid PoW Version " << work.powVersion);
-		return;
-	}
+	const std::vector<uint8_t> encodedOffset(work.encodedOffset());
+	for (uint32_t i(0) ; i < 32 ; i++) bh.nOffset[i] = encodedOffset[i];
 	oss << "{\"method\": \"submitblock\", \"params\": [\"" << v8ToHexStr(bh.toV8());
 	// Using the Variable Length Integer format
 	if (work.txCount < 0xFD)
@@ -364,6 +322,8 @@ WorkData GBTClient::workData() {
 	wd.difficulty   = decodeCompact(wd.bh.bits);
 	wd.powVersion   = gbtd.powVersion;
 	wd.acceptedConstellationOffsets = gbtd.acceptedConstellationOffsets;
+	wd.primeCountTarget = wd.acceptedConstellationOffsets.size() != 0 ? wd.acceptedConstellationOffsets[0].size() : 1;
+	wd.primeCountMin = wd.primeCountTarget;
 	wd.target       = wd.bh.target();
 	wd.transactions = gbtd.transactions;
 	wd.txCount      = gbtd.txHashes.size();

@@ -10,7 +10,7 @@
 #include <jansson.h>
 #include "main.hpp"
 
-// Blockheader structure (with nOffset and padding), total 896 bits/112 bytes (224 hex chars)
+// Blockheader structure (with nOffset), total 896 bits/112 bytes (224 hex chars)
 constexpr uint64_t zerosBeforeHash(8);
 struct BlockHeader {
 	uint32_t version;
@@ -91,7 +91,7 @@ struct BlockHeader {
 struct WorkData {
 	BlockHeader bh;
 	std::vector<std::vector<uint64_t>> acceptedConstellationOffsets;
-	uint32_t height, difficulty;
+	uint32_t height, difficulty, primeCountTarget, primeCountMin;
 	int32_t powVersion;
 	mpz_class target, result;
 	// For version 1 PoW; currently rieMiner only makes use of 64 bits (out of respectively 128 and 96)
@@ -107,6 +107,7 @@ struct WorkData {
 	std::string jobId;
 	
 	WorkData() : height(0), txCount(0) {}
+	std::vector<uint8_t> encodedOffset() const;
 };
 
 // Abstract class with protocol independent member variables and functions
@@ -120,12 +121,13 @@ protected:
 	std::shared_ptr<Options> _options;
 	
 	virtual bool _getWork() = 0; // Get work (block data,...) from the sever, depending on the chosen protocol
+	void _updateClient(); // For networked clients, ensures that the mining data is set (notably for updateMinerParameters). Disconnects if failure.
 	
 public:
 	Client() : _inited(false) {}
 	Client(const std::shared_ptr<Options> &options) : _inited(true), _connected(false), _curl(curl_easy_init()), _options(options) {}
 	virtual bool connect(); // Returns false on error or if already connected
-	virtual void updateMinerParameters(MinerParameters&) const = 0; // Sets client dependent miner parameters like the Constellation Type
+	virtual void updateMinerParameters(MinerParameters&) = 0; // Sets client dependent miner parameters like the Constellation Offsets
 	virtual void sendWork(const WorkData&) const = 0;  // Send work (share or block) to the sever, depending on the chosen protocol
 	void addSubmission(const WorkData& work) {
 		_submitMutex.lock();
@@ -143,6 +145,10 @@ public:
 		wd = workData();
 		return wd.height != 0;
 	}
+	
+	// Tools for constellation autodetection
+	static std::vector<std::vector<uint64_t>> extractAcceptedConstellationOffsets(const json_t*);
+	static std::vector<uint64_t> chooseConstellationOffsets(const std::vector<std::vector<uint64_t>>&, const std::vector<uint64_t>&);
 };
 
 // For BenchMarking, emulates a client to allow similar conditions to actual mining by providing
@@ -152,12 +158,13 @@ class BMClient : public Client {
 	uint32_t _height;
 	uint64_t _requests;
 	std::chrono::time_point<std::chrono::steady_clock> _timer;
+	std::vector<uint64_t> _constellationOffsets;
 	bool _getWork();
 	
 public:
 	using Client::Client;
 	bool connect();
-	void updateMinerParameters(MinerParameters&) const;
+	void updateMinerParameters(MinerParameters&);
 	void sendWork(const WorkData&) const {} // Ignore blocks found
 	WorkData workData();
 	virtual bool getWork(WorkData& wd) {
@@ -173,12 +180,13 @@ public:
 class SearchClient : public Client {
 	BlockHeader _bh;
 	std::chrono::time_point<std::chrono::steady_clock> _startTp;
+	std::vector<uint64_t> _constellationOffsets;
 	bool _getWork();
 	
 public:
 	using Client::Client;
 	bool connect();
-	void updateMinerParameters(MinerParameters&) const;
+	void updateMinerParameters(MinerParameters&);
 	void sendWork(const WorkData&) const {} // Ignore tuples found (the Miner shows them)
 	WorkData workData();
 	virtual uint32_t currentHeight() const {return _connected ? 1 : 0;};
@@ -198,7 +206,7 @@ class TestClient : public Client {
 public:
 	TestClient(const std::shared_ptr<Options> &options) : Client(options) {_height = 0;}
 	bool connect();
-	void updateMinerParameters(MinerParameters&) const;
+	void updateMinerParameters(MinerParameters&);
 	void sendWork(const WorkData&) const {} // Ignore blocks found
 	WorkData workData();
 	virtual bool getWork(WorkData& wd) {

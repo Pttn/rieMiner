@@ -692,15 +692,13 @@ void Miner::_doCheckJob(Job job) {
 				tupleCounts[tupleLength]++;
 			}
 			else if (_options->mode() == "Pool" && tupleLength > 1) {
-				int candidatesRemaining(5 - i);
-				if ((tupleLength + candidatesRemaining) < 4) break; // No chance to be a share anymore
+				int candidatesRemaining(_works[workIndex].data.primeCountTarget - 1 - i);
+				if ((tupleLength + candidatesRemaining) < _works[workIndex].data.primeCountMin) break; // No chance to be a share anymore
 			}
 			else break;
 		}
 		// If tuple long enough or share, submit
-		if (tupleLength >= _parameters.constellationOffsets.size() ||
-		    (_options->mode() == "Search" && tupleLength >= _parameters.tupleLengthMin) ||
-		    (_options->mode() == "Pool"   && tupleLength >= 4)) {
+		if (tupleLength >= _works[workIndex].data.primeCountMin || (_options->mode() == "Search" && tupleLength >= _parameters.tupleLengthMin)) {
 			const mpz_class basePrime(candidate - offsetSum);
 			std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " " << tupleLength;
 			if (_options->mode() == "Pool")
@@ -772,21 +770,22 @@ void Miner::_doJobs(const uint16_t id) { // Worker Threads run here until the mi
 
 void Miner::_manageJobs() {
 	WorkData wd; // Stores the block's information from the Client
-	uint32_t currentWorkIndex(0), oldHeight(0);
+	_currentWorkIndex = 0;
+	uint32_t oldHeight(0);
 	while (_running && _client->getWork(wd)) {
 		_presieveTime = _presieveTime.zero();
 		_sieveTime = _sieveTime.zero();
 		_verifyTime = _verifyTime.zero();
 		
-		_works[currentWorkIndex].data = wd;
-		const bool isNewHeight(oldHeight != _works[currentWorkIndex].data.height);
+		_works[_currentWorkIndex].data = wd;
+		const bool isNewHeight(oldHeight != _works[_currentWorkIndex].data.height);
 		// Notify when the network found a block
 		if (isNewHeight && oldHeight != 0) {
 			_statManager.newBlock();
 			std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " Block " << wd.height << ", average " << FIXED(1) << _statManager.averageBlockTime() << " s, difficulty " << wd.difficulty << std::endl;
 		}
 		// Candidates are in the form a*primorial + primorialOffset. target + remainderPrimorial is the first such number starting from the target.
-		_works[currentWorkIndex].remainderPrimorial = _primorial - (_works[currentWorkIndex].data.target % _primorial) + _primorialOffsets[0];
+		_works[_currentWorkIndex].remainderPrimorial = _primorial - (_works[_currentWorkIndex].data.target % _primorial) + _primorialOffsets[0];
 		// Reset Segment Counts and create Presieve Jobs
 		for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
 			for (uint64_t j(0) ; j < _parameters.maxIterations; j++)
@@ -798,8 +797,8 @@ void Miner::_manageJobs() {
 		const uint64_t primesPerPresieveJob((_nPrimes - _parameters.primorialNumber)/nPresieveJobs + 1ULL);
 		for (uint64_t start(_parameters.primorialNumber) ; start < _nPrimes ; start += primesPerPresieveJob) {
 			const uint64_t end(std::min(_nPrimes, start + primesPerPresieveJob));
-			_presieveJobs.push_back(Job{Job::Type::Presieve, currentWorkIndex, .presieve = {start, end}});
-			_jobs.push_front(Job{Job::Type::Dummy, currentWorkIndex, {}}); // To ensure a thread wakes up to grab the mod work.
+			_presieveJobs.push_back(Job{Job::Type::Presieve, _currentWorkIndex, .presieve = {start, end}});
+			_jobs.push_front(Job{Job::Type::Dummy, _currentWorkIndex, {}}); // To ensure a thread wakes up to grab the mod work.
 			if (start < _sparseLimit) nRemainingLowPresieveJobs++;
 			else nRemainingHighPresieveJobs++;
 		}
@@ -814,12 +813,12 @@ void Miner::_manageJobs() {
 			else if (jobDoneInfo.type == Job::Type::Check) _works[jobDoneInfo.workIndex].nRemainingCheckJobs--;
 			else ERRORMSG("Unexpected Sieve Job done during Presieving");
 		}
-		assert(_works[currentWorkIndex].nRemainingCheckJobs == 0);
+		assert(_works[_currentWorkIndex].nRemainingCheckJobs == 0);
 		
 		// Create Sieve Jobs
 		for (uint32_t i(0) ; i < static_cast<uint32_t>(_parameters.sieveWorkers) ; i++) {
 			_sieveInstances[i].presieveLock.lock();
-			_jobs.push_front(Job{Job::Type::Sieve, currentWorkIndex, .sieve = {i, 0}});
+			_jobs.push_front(Job{Job::Type::Sieve, _currentWorkIndex, .sieve = {i, 0}});
 		}
 		
 		int nRemainingSieves(_parameters.sieveWorkers);
@@ -843,7 +842,7 @@ void Miner::_manageJobs() {
 		}
 		
 		// Adjust the Remaining Jobs Threshold
-		if (_works[currentWorkIndex].data.height == _client->currentHeight() && !isNewHeight) {
+		if (_works[_currentWorkIndex].data.height == _client->currentHeight() && !isNewHeight) {
 			DBG(std::cout << "Min work outstanding during sieving: " << nRemainingJobsMin << std::endl;);
 			if (remainingJobs > _nRemainingCheckJobsThreshold - _parameters.threads*2) {
 				// If we are acheiving our work target, then adjust it towards the amount
@@ -871,16 +870,16 @@ void Miner::_manageJobs() {
 			DBG(std::cout << "Work target before starting next block now: " << _nRemainingCheckJobsThreshold << std::endl;);
 		}
 		
-		oldHeight = _works[currentWorkIndex].data.height;
+		oldHeight = _works[_currentWorkIndex].data.height;
 		
-		while (_works[currentWorkIndex].nRemainingCheckJobs > _nRemainingCheckJobsThreshold) {
+		while (_works[_currentWorkIndex].nRemainingCheckJobs > _nRemainingCheckJobsThreshold) {
 			const JobDoneInfo jobDoneInfo(_jobsDoneInfos.blocking_pop_front());
 			if (!_running) return;
 			if (jobDoneInfo.type == Job::Type::Check) _works[jobDoneInfo.workIndex].nRemainingCheckJobs--;
 			else ERRORMSG("Expected Check Job done");
 		}
-		currentWorkIndex = (currentWorkIndex + 1) % nWorks;
-		while (_works[currentWorkIndex].nRemainingCheckJobs > 0) {
+		_currentWorkIndex = (_currentWorkIndex + 1) % nWorks;
+		while (_works[_currentWorkIndex].nRemainingCheckJobs > 0) {
 			const JobDoneInfo jobDoneInfo(_jobsDoneInfos.blocking_pop_front());
 			if (!_running) return;
 			if (jobDoneInfo.type == Job::Type::Check) _works[jobDoneInfo.workIndex].nRemainingCheckJobs--;

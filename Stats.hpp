@@ -16,7 +16,7 @@ public:
 	double duration() const {return _duration;}
 	double cps() const {return _duration > 0. ? static_cast<double>(_counts[0])/_duration : 0.;}
 	double r() const {return _counts[1] > 0 ? static_cast<double>(_counts[0])/static_cast<double>(_counts[1]) : 0.;}
-	double estimatedAverageTimeToFindBlock() const {return cps() != 0. ? std::pow(r(), _counts.size() - 1)/cps() : 0.;}
+	double estimatedAverageTimeToFindBlock(const uint64_t primeCountTarget) const {return cps() != 0. ? std::pow(r(), primeCountTarget)/cps() : 0.;}
 	std::string formattedCounts(const uint64_t = 0) const;
 	std::string formattedRates(const uint64_t = 0) const;
 	std::string formattedRatios() const;

@@ -35,7 +35,8 @@ bool StratumClient::_getWork() {
 		}
 		else {
 			const char *jobId, *prevhash, *coinbase1, *coinbase2, *version, *nbits, *ntime;
-			json_t *jsonTxs;
+			int32_t powversion;
+			json_t *jsonTxs, *constellations;
 			
 			jobId     = json_string_value(json_array_get(jsonMn_params, 0));
 			prevhash  = json_string_value(json_array_get(jsonMn_params, 1));
@@ -50,12 +51,15 @@ bool StratumClient::_getWork() {
 				version = json_string_value(json_array_get(jsonMn_params, 5));
 				nbits   = json_string_value(json_array_get(jsonMn_params, 6));
 				ntime   = json_string_value(json_array_get(jsonMn_params, 7));
-				if (jobId == NULL || prevhash == NULL || coinbase1 == NULL || coinbase2 == NULL || version == NULL || nbits == NULL || ntime == NULL) {
-					std::cerr << __func__ << ": missing params in mining.notify!" << std::endl;
+				powversion = json_integer_value(json_array_get(jsonMn_params, 9));
+				constellations = json_array_get(jsonMn_params, 10);
+				if (jobId == NULL || prevhash == NULL || coinbase1 == NULL || coinbase2 == NULL || version == NULL || nbits == NULL || ntime == NULL || powversion == 0 || constellations == NULL) {
+					std::cout << __func__ << ": missing params in mining.notify!" << std::endl;
+					std::cout << "The pool is outdated, please wait for it to upgrade or choose another one." << std::endl;
 					json_decref(jsonMn);
 				}
-				else if (strlen(prevhash) != 64 || strlen(version) != 8 || strlen(nbits) != 8 || strlen(ntime) != 8) {
-					std::cerr << __func__ << ": invalid params in mining.notify!" << std::endl;
+				else if (strlen(prevhash) != 64 || strlen(version) != 8 || strlen(nbits) != 8 || strlen(ntime) != 8 || !json_is_array(constellations)) {
+					std::cout << __func__ << ": invalid params in mining.notify!" << std::endl;
 					json_decref(jsonMn);
 				}
 				else {
@@ -65,6 +69,21 @@ bool StratumClient::_getWork() {
 					hexStrToBin(prevhash, _sd.bh.previousblockhash);
 					hexStrToBin(nbits,    (uint8_t*) &_sd.bh.bits);
 					hexStrToBin(ntime,    (uint8_t*) &_sd.bh.curtime);
+					_sd.powVersion = powversion;
+					if (_sd.powVersion != -1 && _sd.powVersion != 1) {
+						std::cout << __func__ << ": invalid PoW Version " << _sd.powVersion << "!" << std::endl;
+						json_decref(jsonMn);
+						_sd = StratumData();
+						return false;
+					}
+					_sd.acceptedConstellationOffsets = Client::extractAcceptedConstellationOffsets(constellations);
+					if (_sd.acceptedConstellationOffsets.size() == 0) {
+						std::cout << __func__ << ": empty or invalid accepted constellations offsets list!" << std::endl;
+						json_decref(jsonMn);
+						_sd = StratumData();
+						return false;
+					}
+					_sd.sharePrimeCountMin = std::max(static_cast<int>(_sd.acceptedConstellationOffsets[0].size()) - 2, 3);
 					_sd.coinbase1 = hexStrToV8(coinbase1);
 					_sd.coinbase2 = hexStrToV8(coinbase2);
 					_sd.jobId     = jobId;
@@ -272,26 +291,22 @@ bool StratumClient::connect() {
 	}
 }
 
-void StratumClient::updateMinerParameters(MinerParameters& minerParameters) const {
-	minerParameters.constellationOffsets = {{0, 4, 2, 4, 2, 4}};
+void StratumClient::updateMinerParameters(MinerParameters& minerParameters) {
+	_updateClient();
+	minerParameters.constellationOffsets = Client::chooseConstellationOffsets(_sd.acceptedConstellationOffsets, minerParameters.constellationOffsets);
 }
 
 void StratumClient::sendWork(const WorkData &share) const {
 	std::ostringstream oss;
-	std::string nonce(mpz_class(share.result - share.target).get_str(16)); // Offset in hexadecimal (usual read order), padded with 0s
-	if (nonce.size() > 64) {
-		ERRORMSG("The offset is too large");
-		return;
-	}
-	nonce.insert(nonce.begin(), 64 - nonce.size(), '0');
 	const uint64_t curtime(static_cast<uint64_t>(toBEnd32(share.bh.curtime)) << 32ULL);
 	oss << "{\"method\": \"mining.submit\", \"params\": [\""
 	    << _options->username() << "\", \""
 	    << share.jobId << "\", \""
 	    << v8ToHexStr(share.extraNonce2) << "\", \""
 	    << binToHexStr(reinterpret_cast<const uint8_t*>(&curtime), 8) << "\", \""
-	    << nonce << "\"], \"id\":0}\n";
+	    << v8ToHexStr(reverse(share.encodedOffset())) << "\"], \"id\":0}\n";
 	send(_socket, oss.str().c_str(), oss.str().size(), 0);
+	DBG(std::cout << "Sent: " << oss.str(););
 }
 
 bool StratumClient::process() {
@@ -354,7 +369,10 @@ WorkData StratumClient::workData() {
 	wd.bh          = sd.bh;
 	wd.bh.bits     = invEnd32(wd.bh.bits);
 	wd.difficulty  = decodeCompact(wd.bh.bits);
-	wd.acceptedConstellationOffsets = {{0, 4, 2, 4, 2, 4}};
+	wd.powVersion  = sd.powVersion;
+	wd.acceptedConstellationOffsets = sd.acceptedConstellationOffsets;
+	wd.primeCountMin = sd.sharePrimeCountMin;
+	wd.primeCountTarget = wd.acceptedConstellationOffsets.size() != 0 ? wd.acceptedConstellationOffsets[0].size() : 1;
 	wd.extraNonce1 = sd.extraNonce1;
 	wd.extraNonce2 = sd.extraNonce2;
 	wd.jobId       = sd.jobId;

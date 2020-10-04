@@ -94,7 +94,6 @@ void Options::askConf() {
 				std::cout << "Please choose a pool that does not already have a lot of mining power to prevent centralization." << std::endl;
 				std::cout << "Current pools " << std::endl;
 				std::cout << "     XPoolX: mining.xpoolx.com:2090" << std::endl;
-				std::cout << "  PikaPools: ric.pikapools.com:5000" << std::endl;
 				std::cout << "   SuprNova: ric.suprnova.cc:5000" << std::endl;
 				std::cout << "  uBlock.it: mine.ublock.it:5000" << std::endl;
 				std::cout << "Pool address (without port): ";
@@ -424,19 +423,21 @@ int main(int argc, char** argv) {
 				usleep(1000000*waitReconnect);
 			}
 			else {
-				WorkData wd;
-				client->getWork(wd);
-				if ((options->mode() == "Solo" || options->mode() == "Pool" || options->mode() == "Test") && !miner->hasAcceptedConstellationOffsets(wd.acceptedConstellationOffsets)) {
-					std::cout << "The current constellation type is no longer accepted, restarting the miner." << std::endl;
-					MinerParameters minerParameters(options->minerParameters());
-					miner->stop();
-					minerParameters.primorialOffsets = {};
-					client->updateMinerParameters(minerParameters);
-					miner->init(minerParameters);
-					if (!miner->inited()) {
-						std::cout << "Something went wrong during the miner reinitialization, rieMiner cannot continue." << std::endl;
-						running = false;
-						break;
+				if (options->mode() == "Solo" || options->mode() == "Pool" || options->mode() == "Test") {
+					WorkData wd;
+					client->getWork(wd);
+					if (!miner->hasAcceptedConstellationOffsets(wd.acceptedConstellationOffsets)) {
+						std::cout << "The current constellation type is no longer accepted, restarting the miner." << std::endl;
+						MinerParameters minerParameters(options->minerParameters());
+						miner->stop();
+						minerParameters.primorialOffsets = {};
+						client->updateMinerParameters(minerParameters);
+						miner->init(minerParameters);
+						if (!miner->inited()) {
+							std::cout << "Something went wrong during the miner reinitialization, rieMiner cannot continue." << std::endl;
+							running = false;
+							break;
+						}
 					}
 				}
 				if (!miner->running() && client->currentHeight() != 0) {
@@ -456,8 +457,6 @@ int main(int argc, char** argv) {
 				std::cout << "Success!" << std::endl;
 				if (!miner->inited()) {
 					MinerParameters minerParameters(options->minerParameters());
-					if (options->mode() == "Solo" || options->mode() == "Pool")
-						client->process();
 					client->updateMinerParameters(minerParameters);
 					miner->init(minerParameters);
 					if (!miner->inited()) {
