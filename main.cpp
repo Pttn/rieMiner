@@ -201,7 +201,6 @@ void Options::loadConf() {
 				else if (key == "PrimeTableLimit") {
 					try {_minerParameters.primeTableLimit = std::stoll(value);}
 					catch (...) {_minerParameters.primeTableLimit = 2147483648;}
-					if (_minerParameters.primeTableLimit < 65536) _minerParameters.primeTableLimit = 65536;
 				}
 				else if (key == "SieveBits") {
 					try {_minerParameters.sieveBits = std::stoi(value);}
@@ -224,8 +223,7 @@ void Options::loadConf() {
 				else if (key == "Difficulty") {
 					try {_difficulty = std::stoll(value);}
 					catch (...) {_difficulty = 304;}
-					if (_difficulty < 265) _difficulty = 265;
-					else if (_difficulty > 32767) _difficulty = 32767;
+					if (_difficulty < 128) _difficulty = 128;
 				}
 				else if (key == "BenchmarkBlockInterval") {
 					try {_benchmarkBlockInterval = std::stoll(value);}

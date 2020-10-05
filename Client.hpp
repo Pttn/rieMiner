@@ -11,7 +11,7 @@
 #include "main.hpp"
 
 // Blockheader structure (with nOffset), total 896 bits/112 bytes (224 hex chars)
-constexpr uint64_t zerosBeforeHash(8);
+constexpr uint64_t zerosBeforeHash(8ULL);
 struct BlockHeader {
 	uint32_t version;
 	uint8_t  previousblockhash[32]; // 256 bits
@@ -81,8 +81,8 @@ struct BlockHeader {
 			if ((hash[i/8] >> (i % 8)) & 1)
 				target.get_mpz_t()->_mp_d[0]++;
 		}
-		const uint64_t trailingZeros(decodeCompact(bits) - 1 - zerosBeforeHash - 256);
-		target <<= trailingZeros;
+		const uint64_t trailingZeros(decodeCompact(bits) - 1ULL - zerosBeforeHash - 256ULL);
+		target <<= static_cast<uint32_t>(trailingZeros); // For some reason, Gmp dislikes 64 bits numbers (gmp: overflow in mpz type)...
 		return target;
 	}
 };
@@ -154,7 +154,6 @@ public:
 // For BenchMarking, emulates a client to allow similar conditions to actual mining by providing
 // dummy and (mostly) deterministic work at the desired difficulty.
 class BMClient : public Client {
-	BlockHeader _bh;
 	uint32_t _height;
 	uint64_t _requests;
 	std::chrono::time_point<std::chrono::steady_clock> _timer;
@@ -178,10 +177,9 @@ public:
 
 // Client to use in order to break records, or to benchmark without blocks and with randomized work.
 class SearchClient : public Client {
-	BlockHeader _bh;
 	std::chrono::time_point<std::chrono::steady_clock> _startTp;
 	std::vector<uint64_t> _constellationOffsets;
-	bool _getWork();
+	bool _getWork() {return _inited;} // Work is generated in workData
 	
 public:
 	using Client::Client;

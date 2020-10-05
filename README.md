@@ -178,7 +178,7 @@ It is also possible to use custom configuration file paths, examples:
 
 #### Benchmark and Search Modes options
 
-* Difficulty: for Benchmark and Search Modes, sets the difficulty (must be from 265 to 32767). Default: 1600;
+* Difficulty: for Benchmark and Search Modes, sets the difficulty (which is the number of binary digits, it must be at least 128). Default: 1600;
 * TupleLengthMin: for Search Mode, the base prime of tuples of at least this length will be shown. 0 for the length of the constellation type - 1 (default or provided one, minimum 1). Default: 0;
 * BenchmarkBlockInterval: for Benchmark Mode, sets the time between blocks in s. Default: 150;
 * BenchmarkTimeLimit: for Benchmark Mode, sets the testing duration in s. 0 for no time limit. Default: 0;

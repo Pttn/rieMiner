@@ -123,10 +123,6 @@ bool BMClient::_getWork() {
 			_requests = 0;
 			_timer = std::chrono::steady_clock::now();
 		}
-		_bh = BlockHeader();
-		reinterpret_cast<uint64_t*>(&_bh.previousblockhash[0])[0] = _height - 1;
-		reinterpret_cast<uint64_t*>(&_bh.merkleRoot[0])[0] = _requests;
-		_bh.bits = 256*_options->difficulty() + 33554432;
 		return true;
 	}
 	else return false;
@@ -135,7 +131,6 @@ bool BMClient::_getWork() {
 bool BMClient::connect() {
 	if (_connected) return false;
 	if (_inited) {
-		_bh = BlockHeader();
 		_height = 0;
 		_requests = 0;
 		_timer = std::chrono::steady_clock::now();
@@ -158,34 +153,25 @@ void BMClient::updateMinerParameters(MinerParameters& minerParameters) {
 WorkData BMClient::workData() {
 	std::lock_guard<std::mutex> lock(_workMutex);
 	WorkData wd;
-	wd.bh = _bh;
 	wd.height = _height;
-	wd.difficulty = decodeCompact(wd.bh.bits);
-	wd.target = wd.bh.target();
+	wd.difficulty = _options->difficulty();
+	// Target: (in binary) 1 . Height (32 bits) . Requests (32 bits) . (Difficulty - 65) zeros = 2^(Difficulty - 65)(2^64 + 2^32*Height + Requests)
+	wd.target = 1;
+	wd.target <<= 32;
+	wd.target += static_cast<uint32_t>(wd.height);
+	wd.target <<= 32;
+	wd.target += static_cast<uint32_t>(_requests);
+	wd.target <<= (wd.difficulty - 65);
 	wd.acceptedConstellationOffsets = {_constellationOffsets};
 	wd.primeCountTarget = _constellationOffsets.size();
 	wd.primeCountMin = wd.primeCountTarget;
 	return wd;
 }
 
-bool SearchClient::_getWork() {
-	std::lock_guard<std::mutex> lock(_workMutex);
-	if (_inited) {
-		_bh = BlockHeader();
-		_bh.curtime = timeSince(_startTp);
-		for (uint32_t i(0) ; i < 32 ; i++) _bh.previousblockhash[i] = rand(0x00, 0xFF);
-		for (uint32_t i(0) ; i < 32 ; i++) _bh.merkleRoot[i] = rand(0x00, 0xFF);
-		_bh.bits = 256*_options->difficulty() + 33554432;
-		return true;
-	}
-	else return false;
-}
-
 bool SearchClient::connect() {
 	if (_connected) return false;
 	if (_inited) {
 		_startTp = std::chrono::steady_clock::now();
-		_bh = BlockHeader();
 		_constellationOffsets = _options->minerParameters().constellationOffsets;
 		if (_constellationOffsets.size() == 0) // Pick a default pattern if none was chosen
 			_constellationOffsets = {0, 2, 4, 2, 4, 6, 2};
@@ -203,12 +189,18 @@ void SearchClient::updateMinerParameters(MinerParameters& minerParameters) {
 }
 
 WorkData SearchClient::workData() {
-	std::lock_guard<std::mutex> lock(_workMutex);
 	WorkData wd;
-	wd.bh = _bh;
 	wd.height = _connected ? 1 : 0;
-	wd.difficulty = decodeCompact(wd.bh.bits);
-	wd.target = wd.bh.target();
+	wd.difficulty = _options->difficulty();
+	// Target: (in binary) 1 . 96 Random Bits . (Difficulty - 97) zeros = 2^(Difficulty - 1) + 2^(Difficulty - 97)*Random
+	std::vector<uint8_t> random(12);
+	for (auto &byte : random) byte = rand(0x00, 0xFF);
+	wd.target = 1;
+	for (uint8_t i(0) ; i < 3 ; i++) {
+		wd.target <<= 32;
+		wd.target += reinterpret_cast<uint32_t*>(random.data())[2 - i];
+	}
+	wd.target <<= (wd.difficulty - 97);
 	wd.acceptedConstellationOffsets = {_constellationOffsets};
 	wd.primeCountTarget = _constellationOffsets.size();
 	wd.primeCountMin = wd.primeCountTarget;

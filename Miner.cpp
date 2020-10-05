@@ -124,6 +124,10 @@ void Miner::init(const MinerParameters &minerParameters) {
 		_nPrimes = _primes.size();
 	}
 	
+	if (_primes.size() < _parameters.primorialNumber) {
+		std::cout << "The Prime Table is too small, the number of primes must be at least the Primorial Number " << _parameters.primorialNumber << "." << std::endl;
+		return;
+	}
 	mpz_set_ui(_primorial.get_mpz_t(), _primes[0]);
 	for (uint64_t i(1) ; i < _parameters.primorialNumber ; i++)
 		mpz_mul_ui(_primorial.get_mpz_t(), _primorial.get_mpz_t(), _primes[i]);
