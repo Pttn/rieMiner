@@ -59,7 +59,7 @@ public:
 	void sendWork(const WorkData&) const; // Via submitblock
 	WorkData workData();
 	virtual uint32_t currentHeight() const {return _gbtd.height;}
-	virtual uint32_t currentDifficulty() const {return decodeCompact(_gbtd.bh.bits);}
+	virtual double currentDifficulty() const {return decodeBits(_gbtd.bh.bits, _gbtd.powVersion);}
 };
 
 #endif

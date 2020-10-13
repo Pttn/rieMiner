@@ -368,8 +368,8 @@ WorkData StratumClient::workData() {
 	wd.height = sd.height;
 	wd.bh          = sd.bh;
 	wd.bh.bits     = invEnd32(wd.bh.bits);
-	wd.difficulty  = decodeCompact(wd.bh.bits);
 	wd.powVersion  = sd.powVersion;
+	wd.difficulty  = decodeBits(wd.bh.bits, wd.powVersion);
 	wd.acceptedConstellationOffsets = sd.acceptedConstellationOffsets;
 	wd.primeCountMin = sd.sharePrimeCountMin;
 	wd.primeCountTarget = wd.acceptedConstellationOffsets.size() != 0 ? wd.acceptedConstellationOffsets[0].size() : 1;
@@ -380,6 +380,6 @@ WorkData StratumClient::workData() {
 	for (uint8_t i(0) ; i < 8 ; i++) ((uint32_t*) wd.bh.previousblockhash)[i] = toBEnd32(((uint32_t*) wd.bh.previousblockhash)[i]);
 	wd.bh.curtime = toBEnd32(wd.bh.curtime);
 	wd.bh.version = invEnd32(wd.bh.version);
-	wd.target      = wd.bh.target();
+	wd.target      = wd.bh.target(wd.powVersion);
 	return wd;
 }

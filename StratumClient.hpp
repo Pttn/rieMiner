@@ -60,7 +60,7 @@ class StratumClient : public Client {
 	bool process(); // Get data from the server and calls the adequate member function to process it
 	WorkData workData();
 	virtual uint32_t currentHeight() const {return _sd.height;}
-	virtual uint32_t currentDifficulty() const {return decodeCompact(invEnd32(_sd.bh.bits));}
+	virtual double currentDifficulty() const {return decodeBits(invEnd32(_sd.bh.bits), _sd.powVersion);}
 	void printSharesStats() const { // Must be after a Stats::printStats()
 		std::cout << " ; Sh: " << _shares - _rejectedShares << "/" << _shares;
 		if (_shares > 0) std::cout << " (" << FIXED(1) << 100.*((double) _shares - _rejectedShares)/((double) _shares) << "%)";

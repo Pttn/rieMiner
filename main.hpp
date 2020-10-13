@@ -83,7 +83,8 @@ class Options {
 	std::string _host, _username, _password, _mode, _payoutAddress, _secret, _tuplesFile;
 	AddressFormat _payoutAddressFormat;
 	uint16_t _debug, _port, _threads, _refreshInterval, _donate;
-	uint32_t _difficulty, _benchmarkBlockInterval, _benchmarkTimeLimit, _benchmark2tupleCountLimit;
+	double _difficulty;
+	uint32_t _benchmarkBlockInterval, _benchmarkTimeLimit, _benchmark2tupleCountLimit;
 	std::vector<std::string> _rules;
 	
 	void _parseLine(std::string, std::string&, std::string&) const;
@@ -103,7 +104,7 @@ class Options {
 		_port(28332),
 		_refreshInterval(30),
 		_donate(2),
-		_difficulty(1600),
+		_difficulty(1600.),
 		_benchmarkBlockInterval(150),
 		_benchmarkTimeLimit(0),
 		_benchmark2tupleCountLimit(50000),
@@ -125,7 +126,7 @@ class Options {
 	std::string tuplesFile() const {return _tuplesFile;}
 	uint32_t refreshInterval() const {return _refreshInterval;}
 	uint16_t donate() const {return _donate;}
-	uint32_t difficulty() const {return _difficulty;}
+	double difficulty() const {return _difficulty;}
 	uint32_t benchmarkBlockInterval() const {return _benchmarkBlockInterval;}
 	uint32_t benchmarkTimeLimit() const {return _benchmarkTimeLimit;}
 	uint32_t benchmark2tupleCountLimit() const {return _benchmark2tupleCountLimit;}

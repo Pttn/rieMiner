@@ -2,6 +2,17 @@
 
 #include "Client.hpp"
 
+double decodeBits(const uint32_t nBits, const int32_t powVersion) {
+	if (powVersion == -1) { // // Bitcoin Core's arith_uint256::SetCompact for UInt64_Ts (double are exact up to 2^53 for integers)
+		const uint64_t nSize(nBits >> 24), nWord(nBits & 0x007fffff);
+		if (nSize <= 3) return nWord >> (8ULL*(3ULL - nSize));
+		else return nWord << (8ULL*(nSize - 3ULL));
+	}
+	else if (powVersion == 1)
+		return static_cast<double>(nBits)/256.;
+	return 1.;
+}
+
 std::vector<uint8_t> WorkData::encodedOffset() const {
 	std::vector<uint8_t> nOffset(32, 0);
 	if (powVersion == -1) { // [31-0 Offset]
@@ -155,13 +166,16 @@ WorkData BMClient::workData() {
 	WorkData wd;
 	wd.height = _height;
 	wd.difficulty = _options->difficulty();
-	// Target: (in binary) 1 . Height (32 bits) . Requests (32 bits) . (Difficulty - 65) zeros = 2^(Difficulty - 65)(2^64 + 2^32*Height + Requests)
+	const uint64_t difficultyAsInteger(std::round(65536.*wd.difficulty));
+	// Target: (in binary) 1 . Leading Digits L (16 bits) . Height (32 bits) . Requests (32 bits) . (Difficulty - 81) zeros = 2^(Difficulty - 81)(2^80 + 2^64*L + 2^32*Height + Requests)
 	wd.target = 1;
+	wd.target <<= 16;
+	wd.target += static_cast<uint16_t>(std::round(std::pow(2., 16. + static_cast<double>(difficultyAsInteger % 65536)/65536.)) - 65536.);
 	wd.target <<= 32;
 	wd.target += static_cast<uint32_t>(wd.height);
 	wd.target <<= 32;
 	wd.target += static_cast<uint32_t>(_requests);
-	wd.target <<= (wd.difficulty - 65);
+	wd.target <<= (difficultyAsInteger/65536ULL - 81ULL);
 	wd.acceptedConstellationOffsets = {_constellationOffsets};
 	wd.primeCountTarget = _constellationOffsets.size();
 	wd.primeCountMin = wd.primeCountTarget;
@@ -192,13 +206,16 @@ WorkData SearchClient::workData() {
 	WorkData wd;
 	wd.height = _connected ? 1 : 0;
 	wd.difficulty = _options->difficulty();
-	// Target: (in binary) 1 . 96 Random Bits . (Difficulty - 97) zeros = 2^(Difficulty - 1) + 2^(Difficulty - 97)*Random
-	std::vector<uint8_t> random(12);
+	// Target: (in binary) 1 . Leading Digits L (16 bits) . 80 Random Bits . (Difficulty - 97) zeros = 2^(Difficulty - 97)*(2^96 + 2^80*L + Random)
+	const uint64_t difficultyAsInteger(std::round(65536.*wd.difficulty));
+	std::array<uint8_t, 10> random;
 	for (auto &byte : random) byte = rand(0x00, 0xFF);
 	wd.target = 1;
-	for (uint8_t i(0) ; i < 3 ; i++) {
-		wd.target <<= 32;
-		wd.target += reinterpret_cast<uint32_t*>(random.data())[2 - i];
+	wd.target <<= 16;
+	wd.target += static_cast<uint16_t>(std::round(std::pow(2., 16. + static_cast<double>(difficultyAsInteger % 65536)/65536.)) - 65536.);
+	for (uint8_t i(0) ; i < 5 ; i++) {
+		wd.target <<= 16;
+		wd.target += reinterpret_cast<uint16_t*>(random.data())[4 - i];
 	}
 	wd.target <<= (wd.difficulty - 97);
 	wd.acceptedConstellationOffsets = {_constellationOffsets};
@@ -243,7 +260,7 @@ bool TestClient::_getWork() {
 		_bh = BlockHeader();
 		reinterpret_cast<uint64_t*>(&_bh.previousblockhash[0])[0] = _height - 1;
 		reinterpret_cast<uint64_t*>(&_bh.merkleRoot[0])[0] = _requests;
-		_bh.bits = 256*_difficulty + 33554432;
+		_bh.bits = 256*_difficulty;
 		return true;
 	}
 	else return false;
@@ -276,8 +293,9 @@ WorkData TestClient::workData() {
 	WorkData wd;
 	wd.bh = _bh;
 	wd.height = _connected ? _height : 0;
-	wd.difficulty = decodeCompact(wd.bh.bits);
-	wd.target = wd.bh.target();
+	wd.powVersion = 1;
+	wd.difficulty = decodeBits(wd.bh.bits, wd.powVersion);
+	wd.target = wd.bh.target(wd.powVersion);
 	wd.acceptedConstellationOffsets = _acceptedConstellationOffsets;
 	wd.primeCountTarget = _acceptedConstellationOffsets[0].size();
 	wd.primeCountMin = wd.primeCountTarget;

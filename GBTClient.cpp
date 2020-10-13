@@ -296,7 +296,6 @@ void GBTClient::sendWork(const WorkData &work) const {
 	req = oss.str();
 	
 	json_t *jsonSb(sendRPCCall(req)); // SubmitBlock response
-	DBG(std::cout << "Decoded solution: " << bh.decodeSolution() << std::endl;);
 	DBG(std::cout << "Sent: " << req;);
 	if (jsonSb == NULL) std::cerr << "Failure submitting block :|" << std::endl;
 	else {
@@ -319,12 +318,12 @@ WorkData GBTClient::workData() {
 	WorkData wd;
 	wd.bh           = gbtd.bh;
 	wd.height       = gbtd.height;
-	wd.difficulty   = decodeCompact(wd.bh.bits);
 	wd.powVersion   = gbtd.powVersion;
+	wd.difficulty   = decodeBits(wd.bh.bits, wd.powVersion);
 	wd.acceptedConstellationOffsets = gbtd.acceptedConstellationOffsets;
 	wd.primeCountTarget = wd.acceptedConstellationOffsets.size() != 0 ? wd.acceptedConstellationOffsets[0].size() : 1;
 	wd.primeCountMin = wd.primeCountTarget;
-	wd.target       = wd.bh.target();
+	wd.target       = wd.bh.target(wd.powVersion);
 	wd.transactions = gbtd.transactions;
 	wd.txCount      = gbtd.txHashes.size();
 	return wd;

@@ -10,8 +10,9 @@
 #include <jansson.h>
 #include "main.hpp"
 
+double decodeBits(const uint32_t, const int32_t);
+
 // Blockheader structure (with nOffset), total 896 bits/112 bytes (224 hex chars)
-constexpr uint64_t zerosBeforeHash(8ULL);
 struct BlockHeader {
 	uint32_t version;
 	uint8_t  previousblockhash[32]; // 256 bits
@@ -46,21 +47,6 @@ struct BlockHeader {
 		return v8;
 	}
 	
-	// Gives the base prime encoded in the blockheader
-	mpz_class decodeSolution() const {
-		const std::string bhStr(v8ToHexStr(toV8()));
-		const uint32_t diff(decodeCompact(invEnd32(strtol(bhStr.substr(152, 8).c_str(), NULL, 16))));
-		std::vector<uint8_t> SV8(32), XV8, tmp(powHash());
-		for (uint64_t i(0) ; i < 256 ; i++) SV8[i/8] |= (((tmp[i/8] >> (i % 8)) & 1) << (7 - (i % 8)));
-		mpz_class S(v8ToHexStr(SV8).c_str(), 16), target(1);
-		mpz_mul_2exp(S.get_mpz_t(), S.get_mpz_t(), diff - 265);
-		mpz_mul_2exp(target.get_mpz_t(), target.get_mpz_t(), diff - 1);
-		target += S;
-		XV8 = reverse(hexStrToV8(bhStr.substr(160, 64)));
-		mpz_class X(v8ToHexStr(XV8).c_str(), 16);
-		return target + X;
-	}
-	
 	std::vector<uint8_t> powHash() const { // In Riecoin, nBits and nTime need to be swapped before hashing
 		std::vector<uint8_t> bhForPow;
 		for (uint32_t i(0) ; i <  4 ; i++) bhForPow.push_back(reinterpret_cast<const uint8_t*>(&version)[i]);
@@ -72,16 +58,25 @@ struct BlockHeader {
 		return sha256sha256(bhForPow.data(), 80);
 	}
 	
-	mpz_class target() const {
-		mpz_class target(1);
-		target <<= zerosBeforeHash;
+	mpz_class target(const int32_t powVersion) const {
+		uint64_t difficultyIntegerPart(decodeBits(bits, powVersion));
+		mpz_class target;
+		if (powVersion == -1)
+			target = 256;
+		else if (powVersion == 1) {
+			const uint32_t df(bits & 255U);
+			target = 256;
+			target += (10U*df*df*df + 7383U*df*df + 5840720U*df + 3997440U) >> 23U;
+		}
+		else
+			return 0;
 		std::vector<uint8_t> hash(powHash());
 		for (uint64_t i(0) ; i < 256 ; i++) {
 			target <<= 1;
 			if ((hash[i/8] >> (i % 8)) & 1)
 				target.get_mpz_t()->_mp_d[0]++;
 		}
-		const uint64_t trailingZeros(decodeCompact(bits) - 1ULL - zerosBeforeHash - 256ULL);
+		const uint64_t trailingZeros(difficultyIntegerPart - 265ULL);
 		target <<= static_cast<uint32_t>(trailingZeros); // For some reason, Gmp dislikes 64 bits numbers (gmp: overflow in mpz type)...
 		return target;
 	}
@@ -91,7 +86,8 @@ struct BlockHeader {
 struct WorkData {
 	BlockHeader bh;
 	std::vector<std::vector<uint64_t>> acceptedConstellationOffsets;
-	uint32_t height, difficulty, primeCountTarget, primeCountMin;
+	uint32_t height, primeCountTarget, primeCountMin;
+	double difficulty;
 	int32_t powVersion;
 	mpz_class target, result;
 	// For version 1 PoW; currently rieMiner only makes use of 64 bits (out of respectively 128 and 96)
@@ -140,7 +136,7 @@ public:
 	// In particular, this will do the needed endianness changes or randomizations
 	virtual WorkData workData() = 0; // If the returned work data has height 0, it is invalid
 	virtual uint32_t currentHeight() const = 0;
-	virtual uint32_t currentDifficulty() const = 0;
+	virtual double currentDifficulty() const = 0;
 	virtual bool getWork(WorkData& wd) {
 		wd = workData();
 		return wd.height != 0;
@@ -172,7 +168,7 @@ public:
 		return wd.height != 0;
 	}
 	virtual uint32_t currentHeight() const {return _height;};
-	virtual uint32_t currentDifficulty() const {return _options->difficulty();};
+	virtual double currentDifficulty() const {return _options->difficulty();};
 };
 
 // Client to use in order to break records, or to benchmark without blocks and with randomized work.
@@ -188,7 +184,7 @@ public:
 	void sendWork(const WorkData&) const {} // Ignore tuples found (the Miner shows them)
 	WorkData workData();
 	virtual uint32_t currentHeight() const {return _connected ? 1 : 0;};
-	virtual uint32_t currentDifficulty() const {return _options->difficulty();};
+	virtual double currentDifficulty() const {return _options->difficulty();};
 };
 
 // Simulates various network situations to test/debug code.
@@ -213,7 +209,7 @@ public:
 		return wd.height != 0;
 	}
 	virtual uint32_t currentHeight() const {return _connected ? _height : 0;};
-	virtual uint32_t currentDifficulty() const {return _difficulty;};
+	virtual double currentDifficulty() const {return _difficulty;};
 };
 
 #endif

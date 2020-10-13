@@ -56,12 +56,6 @@ inline void hexStrToBin(std::string str, uint8_t* data) {
 	for (uint16_t i(0) ; i < v.size() ; i++) data[i] = v[i];
 }
 
-inline uint64_t decodeCompact(uint32_t nCompact) { // Bitcoin Core's arith_uint256::SetCompact for UInt64_Ts
-	const uint64_t nSize(nCompact >> 24), nWord(nCompact & 0x007fffff);
-	if (nSize <= 3) return nWord >> (8ULL*(3ULL - nSize));
-	else return nWord << (8ULL*(nSize - 3ULL));
-}
-
 // Get address type (P2PKH, P2SH, Bech32), no proper support for Bech32 currently
 AddressFormat addressFormatOf(const std::string&);
 // Convert address to ScriptPubKey used for building the Coinbase Transaction

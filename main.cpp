@@ -221,9 +221,10 @@ void Options::loadConf() {
 					if (_donate > 99) _donate = 99;
 				}
 				else if (key == "Difficulty") {
-					try {_difficulty = std::stoll(value);}
-					catch (...) {_difficulty = 304;}
-					if (_difficulty < 128) _difficulty = 128;
+					try {_difficulty = std::stod(value);}
+					catch (...) {_difficulty = 1600.;}
+					if (_difficulty < 128.) _difficulty = 128.;
+					if (_difficulty > 4294967296.) _difficulty = 4294967296.;
 				}
 				else if (key == "BenchmarkBlockInterval") {
 					try {_benchmarkBlockInterval = std::stoll(value);}
@@ -294,6 +295,8 @@ void Options::loadConf() {
 	else if (_mode == "Search") {
 		mpz_class target(1);
 		target <<= _difficulty - 1;
+		target *= 65536.*std::pow(2., _difficulty - std::floor(_difficulty));
+		target /= 65536;
 		std::cout << "Search Mode at difficulty " << _difficulty << " (numbers around ~" << target.get_str()[0] << "." << target.get_str().substr(1, 2) << "*10^" << target.get_str().size() - 1 << ") - Good luck!" << std::endl;
 	}
 	else if (_mode == "Test")

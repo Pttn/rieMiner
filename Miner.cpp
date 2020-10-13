@@ -251,7 +251,7 @@ void Miner::startThreads() {
 		for (uint16_t i(0) ; i < _parameters.threads ; i++)
 			_workerThreads.push_back(std::thread(&Miner::_doJobs, this, i));
 		std::cout << "-----------------------------------------------------------" << std::endl;
-		std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " Started mining at block " << _client->currentHeight() << ", difficulty " << _client->currentDifficulty() << std::endl;
+		std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " Started mining at block " << _client->currentHeight() << ", difficulty " << FIXED(3) << _client->currentDifficulty() << std::endl;
 	}
 }
 
@@ -786,7 +786,7 @@ void Miner::_manageJobs() {
 		// Notify when the network found a block
 		if (isNewHeight && oldHeight != 0) {
 			_statManager.newBlock();
-			std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " Block " << wd.height << ", average " << FIXED(1) << _statManager.averageBlockTime() << " s, difficulty " << wd.difficulty << std::endl;
+			std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " Block " << wd.height << ", average " << FIXED(1) << _statManager.averageBlockTime() << " s, difficulty " << FIXED(3) << wd.difficulty << std::endl;
 		}
 		// Candidates are in the form a*primorial + primorialOffset. target + remainderPrimorial is the first such number starting from the target.
 		_works[_currentWorkIndex].remainderPrimorial = _primorial - (_works[_currentWorkIndex].data.target % _primorial) + _primorialOffsets[0];
