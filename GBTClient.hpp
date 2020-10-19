@@ -3,8 +3,12 @@
 #ifndef HEADER_GBTClient_hpp
 #define HEADER_GBTClient_hpp
 
+#include <curl/curl.h>
+
 #include "Client.hpp"
 #include "tools.hpp"
+
+std::array<uint8_t, 32> calculateMerkleRoot(const std::vector<std::array<uint8_t, 32>>&);
 
 // Stores the GetBlockTemplate data got from the RPC call
 struct GetBlockTemplateData {
@@ -13,53 +17,51 @@ struct GetBlockTemplateData {
 	std::vector<std::array<uint8_t, 32>> txHashes;
 	uint64_t coinbasevalue;
 	uint32_t height;
-	std::vector<uint8_t> coinbase, // Store Coinbase Transaction here
-	                     scriptPubKey; // Calculated from custom payout address for Coinbase Transaction
-	std::vector<std::string> rules; // From GetBlockTemplate response
-	int32_t powVersion;
-	std::vector<std::vector<uint64_t>> acceptedConstellationOffsets;
+	std::vector<uint8_t> coinbase; // Store Coinbase Transaction here
 	
 	GetBlockTemplateData() : coinbasevalue(0), height(0) {}
-	void coinBaseGen(const AddressFormat&, const std::string&, uint16_t);
-	std::array<uint8_t, 32> coinBaseHash() const {
-		if (default_witness_commitment.size() > 0) { // For SegWit, hash to get txid rather than just hash the whole Coinbase
-			std::vector<uint8_t> coinbase2;
-			for (uint32_t i(0) ; i < 4 ; i++) coinbase2.push_back(coinbase[i]); // nVersion
-			for (uint32_t i(6) ; i < coinbase.size() - 38 ; i++) coinbase2.push_back(coinbase[i]); // txins . txouts
-			for (uint32_t i(coinbase.size() - 4) ; i < coinbase.size() ; i++) coinbase2.push_back(coinbase[i]); // nLockTime
-			return v8ToA8(sha256sha256(coinbase2.data(), coinbase2.size()));
-		}
-		else return v8ToA8(sha256sha256(coinbase.data(), coinbase.size()));
-	}
-	void merkleRootGen() {
-		const std::array<uint8_t, 32> mr(calculateMerkleRoot(txHashes));
-		memcpy(bh.merkleRoot, mr.data(), 32);
-	}
-	bool isActive(const std::string &rule) const {
-		for (uint32_t i(0) ; i < rules.size() ; i++) {
-			if (rules[i] == rule) return true;
-		}
-		return false;
-	}
+	void coinBaseGen(const std::vector<uint8_t>&, const std::string&, uint16_t);
+	std::array<uint8_t, 32> coinbaseTxId() const; // Generate the Coinbase TxId, see https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki#specification
+	void merkleRootGen() {bh.merkleRoot = calculateMerkleRoot(txHashes);}
 };
 
 // Client for the GetBlockTemplate protocol (solo mining)
-class GBTClient : public Client {
+class GBTClient : public NetworkedClient {
+	// Options
+	const std::vector<std::string> _rules;
+	const std::string _url, _credentials, _coinbaseMessage;
+	const uint16_t _donate;
+	const std::vector<uint8_t> _scriptPubKey;
+	// Client State Variables
+	CURL *_curl;
+	std::mutex _submitMutex; // Send results from the main thread rather than a miner one
+	std::vector<Job> _pendingSubmissions;
+	NetworkInfo _info;
 	GetBlockTemplateData _gbtd;
 	
-	std::string _getUserPass() const; // Returns "username:password", for sendRPCCall(...)
-	std::string _getHostPort() const; // Returns "http://host:port/", for sendRPCCall(...)
-	bool _getWork(); // Via getblocktemplate
-	
+	json_t* _sendRPCCall(const std::string&) const; // Send a RPC call to the server and returns the response
+	bool _fetchWork(); // Via getblocktemplate
+	void _submit(const Job& job); // Sends a pending result via submitblock
 public:
-	using Client::Client;
-	bool connect();
-	void updateMinerParameters(MinerParameters&);
-	json_t* sendRPCCall(const std::string&) const; // Send a RPC call to the server and returns the response
-	void sendWork(const WorkData&) const; // Via submitblock
-	WorkData workData();
-	virtual uint32_t currentHeight() const {return _gbtd.height;}
-	virtual double currentDifficulty() const {return decodeBits(_gbtd.bh.bits, _gbtd.powVersion);}
+	GBTClient(const Options &options) :
+		_rules(options.rules()),
+		_url("http://" + options.host() + ":" + std::to_string(options.port()) + "/"),
+		_credentials(options.username() + ":" + options.password()),
+		_coinbaseMessage(options.secret()),
+		_donate(options.donate()),
+		_scriptPubKey(bech32ToScriptPubKey(options.payoutAddress())),
+		_curl(curl_easy_init()),
+		_info{0, {}} {}
+	void connect();
+	NetworkInfo info();
+	void process();
+	bool getJob(Job& job);
+	void handleResult(const Job& job) { // Called by a miner thread, adds result to pending submissions, which will be processed in process() called by the main thread
+		std::lock_guard<std::mutex> lock(_submitMutex);
+		_pendingSubmissions.push_back(job);
+	}
+	uint32_t currentHeight() const {return _gbtd.height;}
+	double currentDifficulty() const {return decodeBits(_gbtd.bh.bits, _info.powVersion);}
 };
 
 #endif

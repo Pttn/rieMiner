@@ -66,7 +66,7 @@ struct MinerParameters {
 	bool useAvx2;
 	int sieveWorkers;
 	uint64_t sieveBits, sieveSize, sieveWords, maxIncrements, maxIterations;
-	std::vector<uint64_t> constellationOffsets, primorialOffsets;
+	std::vector<uint64_t> pattern, primorialOffsets;
 	
 	MinerParameters() :
 		threads(8),
@@ -75,16 +75,15 @@ struct MinerParameters {
 		useAvx2(false),
 		sieveWorkers(0),
 		sieveBits(25), sieveSize(1UL << sieveBits), sieveWords(sieveSize/64), maxIncrements(1ULL << 29), maxIterations(maxIncrements/sieveSize),
-		constellationOffsets({}), primorialOffsets({}) {}
+		pattern{}, primorialOffsets{} {}
 };
 
 class Options {
 	MinerParameters _minerParameters;
 	std::string _host, _username, _password, _mode, _payoutAddress, _secret, _tuplesFile;
-	AddressFormat _payoutAddressFormat;
-	uint16_t _debug, _port, _threads, _refreshInterval, _donate;
-	double _difficulty;
-	uint32_t _benchmarkBlockInterval, _benchmarkTimeLimit, _benchmark2tupleCountLimit;
+	uint16_t _debug, _port, _threads, _donate;
+	double _refreshInterval, _difficulty, _benchmarkBlockInterval, _benchmarkTimeLimit;
+	uint32_t _benchmark2tupleCountLimit;
 	std::vector<std::string> _rules;
 	
 	void _parseLine(std::string, std::string&, std::string&) const;
@@ -98,37 +97,34 @@ class Options {
 		_mode("Benchmark"),
 		_payoutAddress("ric1qpttn5u8u9470za84kt4y0lzz4zllzm4pyzhuge"),
 		_secret("/rM0.92a/"),
-		_tuplesFile("None"),
-		_payoutAddressFormat(AddressFormat::P2PKH),
+		_tuplesFile("Tuples.txt"),
 		_debug(0),
 		_port(28332),
-		_refreshInterval(30),
 		_donate(2),
+		_refreshInterval(30.),
 		_difficulty(1600.),
-		_benchmarkBlockInterval(150),
-		_benchmarkTimeLimit(0),
+		_benchmarkBlockInterval(150.),
+		_benchmarkTimeLimit(0.),
 		_benchmark2tupleCountLimit(50000),
 		_rules{"segwit"} {}
 	
 	void askConf();
 	void loadConf();
 	
-	MinerParameters minerParameters() {return _minerParameters;}
+	MinerParameters minerParameters() const {return _minerParameters;}
 	std::string mode() const {return _mode;}
 	std::string host() const {return _host;}
 	uint16_t port() const {return _port;}
 	std::string username() const {return _username;}
 	std::string password() const {return _password;}
 	std::string payoutAddress() const {return _payoutAddress;}
-	AddressFormat payoutAddressFormat() const {return _payoutAddressFormat;}
-	void setPayoutAddress(const std::string&);
 	std::string secret() const {return _secret;}
 	std::string tuplesFile() const {return _tuplesFile;}
-	uint32_t refreshInterval() const {return _refreshInterval;}
 	uint16_t donate() const {return _donate;}
+	double refreshInterval() const {return _refreshInterval;}
 	double difficulty() const {return _difficulty;}
-	uint32_t benchmarkBlockInterval() const {return _benchmarkBlockInterval;}
-	uint32_t benchmarkTimeLimit() const {return _benchmarkTimeLimit;}
+	double benchmarkBlockInterval() const {return _benchmarkBlockInterval;}
+	double benchmarkTimeLimit() const {return _benchmarkTimeLimit;}
 	uint32_t benchmark2tupleCountLimit() const {return _benchmark2tupleCountLimit;}
 	std::vector<std::string> rules() const {return _rules;}
 };

@@ -128,17 +128,12 @@ void Options::askConf() {
 			_password = value;
 			
 			if (_mode == "Solo") {
-				std::vector<uint8_t> spk;
 				std::cout << "Payout address: ";
-				std::cin >> value;
-				setPayoutAddress(value);
-				if (_payoutAddressFormat == AddressFormat::INVALID) {
-					std::cerr << "Invalid payout address!" << std::endl;
+				std::cin >> _payoutAddress;
+				if (bech32ToScriptPubKey(_payoutAddress).size() == 0) {
+					std::cout << "Invalid payout address!" << std::endl;
 					_stopConfig();
 				}
-				if (_payoutAddressFormat != AddressFormat::BECH32)
-					std::cout << "Non Bech32 addresses are deprecated and their support in rieMiner will be dropped in the 0.92 stable release. Please use a Bech32 payout address." << std::endl;
-				
 				file << "PayoutAddress = " << _payoutAddress << std::endl;
 			}
 		}
@@ -187,7 +182,7 @@ void Options::loadConf() {
 				}
 				else if (key == "Username") _username = value;
 				else if (key == "Password") _password = value;
-				else if (key == "PayoutAddress") setPayoutAddress(value);
+				else if (key == "PayoutAddress") _payoutAddress = value;
 				else if (key == "EnableAVX2") _minerParameters.useAvx2 = (value == "Yes");
 				else if (key == "Secret!!!") _secret = value;
 				else if (key == "Threads") {
@@ -206,10 +201,6 @@ void Options::loadConf() {
 					try {_minerParameters.sieveBits = std::stoi(value);}
 					catch (...) {_minerParameters.sieveBits = 25;}
 				}
-				else if (key == "RefreshInterval") {
-					try {_refreshInterval = std::stoi(value);}
-					catch (...) {_refreshInterval = 10;}
-				}
 				else if (key == "TupleLengthMin") {
 					try {_minerParameters.tupleLengthMin = std::stoi(value);}
 					catch (...) {_minerParameters.tupleLengthMin = 0;}
@@ -220,6 +211,10 @@ void Options::loadConf() {
 					if (_donate == 0) _donate = 1;
 					if (_donate > 99) _donate = 99;
 				}
+				else if (key == "RefreshInterval") {
+					try {_refreshInterval = std::stod(value);}
+					catch (...) {_refreshInterval = 30.;}
+				}
 				else if (key == "Difficulty") {
 					try {_difficulty = std::stod(value);}
 					catch (...) {_difficulty = 1600.;}
@@ -227,13 +222,12 @@ void Options::loadConf() {
 					if (_difficulty > 4294967296.) _difficulty = 4294967296.;
 				}
 				else if (key == "BenchmarkBlockInterval") {
-					try {_benchmarkBlockInterval = std::stoll(value);}
-					catch (...) {_benchmarkBlockInterval = 150;}
-					if (_benchmarkBlockInterval == 0) _benchmarkBlockInterval = 1;
+					try {_benchmarkBlockInterval = std::stod(value);}
+					catch (...) {_benchmarkBlockInterval = 150.;}
 				}
 				else if (key == "BenchmarkTimeLimit") {
-					try {_benchmarkTimeLimit = std::stoll(value);}
-					catch (...) {_benchmarkTimeLimit = 0;}
+					try {_benchmarkTimeLimit = std::stod(value);}
+					catch (...) {_benchmarkTimeLimit = 0.;}
 				}
 				else if (key == "Benchmark2tupleCountLimit") {
 					try {_benchmark2tupleCountLimit = std::stoll(value);}
@@ -241,7 +235,7 @@ void Options::loadConf() {
 				}
 				else if (key == "TuplesFile")
 					_tuplesFile = value;
-				else if (key == "ConstellationOffsets") {
+				else if (key == "ConstellationPattern") {
 					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
 					std::stringstream offsetsSS(value);
 					std::vector<uint64_t> offsets;
@@ -249,7 +243,7 @@ void Options::loadConf() {
 					while (offsetsSS >> tmp) offsets.push_back(tmp);
 					if (offsets.size() < 2)
 						std::cout << "Too short or invalid tuple offsets, ignoring." << std::endl;
-					else _minerParameters.constellationOffsets = offsets;
+					else _minerParameters.pattern = offsets;
 				}
 				else if (key == "PrimorialNumber") {
 					try {_minerParameters.primorialNumber = std::stoll(value);}
@@ -286,18 +280,19 @@ void Options::loadConf() {
 	DBG_VERIFY(std::cout << "Debug verification messages enabled" << std::endl;);
 	if (_mode == "Benchmark") {
 		std::cout << "Benchmark Mode at difficulty " << _difficulty << std::endl;
-		std::cout << " Block interval: " << _benchmarkBlockInterval << " s" << std::endl;
-		if (_benchmarkTimeLimit != 0) std::cout << " Time limit: " << _benchmarkTimeLimit << " s" << std::endl;
+		if (_benchmarkBlockInterval > 0.) std::cout << " Block interval: " << _benchmarkBlockInterval << " s" << std::endl;
+		if (_benchmarkTimeLimit > 0.) std::cout << " Time limit: " << _benchmarkTimeLimit << " s" << std::endl;
 		if (_benchmark2tupleCountLimit != 0) std::cout << " 2-tuple count limit: " << _benchmark2tupleCountLimit << " 2-tuples" << std::endl;
 		if (_difficulty == 1600 && _minerParameters.primeTableLimit == 2147483648 && _benchmark2tupleCountLimit >= 50000 && _benchmarkTimeLimit == 0)
 			std::cout << " VALID parameters for Standard Benchmark" << std::endl;
+		if (_minerParameters.pattern.size() == 0) // Pick a default pattern if none was chosen
+			_minerParameters.pattern = {0, 2, 4, 2, 4, 6, 2};
 	}
 	else if (_mode == "Search") {
-		mpz_class target(1);
-		target <<= _difficulty - 1;
-		target *= 65536.*std::pow(2., _difficulty - std::floor(_difficulty));
-		target /= 65536;
-		std::cout << "Search Mode at difficulty " << _difficulty << " (numbers around ~" << target.get_str()[0] << "." << target.get_str().substr(1, 2) << "*10^" << target.get_str().size() - 1 << ") - Good luck!" << std::endl;
+		const double base10Exp((_difficulty - 1.)*0.301029996);
+		std::cout << "Search Mode at difficulty " << _difficulty << " (numbers around " << std::pow(10., base10Exp - std::floor(base10Exp)) << "*10^" << std::floor(base10Exp) << ") - Good luck!" << std::endl;
+		if (_minerParameters.pattern.size() == 0) // Pick a default pattern if none was chosen
+			_minerParameters.pattern = {0, 2, 4, 2, 4, 6, 2};
 	}
 	else if (_mode == "Test")
 		std::cout << "Test Mode" << std::endl;
@@ -314,39 +309,22 @@ void Options::loadConf() {
 		std::cout << "Password: ..." << std::endl;
 		
 		if (_mode == "Solo") {
-			std::cout << "Payout address: " << _payoutAddress;
-			if (_payoutAddressFormat == AddressFormat::P2PKH) std::cout << " (P2PKH)";
-			else if (_payoutAddressFormat == AddressFormat::P2SH) std::cout << " (P2SH)";
-			else if (_payoutAddressFormat == AddressFormat::BECH32) std::cout << " (Bech32 P2WPKH)";
-			else {
-				std::cout << std::endl << "Invalid or unsupported payout address! Exiting." << std::endl;
-				exit(0);
-			}
-			if (_payoutAddressFormat != AddressFormat::BECH32)
-				std::cout << std::endl << "Non Bech32 addresses are deprecated and their support in rieMiner will be dropped in the 0.92 stable release. Please use a Bech32 payout address.";
-			std::cout << std::endl;
+			std::vector<uint8_t> scriptPubKey(bech32ToScriptPubKey(_payoutAddress));
+			std::cout << "Payout address: " << _payoutAddress << std::endl;
+			if (scriptPubKey.size() == 0)
+				std::cout << "Invalid payout address! Please check it. Note that only Bech32 addresses are supported." << std::endl;
+			else
+				std::cout << "  ScriptPubKey: " << v8ToHexStr(scriptPubKey) << std::endl;
 			if (_donate > 0) std::cout << "Donating " << _donate << "%" << std::endl;
 			else std::cout << "Had fun looking into the source code? If so, consider contributing code!" << std::endl;
-			std::cout << "Consensus rules: ";
-			bool segwitFound(false);
-			for (std::vector<std::string>::size_type i(0) ; i < _rules.size() ; i++) {
-				std::cout << _rules[i];
-				if (_rules[i] == "segwit") segwitFound = true;
-				if (i != _rules.size() - 1) std::cout << ", ";
-			}
-			std::cout << std::endl;
-			if (!segwitFound) {
+			std::cout << "Consensus rules: " << formatContainer(_rules) << std::endl;
+			if (std::find(_rules.begin(), _rules.end(), "segwit") == _rules.end()) {
 				std::cout << "'segwit' rule must be present!" << std::endl;
 				exit(0);
 			}
 		}
 	}
-	std::cout << "Stats refresh interval: " << _refreshInterval << " s" << std::endl;
-}
-
-void Options::setPayoutAddress(const std::string& address) {
-	_payoutAddress = address;
-	_payoutAddressFormat = addressFormatOf(_payoutAddress);
+	if (_refreshInterval > 0.) std::cout << "Stats refresh interval: " << _refreshInterval << " s" << std::endl;
 }
 
 void signalHandler(int signum) {
@@ -384,55 +362,67 @@ int main(int argc, char** argv) {
 		std::cout << "Using custom configuration file path " << confPath << std::endl;
 	}
 	
-	std::shared_ptr<Options> options(std::make_shared<Options>());
-	options->loadConf();
+	Options options;
+	options.loadConf();
 	miner = std::make_shared<Miner>(options);
-	if (options->mode() == "Solo")
+	if (options.mode() == "Solo")
 		client = std::make_shared<GBTClient>(options);
-	else if (options->mode() == "Pool")
+	else if (options.mode() == "Pool")
 		client = std::make_shared<StratumClient>(options);
-	else if (options->mode() == "Search")
+	else if (options.mode() == "Search")
 		client = std::make_shared<SearchClient>(options);
-	else if (options->mode() == "Test")
-		client = std::make_shared<TestClient>(options);
+	else if (options.mode() == "Test")
+		client = std::make_shared<TestClient>();
 	else
 		client = std::make_shared<BMClient>(options);
 	miner->setClient(client);
 	
 	std::chrono::time_point<std::chrono::steady_clock> timer;
-	const uint32_t waitReconnect(10); // Time in s to wait before auto reconnect.
 	running = true;
-	while (running) {
-		if (options->mode() == "Benchmark" && miner->running()) {
-			if (miner->benchmarkFinishedTimeOut() || miner->benchmarkFinished2Tuples()) {
-				miner->printBenchmarkResults();
-				miner->stop();
-				running = false;
-				break;
-			}
-		}
-		
-		if (client->connected()) {
-			if (options->refreshInterval() != 0 && timeSince(timer) > options->refreshInterval() && miner->running()) {
-				miner->printStats();
-				timer = std::chrono::steady_clock::now();
-			}
-			client->process();
-			if (!client->connected()) {
-				std::cout << "Connection lost :|, reconnecting in " << waitReconnect << " s..." << std::endl;
-				miner->stopThreads();
-				usleep(1000000*waitReconnect);
+	if (client->isNetworked()) {
+		const uint32_t waitReconnect(10); // Time in s to wait before auto reconnect.
+		while (running) {
+			if (!std::dynamic_pointer_cast<NetworkedClient>(client)->connected()) {
+				std::cout << "Connecting to Riecoin server..." << std::endl;
+				std::dynamic_pointer_cast<NetworkedClient>(client)->connect();
+				if (!std::dynamic_pointer_cast<NetworkedClient>(client)->connected()) {
+					std::cout << "Failure :| ! Check your connection, configuration or credentials. Retry in " << waitReconnect << " s..." << std::endl;
+					std::this_thread::sleep_for(std::chrono::seconds(waitReconnect));
+				}
+				else {
+					std::cout << "Success!" << std::endl;
+					if (!miner->inited()) {
+						const NetworkInfo networkInfo(std::dynamic_pointer_cast<NetworkedClient>(client)->info());
+						MinerParameters minerParameters(options.minerParameters());
+						minerParameters.pattern = Client::choosePatterns(networkInfo.acceptedPatterns, minerParameters.pattern);
+						miner->init(minerParameters);
+						if (!miner->inited()) {
+							std::cout << "Something went wrong during the miner initialization, rieMiner cannot continue." << std::endl;
+							running = false;
+							break;
+						}
+					}
+				}
 			}
 			else {
-				if (options->mode() == "Solo" || options->mode() == "Pool" || options->mode() == "Test") {
-					WorkData wd;
-					client->getWork(wd);
-					if (!miner->hasAcceptedConstellationOffsets(wd.acceptedConstellationOffsets)) {
+				if (options.refreshInterval() > 0. && timeSince(timer) > options.refreshInterval() && miner->running()) {
+					miner->printStats();
+					timer = std::chrono::steady_clock::now();
+				}
+				client->process();
+				if (!std::dynamic_pointer_cast<NetworkedClient>(client)->connected()) {
+					std::cout << "Connection lost :|, reconnecting in " << waitReconnect << " s..." << std::endl;
+					miner->stopThreads();
+					std::this_thread::sleep_for(std::chrono::seconds(waitReconnect));
+				}
+				else {
+					const NetworkInfo networkInfo(std::dynamic_pointer_cast<NetworkedClient>(client)->info());
+					if (!miner->hasAcceptedPatterns(networkInfo.acceptedPatterns)) {
 						std::cout << "The current constellation type is no longer accepted, restarting the miner." << std::endl;
-						MinerParameters minerParameters(options->minerParameters());
 						miner->stop();
-						minerParameters.primorialOffsets = {};
-						client->updateMinerParameters(minerParameters);
+						const NetworkInfo networkInfo(std::dynamic_pointer_cast<NetworkedClient>(client)->info());
+						MinerParameters minerParameters(options.minerParameters());
+						minerParameters.pattern = Client::choosePatterns(networkInfo.acceptedPatterns, minerParameters.pattern);
 						miner->init(minerParameters);
 						if (!miner->inited()) {
 							std::cout << "Something went wrong during the miner reinitialization, rieMiner cannot continue." << std::endl;
@@ -440,35 +430,39 @@ int main(int argc, char** argv) {
 							break;
 						}
 					}
-				}
-				if (!miner->running() && client->currentHeight() != 0) {
-					miner->startThreads();
-					timer = std::chrono::steady_clock::now();
-				}
-				usleep(10000);
-			}
-		}
-		else {
-			std::cout << "Connecting to Riecoin server..." << std::endl;
-			if (!client->connect()) {
-				std::cout << "Failure :| ! Check your connection, configuration or credentials. Retry in " << waitReconnect << " s..." << std::endl;
-				usleep(1000000*waitReconnect);
-			}
-			else {
-				std::cout << "Success!" << std::endl;
-				if (!miner->inited()) {
-					MinerParameters minerParameters(options->minerParameters());
-					client->updateMinerParameters(minerParameters);
-					miner->init(minerParameters);
-					if (!miner->inited()) {
-						std::cout << "Something went wrong during the miner initialization, rieMiner cannot continue." << std::endl;
-						running = false;
-						break;
+					if (!miner->running() && client->currentHeight() != 0) {
+						miner->startThreads();
+						timer = std::chrono::steady_clock::now();
 					}
+					std::this_thread::sleep_for(std::chrono::milliseconds(10));
 				}
 			}
 		}
 	}
-	
+	else {
+		miner->init(options.minerParameters());
+		if (!miner->inited()) {
+			std::cout << "Something went wrong during the miner initialization, rieMiner cannot continue." << std::endl;
+			running = false;
+		}
+		miner->startThreads();
+		timer = std::chrono::steady_clock::now();
+		while (running) {
+			if (options.mode() == "Benchmark" && miner->running()) {
+				if (miner->benchmarkFinishedTimeOut(options.benchmarkTimeLimit()) || miner->benchmarkFinished2Tuples(options.benchmark2tupleCountLimit())) {
+					miner->printBenchmarkResults();
+					miner->stop();
+					running = false;
+					break;
+				}
+			}
+			if (options.refreshInterval() > 0. && timeSince(timer) > options.refreshInterval() && miner->running()) {
+				miner->printStats();
+				timer = std::chrono::steady_clock::now();
+			}
+			client->process();
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		}
+	}
 	return 0;
 }

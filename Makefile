@@ -2,7 +2,7 @@ CXX    = g++
 M4     = m4
 AS     = as
 SED    = sed
-CFLAGS = -Wall -Wextra -std=gnu++11 -O3 -march=native -fno-pie -no-pie
+CFLAGS = -Wall -Wextra -std=c++17 -O3 -s -march=native -fno-pie -no-pie
 
 msys_version := $(if $(findstring Msys, $(shell uname -o)),$(word 1, $(subst ., ,$(shell uname -r))),0)
 ifneq ($(msys_version), 0)
@@ -15,7 +15,7 @@ endif
 
 all: rieMiner
 
-debug: CFLAGS += -g
+debug: CFLAGS = -Wall -Wextra -std=c++17 -O3 -g -march=native -fno-pie -no-pie
 debug: rieMiner
 
 static: CFLAGS += -D CURL_STATICLIB -I incs/

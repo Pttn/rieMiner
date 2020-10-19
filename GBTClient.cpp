@@ -3,7 +3,30 @@
 #include "GBTClient.hpp"
 #include "main.hpp"
 
-void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const std::string &cbMsg, uint16_t donationPercent) {
+std::array<uint8_t, 32> calculateMerkleRoot(const std::vector<std::array<uint8_t, 32>> &txHashes) {
+	std::array<uint8_t, 32> merkleRoot{};
+	if (txHashes.size() == 0)
+		ERRORMSG("No transaction to hash");
+	else if (txHashes.size() == 1)
+		return txHashes[0];
+	else {
+		std::vector<std::array<uint8_t, 32>> txHashes2;
+		for (uint32_t i(0) ; i < txHashes.size() ; i += 2) {
+			std::array<uint8_t, 64> concat;
+			std::copy(txHashes[i].begin(), txHashes[i].end(), concat.begin());
+			if (i == txHashes.size() - 1) // Concatenation of the last element with itself for an odd number of transactions
+				std::copy(txHashes[i].begin(), txHashes[i].end(), concat.begin() + 32);
+			else
+				std::copy(txHashes[i + 1].begin(), txHashes[i + 1].end(), concat.begin() + 32);
+			txHashes2.push_back(sha256sha256(concat.data(), 64));
+		}
+		// Process the next step
+		merkleRoot = calculateMerkleRoot(txHashes2);
+	}
+	return merkleRoot;
+}
+
+void GetBlockTemplateData::coinBaseGen(const std::vector<uint8_t> &scriptPubKey, const std::string &cbMsg, uint16_t donationPercent) {
 	coinbase = std::vector<uint8_t>();
 	std::vector<uint8_t> scriptSig;
 	const std::vector<uint8_t> dwc(hexStrToV8(default_witness_commitment)); // for SegWit
@@ -55,7 +78,7 @@ void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const
 	// Input Sequence (FFFFFFFF)
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0xFF);
 	
-	std::vector<uint8_t> scriptPubKeyDon(hexStrToV8("0ad73a70fc2d7cf174f5b2ea47fc42a8bff16ea1"));
+	const std::vector<uint8_t> scriptPubKeyDon(hexStrToV8("00140ad73a70fc2d7cf174f5b2ea47fc42a8bff16ea1"));
 	uint64_t donation(donationPercent*coinbasevalue/100);
 	if (scriptPubKey == scriptPubKeyDon) donation = 0;
 	uint64_t reward(coinbasevalue - donation);
@@ -69,41 +92,14 @@ void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const
 		reward /= 256;
 	}
 	
-	if (addressFormat == AddressFormat::P2SH) {
-		coinbase.push_back(scriptPubKey.size() + 3); // Output Length
-		coinbase.push_back(0xA9); // OP_HASH160
-		coinbase.push_back(0x14); // Bytes Pushed on Stack
-	}
-	else if (addressFormat == AddressFormat::BECH32) {
-		coinbase.push_back(scriptPubKey.size() + 2); // Output Length
-		coinbase.push_back(0x00); // OP_0
-		coinbase.push_back(scriptPubKey.size()); // Script Length
-	}
-	else {
-		coinbase.push_back(scriptPubKey.size() + 5); // Output Length
-		coinbase.push_back(0x76); // OP_DUP
-		coinbase.push_back(0xA9); // OP_HASH160
-		coinbase.push_back(0x14); // Bytes Pushed on Stack
-	}
-	// ScriptPubKey (for payout address)
-	coinbase.insert(coinbase.end(), scriptPubKey.begin(), scriptPubKey.end());
-	if (addressFormat == AddressFormat::P2SH)
-		coinbase.push_back(0x87); // OP_EQUAL
-	else if (addressFormat == AddressFormat::P2PKH) {
-		coinbase.push_back(0x88); // OP_EQUALVERIFY
-		coinbase.push_back(0xAC); // OP_CHECKSIG
-	}
-	
-	// Donation output
-	if (donation != 0) {
-		// Output Value
-		for (uint32_t i(0) ; i < 8 ; i++) {
+	coinbase.push_back(scriptPubKey.size()); // Output/ScriptPubKey Length
+	coinbase.insert(coinbase.end(), scriptPubKey.begin(), scriptPubKey.end()); // ScriptPubKey (for payout address)
+	if (donation != 0) { // Donation output
+		for (uint32_t i(0) ; i < 8 ; i++) { // Output Value
 			coinbase.push_back(donation % 256);
 			donation /= 256;
 		}
-		coinbase.push_back(scriptPubKeyDon.size() + 2); // Output Length
-		coinbase.push_back(0x00); // OP_0
-		coinbase.push_back(scriptPubKeyDon.size()); // Script Length
+		coinbase.push_back(scriptPubKeyDon.size());
 		coinbase.insert(coinbase.end(), scriptPubKeyDon.begin(), scriptPubKeyDon.end());
 	}
 	
@@ -124,127 +120,102 @@ void GetBlockTemplateData::coinBaseGen(const AddressFormat &addressFormat, const
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0);
 }
 
-std::string GBTClient::_getUserPass() const {
-	std::ostringstream oss;
-	oss << _options->username() << ":" << _options->password();
-	return oss.str();
-}
-
-std::string GBTClient::_getHostPort() const {
-	std::ostringstream oss;
-	oss << "http://" << _options->host() << ":" << _options->port() << "/";
-	return oss.str();
+std::array<uint8_t, 32> GetBlockTemplateData::coinbaseTxId() const {
+	std::vector<uint8_t> coinbase2;
+	for (uint32_t i(0) ; i < 4 ; i++) coinbase2.push_back(coinbase[i]); // nVersion
+	for (uint32_t i(6) ; i < coinbase.size() - 38 ; i++) coinbase2.push_back(coinbase[i]); // txins . txouts
+	for (uint32_t i(coinbase.size() - 4) ; i < coinbase.size() ; i++) coinbase2.push_back(coinbase[i]); // nLockTime
+	return sha256sha256(coinbase2.data(), coinbase2.size());
 }
 
 static size_t curlWriteCallback(void *data, size_t size, size_t nmemb, std::string *s) {
 	s->append((char*) data, size*nmemb);
 	return size*nmemb;
 }
-
-json_t* GBTClient::sendRPCCall(const std::string& req) const {
+json_t* GBTClient::_sendRPCCall(const std::string& req) const {
 	std::string s;
-	json_t *jsonObj(NULL);
-	
+	json_t *jsonObj(nullptr);
 	if (_curl) {
 		json_error_t err;
-		curl_easy_setopt(_curl, CURLOPT_URL, _getHostPort().c_str());
+		curl_easy_setopt(_curl, CURLOPT_URL, _url.c_str());
 		curl_easy_setopt(_curl, CURLOPT_POSTFIELDSIZE, (long) strlen(req.c_str()));
 		curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, req.c_str());
 		curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
 		curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &s);
-		curl_easy_setopt(_curl, CURLOPT_USERPWD, _getUserPass().c_str());
+		curl_easy_setopt(_curl, CURLOPT_USERPWD, _credentials.c_str());
 		curl_easy_setopt(_curl, CURLOPT_TIMEOUT, 10);
-		
 		const CURLcode cc(curl_easy_perform(_curl));
 		if (cc != CURLE_OK)
-			std::cerr << __func__ << ": curl_easy_perform() failed :| - " << curl_easy_strerror(cc) << std::endl;
+			ERRORMSG("Curl_easy_perform() failed: " << curl_easy_strerror(cc));
 		else {
 			jsonObj = json_loads(s.c_str(), 0, &err);
-			if (jsonObj == NULL)
-				std::cerr << __func__ << ": JSON decoding failed :| - " << err.text << std::endl;
+			if (jsonObj == nullptr)
+				ERRORMSG("JSON decoding failed: " << err.text);
 		}
 	}
-	
 	return jsonObj;
 }
 
-bool GBTClient::_getWork() {
+bool GBTClient::_fetchWork() {
 	std::lock_guard<std::mutex> lock(_workMutex);
-	const std::vector<std::string> rules(_options->rules());
 	std::string req;
-	if (rules.size() == 0) req = "{\"method\": \"getblocktemplate\", \"params\": [], \"id\": 0}\n";
+	if (_rules.size() == 0) req = "{\"method\": \"getblocktemplate\", \"params\": [], \"id\": 0}\n";
 	else {
 		std::ostringstream oss;
 		oss << "{\"method\": \"getblocktemplate\", \"params\": [{\"rules\":[";
-		for (uint32_t i(0) ; i < rules.size() ; i++) {
-			oss << "\"" << rules[i] << "\"";
-			if (i < rules.size() - 1) oss << ", ";
+		for (uint32_t i(0) ; i < _rules.size() ; i++) {
+			oss << "\"" << _rules[i] << "\"";
+			if (i < _rules.size() - 1) oss << ", ";
 		}
 		oss << "]}], \"id\": 0}\n";
 		req = oss.str();
 	}
 	
-	json_t *jsonGbt(sendRPCCall(req.c_str())),
+	json_t *jsonGbt(_sendRPCCall(req.c_str())),
 	       *jsonGbt_Res(json_object_get(jsonGbt, "result")),
 	       *jsonGbt_Res_Txs(json_object_get(jsonGbt_Res, "transactions")),
 	       *jsonGbt_Res_Rules(json_object_get(jsonGbt_Res, "rules")),
 	       *jsonGbt_Res_Dwc(json_object_get(jsonGbt_Res, "default_witness_commitment")),
-	       *jsonGbt_Res_Constellations(json_object_get(jsonGbt_Res, "constellations"));
+	       *jsonGbt_Res_Patterns(json_object_get(jsonGbt_Res, "constellations"));
 	
 	// Failure to GetBlockTemplate (or invalid response)
-	if (jsonGbt == NULL || jsonGbt_Res == NULL || jsonGbt_Res_Txs == NULL || jsonGbt_Res_Rules == NULL || json_array_size(jsonGbt_Res_Constellations) == 0) {
-		_gbtd = GetBlockTemplateData();
-		std::cout << "Invalid GetBlockTemplate response!" << std::endl;
-		if (jsonGbt != NULL) json_decref(jsonGbt);
+	if (jsonGbt == nullptr || jsonGbt_Res == nullptr || jsonGbt_Res_Txs == nullptr || jsonGbt_Res_Rules == nullptr || jsonGbt_Res_Dwc == nullptr || json_array_size(jsonGbt_Res_Patterns) == 0) {
+		std::cout << __func__ << ": invalid GetBlockTemplate response! Ensure that you use Riecoin Core 0.20+ and that it is properly configured and synced!" << std::endl;
+		if (jsonGbt != nullptr) json_decref(jsonGbt);
 		return false;
 	}
 	
-	uint8_t bitsTmp[4];
-	hexStrToBin(json_string_value(json_object_get(jsonGbt_Res, "bits")), bitsTmp);
 	_gbtd.bh = BlockHeader();
 	_gbtd.transactions = std::string();
-	_gbtd.rules = std::vector<std::string>();
 	_gbtd.txHashes = std::vector<std::array<uint8_t, 32>>();
 	_gbtd.default_witness_commitment = std::string();
 	
 	// Extract and build GetBlockTemplate data
 	_gbtd.bh.version = json_integer_value(json_object_get(jsonGbt_Res, "version"));
-	uint8_t previousblockhashTmp[32];
-	hexStrToBin(json_string_value(json_object_get(jsonGbt_Res, "previousblockhash")), previousblockhashTmp);
-	for (uint8_t i(0) ; i < 32; i++) _gbtd.bh.previousblockhash[i] = previousblockhashTmp[31 - i];
+	_gbtd.bh.previousblockhash = v8ToA8(reverse(hexStrToV8(json_string_value(json_object_get(jsonGbt_Res, "previousblockhash")))));
+	
 	_gbtd.coinbasevalue = json_integer_value(json_object_get(jsonGbt_Res, "coinbasevalue"));
 	_gbtd.bh.curtime = json_integer_value(json_object_get(jsonGbt_Res, "curtime"));
-	_gbtd.bh.bits = invEnd32(reinterpret_cast<uint32_t*>(&bitsTmp)[0]);
+	_gbtd.bh.bits = std::stoll(json_string_value(json_object_get(jsonGbt_Res, "bits")), nullptr, 16);
 	_gbtd.height = json_integer_value(json_object_get(jsonGbt_Res, "height"));
 	
-	_gbtd.powVersion = json_integer_value(json_object_get(jsonGbt_Res, "powversion"));
-	if (_gbtd.powVersion != -1 && _gbtd.powVersion != 1) {
-		std::cout << "Invalid PoW Version " << _gbtd.powVersion << "!" << std::endl;
+	_info.powVersion = json_integer_value(json_object_get(jsonGbt_Res, "powversion"));
+	if (_info.powVersion != -1 && _info.powVersion != 1) {
+		std::cout << __func__ << ": invalid PoW Version " << _info.powVersion << "!" << std::endl;
 		json_decref(jsonGbt);
 		return false;
 	}
-	_gbtd.acceptedConstellationOffsets = Client::extractAcceptedConstellationOffsets(jsonGbt_Res_Constellations);
-	if (_gbtd.acceptedConstellationOffsets.size() == 0) {
-		std::cout << "Empty or invalid accepted constellations offsets list!" << std::endl;
+	_info.acceptedPatterns = Client::extractAcceptedPatterns(jsonGbt_Res_Patterns);
+	if (_info.acceptedPatterns.size() == 0) {
+		std::cout << __func__ << ": empty or invalid accepted patterns list!" << std::endl;
 		json_decref(jsonGbt);
 		return false;
 	}
 	
-	if (jsonGbt_Res_Dwc != NULL)
-		_gbtd.default_witness_commitment = json_string_value(jsonGbt_Res_Dwc);
-	
-	for (uint32_t i(0) ; i < json_array_size(jsonGbt_Res_Rules) ; i++)
-		_gbtd.rules.push_back(json_string_value(json_array_get(jsonGbt_Res_Rules, i)));
-	if (jsonGbt_Res_Dwc != NULL)
-		_gbtd.default_witness_commitment = json_string_value(jsonGbt_Res_Dwc);
-	
-	_gbtd.transactions += binToHexStr(_gbtd.coinbase.data(), _gbtd.coinbase.size());
+	_gbtd.default_witness_commitment = json_string_value(jsonGbt_Res_Dwc);
+	_gbtd.transactions += v8ToHexStr(_gbtd.coinbase);
 	for (uint32_t i(0) ; i < json_array_size(jsonGbt_Res_Txs) ; i++) {
-		std::vector<uint8_t> txHash;
-		if (_gbtd.isActive("!segwit"))
-			txHash = reverse(hexStrToV8(json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "txid"))));
-		else
-			txHash = reverse(hexStrToV8(json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "hash"))));
+		const std::vector<uint8_t> txHash(reverse(hexStrToV8(json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "txid")))));
 		_gbtd.transactions += json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "data"));
 		_gbtd.txHashes.push_back(v8ToA8(txHash));
 	}
@@ -252,79 +223,86 @@ bool GBTClient::_getWork() {
 	return true;
 }
 
-bool GBTClient::connect() {
-	if (_connected) return false;
-	if (_inited) {
-		if (!_getWork()) return false;
-		_gbtd = GetBlockTemplateData();
-		if (addrToScriptPubKey(_options->payoutAddress(), _gbtd.scriptPubKey, false));
-		else if (bech32ToScriptPubKey(_options->payoutAddress(), _gbtd.scriptPubKey, false));
-		else {
-			std::cout << "Invalid payout address! Using donation address instead." << std::endl;
-			addrToScriptPubKey("ric1qpttn5u8u9470za84kt4y0lzz4zllzm4pyzhuge", _gbtd.scriptPubKey);
-		}
-		_pendingSubmissions = std::vector<WorkData>();
-		_connected = true;
-		return true;
-	}
-	else {
-		std::cout << "Cannot connect because the client was not inited!" << std::endl;
-		return false;
-	}
-}
-
-void GBTClient::updateMinerParameters(MinerParameters& minerParameters) {
-	_updateClient();
-	minerParameters.constellationOffsets = Client::chooseConstellationOffsets(_gbtd.acceptedConstellationOffsets, minerParameters.constellationOffsets);
-}
-
-void GBTClient::sendWork(const WorkData &work) const {
-	std::cout << "Submitting block with " << work.txCount << " transaction(s) (including coinbase)..." << std::endl;
+void GBTClient::_submit(const Job& job) {
+	std::cout << "Submitting block with " << job.txCount << " transaction(s) (including coinbase)..." << std::endl;
 	std::ostringstream oss;
 	std::string req;
 	
-	BlockHeader bh(work.bh);
-	const std::vector<uint8_t> encodedOffset(work.encodedOffset());
-	for (uint32_t i(0) ; i < 32 ; i++) bh.nOffset[i] = encodedOffset[i];
+	BlockHeader bh(job.bh);
+	bh.nOffset = job.encodedOffset();
 	oss << "{\"method\": \"submitblock\", \"params\": [\"" << v8ToHexStr(bh.toV8());
 	// Using the Variable Length Integer format
-	if (work.txCount < 0xFD)
-		oss << binToHexStr((uint8_t*) &work.txCount, 1);
+	if (job.txCount < 0xFD)
+		oss << std::setfill('0') << std::setw(2) << std::hex << job.txCount;
 	else // Having more than 65535 transactions is currently impossible
-		oss << "fd" << binToHexStr((uint8_t*) &work.txCount, 2);
-	oss << work.transactions << "\"], \"id\": 0}\n";
+		oss << "fd" << std::setfill('0') << std::setw(2) << std::hex << job.txCount % 256 << std::setw(2) << job.txCount/256;
+	oss << job.transactions << "\"], \"id\": 0}\n";
 	req = oss.str();
 	
-	json_t *jsonSb(sendRPCCall(req)); // SubmitBlock response
+	json_t *jsonSb(_sendRPCCall(req)); // SubmitBlock response
 	DBG(std::cout << "Sent: " << req;);
-	if (jsonSb == NULL) std::cerr << "Failure submitting block :|" << std::endl;
+	if (jsonSb == nullptr) ERRORMSG("Failure submitting block");
 	else {
 		json_t *jsonSb_Res(json_object_get(jsonSb, "result")),
 			    *jsonSb_Err(json_object_get(jsonSb, "error"));
 		if (json_is_null(jsonSb_Res) && json_is_null(jsonSb_Err)) std::cout << "Submission accepted :D !" << std::endl;
 		else std::cout << "Submission rejected :| ! Received: " << json_dumps(jsonSb, JSON_COMPACT) << std::endl;
 	}
-	if (jsonSb != NULL) json_decref(jsonSb);
+	if (jsonSb != nullptr) json_decref(jsonSb);
 }
 
-WorkData GBTClient::workData() {
+void GBTClient::process() {
+	// Process pending submissions
+	_submitMutex.lock();
+	if (_pendingSubmissions.size() > 0) {
+		for (const auto &submission : _pendingSubmissions) _submit(submission);
+		_pendingSubmissions.clear();
+	}
+	_submitMutex.unlock();
+	// Update work
+	if (!_fetchWork()) _connected = false; // If _fetchWork() failed, this means that the client is disconnected
+}
+
+void GBTClient::connect() {
+	if (!_connected) {
+		_gbtd = GetBlockTemplateData();
+		_pendingSubmissions = std::vector<Job>();
+		_info = info();
+		if (_info.powVersion != 0)
+			_connected = true;
+	}
+}
+
+NetworkInfo GBTClient::info() {
+	const std::chrono::time_point<std::chrono::steady_clock> timeOutTimer(std::chrono::steady_clock::now());
+	while (_info.powVersion == 0) { // Poll until valid work data is generated, with 0.5 s time out
+		_fetchWork();
+		if (timeSince(timeOutTimer) > 0.5) {
+			std::cout << "Unable to get mining data from the server :| !" << std::endl;
+			_connected = false;
+			return {0, {}};
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	}
+	return _info;
+}
+
+bool GBTClient::getJob(Job& job) {
 	std::lock_guard<std::mutex> lock(_workMutex);
 	GetBlockTemplateData gbtd(_gbtd);
-	gbtd.coinBaseGen(_options->payoutAddressFormat(), _options->secret(), _options->donate());
-	gbtd.transactions = binToHexStr(gbtd.coinbase.data(), gbtd.coinbase.size()) + gbtd.transactions;
-	gbtd.txHashes.insert(gbtd.txHashes.begin(), gbtd.coinBaseHash());
+	gbtd.coinBaseGen(_scriptPubKey, _coinbaseMessage, _donate);
+	gbtd.transactions = v8ToHexStr(gbtd.coinbase) + gbtd.transactions;
+	gbtd.txHashes.insert(gbtd.txHashes.begin(), gbtd.coinbaseTxId());
 	gbtd.merkleRootGen();
 	
-	WorkData wd;
-	wd.bh           = gbtd.bh;
-	wd.height       = gbtd.height;
-	wd.powVersion   = gbtd.powVersion;
-	wd.difficulty   = decodeBits(wd.bh.bits, wd.powVersion);
-	wd.acceptedConstellationOffsets = gbtd.acceptedConstellationOffsets;
-	wd.primeCountTarget = wd.acceptedConstellationOffsets.size() != 0 ? wd.acceptedConstellationOffsets[0].size() : 1;
-	wd.primeCountMin = wd.primeCountTarget;
-	wd.target       = wd.bh.target(wd.powVersion);
-	wd.transactions = gbtd.transactions;
-	wd.txCount      = gbtd.txHashes.size();
-	return wd;
+	job.bh               = gbtd.bh;
+	job.height           = gbtd.height;
+	job.powVersion       = _info.powVersion;
+	job.difficulty       = decodeBits(job.bh.bits, job.powVersion);
+	job.primeCountTarget = _info.acceptedPatterns.size() != 0 ? _info.acceptedPatterns[0].size() : 1;
+	job.primeCountMin    = job.primeCountTarget;
+	job.target           = job.bh.target(job.powVersion);
+	job.transactions     = gbtd.transactions;
+	job.txCount          = gbtd.txHashes.size();
+	return job.height != 0;
 }

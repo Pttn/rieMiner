@@ -1,6 +1,6 @@
 # rieMiner 0.92α2
 
-rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's [cpuminer-rminerd](https://github.com/gatra/cpuminer-rminerd) and dave-andersen's [fastrie](https://github.com/dave-andersen/fastrie), though there is no remaining code from rminerd anymore.
+rieMiner is a Riecoin miner supporting both solo and pooled mining. It was originally adapted and refactored from gatra's [cpuminer-rminerd](https://github.com/gatra/cpuminer-rminerd) and dave-andersen's [fastrie](https://github.com/dave-andersen/fastrie), though there is no remaining code from them anymore.
 
 Solo mining is done using the GetBlockTemplate protocol, while pooled mining is via the Stratum protocol. Additionally, a benchmark mode is also proposed to compare more easily the performance between different computers, as well as a pure prime constellation searching Mode for world record attempts!
 
@@ -146,7 +146,7 @@ Threads = 8
 # It can go up to 2^64 - 1, but setting this at more than 2^33 will usually be too much and decrease performance. Default: 2^31
 PrimeTableLimit = 2147483648
 
-# Refresh rate of the stats in seconds. 0 to disable them and only notify when a long enough tuple or share is found, or when the network finds a block. Default: 30
+# Refresh rate of the stats in seconds. <= 0 to disable them and only notify when a long enough tuple or share is found, or when the network finds a block. Default: 30
 RefreshInterval = 60
 
 # For solo mining, there is a developer fee of 1%. Choose how many % you wish to donate between 1 and 99 (only integers!). Default: 2
@@ -161,7 +161,7 @@ Donate = 5
 # SieveBits = 25
 # SieveWorkers = 0
 # PrimorialNumber = 40
-# ConstellationOffsets = 0, 2, 4, 2, 4, 6, 2
+# ConstellationPattern = 0, 2, 4, 2, 4, 6, 2
 # PrimorialOffsets = 380284918609481, 437163765888581, 701889794782061, 980125031081081, 1277156391416021, 1487854607298791, 1833994713165731, 2115067287743141, 2325810733931801, 3056805353932061, 3252606350489381, 3360877662097841
 # Debug = 0
 # For solo mining, add consensus rules in the GetBlockTemplate RPC call, each separated by a comma. 'segwit' must be present.
@@ -180,8 +180,8 @@ It is also possible to use custom configuration file paths, examples:
 
 * Difficulty: for Benchmark and Search Modes, sets the difficulty (which is the number of binary digits, it must be at least 128). It can take decimal values and the numbers will be around 2^(Difficulty - 1). Default: 1600;
 * TupleLengthMin: for Search Mode, the base prime of tuples of at least this length will be shown. 0 for the length of the constellation type - 1 (default or provided one, minimum 1). Default: 0;
-* BenchmarkBlockInterval: for Benchmark Mode, sets the time between blocks in s. Default: 150;
-* BenchmarkTimeLimit: for Benchmark Mode, sets the testing duration in s. 0 for no time limit. Default: 0;
+* BenchmarkBlockInterval: for Benchmark Mode, sets the time between blocks in s. <= 0 for no block. Default: 150;
+* BenchmarkTimeLimit: for Benchmark Mode, sets the testing duration in s. <= 0 for no time limit. Default: 0;
 * Benchmark2tupleCountLimit: for Benchmark Mode, stops testing after finding this number of 2-tuples. 0 for no limit. Default: 50000;
 * TuplesFile: for Search Mode, write tuples of at least length TupleLengthMin to the given file. Default: None (special value that disables this feature).
 
@@ -196,7 +196,7 @@ They can be useful to get better performance depending on your computer.
 Other options:
 
 * PrimorialNumber: Primorial Number for the Wheel Factorization. Default: 40;
-* ConstellationOffsets: which sort of constellations to look for, as offsets separated by commas. Note that they are not cumulative, so '0, 2, 4, 2, 4, 6, 2' corresponds to n + (0, 2, 6, 8, 12, 18, 20). If empty (or not accepted by the server), a valid pattern will be chosen (0, 2, 4, 2, 4, 6, 2 in Search and Benchmark Modes). Default: empty;
+* ConstellationPattern: which sort of constellations to look for, as offsets separated by commas. Note that they are not cumulative, so '0, 2, 4, 2, 4, 6, 2' corresponds to n + (0, 2, 6, 8, 12, 18, 20). If empty (or not accepted by the server), a valid pattern will be chosen (0, 2, 4, 2, 4, 6, 2 in Search and Benchmark Modes). Default: empty;
 * PrimorialOffsets: list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConstellationOffsets. If empty, a default one will be chosen if possible (see main.hpp source file), otherwise rieMiner will not start (if the chosen constellation offsets are not in main.hpp). Default: empty;
 * Debug: activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, 0 to disable. Other values may introduce some more specific debug messages. Default : 0.
 
@@ -305,7 +305,7 @@ If you can, try to undervolt the CPU to reduce power consumption, heat and noise
 
 * [Pttn](https://github.com/Pttn), author and maintainer, contact: dev at Pttn dot me
 
-Parts coming from other projects and libraries are subject to their respective licenses. Else, this work is released under the MIT license. See the [LICENSE](LICENSE) or top of source files for details.
+This work is released under the MIT license, except the modified GMP code which is licensed with the LGPL license.
 
 ### Notable contributors
 
