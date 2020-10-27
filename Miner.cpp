@@ -133,7 +133,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 	std::cout << "Prime index threshold: " << _primesIndexThreshold << std::endl;
 	const uint64_t factorsToEliminateEntries(_parameters.pattern.size()*_primesIndexThreshold); // PatternLength entries for every prime < factorMax
 	additionalFactorsCountEstimation = _parameters.pattern.size()*ceil(static_cast<double>(_factorMax)*sumInversesOfPrimes);
-	const uint64_t additionalFactorsEntriesPerIteration(9ULL*(additionalFactorsCountEstimation/_parameters.sieveIterations + 4ULL)/8ULL); // Conservative estimation
+	const uint64_t additionalFactorsEntriesPerIteration(17ULL*(additionalFactorsCountEstimation/_parameters.sieveIterations)/16ULL + 64ULL); // Have some margin
 	std::cout << "Estimated additional factors: " << additionalFactorsCountEstimation << " (allocated per iteration: " << additionalFactorsEntriesPerIteration << ")" << std::endl;
 	{
 		std::cout << "Precomputing modular inverses and division data..." << std::endl; // The precomputed data is used to speed up computations in _doPresieveTask.
