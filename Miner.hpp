@@ -38,19 +38,19 @@ struct Task {
 	union {
 		struct {} dummy;
 		struct {
-			uint64_t loop;
-			uint32_t offsetId;
-			uint32_t nCandidates;
-			uint32_t candidateIndexes[maxCandidatesPerCheckTask];
-		} check;
-		struct {
 			uint64_t start;
 			uint64_t end;
 		} presieve;
 		struct {
-			uint32_t sieveId;
+			uint32_t id;
 			uint64_t iteration;
 		} sieve;
+		struct {
+			uint32_t offsetId;
+			uint32_t nCandidates;
+			uint32_t factorStart; // The form of a candidate is firstCandidate + primorial*f, with f = factorStart + factorOffset
+			std::array<uint32_t, maxCandidatesPerCheckTask> factorOffsets;
+		} check;
 	};
 };
 
@@ -64,22 +64,22 @@ struct TaskDoneInfo {
 };
 
 struct MinerWork {
-	mpz_class remainderPrimorial;
-	Job job;
+	Job job; // Fetched from the Client, to be completed with the solution once it is found.
+	mpz_class primorialMultipleStart; // First multiple of the primorial after the target.
 	std::atomic<uint64_t> nRemainingCheckTasks{0};
 	void clear() {
-		remainderPrimorial = 0;
+		primorialMultipleStart = 0;
 		nRemainingCheckTasks = 0;
 	}
 };
 
-struct SieveInstance {
+struct Sieve {
 	uint32_t id;
 	std::mutex presieveLock;
-	uint64_t *sieve = nullptr;
-	uint32_t **segmentHits = nullptr;
-	std::atomic<uint64_t> *segmentCounts = nullptr;
-	uint32_t *offsets = nullptr;
+	uint64_t *factorsTable = nullptr; // Booleans corresponding to whether a primorial factor is eliminated
+	uint32_t *factorsToEliminate = nullptr; // One entry for each constellation offset, for each prime number p < factorMax (the factors are in the form of indexes of the factorsTable)
+	uint32_t **additionalFactorsToEliminate = nullptr; // Factors for p >= factorMax (they are eliminated only once and treated separately), arranged by Sieve Iteration (also in the form of indexes of the factorsTable)
+	std::atomic<uint64_t> *additionalFactorsToEliminateCounts = nullptr; // Counts for each Sieve Iteration
 };
 
 class Miner {
@@ -92,16 +92,16 @@ class Miner {
 	CpuID _cpuInfo;
 	// Miner data (generated in init)
 	mpz_class _primorial;
-	uint64_t _nPrimes, _entriesPerSegment, _primeTestStoreOffsetsSize, _sparseLimit;
+	uint64_t _nPrimes, _factorMax, _primesIndexThreshold;
 	std::vector<uint64_t> _primes, _modularInverses, _modPrecompute;
 	std::vector<mpz_class> _primorialOffsets;
-	std::vector<uint64_t> _halfPattern, _primorialOffsetDiff, _primorialOffsetDiffToFirst;
+	std::vector<uint64_t> _halfPattern, _primorialOffsetDiff;
 	// Miner state variables
 	bool _inited, _running;
 	TsQueue<Task> _presieveTasks, _tasks;
 	TsQueue<TaskDoneInfo> _tasksDoneInfos;
-	SieveInstance* _sieveInstances;
-	std::array<MinerWork, nWorks> _works;
+	Sieve* _sieves;
+	std::array<MinerWork, nWorks> _works; // Alternating work for better efficiency when there is a new block
 	uint32_t _nRemainingCheckTasksThreshold, _currentWorkIndex;
 	std::chrono::microseconds _presieveTime, _sieveTime, _verifyTime;
 	
@@ -122,29 +122,27 @@ class Miner {
 		}
 	}
 	
-	void _putOffsetsInSegments(SieveInstance& sieveInstance, uint64_t *offsets, uint64_t* counts, int nOffsets);
+	void _addCachedAdditionalFactorsToEliminate(Sieve&, uint64_t*, uint64_t*, const int);
 	void _doPresieveTask(const Task&);
-	void _processSieve(uint64_t *sieve, uint32_t* offsets, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex);
-	void _processSieve6(uint64_t *sieve, uint32_t* offsets, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex);
+	void _processSieve(uint64_t*, uint32_t*, const uint64_t, const uint64_t);
+	void _processSieve6(uint64_t*, uint32_t*, uint64_t, const uint64_t);
 	void _doSieveTask(Task);
-	bool _testPrimesIspc(uint32_t candidateIndexes[maxCandidatesPerCheckTask], uint32_t is_prime[maxCandidatesPerCheckTask], const mpz_class &ploop, mpz_class &candidate);
+	bool _testPrimesIspc(const std::array<uint32_t, maxCandidatesPerCheckTask>&, uint32_t[maxCandidatesPerCheckTask], const mpz_class&, mpz_class&);
 	void _doCheckTask(Task);
 	void _doTasks(uint16_t);
 	void _manageTasks();
 	
-	public:
+public:
 	Miner(const Options &options) :
 		_mode(options.mode()), _parameters(MinerParameters()),
 		_client(nullptr),
 		_inited(false), _running(false) {
 		_nPrimes = 0;
-		_entriesPerSegment = 0;
-		_primeTestStoreOffsetsSize = 0;
-		_sparseLimit = 0;
+		_primesIndexThreshold = 0;
 	}
 	
 	void setClient(const std::shared_ptr<Client> &client) {_client = client;}
-	bool hasAcceptedPatterns(const std::vector<std::vector<uint64_t>> &acceptedConstellationsOffsets) const;
+	bool hasAcceptedPatterns(const std::vector<std::vector<uint64_t>>&) const;
 	void start(const MinerParameters &minerParameters) {
 		init(minerParameters);
 		startThreads();
@@ -161,8 +159,8 @@ class Miner {
 	bool running() {return _running;}
 	
 	void printStats() const;
-	bool benchmarkFinishedTimeOut(const double benchmarkTimeLimit) const;
-	bool benchmarkFinished2Tuples(const uint64_t benchmark2tupleCountLimit) const;
+	bool benchmarkFinishedTimeOut(const double) const;
+	bool benchmarkFinished2Tuples(const uint64_t) const;
 	void printBenchmarkResults() const;
 	void printTupleStats() const;
 };

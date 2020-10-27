@@ -189,17 +189,21 @@ void Options::loadConf() {
 					try {_minerParameters.threads = std::stoi(value);}
 					catch (...) {_minerParameters.threads = 8;}
 				}
-				else if (key == "SieveWorkers") {
-					try {_minerParameters.sieveWorkers = std::stoi(value);}
-					catch (...) {_minerParameters.sieveWorkers = 0;}
-				}
 				else if (key == "PrimeTableLimit") {
 					try {_minerParameters.primeTableLimit = std::stoll(value);}
 					catch (...) {_minerParameters.primeTableLimit = 2147483648;}
 				}
+				else if (key == "SieveWorkers") {
+					try {_minerParameters.sieveWorkers = std::stoi(value);}
+					catch (...) {_minerParameters.sieveWorkers = 0;}
+				}
 				else if (key == "SieveBits") {
 					try {_minerParameters.sieveBits = std::stoi(value);}
 					catch (...) {_minerParameters.sieveBits = 25;}
+				}
+				else if (key == "SieveIterations") {
+					try {_minerParameters.sieveIterations = std::stoi(value);}
+					catch (...) {_minerParameters.sieveIterations = 16;}
 				}
 				else if (key == "TupleLengthMin") {
 					try {_minerParameters.tupleLengthMin = std::stoi(value);}

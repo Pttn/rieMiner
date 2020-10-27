@@ -65,7 +65,7 @@ struct MinerParameters {
 	uint64_t primorialNumber, primeTableLimit;
 	bool useAvx2;
 	int sieveWorkers;
-	uint64_t sieveBits, sieveSize, sieveWords, maxIncrements, maxIterations;
+	uint64_t sieveBits, sieveSize, sieveWords, sieveIterations;
 	std::vector<uint64_t> pattern, primorialOffsets;
 	
 	MinerParameters() :
@@ -74,7 +74,7 @@ struct MinerParameters {
 		primorialNumber(40), primeTableLimit(2147483648),
 		useAvx2(false),
 		sieveWorkers(0),
-		sieveBits(25), sieveSize(1UL << sieveBits), sieveWords(sieveSize/64), maxIncrements(1ULL << 29), maxIterations(maxIncrements/sieveSize),
+		sieveBits(25), sieveSize(1UL << sieveBits), sieveWords(sieveSize/64), sieveIterations(16),
 		pattern{}, primorialOffsets{} {}
 };
 
