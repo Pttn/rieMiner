@@ -59,7 +59,7 @@ public:
 	void connect(); // Also sends mining.subscribe
 	NetworkInfo info();
 	void process(); // Get data from the server and calls the adequate member function to process it
-	bool getJob(Job& job);
+	bool getJob(Job&, const bool = false);
 	virtual void handleResult(const Job& job) { // Add result to pending submissions
 		std::lock_guard<std::mutex> lock(_submitMutex);
 		_pendingSubmissions.push_back(job);

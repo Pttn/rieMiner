@@ -374,7 +374,7 @@ static uint32_t toBEnd32(uint32_t n) { // Converts a uint32_t to Big Endian (ABC
 	const uint8_t *tmp((uint8_t*) &n);
 	return (uint32_t) tmp[3] | ((uint32_t) tmp[2]) << 8 | ((uint32_t) tmp[1]) << 16 | ((uint32_t) tmp[0]) << 24;
 }
-bool StratumClient::getJob(Job& job) {
+bool StratumClient::getJob(Job& job, const bool) {
 	std::lock_guard<std::mutex> lock(_workMutex);
 	StratumData sd(_sd);
 	sd.merkleRootGen();

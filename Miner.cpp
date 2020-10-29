@@ -16,7 +16,7 @@ extern "C" {
 
 constexpr uint64_t nPrimesTo2p32(203280222);
 constexpr int factorsCacheSize(16384);
-constexpr int maxSieveWorkers(16); // There is a noticeable performance penalty using Vector so we are using Arrays.
+constexpr uint16_t maxSieveWorkers(16); // There is a noticeable performance penalty using Vector so we are using Arrays.
 thread_local std::array<uint64_t*, maxSieveWorkers> factorsCache{nullptr};
 thread_local std::array<uint64_t*, maxSieveWorkers> factorsCacheCounts{nullptr};
 thread_local uint16_t threadId(65535);
@@ -26,11 +26,56 @@ void Miner::init(const MinerParameters &minerParameters) {
 		ERRORMSG("The miner is already inited");
 		return;
 	}
+	Job job;
+	if (_client == nullptr) {
+		ERRORMSG("The miner cannot be initialized without a client");
+		return;
+	}
+	else if (!_client->getJob(job, true)) {
+		std::cout << "Could not get data from Client :|" << std::endl;
+		return;
+	}
+	const double difficulty(job.difficulty);
+	
 	std::cout << "Initializing miner..." << std::endl;
 	std::cout << "Processor: " << _cpuInfo.getBrand() << std::endl;
 	// Get settings from Configuration File.
 	_parameters = minerParameters;
-	std::cout << "Threads: " << _parameters.threads << std::endl;
+	if (_parameters.threads == 0) {
+		_parameters.threads = std::thread::hardware_concurrency();
+		if (_parameters.threads == 0) {
+			std::cout << "Could not detect number of Threads, setting to 1." << std::endl;
+			_parameters.threads = 1;
+		}
+	}
+	std::cout << "Threads: " << _parameters.threads;
+	if (_parameters.primorialOffsets.size() == 0) { // Set the default Primorial Offsets if not chosen (must be chosen if the chosen pattern is not hardcoded)
+		auto defaultPrimorialOffsetsIterator(std::find_if(defaultConstellationData.begin(), defaultConstellationData.end(), [this](const auto& constellationData) {return constellationData.first == _parameters.pattern;}));
+		if (defaultPrimorialOffsetsIterator == defaultConstellationData.end()) {
+			std::cout << std::endl << "Not hardcoded Constellation Offsets chosen and no Primorial Offset set." << std::endl;
+			return;
+		}
+		else
+			_parameters.primorialOffsets = defaultPrimorialOffsetsIterator->second;
+	}
+	_primorialOffsets = v64ToVMpz(_parameters.primorialOffsets);
+	if (_parameters.sieveWorkers == 0) {
+		double proportion;
+		if (_parameters.pattern.size() >= 7) proportion = 0.85 - difficulty/1792.;
+		else if (_parameters.pattern.size() == 6) proportion = 0.75 - difficulty/1792.;
+		else if (_parameters.pattern.size() == 5) proportion = 0.7 - difficulty/1280.;
+		else if (_parameters.pattern.size() == 4) proportion = 0.5 - difficulty/1280.;
+		else proportion = 0.;
+		if (proportion < 0.) proportion = 0.;
+		if (job.powVersion == -1) proportion *= 2.5;
+		if (proportion > 1.) proportion = 1.;
+		_parameters.sieveWorkers = std::ceil(proportion*static_cast<double>(_parameters.threads));
+	}
+	_parameters.sieveWorkers = std::min(static_cast<int>(_parameters.sieveWorkers), static_cast<int>(_parameters.threads) - 1);
+	_parameters.sieveWorkers = std::max(static_cast<int>(_parameters.sieveWorkers), 1);
+	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, maxSieveWorkers);
+	_parameters.sieveWorkers = std::min(static_cast<int>(_parameters.sieveWorkers), static_cast<int>(_primorialOffsets.size()));
+	std::cout << " (" << _parameters.sieveWorkers << " Sieve Worker(s))" << std::endl;
 	std::cout << "Best SIMD instructions supported:";
 	if (_cpuInfo.hasAVX512()) std::cout << " AVX-512";
 	else if (_cpuInfo.hasAVX2()) {
@@ -40,6 +85,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 	else if (_cpuInfo.hasAVX()) std::cout << " AVX";
 	else std::cout << " AVX not suppported";
 	std::cout << std::endl;
+	
 	std::vector<uint64_t> cumulativeOffsets(_parameters.pattern.size(), 0);
 	std::partial_sum(_parameters.pattern.begin(), _parameters.pattern.end(), cumulativeOffsets.begin(), std::plus<uint64_t>());
 	std::cout << "Constellation pattern: n + (" << formatContainer(cumulativeOffsets) << "), length " << _parameters.pattern.size() << std::endl;
@@ -48,36 +94,16 @@ void Miner::init(const MinerParameters &minerParameters) {
 			_parameters.tupleLengthMin = std::max(1, static_cast<int>(_parameters.pattern.size()) - 1);
 		std::cout << "Will show tuples of at least length " << _parameters.tupleLengthMin << std::endl;
 	}
-	std::cout << "Primorial number: " << _parameters.primorialNumber << std::endl;
-	std::cout << "Primorial offsets: ";
-	if (_parameters.primorialOffsets.size() == 0) { // Set the default Primorial Offsets if not chosen (must be chosen if the chosen pattern is not hardcoded)
-		auto defaultPrimorialOffsetsIterator(std::find_if(defaultConstellationData.begin(), defaultConstellationData.end(), [this](const auto& constellationData) {return constellationData.first == _parameters.pattern;}));
-		if (defaultPrimorialOffsetsIterator == defaultConstellationData.end()) {
-			std::cout << "None" << std::endl << "Not hardcoded Constellation Offsets chosen and no Primorial Offset set." << std::endl;
-			return;
+	
+	if (_parameters.primeTableLimit == 0) {
+		constexpr uint64_t primeTableLimitMax(2147483648ULL);
+		_parameters.primeTableLimit = std::pow(difficulty, 6.)/std::pow(2., 3.*static_cast<double>(_parameters.pattern.size()) + 7.);
+		if (_parameters.threads > 16) {
+			_parameters.primeTableLimit *= 16;
+			_parameters.primeTableLimit /= static_cast<double>(_parameters.threads);
 		}
-		else
-			_parameters.primorialOffsets = defaultPrimorialOffsetsIterator->second;
+		_parameters.primeTableLimit = std::min(_parameters.primeTableLimit, primeTableLimitMax);
 	}
-	_primorialOffsets = v64ToVMpz(_parameters.primorialOffsets);
-	std::cout << formatContainer(_primorialOffsets) << std::endl;
-	_primorialOffsetDiff.resize(_parameters.sieveWorkers - 1);
-	const uint64_t constellationDiameter(cumulativeOffsets.back());
-	for (int j(1) ; j < _parameters.sieveWorkers ; j++)
-		_primorialOffsetDiff[j - 1] = _parameters.primorialOffsets[j] - _parameters.primorialOffsets[j - 1] - constellationDiameter;
-	if (_parameters.sieveWorkers == 0) {
-		_parameters.sieveWorkers = std::max(_parameters.threads/5, 1);
-		_parameters.sieveWorkers += (_parameters.primeTableLimit + 0x80000000ull) >> 33;
-	}
-	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, maxSieveWorkers);
-	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, int(_primorialOffsets.size()));
-	std::cout << "Sieve Workers: " << _parameters.sieveWorkers << std::endl;
-	_parameters.sieveSize = 1 << _parameters.sieveBits;
-	_parameters.sieveWords = _parameters.sieveSize/64;
-	std::cout << "Sieve Size: " << "2^" << _parameters.sieveBits << " = " << _parameters.sieveSize << " (" << _parameters.sieveWords << " words)" << std::endl;
-	std::cout << "Sieve Iterations: " << _parameters.sieveIterations << std::endl;
-	_factorMax = _parameters.sieveIterations*_parameters.sieveSize;
-	std::cout << "Primorial Factor Max: " << _factorMax << std::endl;
 	std::cout << "Prime Table Limit: " << _parameters.primeTableLimit << std::endl;
 	std::transform(_parameters.pattern.begin(), _parameters.pattern.end(), std::back_inserter(_halfPattern), [](uint64_t n) {return n >> 1;});
 	
@@ -101,20 +127,67 @@ void Miner::init(const MinerParameters &minerParameters) {
 		_nPrimes = _primes.size();
 	}
 	
-	if (_primes.size() < _parameters.primorialNumber) {
-		std::cout << "The Prime Table is too small, the number of primes must be at least the Primorial Number " << _parameters.primorialNumber << "." << std::endl;
+	if (_parameters.sieveBits == 0)
+		_parameters.sieveBits = _parameters.sieveWorkers <= 4 ? 25 : 24;
+	_parameters.sieveSize = 1 << _parameters.sieveBits;
+	_parameters.sieveWords = _parameters.sieveSize/64;
+	std::cout << "Sieve Size: " << "2^" << _parameters.sieveBits << " = " << _parameters.sieveSize << " (" << _parameters.sieveWords << " words)" << std::endl;
+	if (_parameters.sieveIterations == 0)
+		_parameters.sieveIterations = 16;
+	std::cout << "Sieve Iterations: " << _parameters.sieveIterations << std::endl;
+	_factorMax = _parameters.sieveIterations*_parameters.sieveSize;
+	std::cout << "Primorial Factor Max: " << _factorMax << std::endl;
+	
+	uint32_t bitsForOffset;
+	// The primorial times the maximum factor should be smaller than the allowed limit for the target offset.
+	if (_mode == "Solo" || _mode == "Pool" || _mode == "Test") {
+		bitsForOffset = std::floor(difficulty - 265.); // 1 . leading 8 bits . hash (256 bits) . remaining bits for the offset
+		bitsForOffset -= 64; // Some margin to take in account the Difficulty fluctuations
+	}
+	else if (_mode == "Search")
+		bitsForOffset = std::floor(difficulty - 97.); // 1 . leading 16 bits . random 80 bits . remaining bits for the offset
+	else
+		bitsForOffset = std::floor(difficulty - 81.); // 1 . leading 16 bits . constructed 64 bits . remaining bits for the offset
+	if (job.powVersion == -1) // Maximum 256 bits allowed before the fork
+		bitsForOffset = std::min(bitsForOffset, 256U);
+	mpz_class primorialLimit(1);
+	primorialLimit <<= bitsForOffset;
+	primorialLimit /= u64ToMpz(_factorMax);
+	if (primorialLimit == 0) {
+		std::cout << "The Difficulty is too low. Try to increase it or decrease the Sieve Size/Iterations." << std::endl;
+		std::cout << "Available digits for the offsets: " << bitsForOffset << std::endl;
 		return;
 	}
-	mpz_set_ui(_primorial.get_mpz_t(), _primes[0]);
-	for (uint64_t i(1) ; i < _parameters.primorialNumber ; i++)
-		mpz_mul_ui(_primorial.get_mpz_t(), _primorial.get_mpz_t(), _primes[i]);
+	mpz_set_ui(_primorial.get_mpz_t(), 1);
+	for (uint64_t i(0) ; i < _primes.size() ; i++) {
+		if (i == _parameters.primorialNumber && _parameters.primorialNumber != 0)
+			break;
+		else {
+			if (_primorial*static_cast<uint32_t>(_primes[i]) >= primorialLimit) {
+				if (_parameters.primorialNumber != 0)
+					std::cout << "The provided Primorial Number " <<_parameters.primorialNumber  << " is too large and will be reduced." << std::endl;
+				_parameters.primorialNumber = i;
+				break;
+			}
+		}
+		_primorial *= static_cast<uint32_t>(_primes[i]);
+		if (i + 1 == _primes.size())
+			_parameters.primorialNumber = i + 1;
+	}
+	std::cout << "Primorial Number: " << _parameters.primorialNumber << std::endl;
 	std::cout << "Primorial: p" << _parameters.primorialNumber << "# = " << _primes[_parameters.primorialNumber - 1] << "# = ";
 	if (mpz_sizeinbase(_primorial.get_mpz_t(), 10) < 18)
 		std::cout << _primorial;
 	else
 		std::cout << "~" << _primorial.get_str()[0] << "." << _primorial.get_str().substr(1, 12) << "*10^" << _primorial.get_str().size() - 1;
 	std::cout << " (" << mpz_sizeinbase(_primorial.get_mpz_t(), 2) << " bits)" << std::endl;
-	uint64_t additionalFactorsCountEstimation(0); // tupleSize*factorMax*(sum of 1/p, for p in the prime table >= factorMax); it is the estimation of how many such p will eliminate a factor
+	std::cout << "Primorial Offsets: " << formatContainer(_primorialOffsets) << std::endl;
+	_primorialOffsetDiff.resize(_parameters.sieveWorkers - 1);
+	const uint64_t constellationDiameter(cumulativeOffsets.back());
+	for (int j(1) ; j < _parameters.sieveWorkers ; j++)
+		_primorialOffsetDiff[j - 1] = _parameters.primorialOffsets[j] - _parameters.primorialOffsets[j - 1] - constellationDiameter;
+	
+	uint64_t additionalFactorsCountEstimation(0); // tupleSize*factorMax*(sum of 1/p, for p in the prime table >= factorMax); it is the estimation of how many such p will eliminate a factor (factorMax/p being the probability of the modulo p being < factorMax)
 	double sumInversesOfPrimes(0.);
 	_primesIndexThreshold = 0; // Number of prime numbers smaller than factorMax in the table
 	for (uint64_t i(0) ; i < _nPrimes ; i++) {
@@ -885,14 +958,14 @@ bool Miner::benchmarkFinishedTimeOut(const double benchmarkTimeLimit) const {
 	const Stats stats(_statManager.stats(true));
 	return benchmarkTimeLimit > 0. && stats.duration() >= benchmarkTimeLimit;
 }
-bool Miner::benchmarkFinished2Tuples(const uint64_t benchmark2tupleCountLimit) const {
+bool Miner::benchmarkFinishedEnoughPrimes(const uint64_t benchmarkPrimeCountLimit) const {
 	const Stats stats(_statManager.stats(true));
-	return benchmark2tupleCountLimit > 0 && stats.count(2) >= benchmark2tupleCountLimit;
+	return benchmarkPrimeCountLimit > 0 && stats.count(1) >= benchmarkPrimeCountLimit;
 }
 void Miner::printBenchmarkResults() const {
 	Stats stats(_statManager.stats(true));
 	std::cout << "Benchmark finished after " << stats.duration() << " s." << std::endl;
-	std::cout << "RESULTS: " << FIXED(6) << stats.cps() << " candidates/s, ratio " << stats.r() << " -> " << stats.estimatedAverageTimeToFindBlock(_works[_currentWorkIndex].job.primeCountTarget)/86400. << " block(s)/day" << std::endl;
+	std::cout << FIXED(6) << stats.cps() << " candidates/s, ratio " << stats.r() << " -> " << 86400./stats.estimatedAverageTimeToFindBlock(_works[_currentWorkIndex].job.primeCountTarget) << " block(s)/day" << std::endl;
 }
 void Miner::printTupleStats() const {
 	Stats stats(_statManager.stats(true));

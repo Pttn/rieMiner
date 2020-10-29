@@ -51,7 +51,7 @@ void Options::askConf() {
 	std::string value;
 	std::ofstream file(confPath);
 	if (file) {
-		std::cout << "Solo mining (solo), pooled mining (pool), or benchmarking (benchmark)? ";
+		std::cout << "Solo mining (solo) or pooled mining (pool)? ";
 		std::cin >> value;
 		if (value == "solo") {
 			file << "Mode = Solo" << std::endl;
@@ -61,100 +61,81 @@ void Options::askConf() {
 			file << "Mode = Pool" << std::endl;
 			_mode = "Pool";
 		}
-		else if (value == "benchmark") {
-			file << "Mode = Benchmark" << std::endl;
-			_mode = "Benchmark";
-		}
 		else {
-			std::cerr << "Invalid choice! Please answer solo, pool, or benchmark." << std::endl;
+			std::cout << "Invalid choice! Please answer exactly solo or pool." << std::endl;
 			_stopConfig();
 		}
 		
-		if (_mode != "Benchmark") {
-			if (_mode == "Solo") {
-				std::cout << "Riecoin Core (wallet) IP: ";
-				std::cin >> value;
-#ifndef _WIN32
-				struct sockaddr_in sa;
-				if (inet_pton(AF_INET, value.c_str(), &(sa.sin_addr)) != 1) {
-					std::cerr << "Invalid IP address!" << std::endl;
-					_stopConfig();
-				}
-				else {
-					file << "Host = " << value << std::endl;
-					_host = value;
-				}
-#else
-				file << "Host = " << value << std::endl;
-				_host = value;
-#endif
-				std::cout << "RPC port: ";
-			}
-			else {
-				std::cout << "Please choose a pool that does not already have a lot of mining power to prevent centralization." << std::endl;
-				std::cout << "Current pools " << std::endl;
-				std::cout << "     XPoolX: mining.xpoolx.com:2090" << std::endl;
-				std::cout << "   SuprNova: ric.suprnova.cc:5000" << std::endl;
-				std::cout << "  uBlock.it: mine.ublock.it:5000" << std::endl;
-				std::cout << "Pool address (without port): ";
-				std::cin >> value;
-				file << "Host = " << value << std::endl;
-				_host = value;
-				std::cout << "Pool port (example: 5000): ";
-			}
-			
+		if (_mode == "Solo") {
+			std::cout << "Riecoin Core (wallet) IP: ";
 			std::cin >> value;
-			try {
-				_port = std::stoi(value);
-				file << "Port = " << value << std::endl;
-			}
-			catch (...) {
-				std::cerr << "Invalid port !" << std::endl;
+#ifndef _WIN32
+			struct sockaddr_in sa;
+			if (inet_pton(AF_INET, value.c_str(), &(sa.sin_addr)) != 1) {
+				std::cerr << "Invalid IP address!" << std::endl;
 				_stopConfig();
 			}
-			
-			if (_mode == "Solo") std::cout << "RPC username: ";
-			else std::cout << "Pool username.worker: ";
-			
-			std::cin >> value;
-			file << "Username = " << value << std::endl;
-			_username = value;
-			
-			if (_mode == "Solo") std::cout << "RPC password: ";
-			else std::cout << "Worker password: ";
-			
-			std::cin >> value;
-			file << "Password = " << value << std::endl;
-			_password = value;
-			
-			if (_mode == "Solo") {
-				std::cout << "Payout address: ";
-				std::cin >> _payoutAddress;
-				if (bech32ToScriptPubKey(_payoutAddress).size() == 0) {
-					std::cout << "Invalid payout address!" << std::endl;
-					_stopConfig();
-				}
-				file << "PayoutAddress = " << _payoutAddress << std::endl;
+			else {
+				file << "Host = " << value << std::endl;
+				_host = value;
 			}
+#else
+			file << "Host = " << value << std::endl;
+			_host = value;
+#endif
+			std::cout << "RPC port: ";
 		}
-		else std::cout << "Standard Benchmark values loaded. Edit the configuration file if needed." << std::endl;
+		else {
+			std::cout << "Please choose a pool that does not already have a lot of mining power to prevent centralization." << std::endl;
+			std::cout << "Get the list of pools on Riecoin.dev and their settings on their website." << std::endl;
+			std::cout << "Pool address (without port): ";
+			std::cin >> value;
+			file << "Host = " << value << std::endl;
+			_host = value;
+			std::cout << "Pool port (example: 5000): ";
+		}
 		
-		std::cout << "Number of threads: ";
 		std::cin >> value;
 		try {
-			_minerParameters.threads = std::stoi(value);
-			file << "Threads = " << value << std::endl;
+			_port = std::stoi(value);
+			file << "Port = " << value << std::endl;
 		}
 		catch (...) {
-			std::cerr << "Invalid thread number!" << std::endl;
+			std::cout << "Invalid port !" << std::endl;
 			_stopConfig();
 		}
 		
-		std::cout << "Thank you :D !" << std::endl;
+		if (_mode == "Solo") std::cout << "RPC username: ";
+		else std::cout << "Pool username.worker: ";
+		
+		std::cin >> value;
+		file << "Username = " << value << std::endl;
+		_username = value;
+		
+		if (_mode == "Solo") std::cout << "RPC password: ";
+		else std::cout << "Worker password: ";
+		
+		std::cin >> value;
+		file << "Password = " << value << std::endl;
+		_password = value;
+		
+		if (_mode == "Solo") {
+			std::cout << "Payout address: ";
+			std::cin >> _payoutAddress;
+			if (bech32ToScriptPubKey(_payoutAddress).size() == 0) {
+				std::cout << "Invalid payout address!" << std::endl;
+				_stopConfig();
+			}
+			file << "PayoutAddress = " << _payoutAddress << std::endl;
+		}
+		
+		std::cout << "For more options, read the README.md and edit the configuration file." << std::endl;
+		file << "Threads = 0" << std::endl;
+		std::cout << "Happy Mining :D !" << std::endl;
 		std::cout << "-----------------------------------------------------------" << std::endl;
 		file.close();
 	}
-	else std::cerr << "Unable to create " << confPath << " :|, values for standard benchmark loaded." << std::endl;
+	else ERRORMSG("Unable to create " << confPath);
 }
 
 void Options::loadConf() {
@@ -187,11 +168,11 @@ void Options::loadConf() {
 				else if (key == "Secret!!!") _secret = value;
 				else if (key == "Threads") {
 					try {_minerParameters.threads = std::stoi(value);}
-					catch (...) {_minerParameters.threads = 8;}
+					catch (...) {_minerParameters.threads = 0;}
 				}
 				else if (key == "PrimeTableLimit") {
 					try {_minerParameters.primeTableLimit = std::stoll(value);}
-					catch (...) {_minerParameters.primeTableLimit = 2147483648;}
+					catch (...) {_minerParameters.primeTableLimit = 0;}
 				}
 				else if (key == "SieveWorkers") {
 					try {_minerParameters.sieveWorkers = std::stoi(value);}
@@ -199,11 +180,11 @@ void Options::loadConf() {
 				}
 				else if (key == "SieveBits") {
 					try {_minerParameters.sieveBits = std::stoi(value);}
-					catch (...) {_minerParameters.sieveBits = 25;}
+					catch (...) {_minerParameters.sieveBits = 0;}
 				}
 				else if (key == "SieveIterations") {
 					try {_minerParameters.sieveIterations = std::stoi(value);}
-					catch (...) {_minerParameters.sieveIterations = 16;}
+					catch (...) {_minerParameters.sieveIterations = 0;}
 				}
 				else if (key == "TupleLengthMin") {
 					try {_minerParameters.tupleLengthMin = std::stoi(value);}
@@ -221,7 +202,7 @@ void Options::loadConf() {
 				}
 				else if (key == "Difficulty") {
 					try {_difficulty = std::stod(value);}
-					catch (...) {_difficulty = 1600.;}
+					catch (...) {_difficulty = 1024.;}
 					if (_difficulty < 128.) _difficulty = 128.;
 					if (_difficulty > 4294967296.) _difficulty = 4294967296.;
 				}
@@ -231,11 +212,11 @@ void Options::loadConf() {
 				}
 				else if (key == "BenchmarkTimeLimit") {
 					try {_benchmarkTimeLimit = std::stod(value);}
-					catch (...) {_benchmarkTimeLimit = 0.;}
+					catch (...) {_benchmarkTimeLimit = 86400.;}
 				}
-				else if (key == "Benchmark2tupleCountLimit") {
-					try {_benchmark2tupleCountLimit = std::stoll(value);}
-					catch (...) {_benchmark2tupleCountLimit = 50000;}
+				else if (key == "BenchmarkPrimeCountLimit") {
+					try {_benchmarkPrimeCountLimit = std::stoll(value);}
+					catch (...) {_benchmarkPrimeCountLimit = 1000000;}
 				}
 				else if (key == "TuplesFile")
 					_tuplesFile = value;
@@ -251,8 +232,8 @@ void Options::loadConf() {
 				}
 				else if (key == "PrimorialNumber") {
 					try {_minerParameters.primorialNumber = std::stoll(value);}
-					catch (...) {_minerParameters.primorialNumber = 40;}
-					if (_minerParameters.primorialNumber < 1) _minerParameters.primorialNumber = 1;
+					catch (...) {_minerParameters.primorialNumber = 0;}
+					if (_minerParameters.primorialNumber > 65535) _minerParameters.primorialNumber = 65535;
 				}
 				else if (key == "PrimorialOffsets") {
 					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
@@ -286,9 +267,7 @@ void Options::loadConf() {
 		std::cout << "Benchmark Mode at difficulty " << _difficulty << std::endl;
 		if (_benchmarkBlockInterval > 0.) std::cout << " Block interval: " << _benchmarkBlockInterval << " s" << std::endl;
 		if (_benchmarkTimeLimit > 0.) std::cout << " Time limit: " << _benchmarkTimeLimit << " s" << std::endl;
-		if (_benchmark2tupleCountLimit != 0) std::cout << " 2-tuple count limit: " << _benchmark2tupleCountLimit << " 2-tuples" << std::endl;
-		if (_difficulty == 1600 && _minerParameters.primeTableLimit == 2147483648 && _benchmark2tupleCountLimit >= 50000 && _benchmarkTimeLimit == 0)
-			std::cout << " VALID parameters for Standard Benchmark" << std::endl;
+		if (_benchmarkPrimeCountLimit != 0) std::cout << " Prime (1-tuple) count limit: " << _benchmarkPrimeCountLimit << std::endl;
 		if (_minerParameters.pattern.size() == 0) // Pick a default pattern if none was chosen
 			_minerParameters.pattern = {0, 2, 4, 2, 4, 6, 2};
 	}
@@ -453,7 +432,7 @@ int main(int argc, char** argv) {
 		timer = std::chrono::steady_clock::now();
 		while (running) {
 			if (options.mode() == "Benchmark" && miner->running()) {
-				if (miner->benchmarkFinishedTimeOut(options.benchmarkTimeLimit()) || miner->benchmarkFinished2Tuples(options.benchmark2tupleCountLimit())) {
+				if (miner->benchmarkFinishedTimeOut(options.benchmarkTimeLimit()) || miner->benchmarkFinishedEnoughPrimes(options.benchmarkPrimeCountLimit())) {
 					miner->printBenchmarkResults();
 					miner->stop();
 					running = false;

@@ -42,7 +42,9 @@ std::string Stats::formattedTime(const double &time) {
 }
 std::string Stats::formattedDuration(const double &duration) {
 	std::ostringstream oss;
-	if (duration < 60.) oss << FIXED(2 + (duration < 10.)) << duration << " s";
+	if (duration < 0.001) oss << std::round(1000000.*duration) << " us";
+	else if (duration < 1.) oss << std::round(1000.*duration) << " ms";
+	else if (duration < 60.) oss << FIXED(2 + (duration < 10.)) << duration << " s";
 	else if (duration < 3600.) oss << FIXED(2 + (duration/60. < 10.)) << duration/60. << " min";
 	else if (duration < 86400.) oss << FIXED(2 + (duration/3600. < 10.)) << duration/3600. << " h";
 	else if (duration < 31556952.) oss << FIXED(3) << duration/86400. << " d";

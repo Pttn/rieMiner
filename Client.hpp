@@ -62,7 +62,7 @@ protected:
 public:
 	virtual bool isNetworked() {return false;}
 	virtual void process() {} // Processes submissions and updates work, polled in the main thread
-	virtual bool getJob(Job& job) = 0;
+	virtual bool getJob(Job&, const bool = false) = 0;
 	virtual void handleResult(const Job&) {} // Handles a miner's result
 	virtual uint32_t currentHeight() const = 0;
 	virtual double currentDifficulty() const = 0;
@@ -102,7 +102,7 @@ class BMClient : public Client {
 public:
 	BMClient(const Options &options) : _pattern(options.minerParameters().pattern), _difficulty(options.difficulty()), _blockInterval(options.benchmarkBlockInterval()), _height(0), _requests(0) {} // The timer is initialized at the first getJob call.
 	void process();
-	bool getJob(Job&);
+	bool getJob(Job&, const bool = false); // Dummy boolean to avoid prevent the block timer of Benchmark and Test Clients from starting when the miner initializes.
 	uint32_t currentHeight() const {return _height;}
 	double currentDifficulty() const {return _difficulty;}
 };
@@ -119,7 +119,7 @@ public:
 	SearchClient(const Options &options) : _pattern(options.minerParameters().pattern), _difficulty(options.difficulty()), _tuplesFilename(options.tuplesFile()) {
 		std::cout << "Tuples will be written to file " << _tuplesFilename << std::endl;
 	}
-	bool getJob(Job& job); // Work is generated here
+	bool getJob(Job&, const bool = false); // Work is generated here
 	void handleResult(const Job&); // Save tuple to file
 	uint32_t currentHeight() const {return 1;};
 	double currentDifficulty() const {return _difficulty;}
@@ -139,7 +139,7 @@ public:
 	void connect();
 	NetworkInfo info() {return {1, {_currentPattern}};}
 	void process();
-	bool getJob(Job& job);
+	bool getJob(Job&, const bool = false);
 	uint32_t currentHeight() const {return _connected ? _height : 0;};
 	double currentDifficulty() const {return _difficulty;};
 };

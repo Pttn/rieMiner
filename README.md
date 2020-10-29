@@ -137,14 +137,8 @@ Password = /70P$€CR€7/
 # Default: this donation address
 PayoutAddress = ric1qpttn5u8u9470za84kt4y0lzz4zllzm4pyzhuge
 
-# Number of threads used for mining. Default: 8
-Threads = 8
-
-# The prime table used for mining will contain primes up to the given number.
-# Use a bigger limit if you have 16 GiB of available RAM or more, as this will reduce the ratio between the n-tuple and (n + 1)-tuple counts (but also the 1-tuple find rate).
-# Reduce if you have less than 8 GiB of RAM (or if you want to reduce memory usage).
-# It can go up to 2^64 - 1, but setting this at more than 2^33 will usually be too much and decrease performance. Default: 2^31
-PrimeTableLimit = 2147483648
+# Number of threads used for mining. 0 to autodetect. Default: 0
+# Threads = 8
 
 # Refresh rate of the stats in seconds. <= 0 to disable them and only notify when a long enough tuple or share is found, or when the network finds a block. Default: 30
 RefreshInterval = 60
@@ -153,14 +147,16 @@ RefreshInterval = 60
 Donate = 5
 
 # Other options
-# Difficulty = 1600
-# TupleLengthMin = 4
+# Difficulty = 1024
+# TupleLengthMin = 6
 # BenchmarkBlockInterval = 150
 # BenchmarkTimeLimit = 0
-# Benchmark2tupleCountLimit = 100000
+# BenchmarkPrimeCountLimit = 100000
+# PrimeTableLimit = 2147483648
 # SieveBits = 25
+# SieveIterations = 16
 # SieveWorkers = 0
-# PrimorialNumber = 40
+# PrimorialNumber = 120
 # ConstellationPattern = 0, 2, 4, 2, 4, 6, 2
 # PrimorialOffsets = 380284918609481, 437163765888581, 701889794782061, 980125031081081, 1277156391416021, 1487854607298791, 1833994713165731, 2115067287743141, 2325810733931801, 3056805353932061, 3252606350489381, 3360877662097841
 # Debug = 0
@@ -182,21 +178,23 @@ It is also possible to use custom configuration file paths, examples:
 * TupleLengthMin: for Search Mode, the base prime of tuples of at least this length will be shown. 0 for the length of the constellation type - 1 (default or provided one, minimum 1). Default: 0;
 * BenchmarkBlockInterval: for Benchmark Mode, sets the time between blocks in s. <= 0 for no block. Default: 150;
 * BenchmarkTimeLimit: for Benchmark Mode, sets the testing duration in s. <= 0 for no time limit. Default: 0;
-* Benchmark2tupleCountLimit: for Benchmark Mode, stops testing after finding this number of 2-tuples. 0 for no limit. Default: 50000;
-* TuplesFile: for Search Mode, write tuples of at least length TupleLengthMin to the given file. Default: None (special value that disables this feature).
+* BenchmarkPrimeCountLimit: for Benchmark Mode, stops testing after finding this number of 1-tuples. 0 for no limit. Default: 1000000;
+* TuplesFile: for Search Mode, write tuples of at least length TupleLengthMin to the given file. Default: Tuples.txt.
 
 #### Advanced/Tweaking/Dev options
 
 They can be useful to get better performance depending on your computer.
 
+* PrimeTableLimit: the prime table used for mining will contain primes up to the given number. Set to 0 to automatically calculate according to the current Difficulty. You can try a bigger limit as this will reduce the ratio between the n-tuple and (n + 1)-tuple counts, but also the candidates/s rate. Reduce if you want to lower memory usage. Default: 0;
 * EnableAVX2: by default, AVX2 is disabled, as it may increase the power consumption more than the performance improvements. If your processor supports AVX2, you can choose to take advantage of this instruction set if you wish by setting this option to `Yes`. Do your own testing to find out if it is worth it. AVX2 is known to degrade performance for AMD Ryzens and similar before Zen2 (e. g. 1800X, 1950X, 2700X) and should be left disabled in these cases;
-* SieveBits: size of the segment sieve is 2^SieveBits bits, e.g. 25 means the segment sieve size is 4 MiB. Choose this so that SieveWorkers*2^SieveBits fits in your L3 cache. Default: 25;
-* SieveWorkers: the number of threads to use for sieving. Increasing it may solve some CPU underuse problems, but will use more memory. 0 for choosing automatically based on number of Threads and PrimeTableLimit. Default: 0.
+* SieveBits: the size of the primorial factors table for the sieve is 2^SieveBits bits. 25 seems to be an optimal value, or 24 if there are many SieveWorkers. Though, if you have less than 8 MiB of L3 cache, you can try to decrement this value. Default: 25 if SieveWorkers <= 4, 24 otherwise;
+* SieveIterations: how many times the primorial factors table is reused for sieving. Increasing will decrease the frequency of new jobs, so less time would be "lost" in sieving, while increasing will also increase the memory usage. It is not clear however how this actually plays performance wise, 16 seems to be a good value. Default: 16;
+* SieveWorkers: the number of threads to use for sieving. Increasing it may solve some CPU underuse problems, but will use more memory. 0 for choosing automatically. Default: 0.
 
 Other options:
 
-* PrimorialNumber: Primorial Number for the Wheel Factorization. Default: 40;
 * ConstellationPattern: which sort of constellations to look for, as offsets separated by commas. Note that they are not cumulative, so '0, 2, 4, 2, 4, 6, 2' corresponds to n + (0, 2, 6, 8, 12, 18, 20). If empty (or not accepted by the server), a valid pattern will be chosen (0, 2, 4, 2, 4, 6, 2 in Search and Benchmark Modes). Default: empty;
+* PrimorialNumber: Primorial Number for the sieve process. Higher is better, but it is limited by the target offset limit. 0 to set automatically, it should be left as is. Default: 0;
 * PrimorialOffsets: list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConstellationOffsets. If empty, a default one will be chosen if possible (see main.hpp source file), otherwise rieMiner will not start (if the chosen constellation offsets are not in main.hpp). Default: empty;
 * Debug: activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, 0 to disable. Other values may introduce some more specific debug messages. Default : 0.
 

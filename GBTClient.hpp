@@ -55,7 +55,7 @@ public:
 	void connect();
 	NetworkInfo info();
 	void process();
-	bool getJob(Job& job);
+	bool getJob(Job&, const bool = false);
 	void handleResult(const Job& job) { // Called by a miner thread, adds result to pending submissions, which will be processed in process() called by the main thread
 		std::lock_guard<std::mutex> lock(_submitMutex);
 		_pendingSubmissions.push_back(job);

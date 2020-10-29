@@ -52,6 +52,7 @@ mpz_class BlockHeader::target(const int32_t powVersion) const {
 		if ((hash[i/8] >> (i % 8)) & 1)
 			target.get_mpz_t()->_mp_d[0]++;
 	}
+	if (difficultyIntegerPart < 265U) return 0;
 	const uint32_t trailingZeros(difficultyIntegerPart - 265U);
 	target <<= trailingZeros;
 	return target;
@@ -133,9 +134,9 @@ void BMClient::process() {
 	}
 }
 
-bool BMClient::getJob(Job& job) {
+bool BMClient::getJob(Job& job, const bool dummy) {
 	std::lock_guard<std::mutex> lock(_workMutex);
-	if (_height == 0) {
+	if (_height == 0 && !dummy) {
 		_height = 1;
 		_timer = std::chrono::steady_clock::now();
 	}
@@ -153,11 +154,11 @@ bool BMClient::getJob(Job& job) {
 	job.target <<= (difficultyAsInteger/65536ULL - 81ULL);
 	job.primeCountTarget = _pattern.size();
 	job.primeCountMin = job.primeCountTarget;
-	_requests++;
-	return job.height != 0;
+	if (!dummy) _requests++;
+	return job.height != 0 || dummy;
 }
 
-bool SearchClient::getJob(Job& job) {
+bool SearchClient::getJob(Job& job, const bool) {
 	job.height = 1;
 	job.difficulty = _difficulty;
 	// Target: (in binary) 1 . Leading Digits L (16 bits) . 80 Random Bits . (Difficulty - 97) zeros = 2^(Difficulty - 97)*(2^96 + 2^80*L + Random)
@@ -232,9 +233,9 @@ void TestClient::process() {
 	_bh.bits = 256*_difficulty;
 }
 
-bool TestClient::getJob(Job& job) {
+bool TestClient::getJob(Job& job, const bool dummy) {
 	std::lock_guard<std::mutex> lock(_workMutex);
-	if (_reconnecting) {
+	if (_reconnecting && !dummy) {
 		_timer = std::chrono::steady_clock::now();
 		_requests = 0;
 		_reconnecting = false;
@@ -242,10 +243,10 @@ bool TestClient::getJob(Job& job) {
 	job.bh = _bh;
 	job.height = _connected ? _height : 0;
 	job.powVersion = 1;
-	job.difficulty = decodeBits(job.bh.bits, job.powVersion);
+	job.difficulty = _difficulty;
 	job.target = job.bh.target(job.powVersion);
 	job.primeCountTarget = _currentPattern.size();
 	job.primeCountMin = job.primeCountTarget;
-	_requests++;
-	return job.height != 0;
+	if (!dummy) _requests++;
+	return job.height != 0 || dummy;
 }

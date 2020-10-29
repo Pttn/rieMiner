@@ -287,7 +287,7 @@ NetworkInfo GBTClient::info() {
 	return _info;
 }
 
-bool GBTClient::getJob(Job& job) {
+bool GBTClient::getJob(Job& job, const bool) {
 	std::lock_guard<std::mutex> lock(_workMutex);
 	GetBlockTemplateData gbtd(_gbtd);
 	gbtd.coinBaseGen(_scriptPubKey, _coinbaseMessage, _donate);

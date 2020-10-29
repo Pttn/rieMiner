@@ -20,13 +20,17 @@ union xmmreg_t {
 constexpr uint32_t sieveCacheSize(16);
 constexpr uint32_t nWorks(2);
 
+
+inline mpz_class u64ToMpz(const uint64_t u64) {
+	mpz_class mpz;
+	mpz_import(mpz.get_mpz_t(), 1, 1, 8, 0, 0, &u64);
+	return mpz;
+}
+
 inline std::vector<mpz_class> v64ToVMpz(const std::vector<uint64_t> &v64) {
 	std::vector<mpz_class> vMpz;
-	for (const auto & n : v64) {
-		mpz_class mpz;
-		mpz_import(mpz.get_mpz_t(), 1, 1, 8, 0, 0, &n);
-		vMpz.push_back(mpz);
-	}
+	for (const auto & n : v64)
+		vMpz.push_back(u64ToMpz(n));
 	return vMpz;
 }
 
@@ -160,7 +164,7 @@ public:
 	
 	void printStats() const;
 	bool benchmarkFinishedTimeOut(const double) const;
-	bool benchmarkFinished2Tuples(const uint64_t) const;
+	bool benchmarkFinishedEnoughPrimes(const uint64_t) const;
 	void printBenchmarkResults() const;
 	void printTupleStats() const;
 };
