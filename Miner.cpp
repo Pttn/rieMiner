@@ -22,6 +22,7 @@ thread_local std::array<uint64_t*, maxSieveWorkers> factorsCacheCounts{nullptr};
 thread_local uint16_t threadId(65535);
 
 void Miner::init(const MinerParameters &minerParameters) {
+	_shouldRestart = false;
 	if (_inited) {
 		ERRORMSG("The miner is already inited");
 		return;
@@ -35,7 +36,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 		std::cout << "Could not get data from Client :|" << std::endl;
 		return;
 	}
-	const double difficulty(job.difficulty);
+	_difficultyAtInit = job.difficulty;
 	
 	std::cout << "Initializing miner..." << std::endl;
 	std::cout << "Processor: " << _cpuInfo.getBrand() << std::endl;
@@ -61,10 +62,10 @@ void Miner::init(const MinerParameters &minerParameters) {
 	_primorialOffsets = v64ToVMpz(_parameters.primorialOffsets);
 	if (_parameters.sieveWorkers == 0) {
 		double proportion;
-		if (_parameters.pattern.size() >= 7) proportion = 0.85 - difficulty/1792.;
-		else if (_parameters.pattern.size() == 6) proportion = 0.75 - difficulty/1792.;
-		else if (_parameters.pattern.size() == 5) proportion = 0.7 - difficulty/1280.;
-		else if (_parameters.pattern.size() == 4) proportion = 0.5 - difficulty/1280.;
+		if (_parameters.pattern.size() >= 7) proportion = 0.85 - _difficultyAtInit/1920.;
+		else if (_parameters.pattern.size() == 6) proportion = 0.75 - _difficultyAtInit/1792.;
+		else if (_parameters.pattern.size() == 5) proportion = 0.7 - _difficultyAtInit/1280.;
+		else if (_parameters.pattern.size() == 4) proportion = 0.5 - _difficultyAtInit/1280.;
 		else proportion = 0.;
 		if (proportion < 0.) proportion = 0.;
 		if (job.powVersion == -1) proportion *= 2.5;
@@ -97,7 +98,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 	
 	if (_parameters.primeTableLimit == 0) {
 		constexpr uint64_t primeTableLimitMax(2147483648ULL);
-		_parameters.primeTableLimit = std::pow(difficulty, 6.)/std::pow(2., 3.*static_cast<double>(_parameters.pattern.size()) + 7.);
+		_parameters.primeTableLimit = std::pow(_difficultyAtInit, 6.)/std::pow(2., 3.*static_cast<double>(_parameters.pattern.size()) + 7.);
 		if (_parameters.threads > 16) {
 			_parameters.primeTableLimit *= 16;
 			_parameters.primeTableLimit /= static_cast<double>(_parameters.threads);
@@ -157,13 +158,13 @@ void Miner::init(const MinerParameters &minerParameters) {
 	uint32_t bitsForOffset;
 	// The primorial times the maximum factor should be smaller than the allowed limit for the target offset.
 	if (_mode == "Solo" || _mode == "Pool" || _mode == "Test") {
-		bitsForOffset = std::floor(difficulty - 265.); // 1 . leading 8 bits . hash (256 bits) . remaining bits for the offset
-		bitsForOffset -= 64; // Some margin to take in account the Difficulty fluctuations
+		bitsForOffset = std::floor(_difficultyAtInit - 265.); // 1 . leading 8 bits . hash (256 bits) . remaining bits for the offset
+		bitsForOffset -= 48; // Some margin to take in account the Difficulty fluctuations
 	}
 	else if (_mode == "Search")
-		bitsForOffset = std::floor(difficulty - 97.); // 1 . leading 16 bits . random 80 bits . remaining bits for the offset
+		bitsForOffset = std::floor(_difficultyAtInit - 97.); // 1 . leading 16 bits . random 80 bits . remaining bits for the offset
 	else
-		bitsForOffset = std::floor(difficulty - 81.); // 1 . leading 16 bits . constructed 64 bits . remaining bits for the offset
+		bitsForOffset = std::floor(_difficultyAtInit - 81.); // 1 . leading 16 bits . constructed 64 bits . remaining bits for the offset
 	if (job.powVersion == -1) // Maximum 256 bits allowed before the fork
 		bitsForOffset = std::min(bitsForOffset, 256U);
 	mpz_class primorialLimit(1);
@@ -824,6 +825,13 @@ void Miner::_manageTasks() {
 	_currentWorkIndex = 0;
 	uint32_t oldHeight(0);
 	while (_running && _client->getJob(job)) {
+		if (job.difficulty < _difficultyAtInit - 48. || job.difficulty > _difficultyAtInit + 96.) // Restart to retune parameters.
+			_shouldRestart = true;
+		if (std::dynamic_pointer_cast<NetworkedClient>(_client) != nullptr) {
+			const NetworkInfo networkInfo(std::dynamic_pointer_cast<NetworkedClient>(_client)->info());
+			if (!hasAcceptedPatterns(networkInfo.acceptedPatterns)) // Restart if the pattern changed and is no longer compatible with the current one (notably, for the 0.20 fork)
+				_shouldRestart = true;
+		}
 		_presieveTime = _presieveTime.zero();
 		_sieveTime = _sieveTime.zero();
 		_verifyTime = _verifyTime.zero();

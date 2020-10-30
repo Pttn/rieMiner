@@ -288,12 +288,13 @@ The [list of current prime k-tuplets world records](http://anthony.d.forbes.goog
 
 This mode can be used to test the code. It does the following:
 
-* Start at Difficulty 800, the first time with constellation offsets 0, 2, 4, 2, 4;
-* Increases Difficulty by 10 every 10 s 5 times;
-* After 10 more seconds, set Difficulty to 1600 and the constellation offsets to 0, 2, 4, 2, 4, 6, 2 (only for the first time) or simulate a disconnect (the other times);
-* Increases Difficulty by 40 after 30 (slightly less the first time) and 20 s;
-* Simulates a disconnect after 10 more seconds;
-* Repeat (keeping the 7-tuple constellation).
+* Start at Difficulty 1600, the first time with constellation pattern 0, 2, 4, 2, 4;
+* Increases Difficulty by 10 every 10 s two times;
+* After 10 more seconds, sets Difficulty to 1200 and the constellation pattern to 0, 2, 4, 2, 4, 6, 2;
+* Decreases Difficulty by 20 every 10 s (the time taken to restart the miner is counted, so if it takes more than 10 s, it is normal that a new block appears immediately after the reinitialization);
+* The miner restarts several times due to the Difficulty variation (this adjusts some parameters if not set);
+* When the Difficulty reaches 1040, a disconnect is simulated;
+* Repeat (keeping the 7-tuple constellation). The miner will restart twice as when it disconnects, it is not aware that the Difficulty increased a lot.
 
 ## Miscellaneous
 

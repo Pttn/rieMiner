@@ -193,36 +193,26 @@ void TestClient::connect() {
 		_requests = 0;
 		_timer = std::chrono::steady_clock::now();
 		_connected = true;
-		_reconnecting = true;
+		_starting = true;
 	}
 }
 
 void TestClient::process() {
 	std::lock_guard<std::mutex> lock(_workMutex);
-	if (!_reconnecting && timeSince(_timer) >= _timeBeforeNextBlock) {
+	if (!_starting && timeSince(_timer) >= _timeBeforeNextBlock) {
 		_height++;
 		_requests = 0;
 		_difficulty += 10;
-		if (_difficulty == 860) {
-			_difficulty = 1600;
-			_timeBeforeNextBlock = 30;
-			if (_currentPattern == std::vector<uint64_t>{0, 2, 4, 2, 4}) {
+		if (_difficulty == 1630) {
+			_difficulty = 1200;
+			if (_currentPattern == std::vector<uint64_t>{0, 2, 4, 2, 4})
 				_currentPattern = {0, 2, 4, 2, 4, 6, 2}; // Fork simulation, triggering the miner restart
-				_reconnecting = true;
-			}
-			else {
-				_connected = false; // Disconnect simulation
-				_reconnecting = true;
-			}
 		}
-		else if (_difficulty > 1600) {
-			_difficulty += 30;
-			_timeBeforeNextBlock -= 10;
-			if (_timeBeforeNextBlock == 0) {
-				_difficulty = 800;
-				_timeBeforeNextBlock = 10;
+		else if (_difficulty < 1600) {
+			_difficulty -= 30;
+			if (_difficulty <= 1040) {
+				_difficulty = 1600;
 				_connected = false; // Disconnect simulation
-				_reconnecting = true;
 			}
 		}
 		_timer = std::chrono::steady_clock::now();
@@ -235,10 +225,10 @@ void TestClient::process() {
 
 bool TestClient::getJob(Job& job, const bool dummy) {
 	std::lock_guard<std::mutex> lock(_workMutex);
-	if (_reconnecting && !dummy) {
+	if (_starting && !dummy) {
 		_timer = std::chrono::steady_clock::now();
 		_requests = 0;
-		_reconnecting = false;
+		_starting = false;
 	}
 	job.bh = _bh;
 	job.height = _connected ? _height : 0;

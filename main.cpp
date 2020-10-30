@@ -419,9 +419,8 @@ int main(int argc, char** argv) {
 					std::this_thread::sleep_for(std::chrono::seconds(waitReconnect));
 				}
 				else {
-					const NetworkInfo networkInfo(std::dynamic_pointer_cast<NetworkedClient>(client)->info());
-					if (!miner->hasAcceptedPatterns(networkInfo.acceptedPatterns)) {
-						std::cout << "The current constellation type is no longer accepted, restarting the miner." << std::endl;
+					if (miner->shouldRestart()) {
+						std::cout << "Restarting miner to take in account Difficulty variations or other network changes." << std::endl;
 						miner->stop();
 						const NetworkInfo networkInfo(std::dynamic_pointer_cast<NetworkedClient>(client)->info());
 						MinerParameters minerParameters(options.minerParameters());

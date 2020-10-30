@@ -130,12 +130,12 @@ class TestClient : public NetworkedClient { // Actually not networked, but behav
 	BlockHeader _bh;
 	uint32_t _height, _difficulty, _requests, _timeBeforeNextBlock;
 	std::vector<uint64_t> _currentPattern;
-	bool _reconnecting; // Used to set the timer so the time taken to reconnect and reinitialize the miner if needed is not counted
+	bool _starting; // Used to set the timer so the time taken to initialize the miner the first time not counted
 	std::chrono::time_point<std::chrono::steady_clock> _timer;
 	
 	bool _fetchWork();
 public:
-	TestClient() : _height(1), _difficulty(800), _requests(0), _timeBeforeNextBlock(10), _currentPattern{0, 2, 4, 2, 4} {}
+	TestClient() : _height(1), _difficulty(1600), _requests(0), _timeBeforeNextBlock(10), _currentPattern{0, 2, 4, 2, 4} {}
 	void connect();
 	NetworkInfo info() {return {1, {_currentPattern}};}
 	void process();
