@@ -123,7 +123,14 @@ void Miner::init(const MinerParameters &minerParameters) {
 	if (savedPrimes > 0 && _parameters.primeTableLimit >= 1048576 && _parameters.primeTableLimit < largestSavedPrime) {
 		std::cout << "Extracting prime numbers from " << primeTableFile << " (" << primeTableFileBytes << " bytes, " << savedPrimes << " primes, largest " << largestSavedPrime << ")..." << std::endl;
 		uint64_t nPrimesUpperBound(std::min(1.085*static_cast<double>(_parameters.primeTableLimit)/std::log(static_cast<double>(_parameters.primeTableLimit)), static_cast<double>(savedPrimes))); // 1.085 = max(π(p)log(p)/p) for p >= 2^20
-		_primes = std::vector<uint64_t>(nPrimesUpperBound);
+		try {
+			_primes = std::vector<uint64_t>(nPrimesUpperBound);
+		}
+		catch (std::bad_alloc& ba) {
+			ERRORMSG("Unable to allocate memory for the prime table");
+			_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/8, _parameters.sieveWorkers);
+			return;
+		}
 		file.seekg(0, std::ios::beg);
 		file.read(reinterpret_cast<char*>(_primes.data()), nPrimesUpperBound*sizeof(decltype(_primes)::value_type));
 		file.close();
@@ -137,7 +144,14 @@ void Miner::init(const MinerParameters &minerParameters) {
 	}
 	else {
 		std::cout << "Generating prime table using sieve of Eratosthenes..." << std::endl;
-		_primes = generatePrimeTable(_parameters.primeTableLimit);
+		try {
+			_primes = generatePrimeTable(_parameters.primeTableLimit);
+		}
+		catch (std::bad_alloc& ba) {
+			ERRORMSG("Unable to allocate memory for the prime table");
+			_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/8, _parameters.sieveWorkers);
+			return;
+		}
 		std::cout << "Table with all " << _primes.size() << " first primes generated in " << timeSince(t0) << " s (" << _primes.size()*sizeof(decltype(_primes)::value_type) << " bytes)." << std::endl;
 	}
 	if (_primes.size() % 2 == 1 && _parameters.pattern.size() == 6) // Needs to be even to use optimizations for 6-tuples
@@ -229,8 +243,15 @@ void Miner::init(const MinerParameters &minerParameters) {
 		std::cout << "Precomputing modular inverses and division data..." << std::endl; // The precomputed data is used to speed up computations in _doPresieveTask.
 		t0 = std::chrono::steady_clock::now();
 		const uint64_t precompPrimes(std::min(_nPrimes, 5586502348UL)); // Precomputation only works up to p = 2^37
-		_modularInverses.resize(_nPrimes); // Table of inverses of the primorial modulo a prime number in the table with index >= primorialNumber.
-		_modPrecompute.resize(precompPrimes);
+		try {
+			_modularInverses.resize(_nPrimes); // Table of inverses of the primorial modulo a prime number in the table with index >= primorialNumber.
+			_modPrecompute.resize(precompPrimes);
+		}
+		catch (std::bad_alloc& ba) {
+			ERRORMSG("Unable to allocate memory for the precomputed data");
+			_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/4, _parameters.sieveWorkers);
+			return;
+		}
 		const uint64_t blockSize((_nPrimes - _parameters.primorialNumber + _parameters.threads - 1)/_parameters.threads);
 		std::thread threads[_parameters.threads];
 		for (uint16_t j(0) ; j < _parameters.threads ; j++) {
@@ -263,6 +284,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 	}
 	catch (std::bad_alloc& ba) {
 		ERRORMSG("Unable to allocate memory for the primorial factors tables");
+		_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/3, _parameters.sieveWorkers);
 		return;
 	}
 	
@@ -275,6 +297,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 	}
 	catch (std::bad_alloc& ba) {
 		ERRORMSG("Unable to allocate memory for the primorial factors");
+		_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/2, std::max(static_cast<int>(_parameters.sieveWorkers) - 1, 1));
 		return;
 	}
 	
@@ -288,6 +311,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 	}
 	catch (std::bad_alloc& ba) {
 		ERRORMSG("Unable to allocate memory for the additional primorial factors");
+		_suggestLessMemoryIntensiveOptions(2*_parameters.primeTableLimit/3, std::max(static_cast<int>(_parameters.sieveWorkers) - 1, 1));
 		return;
 	}
 	// Initial guess at a value for the threshold
@@ -945,6 +969,13 @@ void Miner::_manageTasks() {
 		
 		DBG(std::cout << "Job Timing: " << _presieveTime.count() << "/" << _sieveTime.count() << "/" << _verifyTime.count() << ", tasks: " << _works[0].nRemainingCheckTasks << ", " << _works[1].nRemainingCheckTasks << std::endl;);
 	}
+}
+
+void Miner::_suggestLessMemoryIntensiveOptions(const uint64_t suggestedPrimeTableLimit, const uint16_t suggestedSieveWorkers) const {
+	std::cout << "You don't have enough available memory to run rieMiner with the current options." << std::endl;
+	std::cout << "Try to use the following options in the " << confPath << " configuration file and retry:" << std::endl;
+	std::cout << "PrimeTableLimit = " << suggestedPrimeTableLimit << std::endl;
+	std::cout << "SieveWorkers = " << suggestedSieveWorkers << std::endl;
 }
 
 bool Miner::hasAcceptedPatterns(const std::vector<std::vector<uint64_t>> &acceptedPatterns) const {

@@ -16,7 +16,7 @@
 #include "tools.hpp"
 
 int DEBUG(0);
-static std::string confPath("rieMiner.conf");
+std::string confPath("rieMiner.conf");
 bool running(false);
 std::shared_ptr<Miner> miner(nullptr);
 std::shared_ptr<Client> client(nullptr);

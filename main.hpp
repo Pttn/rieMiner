@@ -19,6 +19,8 @@
 #define primeTableFile	"PrimeTable64.bin"
 
 extern int DEBUG;
+extern std::string confPath;
+
 #define DBG(x) if (DEBUG) {x;};
 #define DBG_VERIFY(x) if (DEBUG > 1) { x; };
 #define ERRORMSG(message) std::cerr << __func__ << ": " << message << " :| !" << std::endl

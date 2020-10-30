@@ -135,7 +135,7 @@ class Miner {
 	void _doCheckTask(Task);
 	void _doTasks(uint16_t);
 	void _manageTasks();
-	
+	void _suggestLessMemoryIntensiveOptions(const uint64_t, const uint16_t)  const;
 public:
 	Miner(const Options &options) :
 		_mode(options.mode()), _parameters(MinerParameters()),
