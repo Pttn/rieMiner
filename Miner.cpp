@@ -655,10 +655,11 @@ void Miner::_doSieveTask(Task task) {
 	else
 		_processSieve(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
 	
-	// Wait for the presieve tasks that generate the additional factors to finish.
-	if (sieveIteration == 0) presieveLock.lock();
 	if (_works[workIndex].job.height != _client->currentHeight())
 		goto sieveEnd;
+	
+	// Wait for the presieve tasks that generate the additional factors to finish.
+	if (sieveIteration == 0) presieveLock.lock();
 	
 	// Eliminate these factors.
 	for (uint64_t i(0) ; i < sieve.additionalFactorsToEliminateCounts[sieveIteration] ; i++)
