@@ -22,6 +22,22 @@ std::vector<uint8_t> hexStrToV8(std::string str) {
 	return v;
 }
 
+std::vector<uint64_t> generatePrimeTable(const uint64_t limit) {
+	if (limit < 2) return {};
+	std::vector<uint64_t> compositeTable((limit + 127ULL)/128ULL, 0ULL); // Booleans indicating whether an odd number is composite: 0000100100101100...
+	for (uint64_t f(3ULL) ; f*f <= limit ; f += 2ULL) { // Eliminate f and its multiples m for odd f from 3 to square root of the limit
+		if (compositeTable[f >> 7ULL] & (1ULL << ((f >> 1ULL) & 63ULL))) continue; // Skip if f is composite (f and its multiples were already eliminated)
+		for (uint64_t m((f*f) >> 1ULL) ; m < (limit >> 1ULL) ; m += f) // Start eliminating at f^2 (multiples of f below were already eliminated)
+			compositeTable[m >> 6ULL] |= 1ULL << (m & 63ULL);
+	}
+	std::vector<uint64_t> primeTable(1, 2);
+	for (uint64_t i(1ULL) ; (i << 1ULL) + 1ULL <= limit ; i++) { // Fill the prime table using the composite table
+		if (!(compositeTable[i >> 6ULL] & (1ULL << (i & 63ULL))))
+			primeTable.push_back((i << 1ULL) + 1ULL); // Add prime number 2i + 1
+	}
+	return primeTable;
+}
+
 constexpr std::array<uint8_t, 128> bech32Values = {
 	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
 	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,

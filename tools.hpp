@@ -66,6 +66,8 @@ inline std::array<uint8_t, 32> sha256sha256(const uint8_t *data, uint32_t len) {
 	return sha256(sha256(data, len).data(), 32);
 }
 
+std::vector<uint64_t> generatePrimeTable(const uint64_t);
+
 // Bech32 Code adapted from the reference C++ implementation, https://github.com/sipa/bech32/tree/master/ref/c%2B%2B
 std::vector<uint8_t> bech32ToScriptPubKey(const std::string&);
 

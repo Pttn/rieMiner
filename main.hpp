@@ -16,6 +16,7 @@
 #include "tools.hpp"
 
 #define versionString	"rieMiner 0.92-alpha2"
+#define primeTableFile	"PrimeTable64.bin"
 
 extern int DEBUG;
 #define DBG(x) if (DEBUG) {x;};
@@ -78,6 +79,7 @@ struct MinerParameters {
 class Options {
 	MinerParameters _minerParameters;
 	std::string _host, _username, _password, _mode, _payoutAddress, _secret, _tuplesFile;
+	uint64_t _filePrimeTableLimit;
 	uint16_t _debug, _port, _threads, _donate;
 	double _refreshInterval, _difficulty, _benchmarkBlockInterval, _benchmarkTimeLimit;
 	uint64_t _benchmarkPrimeCountLimit;
@@ -95,6 +97,7 @@ class Options {
 		_payoutAddress("ric1qpttn5u8u9470za84kt4y0lzz4zllzm4pyzhuge"),
 		_secret("/rM0.92a/"),
 		_tuplesFile("Tuples.txt"),
+		_filePrimeTableLimit(0),
 		_debug(0),
 		_port(28332),
 		_donate(2),
@@ -117,6 +120,7 @@ class Options {
 	std::string payoutAddress() const {return _payoutAddress;}
 	std::string secret() const {return _secret;}
 	std::string tuplesFile() const {return _tuplesFile;}
+	uint64_t filePrimeTableLimit() const {return _filePrimeTableLimit;}
 	uint16_t donate() const {return _donate;}
 	double refreshInterval() const {return _refreshInterval;}
 	double difficulty() const {return _difficulty;}

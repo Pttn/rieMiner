@@ -107,25 +107,41 @@ void Miner::init(const MinerParameters &minerParameters) {
 	std::cout << "Prime Table Limit: " << _parameters.primeTableLimit << std::endl;
 	std::transform(_parameters.pattern.begin(), _parameters.pattern.end(), std::back_inserter(_halfPattern), [](uint64_t n) {return n >> 1;});
 	
-	{
-		std::cout << "Generating prime table using sieve of Eratosthenes..." << std::endl;
-		std::chrono::time_point<std::chrono::steady_clock> t0(std::chrono::steady_clock::now());
-		std::vector<uint64_t> compositeTable((_parameters.primeTableLimit + 127ULL)/128ULL, 0ULL); // Booleans indicating whether an odd number is composite: 0000100100101100...
-		for (uint64_t f(3ULL) ; f*f < _parameters.primeTableLimit ; f += 2ULL) { // Eliminate f and its multiples m for odd f from 3 to square root of the PrimeTableLimit
-			if (compositeTable[f >> 7ULL] & (1ULL << ((f >> 1ULL) & 63ULL))) continue; // Skip if f is composite (f and its multiples were already eliminated)
-			for (uint64_t m((f*f) >> 1ULL) ; m < (_parameters.primeTableLimit >> 1ULL) ; m += f) // Start eliminating at f^2 (multiples of f below were already eliminated)
-				compositeTable[m >> 6ULL] |= 1ULL << (m & 63ULL);
+	uint64_t primeTableFileBytes, savedPrimes(0), largestSavedPrime;
+	std::fstream file(primeTableFile);
+	if (file) {
+		file.seekg(0, std::ios::end);
+		primeTableFileBytes = file.tellg();
+		savedPrimes = primeTableFileBytes/sizeof(decltype(_primes)::value_type);
+		if (savedPrimes > 0) {
+			file.seekg(-sizeof(decltype(_primes)::value_type), std::ios::end);
+			file.read(reinterpret_cast<char*>(&largestSavedPrime), sizeof(decltype(_primes)::value_type));
 		}
-		_primes.push_back(2ULL);
-		for (uint64_t i(1ULL) ; (i << 1ULL) + 1ULL < _parameters.primeTableLimit ; i++) { // Fill the prime table using the composite table
-			if (!(compositeTable[i >> 6ULL] & (1ULL << (i & 63ULL))))
-				_primes.push_back((i << 1ULL) + 1ULL); // Add prime number 2i + 1
-		}
-		std::cout << "Table with all " << _primes.size() << " first primes generated in " << timeSince(t0) << " s (" << _primes.size()/sizeof(uint64_t) << " bytes)." << std::endl;
-		if (_primes.size() % 2 == 1 && _parameters.pattern.size() == 6) // Needs to be even to use optimizations for 6-tuples
-			_primes.pop_back();
-		_nPrimes = _primes.size();
 	}
+	std::chrono::time_point<std::chrono::steady_clock> t0(std::chrono::steady_clock::now());
+	if (savedPrimes > 0 && _parameters.primeTableLimit >= 1048576 && _parameters.primeTableLimit < largestSavedPrime) {
+		std::cout << "Extracting prime numbers from " << primeTableFile << " (" << primeTableFileBytes << " bytes, " << savedPrimes << " primes, largest " << largestSavedPrime << ")..." << std::endl;
+		uint64_t nPrimesUpperBound(std::min(1.085*static_cast<double>(_parameters.primeTableLimit)/std::log(static_cast<double>(_parameters.primeTableLimit)), static_cast<double>(savedPrimes))); // 1.085 = max(π(p)log(p)/p) for p >= 2^20
+		_primes = std::vector<uint64_t>(nPrimesUpperBound);
+		file.seekg(0, std::ios::beg);
+		file.read(reinterpret_cast<char*>(_primes.data()), nPrimesUpperBound*sizeof(decltype(_primes)::value_type));
+		file.close();
+		for (auto i(_primes.size() - 1) ; i > 0 ; i--) {
+			if (_primes[i] <= _parameters.primeTableLimit) {
+				_primes.resize(i + 1);
+				break;
+			}
+		}
+		std::cout << _primes.size() << " first primes extracted in " << timeSince(t0) << " s (" << _primes.size()*sizeof(decltype(_primes)::value_type) << " bytes)." << std::endl;
+	}
+	else {
+		std::cout << "Generating prime table using sieve of Eratosthenes..." << std::endl;
+		_primes = generatePrimeTable(_parameters.primeTableLimit);
+		std::cout << "Table with all " << _primes.size() << " first primes generated in " << timeSince(t0) << " s (" << _primes.size()*sizeof(decltype(_primes)::value_type) << " bytes)." << std::endl;
+	}
+	if (_primes.size() % 2 == 1 && _parameters.pattern.size() == 6) // Needs to be even to use optimizations for 6-tuples
+		_primes.pop_back();
+	_nPrimes = _primes.size();
 	
 	if (_parameters.sieveBits == 0)
 		_parameters.sieveBits = _parameters.sieveWorkers <= 4 ? 25 : 24;
@@ -210,7 +226,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 	std::cout << "Estimated additional factors: " << additionalFactorsCountEstimation << " (allocated per iteration: " << additionalFactorsEntriesPerIteration << ")" << std::endl;
 	{
 		std::cout << "Precomputing modular inverses and division data..." << std::endl; // The precomputed data is used to speed up computations in _doPresieveTask.
-		std::chrono::time_point<std::chrono::steady_clock> t0(std::chrono::steady_clock::now());
+		t0 = std::chrono::steady_clock::now();
 		const uint64_t precompPrimes(std::min(_nPrimes, 5586502348UL)); // Precomputation only works up to p = 2^37
 		_modularInverses.resize(_nPrimes); // Table of inverses of the primorial modulo a prime number in the table with index >= primorialNumber.
 		_modPrecompute.resize(precompPrimes);
@@ -230,7 +246,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 			});
 		}
 		for (uint16_t j(0) ; j < _parameters.threads ; j++) threads[j].join();
-		std::cout << "Tables of " << _modularInverses.size() - _parameters.primorialNumber << " modular inverses and " << precompPrimes - _parameters.primorialNumber << " division entries generated in " << timeSince(t0) << " s (" << (_modularInverses.size() + precompPrimes - 2*_parameters.primorialNumber)/sizeof(uint64_t) << " bytes)." << std::endl;
+		std::cout << "Tables of " << _modularInverses.size() - _parameters.primorialNumber << " modular inverses and " << precompPrimes - _parameters.primorialNumber << " division entries generated in " << timeSince(t0) << " s (" << (_modularInverses.size() + precompPrimes - 2*_parameters.primorialNumber)*sizeof(decltype(_modularInverses)::value_type) << " bytes)." << std::endl;
 	}
 	
 	try {

@@ -174,6 +174,10 @@ void Options::loadConf() {
 					try {_minerParameters.primeTableLimit = std::stoll(value);}
 					catch (...) {_minerParameters.primeTableLimit = 0;}
 				}
+				else if (key == "GeneratePrimeTableFileUpTo"){
+					try {_filePrimeTableLimit = std::stoll(value);}
+					catch (...) {_filePrimeTableLimit = 0;}
+				}
 				else if (key == "SieveWorkers") {
 					try {_minerParameters.sieveWorkers = std::stoi(value);}
 					catch (...) {_minerParameters.sieveWorkers = 0;}
@@ -312,6 +316,7 @@ void Options::loadConf() {
 
 void signalHandler(int signum) {
 	std::cout << std::endl << "Signal " << signum << " received, stopping rieMiner." << std::endl;
+	if (miner == nullptr) exit(0);
 	if (miner->inited()) miner->stop();
 	else exit(0);
 	running = false;
@@ -347,6 +352,21 @@ int main(int argc, char** argv) {
 	
 	Options options;
 	options.loadConf();
+	
+	if (options.filePrimeTableLimit() > 1) {
+		std::cout << "Generating prime table up to " << options.filePrimeTableLimit() << " and saving to " << primeTableFile << "..." << std::endl;
+		std::fstream file(primeTableFile, std::ios::out | std::ios::binary);
+		if (file) {
+			const auto primeTable(generatePrimeTable(options.filePrimeTableLimit()));
+			file.write(reinterpret_cast<const char*>(primeTable.data()), primeTable.size()*sizeof(decltype(primeTable)::value_type));
+			file.close();
+			std::cout << "Table of " << primeTable.size() << " primes generated. Don't forget to disable the generation in " << confPath << std::endl;
+		}
+		else
+			ERRORMSG("Could not open file " << primeTableFile);
+		return 0;
+	}
+	
 	miner = std::make_shared<Miner>(options);
 	if (options.mode() == "Solo")
 		client = std::make_shared<GBTClient>(options);

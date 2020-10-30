@@ -159,6 +159,7 @@ Donate = 5
 # PrimorialNumber = 120
 # ConstellationPattern = 0, 2, 4, 2, 4, 6, 2
 # PrimorialOffsets = 380284918609481, 437163765888581, 701889794782061, 980125031081081, 1277156391416021, 1487854607298791, 1833994713165731, 2115067287743141, 2325810733931801, 3056805353932061, 3252606350489381, 3360877662097841
+# GeneratePrimeTableFileUpTo = 17179869209
 # Debug = 0
 # For solo mining, add consensus rules in the GetBlockTemplate RPC call, each separated by a comma. 'segwit' must be present.
 # Rules = segwit
@@ -196,6 +197,7 @@ Other options:
 * ConstellationPattern: which sort of constellations to look for, as offsets separated by commas. Note that they are not cumulative, so '0, 2, 4, 2, 4, 6, 2' corresponds to n + (0, 2, 6, 8, 12, 18, 20). If empty (or not accepted by the server), a valid pattern will be chosen (0, 2, 4, 2, 4, 6, 2 in Search and Benchmark Modes). Default: empty;
 * PrimorialNumber: Primorial Number for the sieve process. Higher is better, but it is limited by the target offset limit. 0 to set automatically, it should be left as is. Default: 0;
 * PrimorialOffsets: list of Offsets from the Primorial for the first number in the prime tuple. Same syntax as ConstellationOffsets. If empty, a default one will be chosen if possible (see main.hpp source file), otherwise rieMiner will not start (if the chosen constellation offsets are not in main.hpp). Default: empty;
+* GeneratePrimeTableFileUpTo: if > 1, generates the table of primes up to the given limit and saves it to a `PrimeTable64.bin` file, which will be reused instead of recomputing the table at every miner initialization. This does not affect mining, but is useful if restarting rieMiner often with large Prime Table Limits, notably for debugging or benchmarks. However, the file will take a few GB of disk space for large limits and you should have a fast SSD. Default: 0;
 * Debug: activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, 0 to disable. Other values may introduce some more specific debug messages. Default : 0.
 
 ### Memory problems
