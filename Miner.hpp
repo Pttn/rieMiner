@@ -20,7 +20,6 @@ union xmmreg_t {
 constexpr uint32_t sieveCacheSize(16);
 constexpr uint32_t nWorks(2);
 
-
 inline mpz_class u64ToMpz(const uint64_t u64) {
 	mpz_class mpz;
 	mpz_import(mpz.get_mpz_t(), 1, 1, 8, 0, 0, &u64);
@@ -104,7 +103,7 @@ class Miner {
 	bool _inited, _running;
 	TsQueue<Task> _presieveTasks, _tasks;
 	TsQueue<TaskDoneInfo> _tasksDoneInfos;
-	Sieve* _sieves;
+	std::vector<Sieve> _sieves;
 	std::array<MinerWork, nWorks> _works; // Alternating work for better efficiency when there is a new block
 	uint32_t _nRemainingCheckTasksThreshold, _currentWorkIndex;
 	std::chrono::microseconds _presieveTime, _sieveTime, _verifyTime;

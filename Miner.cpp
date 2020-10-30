@@ -234,14 +234,15 @@ void Miner::init(const MinerParameters &minerParameters) {
 	}
 	
 	try {
-		_sieves = new Sieve[_parameters.sieveWorkers];
-		for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
+		std::vector<Sieve> sieves(_parameters.sieveWorkers);
+		_sieves.swap(sieves);
+		for (std::vector<Sieve>::size_type i(0) ; i < _sieves.size() ; i++) {
 			_sieves[i].id = i;
 			_sieves[i].additionalFactorsToEliminateCounts = new std::atomic<uint64_t>[_parameters.sieveIterations];
 		}
 		std::cout << "Allocating " << sizeof(uint64_t)*_parameters.sieveWorkers*_parameters.sieveWords << " bytes for the primorial factors tables..." << std::endl;
-		for (int i(0) ; i < _parameters.sieveWorkers ; i++)
-			_sieves[i].factorsTable = new uint64_t[_parameters.sieveWords];
+		for (auto &sieve : _sieves)
+			sieve.factorsTable = new uint64_t[_parameters.sieveWords];
 	}
 	catch (std::bad_alloc& ba) {
 		ERRORMSG("Unable to allocate memory for the primorial factors tables");
@@ -250,9 +251,9 @@ void Miner::init(const MinerParameters &minerParameters) {
 	
 	try {
 		std::cout << "Allocating " << sizeof(uint32_t)*_parameters.sieveWorkers*factorsToEliminateEntries << " bytes for the primorial factors..." << std::endl;
-		for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
-			_sieves[i].factorsToEliminate = new uint32_t[factorsToEliminateEntries];
-			memset(_sieves[i].factorsToEliminate, 0, sizeof(uint32_t)*factorsToEliminateEntries);
+		for (auto &sieve : _sieves) {
+			sieve.factorsToEliminate = new uint32_t[factorsToEliminateEntries];
+			memset(sieve.factorsToEliminate, 0, sizeof(uint32_t)*factorsToEliminateEntries);
 		}
 	}
 	catch (std::bad_alloc& ba) {
@@ -262,10 +263,10 @@ void Miner::init(const MinerParameters &minerParameters) {
 	
 	try {
 		std::cout << "Allocating " << sizeof(uint32_t)*_parameters.sieveWorkers*_parameters.sieveIterations*additionalFactorsEntriesPerIteration << " bytes for the additional primorial factors..." << std::endl;
-		for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
-			_sieves[i].additionalFactorsToEliminate = new uint32_t*[_parameters.sieveIterations];
+		for (auto &sieve : _sieves) {
+			sieve.additionalFactorsToEliminate = new uint32_t*[_parameters.sieveIterations];
 			for (uint64_t j(0) ; j < _parameters.sieveIterations ; j++)
-				_sieves[i].additionalFactorsToEliminate[j] = new uint32_t[additionalFactorsEntriesPerIteration];
+				sieve.additionalFactorsToEliminate[j] = new uint32_t[additionalFactorsEntriesPerIteration];
 		}
 	}
 	catch (std::bad_alloc& ba) {
@@ -330,15 +331,15 @@ void Miner::clear() {
 	else {
 		std::cout << "Clearing miner's data..." << std::endl;
 		_inited = false;
-		for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
-			delete _sieves[i].factorsTable;
-			delete _sieves[i].factorsToEliminate;
+		for (auto &sieve : _sieves) {
+			delete sieve.factorsTable;
+			delete sieve.factorsToEliminate;
 			for (uint64_t j(0) ; j < _parameters.sieveIterations ; j++)
-				delete _sieves[i].additionalFactorsToEliminate[j];
-			delete _sieves[i].additionalFactorsToEliminate;
-			delete _sieves[i].additionalFactorsToEliminateCounts;
+				delete sieve.additionalFactorsToEliminate[j];
+			delete sieve.additionalFactorsToEliminate;
+			delete sieve.additionalFactorsToEliminateCounts;
 		}
-		delete _sieves;
+		_sieves.clear();
 		_primes.clear();
 		_modularInverses.clear();
 		_modPrecompute.clear();
@@ -820,9 +821,9 @@ void Miner::_manageTasks() {
 		}
 		_works[_currentWorkIndex].primorialMultipleStart = _works[_currentWorkIndex].job.target + _primorial - (_works[_currentWorkIndex].job.target % _primorial);
 		// Reset Counts and create Presieve Tasks
-		for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
+		for (auto &sieve : _sieves) {
 			for (uint64_t j(0) ; j < _parameters.sieveIterations ; j++)
-				_sieves[i].additionalFactorsToEliminateCounts[j] = 0;
+				sieve.additionalFactorsToEliminateCounts[j] = 0;
 		}
 		uint64_t nPresieveTasks(_parameters.threads*8ULL);
 		int32_t nRemainingNormalPresieveTasks(0), nRemainingAdditionalPresieveTasks(0);
@@ -849,9 +850,9 @@ void Miner::_manageTasks() {
 		assert(_works[_currentWorkIndex].nRemainingCheckTasks == 0);
 		
 		// Create Sieve Tasks
-		for (uint32_t i(0) ; i < static_cast<uint32_t>(_parameters.sieveWorkers) ; i++) {
+		for (std::vector<Sieve>::size_type i(0) ; i < _sieves.size() ; i++) {
 			_sieves[i].presieveLock.lock();
-			_tasks.push_front(Task{Task::Type::Sieve, _currentWorkIndex, .sieve = {i, 0}});
+			_tasks.push_front(Task{Task::Type::Sieve, _currentWorkIndex, .sieve = {static_cast<uint32_t>(i), 0}});
 		}
 		
 		int nRemainingSieves(_parameters.sieveWorkers);
@@ -862,7 +863,7 @@ void Miner::_manageTasks() {
 			else if (taskDoneInfo.type == Task::Type::Sieve) nRemainingSieves--;
 			else _works[taskDoneInfo.workIndex].nRemainingCheckTasks--;
 		}
-		for (int i(0) ; i < _parameters.sieveWorkers ; i++) _sieves[i].presieveLock.unlock();
+		for (auto &sieve : _sieves) sieve.presieveLock.unlock();
 		
 		uint32_t nRemainingTasksMin(std::min(remainingTasks, _tasks.size()));
 		while (nRemainingSieves > 0) {
