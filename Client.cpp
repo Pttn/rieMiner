@@ -18,20 +18,24 @@ std::vector<uint8_t> BlockHeader::toV8() const {
 	for (uint32_t i(0) ; i < 4 ; i++) v8.push_back(reinterpret_cast<const uint8_t*>(&version)[i]);
 	v8.insert(v8.end(), previousblockhash.begin(), previousblockhash.end());
 	v8.insert(v8.end(), merkleRoot.begin(), merkleRoot.end());
-	for (uint32_t i(0) ; i < 8 ; i++) v8.push_back(reinterpret_cast<const uint8_t*>(&curtime)[i]); // In Riecoin, nBits and nTime need to be swapped before hashing
+	for (uint32_t i(0) ; i < 8 ; i++) v8.push_back(reinterpret_cast<const uint8_t*>(&curtime)[i]);
 	for (uint32_t i(0) ; i < 4 ; i++) v8.push_back(reinterpret_cast<const uint8_t*>(&bits)[i]);
 	v8.insert(v8.end(), nOffset.begin(), nOffset.end());
 	return v8;
 }
 
-std::array<uint8_t, 32> BlockHeader::powHash() const {
-	std::array<uint8_t, 80> bhForPow;
-	*reinterpret_cast<uint32_t*>(&bhForPow) = version;
-	std::copy(previousblockhash.begin(), previousblockhash.end(), bhForPow.begin() + 4);
-	std::copy(merkleRoot.begin(), merkleRoot.end(), bhForPow.begin() + 36);
-	*reinterpret_cast<uint32_t*>(&bhForPow[68]) = bits; // In Riecoin, nBits and nTime need to be swapped before hashing
-	*reinterpret_cast<uint64_t*>(&bhForPow[72]) = curtime;
-	return sha256sha256(bhForPow.data(), 80);
+std::array<uint8_t, 32> BlockHeader::powHash(const int32_t powVersion) const {
+	if (powVersion == -1) { // "Legacy" PoW: the hash is done after swapping nTime and nBits
+		std::array<uint8_t, 80> bhForPow;
+		*reinterpret_cast<uint32_t*>(&bhForPow) = version;
+		std::copy(previousblockhash.begin(), previousblockhash.end(), bhForPow.begin() + 4);
+		std::copy(merkleRoot.begin(), merkleRoot.end(), bhForPow.begin() + 36);
+		*reinterpret_cast<uint32_t*>(&bhForPow[68]) = bits;
+		*reinterpret_cast<uint64_t*>(&bhForPow[72]) = curtime;
+		return sha256sha256(bhForPow.data(), 80);
+	}
+	else
+		return sha256sha256(toV8().data(), 80);
 }
 
 mpz_class BlockHeader::target(const int32_t powVersion) const {
@@ -46,7 +50,7 @@ mpz_class BlockHeader::target(const int32_t powVersion) const {
 	else
 		return 0;
 	
-	const std::array<uint8_t, 32> hash(powHash());
+	const std::array<uint8_t, 32> hash(powHash(powVersion));
 	for (uint64_t i(0) ; i < 256 ; i++) {
 		target <<= 1;
 		if ((hash[i/8] >> (i % 8)) & 1)

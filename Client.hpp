@@ -22,8 +22,8 @@ struct BlockHeader { // The fields are named according to the GetBlockTemplate l
 	
 	BlockHeader() : version(0), previousblockhash{0}, merkleRoot{0}, curtime(0), bits(0), nOffset{0} {}
 	std::vector<uint8_t> toV8() const;
-	std::array<uint8_t, 32> powHash() const;
-	mpz_class target(const int32_t powVersion) const;
+	std::array<uint8_t, 32> powHash(const int32_t) const;
+	mpz_class target(const int32_t) const;
 };
 
 // Stores all the information needed for the miner and submissions

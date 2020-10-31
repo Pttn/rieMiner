@@ -176,7 +176,7 @@ bool GBTClient::_fetchWork() {
 	       *jsonGbt_Res_Txs(json_object_get(jsonGbt_Res, "transactions")),
 	       *jsonGbt_Res_Rules(json_object_get(jsonGbt_Res, "rules")),
 	       *jsonGbt_Res_Dwc(json_object_get(jsonGbt_Res, "default_witness_commitment")),
-	       *jsonGbt_Res_Patterns(json_object_get(jsonGbt_Res, "constellations"));
+	       *jsonGbt_Res_Patterns(json_object_get(jsonGbt_Res, "patterns"));
 	
 	// Failure to GetBlockTemplate (or invalid response)
 	if (jsonGbt == nullptr || jsonGbt_Res == nullptr || jsonGbt_Res_Txs == nullptr || jsonGbt_Res_Rules == nullptr || jsonGbt_Res_Dwc == nullptr || json_array_size(jsonGbt_Res_Patterns) == 0) {
