@@ -742,7 +742,8 @@ void Miner::_doCheckTask(Task task) {
 	candidateStart += _works[workIndex].primorialMultipleStart;
 	candidateStart += _primorialOffsets[task.check.offsetId];
 	
-	bool firstTestDone(false);
+	// AVX2 Primality Test is broken for non integer Difficulties
+	/*bool firstTestDone(false);
 	if (_parameters.useAvx2 && task.check.nCandidates == maxCandidatesPerCheckTask) { // Test candidates + 0 primality with assembly optimizations if possible.
 		uint32_t isPrime[maxCandidatesPerCheckTask];
 		firstTestDone = _testPrimesIspc(task.check.factorOffsets, isPrime, candidateStart, candidate);
@@ -756,17 +757,17 @@ void Miner::_doCheckTask(Task task) {
 				}
 			}
 		}
-	}
+	}*/
 	
 	for (uint32_t i(0) ; i < task.check.nCandidates ; i++) {
 		if (_works[workIndex].job.height != _client->currentHeight()) break;
 		candidate = candidateStart + _primorial*task.check.factorOffsets[i];
 		
-		if (!firstTestDone) { // Test candidate + 0 primality without optimizations if not done before.
+		//if (!firstTestDone) { // Test candidate + 0 primality without optimizations if not done before.
 			tupleCounts[0]++;
 			if (!isPrimeFermat(candidate)) continue;
 			tupleCounts[1]++;
-		}
+		//}
 		
 		uint32_t primeCount(1), offsetSum(0);
 		// Test primality of the other elements of the tuple if candidate + 0 is prime.
