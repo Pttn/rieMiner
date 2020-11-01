@@ -40,6 +40,16 @@ std::string Stats::formattedTime(const double &time) {
 	oss << "[" << timeInt/86400000 << ":" << leading0s(2) << (timeInt/3600000) % 24 << ":" << leading0s(2) << (timeInt/60000) % 60 << ":" << leading0s(2) << (timeInt/1000) % 60 << "." << (timeInt/100) % 10 << "]";
 	return oss.str();
 }
+std::string Stats::formattedClockTimeNow() {
+	const std::chrono::time_point now(std::chrono::system_clock::now());
+	const std::chrono::time_point seconds(std::chrono::time_point_cast<std::chrono::seconds>(now));
+	const std::chrono::duration milliseconds(std::chrono::duration_cast<std::chrono::milliseconds>(now - seconds));
+	const std::time_t timeT(std::chrono::system_clock::to_time_t(now));
+	const std::tm *timeTm(std::localtime(&timeT));
+	std::ostringstream oss;
+	oss << "[" << std::put_time(timeTm, "%H:%M:%S") << "." << static_cast<uint32_t>(std::floor(milliseconds.count()))/100 << "]";
+	return oss.str();
+}
 std::string Stats::formattedDuration(const double &duration) {
 	std::ostringstream oss;
 	if (duration < 0.001) oss << std::round(1000000.*duration) << " us";

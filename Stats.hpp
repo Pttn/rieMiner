@@ -21,6 +21,7 @@ public:
 	std::string formattedRates(const uint64_t = 0) const;
 	std::string formattedRatios() const;
 	static std::string formattedTime(const double &time);
+	static std::string formattedClockTimeNow();
 	static std::string formattedDuration(const double &duration);
 };
 

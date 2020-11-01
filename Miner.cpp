@@ -336,7 +336,10 @@ void Miner::startThreads() {
 		for (uint16_t i(0) ; i < _parameters.threads ; i++)
 			_workerThreads.push_back(std::thread(&Miner::_doTasks, this, i));
 		std::cout << "-----------------------------------------------------------" << std::endl;
-		std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " Started mining at block " << _client->currentHeight() << ", difficulty " << FIXED(3) << _client->currentDifficulty() << std::endl;
+		if (_mode == "Benchmark" || _mode == "Search")
+			std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " Started " << _mode << ", difficulty " << FIXED(3) << _client->currentDifficulty() << std::endl;
+		else
+			std::cout << Stats::formattedClockTimeNow() << " Started mining at block " << _client->currentHeight() << ", difficulty " << FIXED(3) << _client->currentDifficulty() << std::endl;
 	}
 }
 
@@ -787,7 +790,10 @@ void Miner::_doCheckTask(Task task) {
 		// If tuple long enough or share, submit
 		if (primeCount >= _works[workIndex].job.primeCountMin || (_mode == "Search" && primeCount >= _parameters.tupleLengthMin)) {
 			const mpz_class basePrime(candidate - offsetSum);
-			std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " " << primeCount;
+			if (_mode == "Benchmark" || _mode == "Search")
+				std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " " << primeCount;
+			else
+				std::cout << Stats::formattedClockTimeNow() << " " << primeCount;
 			if (_mode == "Pool")
 				std::cout << "-share found by worker thread " << threadId << std::endl;
 			else {
@@ -867,7 +873,11 @@ void Miner::_manageTasks() {
 		// Notify when the network found a block
 		if (isNewHeight && oldHeight != 0) {
 			_statManager.newBlock();
-			std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " Block " << job.height << ", average " << FIXED(1) << _statManager.averageBlockTime() << " s, difficulty " << FIXED(3) << job.difficulty << std::endl;
+			if (_mode == "Benchmark" || _mode == "Search")
+				std::cout << Stats::formattedTime(_statManager.timeSinceStart());
+			else
+				std::cout << Stats::formattedClockTimeNow();
+			std::cout << " Block " << job.height << ", average " << FIXED(1) << _statManager.averageBlockTime() << " s, difficulty " << FIXED(3) << job.difficulty << std::endl;
 		}
 		_works[_currentWorkIndex].primorialMultipleStart = _works[_currentWorkIndex].job.target + _primorial - (_works[_currentWorkIndex].job.target % _primorial);
 		// Reset Counts and create Presieve Tasks
@@ -997,9 +1007,13 @@ bool Miner::hasAcceptedPatterns(const std::vector<std::vector<uint64_t>> &accept
 
 void Miner::printStats() const {
 	Stats statsRecent(_statManager.stats(false)), statsSinceStart(_statManager.stats(true));
-	if (_mode == "Benchmark" || _mode == "Search")
+	if (_mode == "Benchmark" || _mode == "Search") {
 		statsRecent = statsSinceStart;
-	std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " " << FIXED(2) << statsRecent.cps() << " c/s, r " << statsRecent.r();
+		std::cout << Stats::formattedTime(_statManager.timeSinceStart());
+	}
+	else
+		std::cout << Stats::formattedClockTimeNow();
+	std::cout << " " << FIXED(2) << statsRecent.cps() << " c/s, r " << statsRecent.r();
 	if (_mode != "Pool") {
 		std::cout << " ; (1-" << _parameters.pattern.size() << "t) = " << statsSinceStart.formattedCounts(1);
 		if (statsRecent.count(1) >= 10)
