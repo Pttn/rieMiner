@@ -40,24 +40,32 @@ std::array<uint8_t, 32> BlockHeader::powHash(const int32_t powVersion) const {
 
 mpz_class BlockHeader::target(const int32_t powVersion) const {
 	const uint32_t difficultyIntegerPart(decodeBits(bits, powVersion));
+	uint32_t trailingZeros;
+	const std::array<uint8_t, 32> hash(powHash(powVersion));
 	mpz_class target;
-	if (powVersion == -1)
+	if (powVersion == -1) {
+		if (difficultyIntegerPart < 265U) return 0;
 		target = 256;
+		for (uint64_t i(0) ; i < 256 ; i++) {
+			target <<= 1;
+			if ((hash[i/8] >> (i % 8)) & 1)
+				target.get_mpz_t()->_mp_d[0]++;
+		}
+		trailingZeros = difficultyIntegerPart - 265U;
+	}
 	else if (powVersion == 1) {
+		if (difficultyIntegerPart < 264U) return 0;
 		const uint32_t df(bits & 255U);
 		target = 256 + ((10U*df*df*df + 7383U*df*df + 5840720U*df + 3997440U) >> 23U);
+		target <<= 256;
+		mpz_class hashGmp;
+		mpz_import(hashGmp.get_mpz_t(), 32, -1, sizeof(uint8_t), 0, 0, hash.begin());
+		target += hashGmp;
+		trailingZeros = difficultyIntegerPart - 264U;
 	}
 	else
 		return 0;
 	
-	const std::array<uint8_t, 32> hash(powHash(powVersion));
-	for (uint64_t i(0) ; i < 256 ; i++) {
-		target <<= 1;
-		if ((hash[i/8] >> (i % 8)) & 1)
-			target.get_mpz_t()->_mp_d[0]++;
-	}
-	if (difficultyIntegerPart < 265U) return 0;
-	const uint32_t trailingZeros(difficultyIntegerPart - 265U);
 	target <<= trailingZeros;
 	return target;
 }
@@ -147,7 +155,7 @@ bool BMClient::getJob(Job& job, const bool dummy) {
 	job.height = _height;
 	job.difficulty = _difficulty;
 	const uint64_t difficultyAsInteger(std::round(65536.*job.difficulty));
-	// Target: (in binary) 1 . Leading Digits L (16 bits) . Height (32 bits) . Requests (32 bits) . (Difficulty - 81) zeros = 2^(Difficulty - 81)(2^80 + 2^64*L + 2^32*Height + Requests)
+	// Target: (in binary) 1 . Leading Digits L (16 bits) . Height (32 bits) . Requests (32 bits) . (Difficulty - 80) zeros = 2^(Difficulty - 80)(2^80 + 2^64*L + 2^32*Height + Requests)
 	job.target = 1;
 	job.target <<= 16;
 	job.target += static_cast<uint16_t>(std::round(std::pow(2., 16. + static_cast<double>(difficultyAsInteger % 65536)/65536.)) - 65536.);
@@ -155,7 +163,7 @@ bool BMClient::getJob(Job& job, const bool dummy) {
 	job.target += job.height;
 	job.target <<= 32;
 	job.target += _requests;
-	job.target <<= (difficultyAsInteger/65536ULL - 81ULL);
+	job.target <<= (difficultyAsInteger/65536ULL - 80ULL);
 	job.primeCountTarget = _pattern.size();
 	job.primeCountMin = job.primeCountTarget;
 	if (!dummy) _requests++;
@@ -165,7 +173,7 @@ bool BMClient::getJob(Job& job, const bool dummy) {
 bool SearchClient::getJob(Job& job, const bool) {
 	job.height = 1;
 	job.difficulty = _difficulty;
-	// Target: (in binary) 1 . Leading Digits L (16 bits) . 80 Random Bits . (Difficulty - 97) zeros = 2^(Difficulty - 97)*(2^96 + 2^80*L + Random)
+	// Target: (in binary) 1 . Leading Digits L (16 bits) . 80 Random Bits . (Difficulty - 96) zeros = 2^(Difficulty - 96)*(2^96 + 2^80*L + Random)
 	const uint64_t difficultyAsInteger(std::round(65536.*job.difficulty));
 	std::array<uint8_t, 10> random;
 	for (auto &byte : random) byte = rand(0x00, 0xFF);
@@ -176,7 +184,7 @@ bool SearchClient::getJob(Job& job, const bool) {
 		job.target <<= 16;
 		job.target += reinterpret_cast<uint16_t*>(random.data())[4 - i];
 	}
-	job.target <<= (job.difficulty - 97);
+	job.target <<= (job.difficulty - 96);
 	job.primeCountTarget = _pattern.size();
 	job.primeCountMin = job.primeCountTarget;
 	return true;

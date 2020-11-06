@@ -230,9 +230,7 @@ void Options::loadConf() {
 					std::vector<uint64_t> offsets;
 					uint64_t tmp;
 					while (offsetsSS >> tmp) offsets.push_back(tmp);
-					if (offsets.size() < 2)
-						std::cout << "Too short or invalid tuple offsets, ignoring." << std::endl;
-					else _minerParameters.pattern = offsets;
+					_minerParameters.pattern = offsets;
 				}
 				else if (key == "PrimorialNumber") {
 					try {_minerParameters.primorialNumber = std::stoll(value);}
@@ -276,7 +274,7 @@ void Options::loadConf() {
 			_minerParameters.pattern = {0, 2, 4, 2, 4, 6, 2};
 	}
 	else if (_mode == "Search") {
-		const double base10Exp((_difficulty - 1.)*0.301029996);
+		const double base10Exp(_difficulty*0.301029996);
 		std::cout << "Search Mode at difficulty " << _difficulty << " (numbers around " << std::pow(10., base10Exp - std::floor(base10Exp)) << "*10^" << std::floor(base10Exp) << ") - Good luck!" << std::endl;
 		if (_minerParameters.pattern.size() == 0) // Pick a default pattern if none was chosen
 			_minerParameters.pattern = {0, 2, 4, 2, 4, 6, 2};
@@ -335,10 +333,10 @@ int main(int argc, char** argv) {
 #endif
 	
 	std::cout << versionString << ", Riecoin miner by Pttn and contributors" << std::endl;
-	std::cout << "Assembly code by Michael Bell (Rockhawk)" << std::endl;
 	std::cout << "Project page: https://github.com/Pttn/rieMiner" << std::endl;
 	std::cout << "Go to the project page or open README.md for usage information" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
+	std::cout << "Assembly code by Michael Bell (Rockhawk)" << std::endl;
 	std::cout << "G++ " << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__ << " - https://gcc.gnu.org/" << std::endl;
 	std::cout << "GMP " << __GNU_MP_VERSION << "." << __GNU_MP_VERSION_MINOR << "." << __GNU_MP_VERSION_PATCHLEVEL << " - https://gmplib.org/" << std::endl;
 	std::cout << "Curl " << LIBCURL_VERSION << " - https://curl.haxx.se/" << std::endl;

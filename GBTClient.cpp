@@ -239,8 +239,8 @@ void GBTClient::_submit(const Job& job) {
 	oss << job.transactions << "\"], \"id\": 0}\n";
 	req = oss.str();
 	
+	DBG(std::cout << "Sending: " << req;);
 	json_t *jsonSb(_sendRPCCall(req)); // SubmitBlock response
-	DBG(std::cout << "Sent: " << req;);
 	if (jsonSb == nullptr) ERRORMSG("Failure submitting block");
 	else {
 		json_t *jsonSb_Res(json_object_get(jsonSb, "result")),

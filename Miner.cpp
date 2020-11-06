@@ -115,12 +115,12 @@ void Miner::init(const MinerParameters &minerParameters) {
 		primeTableFileBytes = file.tellg();
 		savedPrimes = primeTableFileBytes/sizeof(decltype(_primes)::value_type);
 		if (savedPrimes > 0) {
-			file.seekg(-sizeof(decltype(_primes)::value_type), std::ios::end);
+			file.seekg(-static_cast<int64_t>(sizeof(decltype(_primes)::value_type)), std::ios::end);
 			file.read(reinterpret_cast<char*>(&largestSavedPrime), sizeof(decltype(_primes)::value_type));
 		}
 	}
 	std::chrono::time_point<std::chrono::steady_clock> t0(std::chrono::steady_clock::now());
-	if (savedPrimes > 0 && _parameters.primeTableLimit >= 1048576 && _parameters.primeTableLimit < largestSavedPrime) {
+	if (savedPrimes > 0 && _parameters.primeTableLimit >= 1048576 && _parameters.primeTableLimit <= largestSavedPrime) {
 		std::cout << "Extracting prime numbers from " << primeTableFile << " (" << primeTableFileBytes << " bytes, " << savedPrimes << " primes, largest " << largestSavedPrime << ")..." << std::endl;
 		uint64_t nPrimesUpperBound(std::min(1.085*static_cast<double>(_parameters.primeTableLimit)/std::log(static_cast<double>(_parameters.primeTableLimit)), static_cast<double>(savedPrimes))); // 1.085 = max(π(p)log(p)/p) for p >= 2^20
 		try {
