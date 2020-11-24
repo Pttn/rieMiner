@@ -15,7 +15,7 @@
 #include <vector>
 #include "tools.hpp"
 
-#define versionString	"rieMiner 0.92-alpha2"
+#define versionString	"rieMiner 0.92"
 #define primeTableFile	"PrimeTable64.bin"
 
 extern int DEBUG;
@@ -97,7 +97,7 @@ class Options {
 		_password(""),
 		_mode("Benchmark"),
 		_payoutAddress("ric1qpttn5u8u9470za84kt4y0lzz4zllzm4pyzhuge"),
-		_secret("/rM0.92a/"),
+		_secret("/rM0.92/"),
 		_tuplesFile("Tuples.txt"),
 		_filePrimeTableLimit(0),
 		_debug(0),

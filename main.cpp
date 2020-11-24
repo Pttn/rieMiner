@@ -333,8 +333,7 @@ int main(int argc, char** argv) {
 #endif
 	
 	std::cout << versionString << ", Riecoin miner by Pttn and contributors" << std::endl;
-	std::cout << "Project page: https://github.com/Pttn/rieMiner" << std::endl;
-	std::cout << "Go to the project page or open README.md for usage information" << std::endl;
+	std::cout << "Project page: https://riecoin.dev/en/rieMiner" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
 	std::cout << "Assembly code by Michael Bell (Rockhawk)" << std::endl;
 	std::cout << "G++ " << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__ << " - https://gcc.gnu.org/" << std::endl;
