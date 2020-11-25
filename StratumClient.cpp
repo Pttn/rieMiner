@@ -256,6 +256,15 @@ void StratumClient::connect() {
 		_state = INIT;
 		_result = std::string();
 		
+#ifdef _WIN32
+		WORD wVersionRequested(MAKEWORD(2, 2));
+		WSADATA wsaData;
+		int err(WSAStartup(wVersionRequested, &wsaData));
+		if (err != 0) {
+			ERRORMSG("WSAStartup failed with error: " << err);
+			return;
+		}
+#endif
 		hostent* hostInfo = gethostbyname(_host.c_str());
 		if (hostInfo == nullptr) {
 			std::cout << __func__ << ": unable to resolve '" << _host << "'. Check the URL or your connection." << std::endl;
