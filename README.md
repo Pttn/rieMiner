@@ -214,7 +214,7 @@ Or donate directly to the Riecoin project: ric1qr3yxckxtl7lacvtuzhrdrtrlzvlydane
 ## Resources
 
 * [Riecoin website](https://Riecoin.dev/)
-  * [rieMiner's page](https://riecoin.dev/en/rieMIner)
+  * [rieMiner's page](https://riecoin.dev/en/rieMiner)
   * [Explanation of the miner algorithm](https://riecoin.dev/en/Mining_Algorithm), you can also learn the theoretics behind some options
 * [Bitcoin Wiki - Getblocktemplate](https://en.bitcoin.it/wiki/Getblocktemplate)
 * [BIP141](https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki) (Segwit)

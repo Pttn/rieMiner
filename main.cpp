@@ -296,8 +296,10 @@ void Options::loadConf() {
 		if (_mode == "Solo") {
 			std::vector<uint8_t> scriptPubKey(bech32ToScriptPubKey(_payoutAddress));
 			std::cout << "Payout address: " << _payoutAddress << std::endl;
-			if (scriptPubKey.size() == 0)
+			if (scriptPubKey.size() == 0) {
 				std::cout << "Invalid payout address! Please check it. Note that only Bech32 addresses are supported." << std::endl;
+				exit(0);
+			}
 			else
 				std::cout << "  ScriptPubKey: " << v8ToHexStr(scriptPubKey) << std::endl;
 			if (_donate > 0) std::cout << "Donating " << _donate << "%" << std::endl;
