@@ -41,9 +41,9 @@ std::string Stats::formattedTime(const double &time) {
 	return oss.str();
 }
 std::string Stats::formattedClockTimeNow() {
-	const std::chrono::time_point now(std::chrono::system_clock::now());
-	const std::chrono::time_point seconds(std::chrono::time_point_cast<std::chrono::seconds>(now));
-	const std::chrono::duration milliseconds(std::chrono::duration_cast<std::chrono::milliseconds>(now - seconds));
+	const auto now(std::chrono::system_clock::now());
+	const auto seconds(std::chrono::time_point_cast<std::chrono::seconds>(now));
+	const auto milliseconds(std::chrono::duration_cast<std::chrono::milliseconds>(now - seconds));
 	const std::time_t timeT(std::chrono::system_clock::to_time_t(now));
 	const std::tm *timeTm(std::localtime(&timeT));
 	std::ostringstream oss;

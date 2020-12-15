@@ -55,12 +55,28 @@ struct Task {
 			std::array<uint32_t, maxCandidatesPerCheckTask> factorOffsets;
 		} check;
 	};
+
+	static Task PresieveTask(uint64_t workIndex, uint64_t start, uint64_t end) {
+		Task task;
+		task.type = Presieve;
+		task.workIndex = workIndex;
+		task.presieve.start = start;
+		task.presieve.end = end;
+		return task;
+	}
+	static Task SieveTask(uint64_t workIndex, uint32_t id, uint64_t iteration) {
+		Task task;
+		task.type = Sieve;
+		task.workIndex = workIndex;
+		task.sieve.id = id;
+		task.sieve.iteration = iteration;
+		return task;
+	}
 };
 
 struct TaskDoneInfo {
 	Task::Type type;
 	union {
-		struct {} empty;
 		uint64_t workIndex;
 		uint64_t firstPrimeIndex;
 	};
