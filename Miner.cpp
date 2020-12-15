@@ -351,7 +351,7 @@ void Miner::stopThreads() {
 		if (_mode == "Benchmark" || _mode == "Search")
 			printTupleStats();
 		std::cout << "Waiting for the miner's master thread to finish..." << std::endl;
-		_tasksDoneInfos.push_front(TaskDoneInfo{Task::Type::Dummy, .empty = {}}); // Unblock if master thread stuck in blocking_pop_front().
+		_tasksDoneInfos.push_front(TaskDoneInfo{Task::Type::Dummy, {}}); // Unblock if master thread stuck in blocking_pop_front().
 		_masterThread.join();
 		std::cout << "Waiting for the miner's worker threads to finish..." << std::endl;
 		for (uint16_t i(0) ; i < _parameters.threads ; i++)
@@ -645,7 +645,7 @@ void Miner::_doSieveTask(Task task) {
 	const uint64_t workIndex(task.workIndex), sieveIteration(task.sieve.iteration), firstPrimeIndex(_parameters.primorialNumber);
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
-	Task checkTask{Task::Type::Check, workIndex, .check = {}};
+	Task checkTask{Task::Type::Check, workIndex, {}};
 	
 	if (_works[workIndex].job.height != _client->currentHeight()) // Abort Sieve Task if new block (but count as Task done)
 		goto sieveEnd;
@@ -700,13 +700,13 @@ void Miner::_doSieveTask(Task task) {
 	}
 	if (sieveIteration + 1 < _parameters.sieveIterations) {
 		if (_parameters.threads > 1)
-			_tasks.push_front(Task{Task::Type::Sieve, workIndex, .sieve = {sieve.id, sieveIteration + 1}});
+			_tasks.push_front(Task::SieveTask(workIndex, sieve.id, sieveIteration + 1));
 		else // Allow mining with 1 Thread without having to wait for all the blocks to be processed.
-			_tasks.push_back(Task{Task::Type::Sieve, workIndex, .sieve = {sieve.id, sieveIteration + 1}});
+			_tasks.push_back(Task::SieveTask(workIndex, sieve.id, sieveIteration + 1));
 		return; // Sieving still not finished, do not go to sieveEnd.
 	}
 sieveEnd:
-	_tasksDoneInfos.push_back(TaskDoneInfo{Task::Type::Sieve, .empty = {}});
+	_tasksDoneInfos.push_back(TaskDoneInfo{Task::Type::Sieve, {}});
 }
 
 // Riecoin uses the Miller-Rabin Test for the PoW, but the Fermat Test is significantly faster and more suitable for the miner.
@@ -832,7 +832,7 @@ void Miner::_doTasks(const uint16_t id) { // Worker Threads run here until the m
 		if (task.type == Task::Type::Presieve) {
 			_doPresieveTask(task);
 			_presieveTime += std::chrono::duration_cast<decltype(_presieveTime)>(std::chrono::steady_clock::now() - startTime);
-			_tasksDoneInfos.push_back(TaskDoneInfo{Task::Type::Presieve, .firstPrimeIndex = task.presieve.start});
+			_tasksDoneInfos.push_back(TaskDoneInfo{Task::Type::Presieve, {task.presieve.start}});
 		}
 		if (task.type == Task::Type::Sieve) {
 			_doSieveTask(task);
@@ -842,7 +842,7 @@ void Miner::_doTasks(const uint16_t id) { // Worker Threads run here until the m
 		if (task.type == Task::Type::Check) {
 			_doCheckTask(task);
 			_verifyTime += std::chrono::duration_cast<decltype(_verifyTime)>(std::chrono::steady_clock::now() - startTime);
-			_tasksDoneInfos.push_back(TaskDoneInfo{Task::Type::Check, .workIndex = task.workIndex});
+			_tasksDoneInfos.push_back(TaskDoneInfo{Task::Type::Check, {task.workIndex}});
 		}
 	}
 	// Thread clean up.
@@ -891,7 +891,7 @@ void Miner::_manageTasks() {
 		const uint64_t primesPerPresieveTask((_nPrimes - _parameters.primorialNumber)/nPresieveTasks + 1ULL);
 		for (uint64_t start(_parameters.primorialNumber) ; start < _nPrimes ; start += primesPerPresieveTask) {
 			const uint64_t end(std::min(_nPrimes, start + primesPerPresieveTask));
-			_presieveTasks.push_back(Task{Task::Type::Presieve, _currentWorkIndex, .presieve = {start, end}});
+			_presieveTasks.push_back(Task::PresieveTask(_currentWorkIndex, start, end));
 			_tasks.push_front(Task{Task::Type::Dummy, _currentWorkIndex, {}}); // To ensure a thread wakes up to grab the mod work.
 			if (start < _primesIndexThreshold) nRemainingNormalPresieveTasks++;
 			else nRemainingAdditionalPresieveTasks++;
@@ -912,7 +912,7 @@ void Miner::_manageTasks() {
 		// Create Sieve Tasks
 		for (std::vector<Sieve>::size_type i(0) ; i < _sieves.size() ; i++) {
 			_sieves[i].presieveLock.lock();
-			_tasks.push_front(Task{Task::Type::Sieve, _currentWorkIndex, .sieve = {static_cast<uint32_t>(i), 0}});
+			_tasks.push_front(Task::SieveTask(_currentWorkIndex, i, 0));
 		}
 		
 		int nRemainingSieves(_parameters.sieveWorkers);
