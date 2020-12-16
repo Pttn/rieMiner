@@ -745,7 +745,6 @@ void Miner::_doCheckTask(Task task) {
 	candidateStart += _works[workIndex].primorialMultipleStart;
 	candidateStart += _primorialOffsets[task.check.offsetId];
 	
-	// AVX2 Primality Test is broken for non integer Difficulties
 	bool firstTestDone(false);
 	if (_parameters.useAvx2 && task.check.nCandidates == maxCandidatesPerCheckTask) { // Test candidates + 0 primality with assembly optimizations if possible.
 		uint32_t isPrime[maxCandidatesPerCheckTask];
