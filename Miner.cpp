@@ -665,7 +665,7 @@ void Miner::_doSieveTask(Task task) {
 	if (sieveIteration == 0) presieveLock.lock();
 	
 	// Eliminate these factors.
-	for (uint64_t i(0) ; i < sieve.additionalFactorsToEliminateCounts[sieveIteration] ; i++)
+	for (uint64_t i(0), count(sieve.additionalFactorsToEliminateCounts[sieveIteration]); i < count ; i++)
 		_addToSieveCache(sieve.factorsTable, sieveCache, sieveCachePos, sieve.additionalFactorsToEliminate[sieveIteration][i]);
 	_endSieveCache(sieve.factorsTable, sieveCache);
 	
