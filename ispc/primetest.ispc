@@ -263,7 +263,15 @@ export void fermat_test(uniform uint M_in[], uniform uint Mi_in[], uniform uint 
 	const uniform uint highbit = ((uint)1) << 31;
 	uniform uint startbit;
 	uniform int en = N_Size;
-	startbit = highbit >> shft;
+	if (shft < 24)
+	{
+		startbit = highbit >> (shft + 8);
+	}
+	else
+	{
+		startbit = highbit >> (shft - 24);
+		en--;
+	}
 
 	const uint mi = Mi_in[programIndex];
 
