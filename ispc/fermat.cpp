@@ -88,9 +88,9 @@ static uint32_t setup_fermat(uint32_t N_Size, int num, const mp_limb_t* M, mp_li
 			mp = mshifted;
 		}
 
-		for (int i = 0; i < mn+4; ++i) rp[i] = 0;
-		rp[mn+4] = 1 << minv.shift;
-		mpn_div_r_preinv_ns(rp, mn+5, mp, mn, &minv);
+		for (int i = 0; i < mn; ++i) rp[i] = 0;
+		rp[mn] = 1 << minv.shift;
+		mpn_div_r_preinv_ns(rp, mn+1, mp, mn, &minv);
 
 		if (minv.shift > 0)
 		{

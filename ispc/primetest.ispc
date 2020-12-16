@@ -13,9 +13,15 @@
 
 #define MAX_N_SIZE 64
 
-typedef unsigned int uint;
 typedef unsigned int64 ulong;
 typedef int64 long;
+
+__declspec(safe)
+static inline unsigned int64 mullo32(unsigned int64 a, unsigned int64 b) {
+    unsigned int32 a32 = a;
+    unsigned int32 b32 = b;
+    return (unsigned int64)a32 * (unsigned int64)b32;
+}
 
 static unmasked void squareSimple(varying ulong* uniform P, varying const ulong* uniform R, uniform uint N_Size)
 {
@@ -257,15 +263,7 @@ export void fermat_test(uniform uint M_in[], uniform uint Mi_in[], uniform uint 
 	const uniform uint highbit = ((uint)1) << 31;
 	uniform uint startbit;
 	uniform int en = N_Size;
-	if (shft < 24)
-	{
-		startbit = highbit >> (shft + 8);
-	}
-	else
-	{
-		startbit = highbit >> (shft - 24);
-		en--;
-	}
+	startbit = highbit >> shft;
 
 	const uint mi = Mi_in[programIndex];
 
