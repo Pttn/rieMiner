@@ -88,9 +88,12 @@ static uint32_t setup_fermat(uint32_t N_Size, int num, const mp_limb_t* M, mp_li
 			mp = mshifted;
 		}
 
-		for (int i = 0; i < mn; ++i) rp[i] = 0;
-		rp[mn] = 1 << minv.shift;
-		mpn_div_r_preinv_ns(rp, mn+1, mp, mn, &minv);
+		for (int i = 0; i < mn + 9; ++i) rp[i] = 0;
+		mp_limb_t x = mp[mn - 1] >> 24;
+		x += minv.shift;
+		int i = x >> 5;
+		rp[mn + i] = 1 << (x & 0x1f);
+		mpn_div_r_preinv_ns(rp, mn+i+1, mp, mn, &minv);
 
 		if (minv.shift > 0)
 		{
@@ -133,7 +136,7 @@ void fermatTest(int N_Size, int listSize, uint32_t* M, uint32_t* is_prime, bool 
 	}
 
 	uint32_t MI[MAX_N_SIZE];
-	uint32_t R[MAX_N_SIZE * JOB_SIZE + 5];
+	uint32_t R[MAX_N_SIZE * JOB_SIZE + 9];
 
 	while (listSize > 0)
 	{
