@@ -108,15 +108,16 @@ void Miner::init(const MinerParameters &minerParameters) {
 	std::cout << "Prime Table Limit: " << _parameters.primeTableLimit << std::endl;
 	std::transform(_parameters.pattern.begin(), _parameters.pattern.end(), std::back_inserter(_halfPattern), [](uint64_t n) {return n >> 1;});
 	
+	std::vector<uint64_t> primes;
 	uint64_t primeTableFileBytes, savedPrimes(0), largestSavedPrime;
 	std::fstream file(primeTableFile);
 	if (file) {
 		file.seekg(0, std::ios::end);
 		primeTableFileBytes = file.tellg();
-		savedPrimes = primeTableFileBytes/sizeof(decltype(_primes)::value_type);
+		savedPrimes = primeTableFileBytes/sizeof(decltype(primes)::value_type);
 		if (savedPrimes > 0) {
-			file.seekg(-static_cast<int64_t>(sizeof(decltype(_primes)::value_type)), std::ios::end);
-			file.read(reinterpret_cast<char*>(&largestSavedPrime), sizeof(decltype(_primes)::value_type));
+			file.seekg(-static_cast<int64_t>(sizeof(decltype(primes)::value_type)), std::ios::end);
+			file.read(reinterpret_cast<char*>(&largestSavedPrime), sizeof(decltype(primes)::value_type));
 		}
 	}
 	std::chrono::time_point<std::chrono::steady_clock> t0(std::chrono::steady_clock::now());
@@ -124,7 +125,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 		std::cout << "Extracting prime numbers from " << primeTableFile << " (" << primeTableFileBytes << " bytes, " << savedPrimes << " primes, largest " << largestSavedPrime << ")..." << std::endl;
 		uint64_t nPrimesUpperBound(std::min(1.085*static_cast<double>(_parameters.primeTableLimit)/std::log(static_cast<double>(_parameters.primeTableLimit)), static_cast<double>(savedPrimes))); // 1.085 = max(π(p)log(p)/p) for p >= 2^20
 		try {
-			_primes = std::vector<uint64_t>(nPrimesUpperBound);
+			primes = std::vector<uint64_t>(nPrimesUpperBound);
 		}
 		catch (std::bad_alloc& ba) {
 			ERRORMSG("Unable to allocate memory for the prime table");
@@ -132,32 +133,51 @@ void Miner::init(const MinerParameters &minerParameters) {
 			return;
 		}
 		file.seekg(0, std::ios::beg);
-		file.read(reinterpret_cast<char*>(_primes.data()), nPrimesUpperBound*sizeof(decltype(_primes)::value_type));
+		file.read(reinterpret_cast<char*>(primes.data()), nPrimesUpperBound*sizeof(decltype(primes)::value_type));
 		file.close();
-		for (auto i(_primes.size() - 1) ; i > 0 ; i--) {
-			if (_primes[i] <= _parameters.primeTableLimit) {
-				_primes.resize(i + 1);
+		for (auto i(primes.size() - 1) ; i > 0 ; i--) {
+			if (primes[i] <= _parameters.primeTableLimit) {
+				primes.resize(i + 1);
 				break;
 			}
 		}
-		std::cout << _primes.size() << " first primes extracted in " << timeSince(t0) << " s (" << _primes.size()*sizeof(decltype(_primes)::value_type) << " bytes)." << std::endl;
+		std::cout << primes.size() << " first primes extracted in " << timeSince(t0) << " s (" << primes.size()*sizeof(decltype(primes)::value_type) << " bytes)." << std::endl;
 	}
 	else {
 		std::cout << "Generating prime table using sieve of Eratosthenes..." << std::endl;
 		try {
-			_primes = generatePrimeTable(_parameters.primeTableLimit);
+			primes = generatePrimeTable(_parameters.primeTableLimit);
 		}
 		catch (std::bad_alloc& ba) {
 			ERRORMSG("Unable to allocate memory for the prime table");
 			_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/8, _parameters.sieveWorkers);
 			return;
 		}
-		std::cout << "Table with all " << _primes.size() << " first primes generated in " << timeSince(t0) << " s (" << _primes.size()*sizeof(decltype(_primes)::value_type) << " bytes)." << std::endl;
+		std::cout << "Table with all " << primes.size() << " first primes generated in " << timeSince(t0) << " s (" << primes.size()*sizeof(decltype(primes)::value_type) << " bytes)." << std::endl;
 	}
-	if (_primes.size() % 2 == 1 && _parameters.pattern.size() == 6) // Needs to be even to use optimizations for 6-tuples
-		_primes.pop_back();
-	_nPrimes = _primes.size();
+
+	if (primes.size() % 2 == 1 && _parameters.pattern.size() == 6) // Needs to be even to use optimizations for 6-tuples
+		primes.pop_back();
 	
+	try {
+		_primes32.reserve(std::min(nPrimesTo2p32, primes.size()));
+		if (primes.size() > nPrimesTo2p32) _primes64.reserve(primes.size() - nPrimesTo2p32);
+	}
+	catch (std::bad_alloc& ba) {
+		ERRORMSG("Unable to allocate memory for the prime table");
+		_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/8, _parameters.sieveWorkers);
+		return;
+	}
+
+	for (size_t i = 0; i < primes.size(); ++i) {
+		if (primes[i] < (1ULL << 32)) _primes32.push_back(primes[i]);
+		else _primes64.push_back(primes[i]);
+	}
+
+	_nPrimes = primes.size();
+	_nPrimes32 = _primes32.size();
+	primes.clear();
+
 	if (_parameters.sieveBits == 0)
 		_parameters.sieveBits = _parameters.sieveWorkers <= 4 ? 25 : 24;
 	_parameters.sieveSize = 1 << _parameters.sieveBits;
@@ -190,23 +210,23 @@ void Miner::init(const MinerParameters &minerParameters) {
 		return;
 	}
 	mpz_set_ui(_primorial.get_mpz_t(), 1);
-	for (uint64_t i(0) ; i < _primes.size() ; i++) {
+	for (uint64_t i(0) ; i < _primes32.size() ; i++) {
 		if (i == _parameters.primorialNumber && _parameters.primorialNumber != 0)
 			break;
 		else {
-			if (_primorial*static_cast<uint32_t>(_primes[i]) >= primorialLimit) {
+			if (_primorial*_primes32[i] >= primorialLimit) {
 				if (_parameters.primorialNumber != 0)
 					std::cout << "The provided Primorial Number " <<_parameters.primorialNumber  << " is too large and will be reduced." << std::endl;
 				_parameters.primorialNumber = i;
 				break;
 			}
 		}
-		_primorial *= static_cast<uint32_t>(_primes[i]);
-		if (i + 1 == _primes.size())
+		_primorial *= _primes32[i];
+		if (i + 1 == _primes32.size())
 			_parameters.primorialNumber = i + 1;
 	}
 	std::cout << "Primorial Number: " << _parameters.primorialNumber << std::endl;
-	std::cout << "Primorial: p" << _parameters.primorialNumber << "# = " << _primes[_parameters.primorialNumber - 1] << "# = ";
+	std::cout << "Primorial: p" << _parameters.primorialNumber << "# = " << _primes32[_parameters.primorialNumber - 1] << "# = ";
 	if (mpz_sizeinbase(_primorial.get_mpz_t(), 10) < 18)
 		std::cout << _primorial;
 	else
@@ -222,7 +242,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 	double sumInversesOfPrimes(0.);
 	_primesIndexThreshold = 0; // Number of prime numbers smaller than factorMax in the table
 	for (uint64_t i(0) ; i < _nPrimes ; i++) {
-		const uint64_t p(_primes[i]);
+		const uint64_t p(_getPrime(i));
 		if (p >= _factorMax) {
 			if (_primesIndexThreshold == 0) {
 				_primesIndexThreshold = i;
@@ -244,7 +264,8 @@ void Miner::init(const MinerParameters &minerParameters) {
 		t0 = std::chrono::steady_clock::now();
 		const uint64_t precompPrimes(std::min(_nPrimes, 5586502348UL)); // Precomputation only works up to p = 2^37
 		try {
-			_modularInverses.resize(_nPrimes); // Table of inverses of the primorial modulo a prime number in the table with index >= primorialNumber.
+			_modularInverses32.resize(_primes32.size());
+			_modularInverses64.resize(_primes64.size()); // Table of inverses of the primorial modulo a prime number in the table with index >= primorialNumber.
 			_modPrecompute.resize(precompPrimes);
 		}
 		catch (std::bad_alloc& ba) {
@@ -259,16 +280,18 @@ void Miner::init(const MinerParameters &minerParameters) {
 				mpz_class modularInverse, prime;
 				const uint64_t endIndex(std::min(_parameters.primorialNumber + (j + 1)*blockSize, _nPrimes));
 				for (uint64_t i(_parameters.primorialNumber + j*blockSize) ; i < endIndex ; i++) {
-					mpz_set_ui(prime.get_mpz_t(), _primes[i]);
+					uint64_t p(_getPrime(i));
+					mpz_set_ui(prime.get_mpz_t(), p);
 					mpz_invert(modularInverse.get_mpz_t(), _primorial.get_mpz_t(), prime.get_mpz_t()); // modularInverse*primorial ≡ 1 (mod prime)
-					_modularInverses[i] = mpz_get_ui(modularInverse.get_mpz_t());
+					if (i < nPrimesTo2p32) _modularInverses32[i] = static_cast<uint32_t>(mpz_get_ui(modularInverse.get_mpz_t()));
+					else _modularInverses64[i - nPrimesTo2p32] = mpz_get_ui(modularInverse.get_mpz_t());
 					if (i < precompPrimes)
-						rie_mod_1s_4p_cps(&_modPrecompute[i], _primes[i]);
+						rie_mod_1s_4p_cps(&_modPrecompute[i], p);
 				}
 			});
 		}
 		for (uint16_t j(0) ; j < _parameters.threads ; j++) threads[j].join();
-		std::cout << "Tables of " << _modularInverses.size() - _parameters.primorialNumber << " modular inverses and " << precompPrimes - _parameters.primorialNumber << " division entries generated in " << timeSince(t0) << " s (" << (_modularInverses.size() + precompPrimes - 2*_parameters.primorialNumber)*sizeof(decltype(_modularInverses)::value_type) << " bytes)." << std::endl;
+		std::cout << "Tables of " << _modularInverses32.size() + _modularInverses64.size() - _parameters.primorialNumber << " modular inverses and " << precompPrimes - _parameters.primorialNumber << " division entries generated in " << timeSince(t0) << " s (" << (_modularInverses64.size() + precompPrimes - 2*_parameters.primorialNumber)*sizeof(decltype(_modularInverses64)::value_type) + _modularInverses32.size()*sizeof(decltype(_modularInverses32)::value_type) << " bytes)." << std::endl;
 	}
 	
 	try {
@@ -384,8 +407,10 @@ void Miner::clear() {
 			delete sieve.additionalFactorsToEliminateCounts;
 		}
 		_sieves.clear();
-		_primes.clear();
-		_modularInverses.clear();
+		_primes32.clear();
+		_primes64.clear();
+		_modularInverses32.clear();
+		_modularInverses64.clear();
 		_modPrecompute.clear();
 		_primorialOffsets.clear();
 		_halfPattern.clear();
@@ -427,9 +452,9 @@ void Miner::_doPresieveTask(const Task &task) {
 	uint64_t nextRemainder[8];
 	uint64_t nextRemainderIndex(8);
 	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i++) {
-		const uint64_t p(_primes[i]);
+		const uint64_t p(_getPrime(i));
 		uint64_t mi[4];
-		mi[0] = _modularInverses[i]; // Modular inverse of the primorial: mi[0]*primorial ≡ 1 (mod p). The modularInverses were precomputed in init().
+		mi[0] = _getModularInverse(i); // Modular inverse of the primorial: mi[0]*primorial ≡ 1 (mod p). The modularInverses were precomputed in init().
 		mi[1] = (mi[0] << 1); // mi[i] = (2*i*mi[0]) % p for i > 0.
 		if (mi[1] >= p) mi[1] -= p;
 		mi[2] = mi[1] << 1;
@@ -451,11 +476,11 @@ void Miner::_doPresieveTask(const Task &task) {
 			}
 			else if (i < avxLimit) {
 				cnt = __builtin_clz(static_cast<uint32_t>(p));
-				if (__builtin_clz(static_cast<uint32_t>(_primes[i + avxWidth - 1])) == cnt) {
+				if (__builtin_clz(static_cast<uint32_t>(_primes32[i + avxWidth - 1])) == cnt) {
 					uint32_t ps32[8];
 					for (uint64_t j(0) ; j < avxWidth; j++) {
-						ps32[j] = static_cast<uint32_t>(_primes[i + j]) << cnt;
-						nextRemainder[j] = _modularInverses[i + j];
+						ps32[j] = static_cast<uint32_t>(_primes32[i + j]) << cnt;
+						nextRemainder[j] = _modularInverses32[i + j];
 					}
 					if (_parameters.useAvx2) rie_mod_1s_2p_8times(firstCandidate.get_mpz_t()->_mp_d, firstCandidate.get_mpz_t()->_mp_size, &ps32[0], cnt, &_modPrecompute[i], &nextRemainder[0]);
 					else rie_mod_1s_2p_4times(firstCandidate.get_mpz_t()->_mp_d, firstCandidate.get_mpz_t()->_mp_size, &ps32[0], cnt, &_modPrecompute[i], &nextRemainder[0]);
@@ -565,7 +590,7 @@ void Miner::_processSieve(uint64_t *factorsTable, uint32_t* factorsToEliminate, 
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
 	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i++) {
-		const uint32_t p(_primes[i]);
+		const uint32_t p(_primes32[i]);
 		for (uint64_t f(0) ; f < tupleSize; f++) {
 			while (factorsToEliminate[i*tupleSize + f] < _parameters.sieveSize) { // Eliminate primorial factors of the form p*m + fp for every m*p in the current table.
 				_addToSieveCache(factorsTable, sieveCache, sieveCachePos, factorsToEliminate[i*tupleSize + f]);
@@ -585,7 +610,7 @@ void Miner::_processSieve6(uint64_t *factorsTable, uint32_t* factorsToEliminate,
 		for (uint64_t f(0) ; f < 6 ; f++) {
 			while (factorsToEliminate[firstPrimeIndex*6 + f] < _parameters.sieveSize) {
 				factorsTable[factorsToEliminate[firstPrimeIndex*6 + f] >> 6U] |= (1ULL << ((factorsToEliminate[firstPrimeIndex*6 + f] & 63U)));
-				factorsToEliminate[firstPrimeIndex*6 + f] += _primes[firstPrimeIndex];
+				factorsToEliminate[firstPrimeIndex*6 + f] += _primes32[firstPrimeIndex];
 			}
 			factorsToEliminate[firstPrimeIndex*6 + f] -= _parameters.sieveSize;
 		}
@@ -597,8 +622,8 @@ void Miner::_processSieve6(uint64_t *factorsTable, uint32_t* factorsToEliminate,
 		xmmreg_t p1, p2, p3;
 		xmmreg_t factor1, factor2, factor3, nextIncr1, nextIncr2, nextIncr3;
 		xmmreg_t cmpres1, cmpres2, cmpres3;
-		p1.m128 = _mm_set1_epi32(_primes[i]);
-		p3.m128 = _mm_set1_epi32(_primes[i + 1]);
+		p1.m128 = _mm_set1_epi32(_primes32[i]);
+		p3.m128 = _mm_set1_epi32(_primes32[i + 1]);
 		p2.m128 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(p1.m128), _mm_castsi128_ps(p3.m128), _MM_SHUFFLE(0, 0, 0, 0)));
 		factor1.m128 = _mm_load_si128(reinterpret_cast<__m128i const*>(&factorsToEliminate[i*6 + 0]));
 		factor2.m128 = _mm_load_si128(reinterpret_cast<__m128i const*>(&factorsToEliminate[i*6 + 4]));
