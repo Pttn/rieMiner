@@ -17,8 +17,8 @@ extern "C" {
 constexpr uint64_t nPrimesTo2p32(203280222);
 constexpr int factorsCacheSize(16384);
 constexpr uint16_t maxSieveWorkers(16); // There is a noticeable performance penalty using Vector so we are using Arrays.
-thread_local std::array<uint64_t*, maxSieveWorkers> factorsCache{nullptr};
-thread_local std::array<uint64_t*, maxSieveWorkers> factorsCacheCounts{nullptr};
+thread_local uint64_t** factorsCache{nullptr};
+thread_local uint64_t** factorsCacheCounts{nullptr};
 thread_local uint16_t threadId(65535);
 
 void Miner::init(const MinerParameters &minerParameters) {
@@ -413,8 +413,8 @@ void Miner::_doPresieveTask(const Task &task) {
 	const uint64_t workIndex(task.workIndex), firstPrimeIndex(task.presieve.start), lastPrimeIndex(task.presieve.end);
 	const mpz_class firstCandidate(_works[workIndex].primorialMultipleStart + _primorialOffsets[0]);
 	std::array<int, maxSieveWorkers> factorsCacheTotalCounts{0};
-	std::array<uint64_t*, maxSieveWorkers> &factorsCacheRef(factorsCache), // On Windows, caching these thread_local pointers on the stack makes a noticeable perf difference.
-	                                       &factorsCacheCountsRef(factorsCacheCounts);
+	uint64_t** factorsCacheRef(factorsCache); // On Windows, caching these thread_local pointers on the stack makes a noticeable perf difference.
+	uint64_t** factorsCacheCountsRef(factorsCacheCounts);
 	const uint64_t precompLimit(_modPrecompute.size()), tupleSize(_parameters.pattern.size());
 	
 	uint64_t avxLimit(0);
@@ -484,7 +484,7 @@ void Miner::_doPresieveTask(const Task &task) {
 			umul_ppmm(n[1], n[0], pa, mi[0]);
 			udiv_qrnnd(q, fp, n[1], n[0], p);
 		}
-		
+
 		// We use a macro here to ensure the compiler inlines the code, and also make it easier to early
 		// out of the function completely if the current height has changed.
 #define addFactorsToEliminateForP(sieveWorkerIndex) {						                                                   \
@@ -814,6 +814,8 @@ void Miner::_doCheckTask(Task task) {
 void Miner::_doTasks(const uint16_t id) { // Worker Threads run here until the miner is stopped
 	// Thread initialization.
 	threadId = id;
+	factorsCache = new uint64_t*[_parameters.sieveWorkers];
+	factorsCacheCounts = new uint64_t*[_parameters.sieveWorkers];
 	for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
 		factorsCache[i] = new uint64_t[factorsCacheSize];
 		factorsCacheCounts[i] = new uint64_t[_parameters.sieveIterations];
@@ -849,6 +851,8 @@ void Miner::_doTasks(const uint16_t id) { // Worker Threads run here until the m
 		delete factorsCacheCounts[i];
 		delete factorsCache[i];
 	}
+	delete factorsCacheCounts;
+	delete factorsCache;
 }
 
 void Miner::_manageTasks() {
