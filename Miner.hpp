@@ -160,7 +160,7 @@ class Miner {
 	}
 	uint64_t _getModularInverse(uint64_t i) const {
 		if (i < _nPrimes32) return _modularInverses32[i];
-		else return _modularInverses64[i];
+		else return _modularInverses64[i - _nPrimes32];
 	}
 public:
 	Miner(const Options &options) :
