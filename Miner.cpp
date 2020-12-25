@@ -1,5 +1,5 @@
 /* (c) 2017-2020 Pttn (https://github.com/Pttn/rieMiner)
-(c) 2018 Michael Bell/Rockhawk (assembly optimizations, improvements of work management between threads, and some more) (https://github.com/MichaelBell/) */
+(c) 2018-2020 Michael Bell/Rockhawk (assembly optimizations, improvements of work management between threads, and some more) (https://github.com/MichaelBell/) */
 
 #include <gmpxx.h> // With Uint64_Ts, we still need to use the Mpz_ functions, otherwise there are "ambiguous overload" errors on Windows...
 
@@ -16,7 +16,7 @@ extern "C" {
 
 constexpr uint64_t nPrimesTo2p32(203280221);
 constexpr int factorsCacheSize(16384);
-constexpr uint16_t maxSieveWorkers(16); // There is a noticeable performance penalty using Vector so we are using Arrays.
+constexpr uint16_t maxSieveWorkers(16); // There is a noticeable performance penalty using Std Vector or Arrays so we are using Raw Arrays.
 thread_local uint64_t** factorsCache{nullptr};
 thread_local uint64_t** factorsCacheCounts{nullptr};
 thread_local uint16_t threadId(65535);

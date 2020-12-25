@@ -15,7 +15,7 @@
 #include <vector>
 #include "tools.hpp"
 
-#define versionString	"rieMiner 0.92a"
+#define versionString	"rieMiner 0.92b"
 #define primeTableFile	"PrimeTable64.bin"
 
 extern int DEBUG;
