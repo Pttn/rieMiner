@@ -1,4 +1,4 @@
-// (c) 2017-2020 Pttn and contributors (https://github.com/Pttn/rieMiner)
+// (c) 2017-2021 Pttn and contributors (https://github.com/Pttn/rieMiner)
 
 #include <iomanip>
 #include <unistd.h>
@@ -195,10 +195,14 @@ void Options::loadConf() {
 					catch (...) {_minerParameters.tupleLengthMin = 0;}
 				}
 				else if (key == "Donate") {
-					try {_donate = std::stoi(value);}
-					catch (...) {_donate = 2;}
-					if (_donate == 0) _donate = 1;
-					if (_donate > 99) _donate = 99;
+					if (value == "What a greedy dev!")
+						_donate = 0;
+					else {
+						try {_donate = std::stoi(value);}
+						catch (...) {_donate = 2;}
+						if (_donate == 0) _donate = 1;
+						if (_donate > 99) _donate = 99;
+					}
 				}
 				else if (key == "RefreshInterval") {
 					try {_refreshInterval = std::stod(value);}
@@ -303,7 +307,7 @@ void Options::loadConf() {
 			else
 				std::cout << "  ScriptPubKey: " << v8ToHexStr(scriptPubKey) << std::endl;
 			if (_donate > 0) std::cout << "Donating " << _donate << "%" << std::endl;
-			else std::cout << "Had fun looking into the source code? If so, consider contributing code!" << std::endl;
+			else std::cout << "You Meanie!" << std::endl;
 			std::cout << "Consensus rules: " << formatContainer(_rules) << std::endl;
 			if (std::find(_rules.begin(), _rules.end(), "segwit") == _rules.end()) {
 				std::cout << "'segwit' rule must be present!" << std::endl;
