@@ -1,4 +1,4 @@
-// (c) 2018-2020 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2021 Pttn (https://github.com/Pttn/rieMiner)
 
 #include "main.hpp"
 #include "StratumClient.hpp"
@@ -286,6 +286,7 @@ void StratumClient::connect() {
 		int result = ::connect(_socket, (sockaddr*) &addr, sizeof(sockaddr_in));
 		if (result != 0) {
 			std::cout << __func__ << ": unable to connect :| - " << std::strerror(errno) << std::endl;
+			std::cout << "Check the port or your connection." << std::endl;
 			_socket = -1;
 			return;
 		}

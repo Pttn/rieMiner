@@ -1,4 +1,4 @@
-// (c) 2018-2020 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2021 Pttn (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_GBTClient_hpp
 #define HEADER_GBTClient_hpp
@@ -29,7 +29,7 @@ struct GetBlockTemplateData {
 class GBTClient : public NetworkedClient {
 	// Options
 	const std::vector<std::string> _rules;
-	const std::string _url, _credentials, _coinbaseMessage;
+	const std::string _host, _url, _credentials, _coinbaseMessage;
 	const uint16_t _donate;
 	const std::vector<uint8_t> _scriptPubKey;
 	// Client State Variables
@@ -45,6 +45,7 @@ class GBTClient : public NetworkedClient {
 public:
 	GBTClient(const Options &options) :
 		_rules(options.rules()),
+		_host(options.host()),
 		_url("http://" + options.host() + ":" + std::to_string(options.port()) + "/"),
 		_credentials(options.username() + ":" + options.password()),
 		_coinbaseMessage(options.secret()),

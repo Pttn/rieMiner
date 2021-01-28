@@ -1,4 +1,4 @@
-// (c) 2018-2020 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2021 Pttn (https://github.com/Pttn/rieMiner)
 
 #include "GBTClient.hpp"
 #include "main.hpp"
@@ -279,6 +279,26 @@ NetworkInfo GBTClient::info() {
 		_fetchWork();
 		if (timeSince(timeOutTimer) > 0.5) {
 			std::cout << "Unable to get mining data from the server :| !" << std::endl;
+			std::cout << "================================================================" << std::endl;
+			std::cout << "There is certainly a problem with your configuration files " << confPath << " or riecoin.conf." << std::endl;
+			std::cout << "Be sure to have carefully read the Solo Mining guide" << std::endl;
+			std::cout << "\thttps://riecoin.dev/en/rieMiner/Solo_Mining" << std::endl;
+			std::cout << "and also check the following hints before asking for help!" << std::endl;
+			std::cout << "Check that Riecoin Core is running, connected and synced." << std::endl;
+			std::cout << "Common riecoin.conf issues:" << std::endl;
+			std::cout << "\tMissing 'rpcuser=...' or 'rpcpassword=...'" << std::endl;
+			std::cout << "\tNot configured as server with 'server=1'" << std::endl;
+			if (_host != "127.0.0.1") {
+				std::cout << "\tYour miner's IP was not allowed with 'rpcallowip=...'" << std::endl;
+				std::cout << "\tYou may need to add 'rpcbind=" << _host << "' (IP of the node)" << std::endl;
+			}
+			std::cout << "Common " << confPath << " issues:" << std::endl;
+			std::cout << "\tWrong syntax (lines are in the form 'Key = Value', no ':', no ';', etc.)" << std::endl;
+			std::cout << "\tMaybe you meant to do pooled mining? In this case use 'Mode = Pool'" << std::endl;
+			std::cout << "\tWrong Username/Password (must be the same as the rpcuser/rpcpassword)" << std::endl;
+			std::cout << "If you still have problems, you can ask for help on the Riecoin discussion channels, but please give detailed infos! What you tried to do, your configuration files, don't just say that you have trouble connecting or are getting an error!" << std::endl;
+			std::cout << "Also do not open a GitHub issue about this!" << std::endl;
+			std::cout << "================================================================" << std::endl;
 			_connected = false;
 			return {0, {}};
 		}
