@@ -1,4 +1,4 @@
-// (c) 2017-2020 Pttn and contributors (https://github.com/Pttn/rieMiner)
+// (c) 2017-2021 Pttn and contributors (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
@@ -86,6 +86,7 @@ class Options {
 	double _refreshInterval, _difficulty, _benchmarkBlockInterval, _benchmarkTimeLimit;
 	uint64_t _benchmarkPrimeCountLimit;
 	std::vector<std::string> _rules;
+	std::vector<std::string> _options;
 	
 	void _parseLine(std::string, std::string&, std::string&) const;
 	void _stopConfig() const;
@@ -108,10 +109,13 @@ class Options {
 		_benchmarkBlockInterval(150.),
 		_benchmarkTimeLimit(86400.),
 		_benchmarkPrimeCountLimit(1000000),
-		_rules{"segwit"} {}
+		_rules{"segwit"},
+		_options{} {}
 	
 	void askConf();
-	void loadConf();
+	void loadFileOptions(const std::string&, const bool);
+	void loadCommandOptions(const int, char**);
+	void parseOptions();
 	
 	MinerParameters minerParameters() const {return _minerParameters;}
 	std::string mode() const {return _mode;}

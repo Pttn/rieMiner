@@ -104,6 +104,14 @@ Option = Value
 
 It is case sensitive. A line starting with "#" will be ignored, as well as invalid ones. A single space or tab before or after "=" is also ignored. If an option is missing, the default value(s) will be used. If there are duplicate lines for the same option, the last one will be used.
 
+Alternatively, command line options can be used like
+
+```bash
+./rieMiner config.conf Option1=Value1 "Option2 = Value2" Option3=WeirdValue\!\!
+```
+
+A configuration file path must always be provided. If the file exists, its options will be parsed first, then the command line ones, so the latter will override the common ones from the file. Else, it is just ignored, so just put a dummy value if you want to configure only by command line. The syntax of a command line option is the same as a line of the configuration file. You are responsible to correctly take care of special characters if needed.
+
 ### Modes
 
 rieMiner proposes the following Modes depending on what you want to do. Use the `Mode` option to choose one of them (by default, `Benchmark`), below are the values to use.

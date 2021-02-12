@@ -36,7 +36,7 @@ void Options::_parseLine(std::string line, std::string& key, std::string& value)
 		}
 	}
 	else {
-		std::cerr << "Cannot find the delimiter '=' for line: '" << line << "'" << std::endl;
+		std::cerr << "Cannot find the delimiter '=' for line or argument: '" << line << "'" << std::endl;
 		key   = "Error";
 		value = "Ill formed configuration line";
 	}
@@ -138,134 +138,147 @@ void Options::askConf() {
 	else ERRORMSG("Unable to create " << confPath);
 }
 
-void Options::loadConf() {
-	std::ifstream file(confPath, std::ios::in);
-	std::cout << "Opening " << confPath << "..." << std::endl;
+void Options::loadFileOptions(const std::string &filename, const bool hasCommandOptions) {
+	std::ifstream file(filename, std::ios::in);
 	if (file) {
-		std::string line, key, value;
-		while (std::getline(file, line)) {
-			if (line.size() != 0) {
-				if (line[0] == '#') continue;
-				_parseLine(line, key, value);
-				if (key == "Debug") {
-					try {_debug = std::stoi(value);}
-					catch (...) {_debug = 0;}
-				}
-				else if (key == "Mode") {
-					if (value == "Solo" || value == "Pool" || value == "Benchmark" || value == "Search" || value == "Test")
-						_mode = value;
-					else std::cout << "Invalid mode!" << std::endl;
-				}
-				else if (key == "Host") _host = value;
-				else if (key == "Port") {
-					try {_port = std::stoi(value);}
-					catch (...) {_port = 28332;}
-				}
-				else if (key == "Username") _username = value;
-				else if (key == "Password") _password = value;
-				else if (key == "PayoutAddress") _payoutAddress = value;
-				else if (key == "EnableAVX2") _minerParameters.useAvx2 = (value == "Yes");
-				else if (key == "Secret!!!") _secret = value;
-				else if (key == "Threads") {
-					try {_minerParameters.threads = std::stoi(value);}
-					catch (...) {_minerParameters.threads = 0;}
-				}
-				else if (key == "PrimeTableLimit") {
-					try {_minerParameters.primeTableLimit = std::stoll(value);}
-					catch (...) {_minerParameters.primeTableLimit = 0;}
-				}
-				else if (key == "GeneratePrimeTableFileUpTo"){
-					try {_filePrimeTableLimit = std::stoll(value);}
-					catch (...) {_filePrimeTableLimit = 0;}
-				}
-				else if (key == "SieveWorkers") {
-					try {_minerParameters.sieveWorkers = std::stoi(value);}
-					catch (...) {_minerParameters.sieveWorkers = 0;}
-				}
-				else if (key == "SieveBits") {
-					try {_minerParameters.sieveBits = std::stoi(value);}
-					catch (...) {_minerParameters.sieveBits = 0;}
-				}
-				else if (key == "SieveIterations") {
-					try {_minerParameters.sieveIterations = std::stoi(value);}
-					catch (...) {_minerParameters.sieveIterations = 0;}
-				}
-				else if (key == "TupleLengthMin") {
-					try {_minerParameters.tupleLengthMin = std::stoi(value);}
-					catch (...) {_minerParameters.tupleLengthMin = 0;}
-				}
-				else if (key == "Donate") {
-					if (value == "What a greedy dev!")
-						_donate = 0;
-					else {
-						try {_donate = std::stoi(value);}
-						catch (...) {_donate = 2;}
-						if (_donate == 0) _donate = 1;
-						if (_donate > 99) _donate = 99;
-					}
-				}
-				else if (key == "RefreshInterval") {
-					try {_refreshInterval = std::stod(value);}
-					catch (...) {_refreshInterval = 30.;}
-				}
-				else if (key == "Difficulty") {
-					try {_difficulty = std::stod(value);}
-					catch (...) {_difficulty = 1024.;}
-					if (_difficulty < 128.) _difficulty = 128.;
-					if (_difficulty > 4294967296.) _difficulty = 4294967296.;
-				}
-				else if (key == "BenchmarkBlockInterval") {
-					try {_benchmarkBlockInterval = std::stod(value);}
-					catch (...) {_benchmarkBlockInterval = 150.;}
-				}
-				else if (key == "BenchmarkTimeLimit") {
-					try {_benchmarkTimeLimit = std::stod(value);}
-					catch (...) {_benchmarkTimeLimit = 86400.;}
-				}
-				else if (key == "BenchmarkPrimeCountLimit") {
-					try {_benchmarkPrimeCountLimit = std::stoll(value);}
-					catch (...) {_benchmarkPrimeCountLimit = 1000000;}
-				}
-				else if (key == "TuplesFile")
-					_tuplesFile = value;
-				else if (key == "ConstellationPattern") {
-					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
-					std::stringstream offsetsSS(value);
-					std::vector<uint64_t> offsets;
-					uint64_t tmp;
-					while (offsetsSS >> tmp) offsets.push_back(tmp);
-					_minerParameters.pattern = offsets;
-				}
-				else if (key == "PrimorialNumber") {
-					try {_minerParameters.primorialNumber = std::stoll(value);}
-					catch (...) {_minerParameters.primorialNumber = 0;}
-					if (_minerParameters.primorialNumber > 65535) _minerParameters.primorialNumber = 65535;
-				}
-				else if (key == "PrimorialOffsets") {
-					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
-					std::stringstream offsets(value);
-					std::vector<uint64_t> primorialOffsets;
-					uint64_t tmp;
-					while (offsets >> tmp) primorialOffsets.push_back(tmp);
-					_minerParameters.primorialOffsets = primorialOffsets;
-				}
-				else if (key == "Rules") {
-					for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
-					std::stringstream offsets(value);
-					_rules = std::vector<std::string>();
-					std::string tmp;
-					while (offsets >> tmp) _rules.push_back(tmp);
-				}
-				else if (key == "Error") std::cout << "Ignoring invalid line" << std::endl;
-				else std::cout << "Ignoring line with unused key '" << key << "'" << std::endl;
-			}
-		}
+		std::cout << "Opening configuration file " << confPath << "..." << std::endl;
+		std::string line;
+		while (std::getline(file, line))
+			_options.push_back(line);
 		file.close();
 	}
-	else {
-		std::cout << confPath << " not found or unreadable, please configure rieMiner now." << std::endl;
+	else if (!hasCommandOptions) {
+		std::cout << confPath << " not found or unreadable and no other arguments given, please configure rieMiner now." << std::endl;
 		askConf();
 	}
+}
+
+void Options::loadCommandOptions(const int argc, char** argv) {
+	if (argc > 2) std::cout << "Parsing " << argc - 2 << " option(s) given by command line..." << std::endl;
+	for (int i(2) ; i < argc ; i++)
+		_options.push_back(argv[i]);
+}
+
+void Options::parseOptions() {
+	std::string key, value;
+	for (const auto &line : _options) {
+		if (line.size() != 0) {
+			if (line[0] == '#') continue;
+			_parseLine(line, key, value);
+			if (key == "Debug") {
+				try {_debug = std::stoi(value);}
+				catch (...) {_debug = 0;}
+			}
+			else if (key == "Mode") {
+				if (value == "Solo" || value == "Pool" || value == "Benchmark" || value == "Search" || value == "Test")
+					_mode = value;
+				else std::cout << "Invalid mode!" << std::endl;
+			}
+			else if (key == "Host") _host = value;
+			else if (key == "Port") {
+				try {_port = std::stoi(value);}
+				catch (...) {_port = 28332;}
+			}
+			else if (key == "Username") _username = value;
+			else if (key == "Password") _password = value;
+			else if (key == "PayoutAddress") _payoutAddress = value;
+			else if (key == "EnableAVX2") _minerParameters.useAvx2 = (value == "Yes");
+			else if (key == "Secret!!!") _secret = value;
+			else if (key == "Threads") {
+				try {_minerParameters.threads = std::stoi(value);}
+				catch (...) {_minerParameters.threads = 0;}
+			}
+			else if (key == "PrimeTableLimit") {
+				try {_minerParameters.primeTableLimit = std::stoll(value);}
+				catch (...) {_minerParameters.primeTableLimit = 0;}
+			}
+			else if (key == "GeneratePrimeTableFileUpTo"){
+				try {_filePrimeTableLimit = std::stoll(value);}
+				catch (...) {_filePrimeTableLimit = 0;}
+			}
+			else if (key == "SieveWorkers") {
+				try {_minerParameters.sieveWorkers = std::stoi(value);}
+				catch (...) {_minerParameters.sieveWorkers = 0;}
+			}
+			else if (key == "SieveBits") {
+				try {_minerParameters.sieveBits = std::stoi(value);}
+				catch (...) {_minerParameters.sieveBits = 0;}
+			}
+			else if (key == "SieveIterations") {
+				try {_minerParameters.sieveIterations = std::stoi(value);}
+				catch (...) {_minerParameters.sieveIterations = 0;}
+			}
+			else if (key == "TupleLengthMin") {
+				try {_minerParameters.tupleLengthMin = std::stoi(value);}
+				catch (...) {_minerParameters.tupleLengthMin = 0;}
+			}
+			else if (key == "Donate") {
+				if (value == "What a greedy dev!")
+					_donate = 0;
+				else {
+					try {_donate = std::stoi(value);}
+					catch (...) {_donate = 2;}
+					if (_donate == 0) _donate = 1;
+					if (_donate > 99) _donate = 99;
+				}
+			}
+			else if (key == "RefreshInterval") {
+				try {_refreshInterval = std::stod(value);}
+				catch (...) {_refreshInterval = 30.;}
+			}
+			else if (key == "Difficulty") {
+				try {_difficulty = std::stod(value);}
+				catch (...) {_difficulty = 1024.;}
+				if (_difficulty < 128.) _difficulty = 128.;
+				if (_difficulty > 4294967296.) _difficulty = 4294967296.;
+			}
+			else if (key == "BenchmarkBlockInterval") {
+				try {_benchmarkBlockInterval = std::stod(value);}
+				catch (...) {_benchmarkBlockInterval = 150.;}
+			}
+			else if (key == "BenchmarkTimeLimit") {
+				try {_benchmarkTimeLimit = std::stod(value);}
+				catch (...) {_benchmarkTimeLimit = 86400.;}
+			}
+			else if (key == "BenchmarkPrimeCountLimit") {
+				try {_benchmarkPrimeCountLimit = std::stoll(value);}
+				catch (...) {_benchmarkPrimeCountLimit = 1000000;}
+			}
+			else if (key == "TuplesFile")
+				_tuplesFile = value;
+			else if (key == "ConstellationPattern") {
+				for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
+				std::stringstream offsetsSS(value);
+				std::vector<uint64_t> offsets;
+				uint64_t tmp;
+				while (offsetsSS >> tmp) offsets.push_back(tmp);
+				_minerParameters.pattern = offsets;
+			}
+			else if (key == "PrimorialNumber") {
+				try {_minerParameters.primorialNumber = std::stoll(value);}
+				catch (...) {_minerParameters.primorialNumber = 0;}
+				if (_minerParameters.primorialNumber > 65535) _minerParameters.primorialNumber = 65535;
+			}
+			else if (key == "PrimorialOffsets") {
+				for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
+				std::stringstream offsets(value);
+				std::vector<uint64_t> primorialOffsets;
+				uint64_t tmp;
+				while (offsets >> tmp) primorialOffsets.push_back(tmp);
+				_minerParameters.primorialOffsets = primorialOffsets;
+			}
+			else if (key == "Rules") {
+				for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
+				std::stringstream offsets(value);
+				_rules = std::vector<std::string>();
+				std::string tmp;
+				while (offsets >> tmp) _rules.push_back(tmp);
+			}
+			else if (key == "Error") std::cout << "Ignoring invalid line" << std::endl;
+			else std::cout << "Ignoring line with unused key '" << key << "'" << std::endl;
+		}
+	}
+	
 	DEBUG = _debug;
 	DBG(std::cout << "Debug messages enabled" << std::endl;);
 	DBG_VERIFY(std::cout << "Debug verification messages enabled" << std::endl;);
@@ -340,6 +353,7 @@ int main(int argc, char** argv) {
 	
 	std::cout << versionString << ", Riecoin miner by Pttn and contributors" << std::endl;
 	std::cout << "Project page: https://riecoin.dev/en/rieMiner" << std::endl;
+	std::cout << "Launch with 'help' as first argument for a quick usage guide" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
 	std::cout << "Assembly code by Michael Bell (Rockhawk)" << std::endl;
 	std::cout << "G++ " << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__ << " - https://gcc.gnu.org/" << std::endl;
@@ -348,13 +362,35 @@ int main(int argc, char** argv) {
 	std::cout << "Jansson " << JANSSON_VERSION << " - https://digip.org/jansson/" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
 	
-	if (argc >= 2) {
+	if (argc >= 2)
 		confPath = argv[1];
-		std::cout << "Using custom configuration file path " << confPath << std::endl;
+	
+	if (confPath == "help") {
+		std::cout << "Configuration file line syntax: Key = Value" << std::endl;
+		std::cout << "Same syntax for the command line options." << std::endl;
+		std::cout << "Available options are documented here. https://github.com/Pttn/rieMiner" << std::endl;
+		std::cout << "Guides with configuration file examples can also be found here. https://riecoin.dev/en/rieMiner" << std::endl;
+		std::cout << "Use default rieMiner.conf configuration file (will launch the assistant if not existing)" << std::endl;
+		std::cout << "\t./rieMiner" << std::endl;
+		std::cout << "Custom configuration file" << std::endl;
+		std::cout << "\t./rieMiner existingConfigFile.conf" << std::endl;
+		std::cout << "Launch the assistant" << std::endl;
+		std::cout << "\t./rieMiner nonExistingConfigFile.conf" << std::endl;
+		std::cout << "Custom configuration file and command line options" << std::endl;
+		std::cout << "\t./rieMiner existingConfigFile.conf Option1=Value1 \"Option2 = Value2\" Option3=WeirdValue\\!\\!" << std::endl;
+		std::cout << "No configuration file and command line options (dummy must not exist)" << std::endl;
+		std::cout << "\t./rieMiner dummy Option1=Value1 \"Option2 = Value2\" Option3=WeirdValue\\!\\!" << std::endl;
+		std::cout << "Examples:" << std::endl;
+		std::cout << "\t./rieMiner Benchmark.conf" << std::endl;
+		std::cout << "\t./rieMiner SoloMining.conf Threads=7" << std::endl;
+		std::cout << "\t./rieMiner noconffile Mode=Pool Host=mining.example.com Port=5000 Username=username.worker Password=password" << std::endl;
+		return 0;
 	}
 	
 	Options options;
-	options.loadConf();
+	options.loadFileOptions(confPath, argc > 2);
+	options.loadCommandOptions(argc, argv);
+	options.parseOptions();
 	
 	if (options.filePrimeTableLimit() > 1) {
 		std::cout << "Generating prime table up to " << options.filePrimeTableLimit() << " and saving to " << primeTableFile << "..." << std::endl;
