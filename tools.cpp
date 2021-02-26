@@ -1,5 +1,4 @@
 // (c) 2018-2020 Pttn (https://github.com/Pttn/rieMiner)
-// (c) 2018 Michael Bell/Rockhawk (CPUID tools)
 
 #include "tools.hpp"
 
@@ -22,7 +21,7 @@ std::vector<uint8_t> hexStrToV8(std::string str) {
 	return v;
 }
 
-std::vector<uint64_t> generatePrimeTable(const uint64_t limit) {
+std::vector<uint32_t> generatePrimeTable(const uint32_t limit) {
 	if (limit < 2) return {};
 	std::vector<uint64_t> compositeTable((limit + 127ULL)/128ULL, 0ULL); // Booleans indicating whether an odd number is composite: 0000100100101100...
 	for (uint64_t f(3ULL) ; f*f <= limit ; f += 2ULL) { // Eliminate f and its multiples m for odd f from 3 to square root of the limit
@@ -30,7 +29,7 @@ std::vector<uint64_t> generatePrimeTable(const uint64_t limit) {
 		for (uint64_t m((f*f) >> 1ULL) ; m <= (limit >> 1ULL) ; m += f) // Start eliminating at f^2 (multiples of f below were already eliminated)
 			compositeTable[m >> 6ULL] |= 1ULL << (m & 63ULL);
 	}
-	std::vector<uint64_t> primeTable(1, 2);
+	std::vector<uint32_t> primeTable(1, 2);
 	for (uint64_t i(1ULL) ; (i << 1ULL) + 1ULL <= limit ; i++) { // Fill the prime table using the composite table
 		if (!(compositeTable[i >> 6ULL] & (1ULL << (i & 63ULL))))
 			primeTable.push_back((i << 1ULL) + 1ULL); // Add prime number 2i + 1
@@ -118,39 +117,5 @@ std::vector<uint8_t> bech32ToScriptPubKey(const std::string &address) {
 			spk.insert(spk.begin(), v5[0] == 0 ? 0 : 80 + v5[0]);
 			return spk;
 		}
-	}
-}
-
-CpuID::CpuID() {
-	if (!__get_cpuid_max(0x80000004, NULL))
-		_brand = "Unknown CPU";
-	else {
-		uint32_t brand[64];
-		__get_cpuid(0x80000002, brand    , brand + 1, brand +  2, brand + 3);
-		__get_cpuid(0x80000003, brand + 4, brand + 5, brand +  6, brand + 7);
-		__get_cpuid(0x80000004, brand + 8, brand + 9, brand + 10, brand + 11);
-		_brand = reinterpret_cast<char*>(brand);
-	}
-	
-	uint32_t eax(0), ebx(0), ecx(0), edx(0);
-	__get_cpuid(0, &eax, &ebx, &ecx, &edx);
-	if (eax < 7) {
-		_avx = false;
-		_avx2 = false;
-		_avx512 = false;
-	}
-	else {
-		__get_cpuid(1, &eax, &ebx, &ecx, &edx);
-		_avx = (ecx & (1 << 28)) != 0;
-
-		// Must do this with inline assembly as __get_cpuid is unreliable for level 7
-		// and __get_cpuid_count is not always available.
-		//__get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx);
-		uint32_t level(7), zero(0);
-		asm ("cpuid\n\t"
-		    : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
-		    : "0"(level), "2"(zero));
-		_avx2 = (ebx & (1 << 5)) != 0;
-		_avx512 = (ebx & (1 << 16)) != 0;
 	}
 }

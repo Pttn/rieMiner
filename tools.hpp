@@ -1,5 +1,4 @@
 // (c) 2018-2020 Pttn (https://github.com/Pttn/rieMiner)
-// (c) 2018 Michael Bell/Rockhawk (CPUID tools)
 
 #ifndef HEADER_tools_hpp
 #define HEADER_tools_hpp
@@ -18,7 +17,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include <cpuid.h>
 #include <gmpxx.h>
 
 #define leading0s(x) std::setw(x) << std::setfill('0')
@@ -66,7 +64,7 @@ inline std::array<uint8_t, 32> sha256sha256(const uint8_t *data, uint32_t len) {
 	return sha256(sha256(data, len).data(), 32);
 }
 
-std::vector<uint64_t> generatePrimeTable(const uint64_t);
+std::vector<uint32_t> generatePrimeTable(const uint32_t);
 
 // Bech32 Code adapted from the reference C++ implementation, https://github.com/sipa/bech32/tree/master/ref/c%2B%2B
 std::vector<uint8_t> bech32ToScriptPubKey(const std::string&);
@@ -76,17 +74,6 @@ inline double timeSince(const std::chrono::time_point<std::chrono::steady_clock>
 	const std::chrono::duration<double> dt(t - t0);
 	return dt.count();
 }
-
-class CpuID {
-	std::string _brand;
-	bool _avx, _avx2, _avx512;
-public:
-	CpuID();
-	std::string getBrand() const {return _brand;}
-	bool hasAVX() const {return _avx;}
-	bool hasAVX2() const {return _avx2;}
-	bool hasAVX512() const {return _avx512;}
-};
 
 template<class T> class TsQueue {
 	std::deque<T> _q;

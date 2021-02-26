@@ -1,30 +1,30 @@
-# rieMiner 0.92
+# rieMiner 0.92L
+
+**This is the Light branch. It is intended for people willing to compile rieMiner on non x64 platforms. If it is not the case for you, you should go to the [master branch](https://github.com/Pttn/rieMiner). Also note that you are on your own using this branch and are expected to be able to fix any issue by yourself, so please don't report issues or ask for help if you encounter any problem**.
 
 rieMiner is a Riecoin miner supporting both solo and pooled mining, and can also be run standalone for prime constellation record attempts. Find the latest binaries [here](https://github.com/Pttn/rieMiner/releases) for Linux and Windows.
 
-This README is intended for advanced users and will mainly only describe the different configuration options and give information for developers like how to compile or contribute. For more practical information on how to use rieMiner like configuration file templates and mining or record attempts guides, visit the [rieMiner's page](https://riecoin.dev/en/rieMiner). **Before asking for any help or reporting an issue, ensure that you followed the instructions correctly, and try first to solve the issues by yourself**.
+This README is intended for advanced users and will mainly only describe the different configuration options and give information for developers like how to compile or contribute. For more practical information on how to use rieMiner like configuration file templates and mining or record attempts guides, visit the [rieMiner's page](https://riecoin.dev/en/rieMiner).
 
-Happy Mining or Good Luck on finding a new record!
+Happy Mining!
+
+## Differences from the main version
+
+* The assembly optimizations were removed;
+* Use of 32 bits ints instead of 64 bits for some vectors to save memory (in exchange, the PrimeTableLimit must be lower than 2^32);
+* A few default parameters are modified.
 
 ## Minimum requirements
 
-Only x64 systems with SSE are supported. If you want to run rieMiner on other systems, in particular with x86 or ARM CPUs (this includes Raspberry Pis), you need to use the [Light branch](https://github.com/Pttn/rieMiner/tree/Light) and compile yourself the code. 
-
-* Windows 8.1 or recent enough Linux;
-* x64 CPU with SSE instruction set;
-* 1 GiB of RAM (the prime table limit must be manually set at a lower value in the options).
-
-Recommended:
-
-* Windows 10 (latest version) or Debian 10;
-* Recent Intel or AMD, with 8 cores or more;
-* 8 GiB (16 if using more than 8 cores) of RAM or more.
+* Recent enough Windows or Linux and appropriate compiler;
+* Virtually any usual 32 or 64 bits CPU (should work for any x86 since Pentium Pro and recent ARMs);
+* 256 MiB of RAM (the prime table limit must be manually set at a lower value in the options). Recommended 4-8 GiB.
 
 ## Compile this program
 
-Compilation should work fine for the systems below. If not, please report any issue. However, if you are trying to compile on another system or an older version, you are on your own, please don't report any problem in these cases.
+**Again, you are on your own, so please don't report compiling issues when using the Light branch**.
 
-### On Debian/Ubuntu x64
+### On Debian/Ubuntu
 
 You can compile this C++ program with g++, as, m4 and make, install them if needed. Then, get if needed the following dependencies:
 
@@ -44,14 +44,15 @@ Then, just download the source files, go/`cd` to the directory, and do a simple 
 ```bash
 git clone https://github.com/Pttn/rieMiner.git
 cd rieMiner
+git checkout Light
 make
 ```
 
 For other Linux, executing equivalent commands (using `pacman` instead of `apt`,...) should work.
 
-### On Windows x64
+### On Windows
 
-You can compile rieMiner on Windows, and here is one way to do this. First, install [MSYS2](http://www.msys2.org/) (follow the instructions on the website), then enter in the MSYS **MinGW-w64** console, and install the tools and dependencies:
+You can compile rieMiner on Windows, and here is one way to do this. First, install [MSYS2](http://www.msys2.org/) (follow the instructions on the website), then enter in the MSYS **MinGW-w64** console, and install the tools and dependencies. For x64,
 
 ```bash
 pacman -S make git
@@ -59,7 +60,16 @@ pacman -S mingw64/mingw-w64-x86_64-gcc
 pacman -S mingw64/mingw-w64-x86_64-curl
 ```
 
-Note that you must install the `mingw64/mingw-w64-x86_64-...` packages and not just `gcc` or `curl`.
+Or x86,
+
+
+```bash
+pacman -S make git
+pacman -S mingw64/mingw-w64-i686-gcc
+pacman -S mingw64/mingw-w64-i686-curl
+```
+
+Note that you must install these packages and not just `gcc` or `curl`.
 
 Clone rieMiner with `git`, go to its directory with `cd`, and compile with `make` (same commands as Linux, see above).
 
@@ -146,7 +156,7 @@ It does the following:
 
 ### Benchmark and Search Modes options
 
-* `Difficulty`: for Benchmark and Search Modes, sets the difficulty (which is the number of binary digits, it must be at least 128). It can take decimal values and the numbers will be around 2^Difficulty. Default: 1024;
+* `Difficulty`: for Benchmark and Search Modes, sets the difficulty (which is the number of binary digits, it must be at least 128). It can take decimal values and the numbers will be around 2^(Difficulty - 1). Default: 1024;
 * `TupleLengthMin`: for Search Mode, the base prime of tuples of at least this length will be shown. 0 for the length of the constellation pattern - 1 (minimum 1). Default: 0;
 * `BenchmarkBlockInterval`: for Benchmark Mode, sets the time between blocks in s. <= 0 for no block. Default: 150;
 * `BenchmarkTimeLimit`: for Benchmark Mode, sets the testing duration limit in s. <= 0 for no time limit. Default: 86400;
@@ -156,10 +166,10 @@ It does the following:
 ### More options
 
 * `Threads`: number of threads used for mining, 0 to autodetect. Default: 0;
-* `PrimeTableLimit`: the prime table used for mining will contain primes up to the given number. Set to 0 to automatically calculate according to the current Difficulty. You can try a larger limit as this will reduce the ratio between the n-tuple and (n + 1)-tuple counts (but also the candidates/s rate). Reduce if you want to lower memory usage. Default: 0;
-* `EnableAVX2`: by default, AVX2 is disabled, as it may increase the power consumption more than the performance improvements. If your processor supports AVX2, you can choose to take advantage of this instruction set if you wish by setting this option to `Yes`. Do your own testing to find out if it is worth it. AVX2 is known to degrade performance for AMD Ryzens and similar before Zen2 (e. g. 1800X, 1950X, 2700X) and should be left disabled in these cases;
-* `SieveBits`: the size of the primorial factors table for the sieve is 2^SieveBits bits. 25 seems to be an optimal value, or 24 if there are many SieveWorkers. Though, if you have less than 8 MiB of L3 cache, you can try to decrement this value. Default: 25 if SieveWorkers <= 4, 24 otherwise;
-* `SieveIterations`: how many times the primorial factors table is reused for sieving. Increasing will decrease the frequency of new jobs, so less time would be "lost" in sieving, but this will also increase the memory usage. It is not clear however how this actually plays performance wise, 16 seems to be a good value. Default: 16;
+* `PrimeTableLimit`: the prime table used for mining will contain primes up to the given number. Set to 0 to automatically calculate according to the current Difficulty. You can try a larger limit as this will reduce the ratio between the n-tuple and (n + 1)-tuple counts (but also the candidates/s rate). It must be lower than 2^32. Reduce if you want to lower memory usage. Default: 0;
+* `EnableAVX2`: by default, AVX2 is disabled, as it may increase the power consumption more than the performance improvements. If your processor supports AVX2, you can choose to take advantage of this instruction set if you wish by setting this option to `Yes`. Do your own testing to find out if it is worth it. AVX2 is known to degrade performance for AMD Ryzens and similar before Zen2 (e. g. 1800X, 1950X, 2700X) and should be left disabled in these cases. Note: a good part of the AVX2 optimizations is currently broken and disabled regardless of this setting, so the description does not apply until the bug is fixed: enabling or disabling AVX2 does not seem to have noticeable effects currently;
+* `SieveBits`: the size of the primorial factors table for the sieve is 2^SieveBits bits. 23 seems to be an good value for slower processors. Default: 23 if SieveWorkers <= 4, 22 otherwise;
+* `SieveIterations`: how many times the primorial factors table is reused for sieving. Increasing will decrease the frequency of new jobs, so less time would be "lost" in sieving, but this will also increase the memory usage. It is not clear however how this actually plays performance wise, Default: 16;
 * `SieveWorkers`: the number of threads to use for sieving. Increasing it may solve some CPU underuse problems, but will use more memory. 0 for choosing automatically. Default: 0.
 * `ConstellationPattern`: which sort of constellations to look for, as offsets separated by commas. Note that they are not cumulative, so '0, 2, 4, 2, 4, 6, 2' corresponds to n + (0, 2, 6, 8, 12, 18, 20). If empty (or not accepted by the server), a valid pattern will be chosen (0, 2, 4, 2, 4, 6, 2 in Search and Benchmark Modes). Default: empty;
 * `PrimorialNumber`: Primorial Number for the sieve process. Higher is better, but it is limited by the target offset limit. 0 to set automatically, it should be left as is. Default: 0;

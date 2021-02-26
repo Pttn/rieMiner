@@ -182,18 +182,17 @@ void Options::parseOptions() {
 			else if (key == "Username") _username = value;
 			else if (key == "Password") _password = value;
 			else if (key == "PayoutAddress") _payoutAddress = value;
-			else if (key == "EnableAVX2") _minerParameters.useAvx2 = (value == "Yes");
 			else if (key == "Secret!!!") _secret = value;
 			else if (key == "Threads") {
 				try {_minerParameters.threads = std::stoi(value);}
 				catch (...) {_minerParameters.threads = 0;}
 			}
 			else if (key == "PrimeTableLimit") {
-				try {_minerParameters.primeTableLimit = std::stoll(value);}
+				try {_minerParameters.primeTableLimit = std::min(std::stoull(value), 4294967295ULL);}
 				catch (...) {_minerParameters.primeTableLimit = 0;}
 			}
 			else if (key == "GeneratePrimeTableFileUpTo"){
-				try {_filePrimeTableLimit = std::stoll(value);}
+				try {_filePrimeTableLimit = std::min(std::stoull(value), 4294967295ULL);}
 				catch (...) {_filePrimeTableLimit = 0;}
 			}
 			else if (key == "SieveWorkers") {
@@ -355,7 +354,6 @@ int main(int argc, char** argv) {
 	std::cout << "Project page: https://riecoin.dev/en/rieMiner" << std::endl;
 	std::cout << "Launch with 'help' as first argument for a quick usage guide" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
-	std::cout << "Assembly code by Michael Bell (Rockhawk)" << std::endl;
 	std::cout << "G++ " << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__ << " - https://gcc.gnu.org/" << std::endl;
 	std::cout << "GMP " << __GNU_MP_VERSION << "." << __GNU_MP_VERSION_MINOR << "." << __GNU_MP_VERSION_PATCHLEVEL << " - https://gmplib.org/" << std::endl;
 	std::cout << "Curl " << LIBCURL_VERSION << " - https://curl.haxx.se/" << std::endl;

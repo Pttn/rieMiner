@@ -3,7 +3,7 @@
 #include "main.hpp"
 #include "StratumClient.hpp"
 
-constexpr const char* userAgent("rieMiner/0.92");
+constexpr const char* userAgent("rieMiner/0.92L");
 
 static std::array<uint8_t, 32> calculateMerkleRootStratum(const std::vector<std::array<uint8_t, 32>> &txHashes) {
 	std::array<uint8_t, 32> merkleRoot{};

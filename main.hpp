@@ -15,8 +15,8 @@
 #include <vector>
 #include "tools.hpp"
 
-#define versionString	"rieMiner 0.92b"
-#define primeTableFile	"PrimeTable64.bin"
+#define versionString	"rieMiner 0.92Lb"
+#define primeTableFile	"PrimeTable32.bin"
 
 extern int DEBUG;
 extern std::string confPath;
@@ -65,15 +65,13 @@ static const std::vector<std::pair<std::vector<uint64_t>, std::vector<uint64_t>>
 
 struct MinerParameters {
 	uint16_t threads, sieveWorkers, tupleLengthMin;
-	uint64_t primorialNumber, primeTableLimit;
-	bool useAvx2;
-	uint64_t sieveBits, sieveSize, sieveWords, sieveIterations;
+	uint32_t primorialNumber, primeTableLimit;
+	uint32_t sieveBits, sieveSize, sieveWords, sieveIterations;
 	std::vector<uint64_t> pattern, primorialOffsets;
 	
 	MinerParameters() :
 		threads(0), sieveWorkers(0), tupleLengthMin(0),
 		primorialNumber(0), primeTableLimit(0),
-		useAvx2(false),
 		sieveBits(0), sieveSize(0), sieveWords(0), sieveIterations(0),
 		pattern{}, primorialOffsets{} {}
 };
@@ -81,7 +79,7 @@ struct MinerParameters {
 class Options {
 	MinerParameters _minerParameters;
 	std::string _host, _username, _password, _mode, _payoutAddress, _secret, _tuplesFile;
-	uint64_t _filePrimeTableLimit;
+	uint32_t _filePrimeTableLimit;
 	uint16_t _debug, _port, _threads, _donate;
 	double _refreshInterval, _difficulty, _benchmarkBlockInterval, _benchmarkTimeLimit;
 	uint64_t _benchmarkPrimeCountLimit;
@@ -98,7 +96,7 @@ class Options {
 		_password(""),
 		_mode("Benchmark"),
 		_payoutAddress("ric1qpttn5u8u9470za84kt4y0lzz4zllzm4pyzhuge"),
-		_secret("/rM0.92/"),
+		_secret("/rM0.92L/"),
 		_tuplesFile("Tuples.txt"),
 		_filePrimeTableLimit(0),
 		_debug(0),
@@ -126,7 +124,7 @@ class Options {
 	std::string payoutAddress() const {return _payoutAddress;}
 	std::string secret() const {return _secret;}
 	std::string tuplesFile() const {return _tuplesFile;}
-	uint64_t filePrimeTableLimit() const {return _filePrimeTableLimit;}
+	uint32_t filePrimeTableLimit() const {return _filePrimeTableLimit;}
 	uint16_t donate() const {return _donate;}
 	double refreshInterval() const {return _refreshInterval;}
 	double difficulty() const {return _difficulty;}
