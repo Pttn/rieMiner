@@ -1,4 +1,4 @@
-/* (c) 2017-2020 Pttn (https://github.com/Pttn/rieMiner)
+/* (c) 2017-2021 Pttn (https://github.com/Pttn/rieMiner)
 (c) 2018-2020 Michael Bell/Rockhawk (assembly optimizations, improvements of work management between threads, and some more) (https://github.com/MichaelBell/) */
 
 #include <gmpxx.h> // With Uint64_Ts, we still need to use the Mpz_ functions, otherwise there are "ambiguous overload" errors on Windows...
@@ -68,7 +68,6 @@ void Miner::init(const MinerParameters &minerParameters) {
 		else if (_parameters.pattern.size() == 4) proportion = 0.5 - _difficultyAtInit/1280.;
 		else proportion = 0.;
 		if (proportion < 0.) proportion = 0.;
-		if (job.powVersion == -1) proportion *= 2.5;
 		if (proportion > 1.) proportion = 1.;
 		_parameters.sieveWorkers = std::ceil(proportion*static_cast<double>(_parameters.threads));
 	}
@@ -199,8 +198,6 @@ void Miner::init(const MinerParameters &minerParameters) {
 		bitsForOffset = std::floor(_difficultyAtInit - 97.); // 1 . leading 16 bits . random 80 bits . remaining bits for the offset
 	else
 		bitsForOffset = std::floor(_difficultyAtInit - 81.); // 1 . leading 16 bits . constructed 64 bits . remaining bits for the offset
-	if (job.powVersion == -1) // Maximum 256 bits allowed before the fork
-		bitsForOffset = std::min(bitsForOffset, 256U);
 	mpz_class primorialLimit(1);
 	primorialLimit <<= bitsForOffset;
 	primorialLimit /= u64ToMpz(_factorMax);

@@ -1,15 +1,12 @@
-// (c) 2017-2020 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2017-2021 Pttn (https://github.com/Pttn/rieMiner)
 
 #include "Client.hpp"
 
 double decodeBits(const uint32_t nBits, const int32_t powVersion) {
-	if (powVersion == -1) { // Bitcoin Core's arith_uint256::SetCompact for UInt64_Ts (double are exact up to 2^53 for integers)
-		const uint64_t nSize(nBits >> 24), nWord(nBits & 0x007fffff);
-		if (nSize <= 3) return nWord >> (8ULL*(3ULL - nSize));
-		else return nWord << (8ULL*(nSize - 3ULL));
-	}
-	else if (powVersion == 1)
+	if (powVersion == 1)
 		return static_cast<double>(nBits)/256.;
+	else
+		ERRORMSG("Unexpected PoW Version " << powVersion << "! Please upgrade rieMiner!");
 	return 1.;
 }
 
@@ -24,36 +21,12 @@ std::vector<uint8_t> BlockHeader::toV8() const {
 	return v8;
 }
 
-std::array<uint8_t, 32> BlockHeader::powHash(const int32_t powVersion) const {
-	if (powVersion == -1) { // "Legacy" PoW: the hash is done after swapping nTime and nBits
-		std::array<uint8_t, 80> bhForPow;
-		*reinterpret_cast<uint32_t*>(&bhForPow) = version;
-		std::copy(previousblockhash.begin(), previousblockhash.end(), bhForPow.begin() + 4);
-		std::copy(merkleRoot.begin(), merkleRoot.end(), bhForPow.begin() + 36);
-		*reinterpret_cast<uint32_t*>(&bhForPow[68]) = bits;
-		*reinterpret_cast<uint64_t*>(&bhForPow[72]) = curtime;
-		return sha256sha256(bhForPow.data(), 80);
-	}
-	else
-		return sha256sha256(toV8().data(), 80);
-}
-
 mpz_class BlockHeader::target(const int32_t powVersion) const {
 	const uint32_t difficultyIntegerPart(decodeBits(bits, powVersion));
 	uint32_t trailingZeros;
-	const std::array<uint8_t, 32> hash(powHash(powVersion));
+	const std::array<uint8_t, 32> hash(sha256sha256(toV8().data(), 80));
 	mpz_class target;
-	if (powVersion == -1) {
-		if (difficultyIntegerPart < 265U) return 0;
-		target = 256;
-		for (uint64_t i(0) ; i < 256 ; i++) {
-			target <<= 1;
-			if ((hash[i/8] >> (i % 8)) & 1)
-				target.get_mpz_t()->_mp_d[0]++;
-		}
-		trailingZeros = difficultyIntegerPart - 265U;
-	}
-	else if (powVersion == 1) {
+	if (powVersion == 1) {
 		if (difficultyIntegerPart < 264U) return 0;
 		const uint32_t df(bits & 255U);
 		target = 256 + ((10U*df*df*df + 7383U*df*df + 5840720U*df + 3997440U) >> 23U);
@@ -62,30 +35,24 @@ mpz_class BlockHeader::target(const int32_t powVersion) const {
 		mpz_import(hashGmp.get_mpz_t(), 32, -1, sizeof(uint8_t), 0, 0, hash.begin());
 		target += hashGmp;
 		trailingZeros = difficultyIntegerPart - 264U;
+		target <<= trailingZeros;
 	}
 	else
-		return 0;
-	
-	target <<= trailingZeros;
+		ERRORMSG("Unexpected PoW Version " << powVersion << "! Please upgrade rieMiner!");
 	return target;
 }
 
 std::array<uint8_t, 32> Job::encodedOffset() const {
 	std::array<uint8_t, 32> nOffset;
 	for (auto &byte : nOffset) byte = 0;
-	if (powVersion == -1) { // [31-0 Offset]
-		const mpz_class offset(result - target);
-		for (uint32_t l(0) ; l < std::min(32/static_cast<uint32_t>(sizeof(mp_limb_t)), static_cast<uint32_t>(offset.get_mpz_t()->_mp_size)) ; l++)
-			*reinterpret_cast<mp_limb_t*>(nOffset.data() + l*sizeof(mp_limb_t)) = offset.get_mpz_t()->_mp_d[l];
-	}
-	else if (powVersion == 1) { // [31-30 Primorial Number|29-14 Primorial Factor|13-2 Primorial Offset|1-0 Reserved/Version]
+	if (powVersion == 1) { // [31-30 Primorial Number|29-14 Primorial Factor|13-2 Primorial Offset|1-0 Reserved/Version]
 		*reinterpret_cast<uint16_t*>(&nOffset.data()[ 0]) = 2;
 		*reinterpret_cast<uint64_t*>(&nOffset.data()[ 2]) = primorialOffset; // Only 64 bits used out of 96
 		*reinterpret_cast<uint64_t*>(&nOffset.data()[14]) = primorialFactor; // Only 64 bits used out of 128
 		*reinterpret_cast<uint16_t*>(&nOffset.data()[30]) = primorialNumber;
 	}
 	else
-		ERRORMSG("Invalid PoW Version " << powVersion);
+		ERRORMSG("Unexpected PoW Version " << powVersion << "! Please upgrade rieMiner!");
 	return nOffset;
 }
 

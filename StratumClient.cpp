@@ -93,8 +93,8 @@ bool StratumClient::_fetchWork() {
 		goto failure;
 	}
 	_info.powVersion = powversion;
-	if (_info.powVersion != -1 && _info.powVersion != 1) {
-		std::cout << __func__ << ": invalid PoW Version " << _info.powVersion << "!" << std::endl;
+	if (_info.powVersion != 1) {
+		ERRORMSG("Unexpected PoW Version " << _info.powVersion << "! Please upgrade rieMiner!");
 		goto failure;
 	}
 	_info.acceptedPatterns = Client::extractAcceptedPatterns(patterns);

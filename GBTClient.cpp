@@ -200,8 +200,8 @@ bool GBTClient::_fetchWork() {
 	_gbtd.height = json_integer_value(json_object_get(jsonGbt_Res, "height"));
 	
 	_info.powVersion = json_integer_value(json_object_get(jsonGbt_Res, "powversion"));
-	if (_info.powVersion != -1 && _info.powVersion != 1) {
-		std::cout << __func__ << ": invalid PoW Version " << _info.powVersion << "!" << std::endl;
+	if (_info.powVersion != 1) {
+		ERRORMSG("Unexpected PoW Version " << _info.powVersion << "! Please upgrade rieMiner!");
 		json_decref(jsonGbt);
 		return false;
 	}

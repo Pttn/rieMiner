@@ -1,4 +1,4 @@
-// (c) 2017-2020 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2017-2021 Pttn (https://github.com/Pttn/rieMiner)
 
 #ifndef HEADER_Client_hpp
 #define HEADER_Client_hpp
@@ -22,7 +22,6 @@ struct BlockHeader { // The fields are named according to the GetBlockTemplate l
 	
 	BlockHeader() : version(0), previousblockhash{0}, merkleRoot{0}, curtime(0), bits(0), nOffset{0} {}
 	std::vector<uint8_t> toV8() const;
-	std::array<uint8_t, 32> powHash(const int32_t) const;
 	mpz_class target(const int32_t) const;
 };
 
