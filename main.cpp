@@ -208,6 +208,12 @@ void Options::parseOptions() {
 				try {_minerParameters.sieveIterations = std::stoi(value);}
 				catch (...) {_minerParameters.sieveIterations = 0;}
 			}
+			else if (key == "RestartDifficultyFactor") {
+				try {_minerParameters.restartDifficultyFactor = std::stod(value);}
+				catch (...) {_minerParameters.restartDifficultyFactor = 1.05;}
+				if (_minerParameters.restartDifficultyFactor < 1.)
+					_minerParameters.restartDifficultyFactor = 1.;
+			}
 			else if (key == "TupleLengthMin") {
 				try {_minerParameters.tupleLengthMin = std::stoi(value);}
 				catch (...) {_minerParameters.tupleLengthMin = 0;}
@@ -327,6 +333,7 @@ void Options::parseOptions() {
 				exit(0);
 			}
 		}
+		std::cout << "Auto retune when the Difficulty varies by a factor " << _minerParameters.restartDifficultyFactor << std::endl;
 	}
 	if (_refreshInterval > 0.) std::cout << "Stats refresh interval: " << _refreshInterval << " s" << std::endl;
 }

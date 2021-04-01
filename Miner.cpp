@@ -190,10 +190,8 @@ void Miner::init(const MinerParameters &minerParameters) {
 	
 	uint32_t bitsForOffset;
 	// The primorial times the maximum factor should be smaller than the allowed limit for the target offset.
-	if (_mode == "Solo" || _mode == "Pool" || _mode == "Test") {
-		bitsForOffset = std::floor(_difficultyAtInit - 265.); // 1 . leading 8 bits . hash (256 bits) . remaining bits for the offset
-		bitsForOffset -= 48; // Some margin to take in account the Difficulty fluctuations
-	}
+	if (_mode == "Solo" || _mode == "Pool" || _mode == "Test")
+		bitsForOffset = std::floor(static_cast<double>(_difficultyAtInit)/_parameters.restartDifficultyFactor - 265.); // 1 . leading 8 bits . hash (256 bits) . remaining bits for the offset, and some margin to take in account the Difficulty fluctuations
 	else if (_mode == "Search")
 		bitsForOffset = std::floor(_difficultyAtInit - 97.); // 1 . leading 16 bits . random 80 bits . remaining bits for the offset
 	else
@@ -882,7 +880,7 @@ void Miner::_manageTasks() {
 	_currentWorkIndex = 0;
 	uint32_t oldHeight(0);
 	while (_running && _client->getJob(job)) {
-		if (job.difficulty < _difficultyAtInit - 48. || job.difficulty > _difficultyAtInit + 96.) // Restart to retune parameters.
+		if (job.difficulty < _difficultyAtInit/_parameters.restartDifficultyFactor || job.difficulty > _difficultyAtInit*_parameters.restartDifficultyFactor) // Restart to retune parameters.
 			_shouldRestart = true;
 		if (std::dynamic_pointer_cast<NetworkedClient>(_client) != nullptr) {
 			const NetworkInfo networkInfo(std::dynamic_pointer_cast<NetworkedClient>(_client)->info());
