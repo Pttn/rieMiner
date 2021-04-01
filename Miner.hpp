@@ -117,7 +117,7 @@ class Miner {
 	std::vector<mpz_class> _primorialOffsets;
 	std::vector<uint64_t> _halfPattern, _primorialOffsetDiff;
 	// Miner state variables
-	bool _inited, _running, _shouldRestart;
+	bool _inited, _running, _shouldRestart, _keepStats;
 	double _difficultyAtInit; // Restart the miner if the Difficulty changed a lot to retune
 	TsQueue<Task> _presieveTasks, _tasks;
 	TsQueue<TaskDoneInfo> _tasksDoneInfos;
@@ -166,7 +166,7 @@ public:
 	Miner(const Options &options) :
 		_mode(options.mode()), _parameters(MinerParameters()),
 		_client(nullptr),
-		_inited(false), _running(false), _shouldRestart(false) {
+		_inited(false), _running(false), _shouldRestart(false), _keepStats(false) {
 		_nPrimes = 0;
 		_primesIndexThreshold = 0;
 	}

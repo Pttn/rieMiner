@@ -347,7 +347,9 @@ void Miner::startThreads() {
 		ERRORMSG("The miner is already running");
 	else {
 		_running = true;
-		_statManager.start(_parameters.pattern.size());
+		if (!_keepStats)
+			_statManager.start(_parameters.pattern.size());
+		_keepStats = false;
 		std::cout << "Starting the miner's master thread..." << std::endl;
 		_masterThread = std::thread(&Miner::_manageTasks, this);
 		std::cout << "Starting " << _parameters.threads << " miner's worker threads..." << std::endl;
@@ -880,12 +882,16 @@ void Miner::_manageTasks() {
 	_currentWorkIndex = 0;
 	uint32_t oldHeight(0);
 	while (_running && _client->getJob(job)) {
-		if (job.difficulty < _difficultyAtInit/_parameters.restartDifficultyFactor || job.difficulty > _difficultyAtInit*_parameters.restartDifficultyFactor) // Restart to retune parameters.
+		if (job.difficulty < _difficultyAtInit/_parameters.restartDifficultyFactor || job.difficulty > _difficultyAtInit*_parameters.restartDifficultyFactor) { // Restart to retune parameters.
+			_keepStats = true;
 			_shouldRestart = true;
+		}
 		if (std::dynamic_pointer_cast<NetworkedClient>(_client) != nullptr) {
 			const NetworkInfo networkInfo(std::dynamic_pointer_cast<NetworkedClient>(_client)->info());
-			if (!hasAcceptedPatterns(networkInfo.acceptedPatterns)) // Restart if the pattern changed and is no longer compatible with the current one (notably, for the 0.20 fork)
+			if (!hasAcceptedPatterns(networkInfo.acceptedPatterns)) { // Restart if the pattern changed and is no longer compatible with the current one (notably, for the 0.20 fork)
+				_keepStats = false;
 				_shouldRestart = true;
+			}
 		}
 		_presieveTime = _presieveTime.zero();
 		_sieveTime = _sieveTime.zero();
