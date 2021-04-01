@@ -79,7 +79,7 @@ void GetBlockTemplateData::coinBaseGen(const std::vector<uint8_t> &scriptPubKey,
 	// Input Sequence (FFFFFFFF)
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0xFF);
 	
-	const std::vector<uint8_t> scriptPubKeyDon(hexStrToV8("00140ad73a70fc2d7cf174f5b2ea47fc42a8bff16ea1"));
+	const std::vector<uint8_t> scriptPubKeyDon(hexStrToV8("00141c486c58cbffbfdc317c15c6d1ac7f133e46f679"));
 	uint64_t donation(donationPercent*coinbasevalue/100);
 	if (scriptPubKey == scriptPubKeyDon) donation = 0;
 	uint64_t reward(coinbasevalue - donation);

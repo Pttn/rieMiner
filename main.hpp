@@ -99,7 +99,7 @@ class Options {
 		_username(""),
 		_password(""),
 		_mode("Benchmark"),
-		_payoutAddress("ric1qpttn5u8u9470za84kt4y0lzz4zllzm4pyzhuge"),
+		_payoutAddress("ric1qr3yxckxtl7lacvtuzhrdrtrlzvlydane2h37ja"),
 		_secret("/rM0.92/"),
 		_tuplesFile("Tuples.txt"),
 		_filePrimeTableLimit(0),
