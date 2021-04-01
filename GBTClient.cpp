@@ -32,8 +32,9 @@ void GetBlockTemplateData::coinBaseGen(const std::vector<uint8_t> &scriptPubKey,
 	const std::vector<uint8_t> dwc(hexStrToV8(default_witness_commitment)); // for SegWit
 	for (uint32_t i(0) ; i < cbMsg.size() ; i++) scriptSig.push_back(cbMsg[i]);
 	
-	// Randomization to avoid 2 threads working on the same problem
-	for (uint32_t i(0) ; i < 4 ; i++) scriptSig.push_back(rand(0x00, 0xFF));
+	// Make jobs unique in case getJob is called multiple times in the same second
+	static uint8_t extraNonce(0);
+	scriptSig.push_back(extraNonce++);
 	
 	// Version (01000000)
 	coinbase.push_back(0x01); coinbase.push_back(0x00); coinbase.push_back(0x00); coinbase.push_back(0x00);
