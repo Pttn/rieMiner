@@ -661,6 +661,45 @@ void Miner::_processSieve6(uint64_t *factorsTable, uint32_t* factorsToEliminate,
 	}
 }
 
+void Miner::_processSieve7(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 7-tuples by Michael Bell
+	assert(_parameters.pattern.size() == 7);
+	std::array<uint32_t, sieveCacheSize> sieveCache{0};
+	uint64_t sieveCachePos(0);
+	xmmreg_t offsetmax;
+	offsetmax.m128 = _mm_set1_epi32(_parameters.sieveSize);
+	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i += 1) {
+		xmmreg_t p1;
+		xmmreg_t factor1, factor2, nextIncr1, nextIncr2;
+		xmmreg_t cmpres1, cmpres2;
+		p1.m128 = _mm_set1_epi32(_primes32[i]);
+		factor1.m128 = _mm_loadu_si128(reinterpret_cast<__m128i const*>(&factorsToEliminate[i*7 + 0]));
+		factor2.m128 = _mm_loadu_si128(reinterpret_cast<__m128i const*>(&factorsToEliminate[i*7 + 3]));
+		while (true) {
+			cmpres1.m128 = _mm_cmpgt_epi32(offsetmax.m128, factor1.m128);
+			cmpres2.m128 = _mm_cmpgt_epi32(offsetmax.m128, factor2.m128);
+			const int mask1(_mm_movemask_epi8(cmpres1.m128));
+			const int mask2(_mm_movemask_epi8(cmpres2.m128));
+			if ((mask1 == 0) && (mask2 == 0)) break;
+			if (mask1 & 0x0008) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[0]);
+			if (mask1 & 0x0080) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[1]);
+			if (mask1 & 0x0800) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[2]);
+			if (mask1 & 0x8000) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[3]);
+			if (mask2 & 0x0080) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[1]);
+			if (mask2 & 0x0800) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[2]);
+			if (mask2 & 0x8000) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[3]);
+			nextIncr1.m128 = _mm_and_si128(cmpres1.m128, p1.m128);
+			nextIncr2.m128 = _mm_and_si128(cmpres2.m128, p1.m128);
+			factor1.m128 = _mm_add_epi32(factor1.m128, nextIncr1.m128);
+			factor2.m128 = _mm_add_epi32(factor2.m128, nextIncr2.m128);
+		}
+		factor1.m128 = _mm_sub_epi32(factor1.m128, offsetmax.m128);
+		factor2.m128 = _mm_sub_epi32(factor2.m128, offsetmax.m128);
+		_mm_storeu_si128(reinterpret_cast<__m128i*>(&factorsToEliminate[i*7 + 0]), factor1.m128);
+		_mm_storeu_si128(reinterpret_cast<__m128i*>(&factorsToEliminate[i*7 + 3]), factor2.m128);
+	}
+	_endSieveCache(factorsTable, sieveCache);
+}
+
 void Miner::_doSieveTask(Task task) {
 	Sieve& sieve(_sieves[task.sieve.id]);
 	std::unique_lock<std::mutex> presieveLock(sieve.presieveLock, std::defer_lock);
@@ -677,6 +716,8 @@ void Miner::_doSieveTask(Task task) {
 	// Eliminate the p*i + fp factors (p < factorMax).
 	if (_parameters.pattern.size() == 6)
 		_processSieve6(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
+	else if (_parameters.pattern.size() == 7)
+		_processSieve7(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
 	else
 		_processSieve(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
 	
