@@ -705,6 +705,7 @@ void Miner::_processSieve7(uint64_t *factorsTable, uint32_t* factorsToEliminate,
 void Miner::_processSieve7_avx2(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 7-tuples by Michael Bell
 	assert(_parameters.pattern.size() == 7);
 
+#ifdef __AVX2__
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
 
@@ -762,6 +763,10 @@ void Miner::_processSieve7_avx2(uint64_t *factorsTable, uint32_t* factorsToElimi
 		_mm256_storeu_si256(reinterpret_cast<__m256i*>(&factorsToEliminate[i*7 + 6]), factor2.m256);
 	}
 	_endSieveCache(factorsTable, sieveCache);
+#else
+	printf("Not compiled with AVX2.  Exit\n");
+	exit(3);
+#endif
 }
 
 void Miner::_processSieve8(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 8-tuples by Michael Bell
@@ -807,6 +812,7 @@ void Miner::_processSieve8(uint64_t *factorsTable, uint32_t* factorsToEliminate,
 void Miner::_processSieve8_avx2(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 8-tuples by Michael Bell
 	assert(_parameters.pattern.size() == 8);
 
+#ifdef __AVX2__
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
 
@@ -866,6 +872,10 @@ void Miner::_processSieve8_avx2(uint64_t *factorsTable, uint32_t* factorsToElimi
 		_mm256_store_si256(reinterpret_cast<__m256i*>(&factorsToEliminate[i*8 + 8]), factor2.m256);
 	}
 	_endSieveCache(factorsTable, sieveCache);
+#else
+	printf("Not compiled with AVX2.  Exit\n");
+	exit(3);
+#endif
 }
 
 void Miner::_doSieveTask(Task task) {
