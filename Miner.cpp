@@ -155,7 +155,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 		std::cout << "Table with all " << primes.size() << " first primes generated in " << timeSince(t0) << " s (" << primes.size()*sizeof(decltype(primes)::value_type) << " bytes)." << std::endl;
 	}
 
-	if (primes.size() % 2 == 1) // Needs to be even to use optimizations for 6 and 8-tuples
+	if (primes.size() % 2 == 1) // Needs to be even to use SIMD sieving optimizations
 		primes.pop_back();
 	
 	try {
@@ -241,7 +241,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 		if (p >= _factorMax) {
 			if (_primesIndexThreshold == 0) {
 				_primesIndexThreshold = i;
-				if (_primesIndexThreshold % 2 == 1) // Needs to be even to use optimizations for 6 and 8-tuples
+				if (_primesIndexThreshold % 2 == 1) // Needs to be even to use SIMD sieving optimizations
 					_primesIndexThreshold--;
 			}
 			sumInversesOfPrimes += 1./static_cast<double>(p);
@@ -663,8 +663,10 @@ void Miner::_processSieve6(uint64_t *factorsTable, uint32_t* factorsToEliminate,
 
 void Miner::_processSieve7(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 7-tuples by Michael Bell
 	assert(_parameters.pattern.size() == 7);
+
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
+
 	xmmreg_t offsetmax;
 	offsetmax.m128 = _mm_set1_epi32(_parameters.sieveSize);
 	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i += 1) {
@@ -696,6 +698,68 @@ void Miner::_processSieve7(uint64_t *factorsTable, uint32_t* factorsToEliminate,
 		factor2.m128 = _mm_sub_epi32(factor2.m128, offsetmax.m128);
 		_mm_storeu_si128(reinterpret_cast<__m128i*>(&factorsToEliminate[i*7 + 0]), factor1.m128);
 		_mm_storeu_si128(reinterpret_cast<__m128i*>(&factorsToEliminate[i*7 + 3]), factor2.m128);
+	}
+	_endSieveCache(factorsTable, sieveCache);
+}
+
+void Miner::_processSieve7_avx2(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 7-tuples by Michael Bell
+	assert(_parameters.pattern.size() == 7);
+
+	std::array<uint32_t, sieveCacheSize> sieveCache{0};
+	uint64_t sieveCachePos(0);
+
+	assert((lastPrimeIndex & 1) == 0);
+	// Already eliminate for the first prime to sieve if it is odd to align for the optimizations
+	if ((firstPrimeIndex & 1) != 0) {
+		for (uint64_t f(0) ; f < 7 ; f++) {
+			while (factorsToEliminate[firstPrimeIndex*7 + f] < _parameters.sieveSize) {
+				_addToSieveCache(factorsTable, sieveCache, sieveCachePos, factorsToEliminate[firstPrimeIndex*7 + f]);
+				factorsToEliminate[firstPrimeIndex*7 + f] += _primes32[firstPrimeIndex];
+			}
+			factorsToEliminate[firstPrimeIndex*7 + f] -= _parameters.sieveSize;
+		}
+		firstPrimeIndex++;
+	}
+
+	ymmreg_t offsetmax;
+	offsetmax.m256 = _mm256_set1_epi32(_parameters.sieveSize);
+	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i += 2) {
+		ymmreg_t p1, p2;
+		ymmreg_t factor1, factor2, nextIncr1, nextIncr2;
+		ymmreg_t cmpres1, cmpres2;
+		p1.m256 = _mm256_set1_epi32(_primes32[i]);
+		p2.m256 = _mm256_set1_epi32(_primes32[i + 1]);
+		factor1.m256 = _mm256_loadu_si256(reinterpret_cast<__m256i const*>(&factorsToEliminate[i*7 + 0]));
+		factor2.m256 = _mm256_loadu_si256(reinterpret_cast<__m256i const*>(&factorsToEliminate[i*7 + 6]));
+		while (true) {
+			cmpres1.m256 = _mm256_cmpgt_epi32(offsetmax.m256, factor1.m256);
+			cmpres2.m256 = _mm256_cmpgt_epi32(offsetmax.m256, factor2.m256);
+			const int mask1(_mm256_movemask_epi8(cmpres1.m256));
+			const int mask2(_mm256_movemask_epi8(cmpres2.m256));
+			if ((mask1 == 0) && (mask2 == 0)) break;
+			if (mask1 & 0x00000008) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[0]);
+			if (mask1 & 0x00000080) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[1]);
+			if (mask1 & 0x00000800) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[2]);
+			if (mask1 & 0x00008000) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[3]);
+			if (mask1 & 0x00080000) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[4]);
+			if (mask1 & 0x00800000) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[5]);
+			if (mask1 & 0x08000000) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[6]);
+			if (mask2 & 0x00000080) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[1]);
+			if (mask2 & 0x00000800) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[2]);
+			if (mask2 & 0x00008000) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[3]);
+			if (mask2 & 0x00080000) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[4]);
+			if (mask2 & 0x00800000) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[5]);
+			if (mask2 & 0x08000000) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[6]);
+			if (mask2 & 0x80000000) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[7]);
+			nextIncr1.m256 = _mm256_and_si256(cmpres1.m256, p1.m256);
+			nextIncr2.m256 = _mm256_and_si256(cmpres2.m256, p2.m256);
+			factor1.m256 = _mm256_add_epi32(factor1.m256, nextIncr1.m256);
+			factor2.m256 = _mm256_add_epi32(factor2.m256, nextIncr2.m256);
+		}
+		factor1.m256 = _mm256_sub_epi32(factor1.m256, offsetmax.m256);
+		factor2.m256 = _mm256_sub_epi32(factor2.m256, offsetmax.m256);
+		_mm256_storeu_si256(reinterpret_cast<__m256i*>(&factorsToEliminate[i*7 + 0]), factor1.m256);
+		_mm256_storeu_si256(reinterpret_cast<__m256i*>(&factorsToEliminate[i*7 + 6]), factor2.m256);
 	}
 	_endSieveCache(factorsTable, sieveCache);
 }
@@ -821,7 +885,10 @@ void Miner::_doSieveTask(Task task) {
 	if (_parameters.pattern.size() == 6)
 		_processSieve6(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
 	else if (_parameters.pattern.size() == 7)
-		_processSieve7(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
+		if (_parameters.useAvx2)
+			_processSieve7_avx2(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
+		else
+			_processSieve7(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
 	else if (_parameters.pattern.size() == 8)
 		if (_parameters.useAvx2)
 			_processSieve8_avx2(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);

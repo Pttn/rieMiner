@@ -155,6 +155,7 @@ class Miner {
 	void _processSieve(uint64_t*, uint32_t*, const uint64_t, const uint64_t);
 	void _processSieve6(uint64_t*, uint32_t*, uint64_t, const uint64_t);
 	void _processSieve7(uint64_t*, uint32_t*, uint64_t, const uint64_t);
+	void _processSieve7_avx2(uint64_t*, uint32_t*, uint64_t, const uint64_t);
 	void _processSieve8(uint64_t*, uint32_t*, uint64_t, const uint64_t);
 	void _processSieve8_avx2(uint64_t*, uint32_t*, uint64_t, const uint64_t);
 	void _doSieveTask(Task);
