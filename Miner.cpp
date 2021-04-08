@@ -724,13 +724,15 @@ void Miner::_processSieve7_avx2(uint64_t *factorsTable, uint32_t* factorsToElimi
 
 	ymmreg_t offsetmax;
 	offsetmax.m256 = _mm256_set1_epi32(_parameters.sieveSize);
+	ymmreg_t storemask;
+	storemask.m256 = _mm256_set1_epi32(0xffffffff);
+	storemask.v[0] = 0;
 	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i += 2) {
 		ymmreg_t p1, p2;
 		ymmreg_t factor1, factor2, nextIncr1, nextIncr2;
 		ymmreg_t cmpres1, cmpres2;
 		p1.m256 = _mm256_set1_epi32(_primes32[i]);
 		p2.m256 = _mm256_set1_epi32(_primes32[i + 1]);
-		p2.v[0] = _primes32[i];
 		factor1.m256 = _mm256_loadu_si256(reinterpret_cast<__m256i const*>(&factorsToEliminate[i*7 + 0]));
 		factor2.m256 = _mm256_loadu_si256(reinterpret_cast<__m256i const*>(&factorsToEliminate[i*7 + 6]));
 		while (true) {
@@ -761,7 +763,7 @@ void Miner::_processSieve7_avx2(uint64_t *factorsTable, uint32_t* factorsToElimi
 		factor1.m256 = _mm256_sub_epi32(factor1.m256, offsetmax.m256);
 		factor2.m256 = _mm256_sub_epi32(factor2.m256, offsetmax.m256);
 		_mm256_storeu_si256(reinterpret_cast<__m256i*>(&factorsToEliminate[i*7 + 0]), factor1.m256);
-		_mm256_storeu_si256(reinterpret_cast<__m256i*>(&factorsToEliminate[i*7 + 6]), factor2.m256);
+		_mm256_maskstore_epi32(reinterpret_cast<int*>(&factorsToEliminate[i*7 + 6]), storemask.m256, factor2.m256);
 	}
 	_endSieveCache(factorsTable, sieveCache);
 #else
