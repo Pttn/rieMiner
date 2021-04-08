@@ -730,6 +730,7 @@ void Miner::_processSieve7_avx2(uint64_t *factorsTable, uint32_t* factorsToElimi
 		ymmreg_t cmpres1, cmpres2;
 		p1.m256 = _mm256_set1_epi32(_primes32[i]);
 		p2.m256 = _mm256_set1_epi32(_primes32[i + 1]);
+		p2.v[0] = _primes32[i];
 		factor1.m256 = _mm256_loadu_si256(reinterpret_cast<__m256i const*>(&factorsToEliminate[i*7 + 0]));
 		factor2.m256 = _mm256_loadu_si256(reinterpret_cast<__m256i const*>(&factorsToEliminate[i*7 + 6]));
 		while (true) {
