@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <immintrin.h>
 #include "Stats.hpp"
 #include "Client.hpp"
 #include "StratumClient.hpp"
@@ -17,7 +18,13 @@ union xmmreg_t {
 	__m128i m128;
 };
 
-constexpr uint32_t sieveCacheSize(16);
+union ymmreg_t {
+	uint32_t v[8];
+	uint64_t v64[4];
+	__m256i m256;
+};
+
+constexpr uint32_t sieveCacheSize(32);
 constexpr uint32_t nWorks(2);
 
 inline mpz_class u64ToMpz(const uint64_t u64) {
@@ -147,6 +154,10 @@ class Miner {
 	void _doPresieveTask(const Task&);
 	void _processSieve(uint64_t*, uint32_t*, const uint64_t, const uint64_t);
 	void _processSieve6(uint64_t*, uint32_t*, uint64_t, const uint64_t);
+	void _processSieve7(uint64_t*, uint32_t*, uint64_t, const uint64_t);
+	void _processSieve7_avx2(uint64_t*, uint32_t*, uint64_t, const uint64_t);
+	void _processSieve8(uint64_t*, uint32_t*, uint64_t, const uint64_t);
+	void _processSieve8_avx2(uint64_t*, uint32_t*, uint64_t, const uint64_t);
 	void _doSieveTask(Task);
 	bool _testPrimesIspc(const std::array<uint32_t, maxCandidatesPerCheckTask>&, uint32_t[maxCandidatesPerCheckTask], const mpz_class&, mpz_class&);
 	void _doCheckTask(Task);
