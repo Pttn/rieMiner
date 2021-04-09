@@ -248,8 +248,8 @@ void Options::parseOptions() {
 			else if (key == "ConstellationPattern") {
 				for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
 				std::stringstream offsetsSS(value);
-				std::vector<uint64_t> offsets;
-				uint64_t tmp;
+				std::vector<uint32_t> offsets;
+				uint32_t tmp;
 				while (offsetsSS >> tmp) offsets.push_back(tmp);
 				_minerParameters.pattern = offsets;
 			}
@@ -261,8 +261,8 @@ void Options::parseOptions() {
 			else if (key == "PrimorialOffsets") {
 				for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}
 				std::stringstream offsets(value);
-				std::vector<uint64_t> primorialOffsets;
-				uint64_t tmp;
+				std::vector<uint32_t> primorialOffsets;
+				uint32_t tmp;
 				while (offsets >> tmp) primorialOffsets.push_back(tmp);
 				_minerParameters.primorialOffsets = primorialOffsets;
 			}

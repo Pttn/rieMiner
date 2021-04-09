@@ -20,10 +20,10 @@ inline mpz_class u64ToMpz(const uint64_t u64) {
 	return mpz;
 }
 
-inline std::vector<mpz_class> v64ToVMpz(const std::vector<uint64_t> &v64) {
+inline std::vector<mpz_class> v32ToVMpz(const std::vector<uint32_t> &v32) {
 	std::vector<mpz_class> vMpz;
-	for (const auto & n : v64)
-		vMpz.push_back(u64ToMpz(n));
+	for (const auto & n : v32)
+		vMpz.push_back(n);
 	return vMpz;
 }
 
@@ -107,7 +107,7 @@ class Miner {
 	uint64_t _nPrimes, _factorMax, _primesIndexThreshold;
 	std::vector<uint32_t> _primes, _modularInverses;
 	std::vector<mpz_class> _primorialOffsets;
-	std::vector<uint64_t> _halfPattern, _primorialOffsetDiff;
+	std::vector<uint32_t> _halfPattern, _primorialOffsetDiff;
 	// Miner state variables
 	bool _inited, _running, _shouldRestart;
 	double _difficultyAtInit; // Restart the miner if the Difficulty changed a lot to retune
@@ -152,7 +152,7 @@ public:
 	}
 	
 	void setClient(const std::shared_ptr<Client> &client) {_client = client;}
-	bool hasAcceptedPatterns(const std::vector<std::vector<uint64_t>>&) const;
+	bool hasAcceptedPatterns(const std::vector<std::vector<uint32_t>>&) const;
 	void start(const MinerParameters &minerParameters) {
 		init(minerParameters);
 		startThreads();

@@ -68,15 +68,15 @@ public:
 	virtual double currentDifficulty() const = 0;
 	
 	// Tools for constellation pattern autodetection/selection
-	static std::vector<std::vector<uint64_t>> extractAcceptedPatterns(const json_t*);
-	static std::vector<uint64_t> choosePatterns(const std::vector<std::vector<uint64_t>>&, const std::vector<uint64_t>&);
+	static std::vector<std::vector<uint32_t>> extractAcceptedPatterns(const json_t*);
+	static std::vector<uint32_t> choosePatterns(const std::vector<std::vector<uint32_t>>&, const std::vector<uint32_t>&);
 };
 
 // Used to provide network information like the current accepted constellation patterns.
 // Currently, it is used to select a pattern if not provided and to handle the 0.20 fork, though it may also be used later for things like autotuning during mining.
 struct NetworkInfo {
 	int32_t powVersion;
-	std::vector<std::vector<uint64_t>> acceptedPatterns;
+	std::vector<std::vector<uint32_t>> acceptedPatterns;
 };
 
 class NetworkedClient : public Client {
@@ -94,7 +94,7 @@ public:
 // dummy and (mostly) deterministic work at the desired difficulty.
 class BMClient : public Client {
 	// Options
-	const std::vector<uint64_t> _pattern;
+	const std::vector<uint32_t> _pattern;
 	const double _difficulty, _blockInterval;
 	// Client State Variables
 	uint32_t _height, _requests;
@@ -110,7 +110,7 @@ public:
 // Client to use in order to break records, or to benchmark without blocks and with randomized work.
 class SearchClient : public Client {
 	// Options
-	const std::vector<uint64_t> _pattern;
+	const std::vector<uint32_t> _pattern;
 	const double _difficulty;
 	const std::string _tuplesFilename;
 	// Client State Variables
@@ -129,7 +129,7 @@ public:
 class TestClient : public NetworkedClient { // Actually not networked, but behaves like one
 	BlockHeader _bh;
 	uint32_t _height, _difficulty, _requests, _timeBeforeNextBlock;
-	std::vector<uint64_t> _currentPattern;
+	std::vector<uint32_t> _currentPattern;
 	bool _starting; // Used to set the timer so the time taken to initialize the miner the first time not counted
 	std::chrono::time_point<std::chrono::steady_clock> _timer;
 	

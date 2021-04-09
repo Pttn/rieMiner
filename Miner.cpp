@@ -48,7 +48,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 		else
 			_parameters.primorialOffsets = defaultPrimorialOffsetsIterator->second;
 	}
-	_primorialOffsets = v64ToVMpz(_parameters.primorialOffsets);
+	_primorialOffsets = v32ToVMpz(_parameters.primorialOffsets);
 	if (_parameters.sieveWorkers == 0) {
 		double proportion;
 		if (_parameters.pattern.size() >= 7) proportion = 0.85 - _difficultyAtInit/1920.;
@@ -791,7 +791,7 @@ void Miner::_suggestLessMemoryIntensiveOptions(const uint64_t suggestedPrimeTabl
 	std::cout << "SieveWorkers = " << suggestedSieveWorkers << std::endl;
 }
 
-bool Miner::hasAcceptedPatterns(const std::vector<std::vector<uint64_t>> &acceptedPatterns) const {
+bool Miner::hasAcceptedPatterns(const std::vector<std::vector<uint32_t>> &acceptedPatterns) const {
 	for (const auto &acceptedPattern : acceptedPatterns) {
 		bool compatible(true);
 		for (uint16_t i(0) ; i < acceptedPattern.size() ; i++) {

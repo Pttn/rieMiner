@@ -89,12 +89,12 @@ std::array<uint8_t, 32> Job::encodedOffset() const {
 	return nOffset;
 }
 
-std::vector<std::vector<uint64_t>> Client::extractAcceptedPatterns(const json_t* jsonPatterns) {
-	std::vector<std::vector<uint64_t>> acceptedPatterns;
+std::vector<std::vector<uint32_t>> Client::extractAcceptedPatterns(const json_t* jsonPatterns) {
+	std::vector<std::vector<uint32_t>> acceptedPatterns;
 	if (json_array_size(jsonPatterns) == 0)
 		return acceptedPatterns;
 	for (uint16_t i(0) ; i < json_array_size(jsonPatterns) ; i++) {
-		std::vector<uint64_t> acceptedPattern;
+		std::vector<uint32_t> acceptedPattern;
 		if (json_array_size(json_array_get(jsonPatterns, i)) == 0)
 			return {};
 		json_t *jsonPattern(json_array_get(jsonPatterns, i));
@@ -105,7 +105,7 @@ std::vector<std::vector<uint64_t>> Client::extractAcceptedPatterns(const json_t*
 	return acceptedPatterns;
 }
 
-std::vector<uint64_t> Client::choosePatterns(const std::vector<std::vector<uint64_t>>& acceptedPatterns, const std::vector<uint64_t>& givenPattern) {
+std::vector<uint32_t> Client::choosePatterns(const std::vector<std::vector<uint32_t>>& acceptedPatterns, const std::vector<uint32_t>& givenPattern) {
 	std::cout << "Accepted constellation pattern(s):" << std::endl;
 	if (acceptedPatterns.size() == 0) {
 		std::cout << " None - something went wrong :|" << std::endl;
@@ -217,7 +217,7 @@ void TestClient::process() {
 		_difficulty += 10;
 		if (_difficulty == 1630) {
 			_difficulty = 1200;
-			if (_currentPattern == std::vector<uint64_t>{0, 2, 4, 2, 4})
+			if (_currentPattern == std::vector<uint32_t>{0, 2, 4, 2, 4})
 				_currentPattern = {0, 2, 4, 2, 4, 6, 2}; // Fork simulation, triggering the miner restart
 		}
 		else if (_difficulty < 1600) {
