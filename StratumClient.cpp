@@ -26,11 +26,10 @@ static std::array<uint8_t, 32> calculateMerkleRootStratum(const std::vector<std:
 }
 void StratumData::merkleRootGen() {
 	std::vector<uint8_t> coinbase;
-	static uint8_t extraNonce2Counter(0); // 256 values should be more than enough for Riecoin Mining
-	extraNonce2 = std::vector<uint8_t>(extraNonce2Len, extraNonce2Counter++); // Just repeat that byte
+	extraNonce2 = std::vector<uint8_t>();
 	coinbase.insert(coinbase.end(), coinbase1.begin(), coinbase1.end());
 	coinbase.insert(coinbase.end(), extraNonce1.begin(), extraNonce1.end());
-
+	for (uint32_t i(0) ; i < extraNonce2Len ; i++) extraNonce2.push_back(rand(0x00, 0xFF));
 	coinbase.insert(coinbase.end(), extraNonce2.begin(), extraNonce2.end());
 	coinbase.insert(coinbase.end(), coinbase2.begin(), coinbase2.end());
 	
