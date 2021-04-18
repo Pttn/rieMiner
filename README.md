@@ -1,5 +1,7 @@
 # rieMiner 0.92
 
+![rieMiner Logo](https://riecoin.dev/files/w/thumb.php?f=rieMiner.svg&width=128)
+
 rieMiner is a Riecoin miner supporting both solo and pooled mining, and can also be run standalone for prime constellation record attempts. Find the latest binaries [here](https://github.com/Pttn/rieMiner/releases) for Linux and Windows.
 
 This README is intended for advanced users and will mainly only describe the different configuration options and give information for developers like how to compile or contribute. For more practical information on how to use rieMiner like configuration file templates and mining or record attempts guides, visit the [rieMiner's page](https://riecoin.dev/en/rieMiner). **Before asking for any help or reporting an issue, ensure that you followed the instructions correctly, and try first to solve the issues by yourself**.
@@ -94,8 +96,6 @@ rieMiner uses a text configuration file, by default a "rieMiner.conf" file next 
 ./rieMiner /home/user/rieMiner/rieMiner.conf
 ```
 
-If the provided configuration file was not found, you will be asked a few questions to configure very basic settings of Solo or Pooled Mining.
-
 For other Modes or more options, you need to know how to write a configuration file yourself. The rieMiner.conf syntax is very simple: each option is set by a line like
 
 ```
@@ -157,7 +157,7 @@ It does the following:
 
 * `Threads`: number of threads used for mining, 0 to autodetect. Default: 0;
 * `PrimeTableLimit`: the prime table used for mining will contain primes up to the given number. Set to 0 to automatically calculate according to the current Difficulty. You can try a larger limit as this will reduce the ratio between the n-tuple and (n + 1)-tuple counts (but also the candidates/s rate). Reduce if you want to lower memory usage. Default: 0;
-* `EnableAVX2`: by default, AVX2 is disabled, as it may increase the power consumption more than the performance improvements. If your processor supports AVX2, you can choose to take advantage of this instruction set if you wish by setting this option to `Yes`. Do your own testing to find out if it is worth it. AVX2 is known to degrade performance for AMD Ryzens and similar before Zen2 (e. g. 1800X, 1950X, 2700X) and should be left disabled in these cases;
+* `EnableAVX2`: by default, AVX2 is disabled, as it increases the power consumption. If your processor supports AVX2, you can choose to take advantage of this instruction set by setting this option to `Yes`. Do your own testing to find out if it is worth it. AVX2 is known to degrade performance for AMD Ryzens and similar before Zen2 (e. g. 1800X, 1950X, 2700X) and should be left disabled in these cases;
 * `SieveBits`: the size of the primorial factors table for the sieve is 2^SieveBits bits. 25 seems to be an optimal value, or 24 if there are many SieveWorkers. Though, if you have less than 8 MiB of L3 cache, you can try to decrement this value. Default: 25 if SieveWorkers <= 4, 24 otherwise;
 * `SieveIterations`: how many times the primorial factors table is reused for sieving. Increasing will decrease the frequency of new jobs, so less time would be "lost" in sieving, but this will also increase the memory usage. It is not clear however how this actually plays performance wise, 16 seems to be a good value. Default: 16;
 * `SieveWorkers`: the number of threads to use for sieving. Increasing it may solve some CPU underuse problems, but will use more memory. 0 for choosing automatically. Default: 0;

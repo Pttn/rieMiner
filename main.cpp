@@ -47,97 +47,6 @@ void Options::_stopConfig() const {
 	exit(0);
 }
 
-void Options::askConf() {
-	std::string value;
-	std::ofstream file(confPath);
-	if (file) {
-		std::cout << "Solo mining (solo) or pooled mining (pool)? ";
-		std::cin >> value;
-		if (value == "solo") {
-			file << "Mode = Solo" << std::endl;
-			_mode = "Solo";
-		}
-		else if (value == "pool") {
-			file << "Mode = Pool" << std::endl;
-			_mode = "Pool";
-		}
-		else {
-			std::cout << "Invalid choice! Please answer exactly solo or pool." << std::endl;
-			_stopConfig();
-		}
-		
-		if (_mode == "Solo") {
-			std::cout << "Riecoin Core (wallet) IP: ";
-			std::cin >> value;
-#ifndef _WIN32
-			struct sockaddr_in sa;
-			if (inet_pton(AF_INET, value.c_str(), &(sa.sin_addr)) != 1) {
-				std::cerr << "Invalid IP address!" << std::endl;
-				_stopConfig();
-			}
-			else {
-				file << "Host = " << value << std::endl;
-				_host = value;
-			}
-#else
-			file << "Host = " << value << std::endl;
-			_host = value;
-#endif
-			std::cout << "RPC port: ";
-		}
-		else {
-			std::cout << "Please choose a pool that does not already have a lot of mining power to prevent centralization." << std::endl;
-			std::cout << "Get the list of pools on Riecoin.dev and their settings on their website." << std::endl;
-			std::cout << "Pool address (without port): ";
-			std::cin >> value;
-			file << "Host = " << value << std::endl;
-			_host = value;
-			std::cout << "Pool port (example: 5000): ";
-		}
-		
-		std::cin >> value;
-		try {
-			_port = std::stoi(value);
-			file << "Port = " << value << std::endl;
-		}
-		catch (...) {
-			std::cout << "Invalid port !" << std::endl;
-			_stopConfig();
-		}
-		
-		if (_mode == "Solo") std::cout << "RPC username: ";
-		else std::cout << "Pool username.worker: ";
-		
-		std::cin >> value;
-		file << "Username = " << value << std::endl;
-		_username = value;
-		
-		if (_mode == "Solo") std::cout << "RPC password: ";
-		else std::cout << "Worker password: ";
-		
-		std::cin >> value;
-		file << "Password = " << value << std::endl;
-		_password = value;
-		
-		if (_mode == "Solo") {
-			std::cout << "Payout address: ";
-			std::cin >> _payoutAddress;
-			if (bech32ToScriptPubKey(_payoutAddress).size() == 0) {
-				std::cout << "Invalid payout address!" << std::endl;
-				_stopConfig();
-			}
-			file << "PayoutAddress = " << _payoutAddress << std::endl;
-		}
-		
-		std::cout << "For more options, read the README.md and edit the configuration file." << std::endl;
-		file << "Threads = 0" << std::endl;
-		std::cout << "Happy Mining :D !" << std::endl;
-		std::cout << "-----------------------------------------------------------" << std::endl;
-		file.close();
-	}
-	else ERRORMSG("Unable to create " << confPath);
-}
-
 void Options::loadFileOptions(const std::string &filename, const bool hasCommandOptions) {
 	std::ifstream file(filename, std::ios::in);
 	if (file) {
@@ -148,8 +57,11 @@ void Options::loadFileOptions(const std::string &filename, const bool hasCommand
 		file.close();
 	}
 	else if (!hasCommandOptions) {
-		std::cout << confPath << " not found or unreadable and no other arguments given, please configure rieMiner now." << std::endl;
-		askConf();
+		std::cout << confPath << " not found or unreadable and no other arguments given. Please read the guides and README to learn how to configure rieMiner. Alternatively, you can use rieMiner-Qt which provides an easy to use interface." << std::endl;
+		std::cout << "https://riecoin.dev/en/rieMiner" << std::endl;
+		std::cout << "https://github.com/Pttn/rieMiner/" << std::endl;
+		std::cout << "https://riecoin.dev/en/rieMiner-Qt" << std::endl;
+		exit(0);
 	}
 }
 
@@ -372,12 +284,10 @@ int main(int argc, char** argv) {
 		std::cout << "Same syntax for the command line options." << std::endl;
 		std::cout << "Available options are documented here. https://github.com/Pttn/rieMiner" << std::endl;
 		std::cout << "Guides with configuration file examples can also be found here. https://riecoin.dev/en/rieMiner" << std::endl;
-		std::cout << "Use default rieMiner.conf configuration file (will launch the assistant if not existing)" << std::endl;
+		std::cout << "Use default rieMiner.conf configuration file" << std::endl;
 		std::cout << "\t./rieMiner" << std::endl;
 		std::cout << "Custom configuration file" << std::endl;
 		std::cout << "\t./rieMiner existingConfigFile.conf" << std::endl;
-		std::cout << "Launch the assistant" << std::endl;
-		std::cout << "\t./rieMiner nonExistingConfigFile.conf" << std::endl;
 		std::cout << "Custom configuration file and command line options" << std::endl;
 		std::cout << "\t./rieMiner existingConfigFile.conf Option1=Value1 \"Option2 = Value2\" Option3=WeirdValue\\!\\!" << std::endl;
 		std::cout << "No configuration file and command line options (dummy must not exist)" << std::endl;

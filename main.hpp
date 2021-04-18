@@ -15,7 +15,7 @@
 #include <vector>
 #include "tools.hpp"
 
-#define versionString	"rieMiner 0.92b"
+#define versionString	"rieMiner 0.92c"
 #define primeTableFile	"PrimeTable64.bin"
 
 extern int DEBUG;
@@ -114,7 +114,6 @@ class Options {
 		_rules{"segwit"},
 		_options{} {}
 	
-	void askConf();
 	void loadFileOptions(const std::string&, const bool);
 	void loadCommandOptions(const int, char**);
 	void parseOptions();

@@ -298,7 +298,6 @@ NetworkInfo GBTClient::info() {
 			std::cout << "\tMaybe you meant to do pooled mining? In this case use 'Mode = Pool'" << std::endl;
 			std::cout << "\tWrong Username/Password (must be the same as the rpcuser/rpcpassword)" << std::endl;
 			std::cout << "If you still have problems, you can ask for help on the Riecoin discussion channels, but please give detailed infos! What you tried to do, your configuration files, don't just say that you have trouble connecting or are getting an error!" << std::endl;
-			std::cout << "Also do not open a GitHub issue about this!" << std::endl;
 			std::cout << "================================================================" << std::endl;
 			_connected = false;
 			return {0, {}};
