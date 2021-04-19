@@ -16,7 +16,7 @@ extern "C" {
 
 constexpr uint64_t nPrimesTo2p32(203280221);
 constexpr int factorsCacheSize(16384);
-constexpr uint16_t maxSieveWorkers(16); // There is a noticeable performance penalty using Std Vector or Arrays so we are using Raw Arrays.
+constexpr uint16_t maxSieveWorkers(64); // There is a noticeable performance penalty using Std Vector or Arrays so we are using Raw Arrays.
 thread_local uint64_t** factorsCache{nullptr};
 thread_local uint64_t** factorsCacheCounts{nullptr};
 thread_local uint16_t threadId(65535);
@@ -227,7 +227,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 	else
 		std::cout << "~" << _primorial.get_str()[0] << "." << _primorial.get_str().substr(1, 12) << "*10^" << _primorial.get_str().size() - 1;
 	std::cout << " (" << mpz_sizeinbase(_primorial.get_mpz_t(), 2) << " bits)" << std::endl;
-	std::cout << "Primorial Offsets: " << formatContainer(_primorialOffsets) << std::endl;
+	std::cout << "Primorial Offsets: " << _primorialOffsets.size() << std::endl;
 	_primorialOffsetDiff.resize(_parameters.sieveWorkers - 1);
 	const uint64_t constellationDiameter(cumulativeOffsets.back());
 	for (int j(1) ; j < _parameters.sieveWorkers ; j++)
