@@ -1,4 +1,4 @@
-// (c) 2018-2020 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2021 Pttn (https://riecoin.dev/en/rieMiner)
 // (c) 2018 Michael Bell/Rockhawk (CPUID tools)
 
 #include "tools.hpp"
@@ -90,35 +90,27 @@ static std::vector<uint8_t> v5ToV8(const std::vector<uint8_t>& v5) {
 std::vector<uint8_t> bech32ToScriptPubKey(const std::string &address) {
 	if (address.size() < 6 || address.size() > 90)
 		return {};
-	else {
-		std::string addrHrp, addrData;
-		if (address.substr(0, 4) == "ric1") {
-			addrHrp  = "ric";
-			addrData = address.substr(4, address.size() - 4);
-		}
-		else if (address.substr(0, 5) == "tric1") {
-			addrHrp  = "tric";
-			addrData = address.substr(5, address.size() - 5);
-		}
-		else return {};
-		if (addrData.size() < 6) return {};
-		std::vector<uint8_t> v5;
-		for (const auto &c : addrData) {
-			const uint8_t d5(bech32Values[static_cast<uint8_t>(c)]);
-			if (d5 == 255) return {};
-			v5.push_back(d5);
-		}
-		std::vector<uint8_t> expHrpData(expandHrp(addrHrp));
-		expHrpData.insert(expHrpData.end(), v5.begin(), v5.end());
-		if (bech32Polymod(expHrpData) != 1) return {};
-		else {
-			std::vector<uint8_t> spk(v5ToV8(std::vector<uint8_t>(v5.begin() + 1, v5.end() - 6)));
-			if ((spk.size() == 0 && addrData.size() != 6) || v5[0] > 16) return {};
-			spk.insert(spk.begin(), spk.size());
-			spk.insert(spk.begin(), v5[0] == 0 ? 0 : 80 + v5[0]);
-			return spk;
-		}
+	const auto delimiterPos(address.find('1'));
+	if (delimiterPos >= address.size() - 6)
+		return {};
+	std::string addrHrp(address.substr(0, delimiterPos)),
+	            addrData(address.substr(delimiterPos + 1, address.size() - delimiterPos - 1));
+	std::vector<uint8_t> v5;
+	for (const auto &c : addrData) {
+		const uint8_t d5(bech32Values[static_cast<uint8_t>(c)]);
+		if (d5 == 255) return {};
+		v5.push_back(d5);
 	}
+	std::vector<uint8_t> expHrpData(expandHrp(addrHrp));
+	expHrpData.insert(expHrpData.end(), v5.begin(), v5.end());
+	if (bech32Polymod(expHrpData) != 1)
+		return {};
+	std::vector<uint8_t> spk(v5ToV8(std::vector<uint8_t>(v5.begin() + 1, v5.end() - 6)));
+	if ((spk.size() == 0 && addrData.size() != 6) || v5[0] > 16)
+		return {};
+	spk.insert(spk.begin(), spk.size());
+	spk.insert(spk.begin(), v5[0] == 0 ? 0 : 80 + v5[0]);
+	return spk;
 }
 
 CpuID::CpuID() {
