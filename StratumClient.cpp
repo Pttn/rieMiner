@@ -1,4 +1,4 @@
-// (c) 2018-2021 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2021 Pttn (https://riecoin.dev/en/rieMiner)
 
 #include "main.hpp"
 #include "StratumClient.hpp"
@@ -102,7 +102,7 @@ bool StratumClient::_fetchWork() {
 		std::cout << __func__ << ": empty or invalid accepted constellation patterns list!" << std::endl;
 		goto failure;
 	}
-	_sd.sharePrimeCountMin = std::max(static_cast<int>(_info.acceptedPatterns[0].size()) - 2, 3);
+	_sd.sharePrimeCountMin = std::max(static_cast<int>(_info.acceptedPatterns[0].size()) - 2, 4);
 	_sd.coinbase1 = hexStrToV8(coinbase1);
 	_sd.coinbase2 = hexStrToV8(coinbase2);
 	_sd.jobId     = jobId;
