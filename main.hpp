@@ -1,4 +1,4 @@
-// (c) 2017-2021 Pttn and contributors (https://github.com/Pttn/rieMiner)
+// (c) 2017-2021 Pttn and contributors (https://riecoin.dev/en/rieMiner)
 
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
@@ -77,7 +77,7 @@ struct MinerParameters {
 		useAvx2(false),
 		sieveBits(0), sieveSize(0), sieveWords(0), sieveIterations(0),
 		pattern{}, primorialOffsets{},
-		restartDifficultyFactor(1.05) {}
+		restartDifficultyFactor(1.03) {}
 };
 
 class Options {

@@ -1,4 +1,4 @@
-// (c) 2017-2021 Pttn and contributors (https://github.com/Pttn/rieMiner)
+// (c) 2017-2021 Pttn and contributors (https://riecoin.dev/en/rieMiner)
 
 #include <iomanip>
 #include <unistd.h>
@@ -122,7 +122,7 @@ void Options::parseOptions() {
 			}
 			else if (key == "RestartDifficultyFactor") {
 				try {_minerParameters.restartDifficultyFactor = std::stod(value);}
-				catch (...) {_minerParameters.restartDifficultyFactor = 1.05;}
+				catch (...) {_minerParameters.restartDifficultyFactor = 1.03;}
 				if (_minerParameters.restartDifficultyFactor < 1.)
 					_minerParameters.restartDifficultyFactor = 1.;
 			}
