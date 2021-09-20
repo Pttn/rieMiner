@@ -1,4 +1,4 @@
-// (c) 2018-2021 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2021 Pttn (https://riecoin.dev/en/rieMiner)
 
 #include "GBTClient.hpp"
 #include "main.hpp"
@@ -27,74 +27,67 @@ std::array<uint8_t, 32> calculateMerkleRoot(const std::vector<std::array<uint8_t
 }
 
 void GetBlockTemplateData::coinBaseGen(const std::vector<uint8_t> &scriptPubKey, const std::string &cbMsg, uint16_t donationPercent) {
-	coinbase = std::vector<uint8_t>();
-	std::vector<uint8_t> scriptSig;
+	coinbase = {};
 	const std::vector<uint8_t> dwc(hexStrToV8(default_witness_commitment)); // for SegWit
-	for (uint32_t i(0) ; i < cbMsg.size() ; i++) scriptSig.push_back(cbMsg[i]);
-	
-	// Randomization to avoid 2 threads working on the same problem
-	for (uint32_t i(0) ; i < 4 ; i++) scriptSig.push_back(rand(0x00, 0xFF));
-	
 	// Version (01000000)
-	coinbase.push_back(0x01); coinbase.push_back(0x00); coinbase.push_back(0x00); coinbase.push_back(0x00);
-	
-	if (dwc.size() > 0) {
-		coinbase.push_back(0x00); // Marker
-		coinbase.push_back(0x01); // Flag
-	}
-	
+	coinbase.insert(coinbase.end(), {0x01, 0x00, 0x00, 0x00});
+	// Marker (00) and Flag (01) for SegWit
+	if (dwc.size() > 0)
+		coinbase.insert(coinbase.end(), {0x00, 0x01});
 	// Input Count (01)
 	coinbase.push_back(1);
-	// 0000000000000000000000000000000000000000000000000000000000000000 (Input TXID)
-	for (uint32_t i(0) ; i < 32 ; i++) coinbase.push_back(0);
+	// Input TXID (0000000000000000000000000000000000000000000000000000000000000000)
+	for (uint32_t i(0) ; i < 32 ; i++) coinbase.push_back(0x00);
 	// Input VOUT (FFFFFFFF)
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0xFF);
+	// (ScriptSig Construction)
+		std::vector<uint8_t> scriptSig;
+		// Block Height (Bip 34)
+		if (height < 17)
+			scriptSig.push_back(80 + height);
+		else if (height < 128) {
+			scriptSig.push_back(1);
+			scriptSig.push_back(height);
+		}
+		else if (height < 32768) {
+			scriptSig.push_back(2);
+			scriptSig.push_back(height % 256);
+			scriptSig.push_back((height/256) % 256);
+		}
+		else {
+			scriptSig.push_back(3);
+			scriptSig.push_back(height % 256);
+			scriptSig.push_back((height/256) % 256);
+			scriptSig.push_back((height/65536) % 256);
+		}
+		// Secret Message
+		for (uint32_t i(0) ; i < cbMsg.size() ; i++) scriptSig.push_back(cbMsg[i]);
+		// Randomization to avoid having 2 threads working on the same problem
+		for (uint32_t i(0) ; i < 4 ; i++) scriptSig.push_back(rand(0x00, 0xFF));
 	// ScriptSig Size
-	coinbase.push_back(scriptSig.size()); // Block Height Push Size (1-4 added later) + scriptSig.size()
-	if (height < 17) {
-		coinbase.back()++;
-		coinbase.push_back(80 + height);
-	}
-	else if (height < 128) {
-		coinbase.back() += 2;
-		coinbase.push_back(1);
-		coinbase.push_back(height);
-	}
-	else if (height < 32768) {
-		coinbase.back() += 3;
-		coinbase.push_back(2);
-		coinbase.push_back(height % 256);
-		coinbase.push_back((height/256) % 256);
-	}
-	else {
-		coinbase.back() += 4;
-		coinbase.push_back(3);
-		coinbase.push_back(height % 256);
-		coinbase.push_back((height/256) % 256);
-		coinbase.push_back((height/65536) % 256);
-	}
+	coinbase.push_back(scriptSig.size());
 	// ScriptSig
-	for (uint32_t i(0) ; i < scriptSig.size() ; i++) coinbase.push_back(scriptSig[i]);
+	coinbase.insert(coinbase.end(), scriptSig.begin(), scriptSig.end());
 	// Input Sequence (FFFFFFFF)
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0xFF);
-	
 	const std::vector<uint8_t> scriptPubKeyDon(hexStrToV8("00141c486c58cbffbfdc317c15c6d1ac7f133e46f679"));
 	uint64_t donation(donationPercent*coinbasevalue/100);
 	if (scriptPubKey == scriptPubKeyDon) donation = 0;
 	uint64_t reward(coinbasevalue - donation);
 	// Output Count
-	if (donation == 0) coinbase.push_back(1);
-	else coinbase.push_back(2);
-	if (dwc.size() > 0) coinbase[coinbase.size() - 1]++; // Dummy Output for SegWit if needed
+	coinbase.push_back(donation == 0 ? 1 : 2);
+	if (dwc.size() > 0) coinbase.back()++; // Dummy Output for SegWit
 	// Output Value
 	for (uint32_t i(0) ; i < 8 ; i++) {
 		coinbase.push_back(reward % 256);
 		reward /= 256;
 	}
-	
-	coinbase.push_back(scriptPubKey.size()); // Output/ScriptPubKey Length
-	coinbase.insert(coinbase.end(), scriptPubKey.begin(), scriptPubKey.end()); // ScriptPubKey (for payout address)
-	if (donation != 0) { // Donation output
+	// Output/ScriptPubKey Length
+	coinbase.push_back(scriptPubKey.size());
+	// ScriptPubKey (for the payout address)
+	coinbase.insert(coinbase.end(), scriptPubKey.begin(), scriptPubKey.end());
+	// Donation output
+	if (donation != 0) {
 		for (uint32_t i(0) ; i < 8 ; i++) { // Output Value
 			coinbase.push_back(donation % 256);
 			donation /= 256;
@@ -102,20 +95,15 @@ void GetBlockTemplateData::coinBaseGen(const std::vector<uint8_t> &scriptPubKey,
 		coinbase.push_back(scriptPubKeyDon.size());
 		coinbase.insert(coinbase.end(), scriptPubKeyDon.begin(), scriptPubKeyDon.end());
 	}
-	
-	// SegWit specifics (dummy output, witness)
+	// Dummy output and witness for SegWit
 	if (dwc.size() > 0) {
-		for (uint32_t i(0) ; i < 8 ; i++) coinbase.push_back(0x00); // No reward
+		for (uint32_t i(0) ; i < 8 ; i++) coinbase.push_back(0); // No reward
 		coinbase.push_back(dwc.size()); // Output Length
-		// default_witness_commitment from GetBlockTemplate
-		coinbase.insert(coinbase.end(), dwc.begin(), dwc.end());
-		
+		coinbase.insert(coinbase.end(), dwc.begin(), dwc.end()); // Default Witness Commitment
 		coinbase.push_back(1); // Number of Witnesses/stack items
 		coinbase.push_back(32); // Witness Length
-		// Witness of the Coinbase Input
-		for (uint32_t i(0) ; i < 32 ; i++) coinbase.push_back(0x00);
+		for (uint32_t i(0) ; i < 32 ; i++) coinbase.push_back(0x00); // Witness of the Coinbase Input (0000000000000000000000000000000000000000000000000000000000000000)
 	}
-	
 	// Lock Time (00000000)
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0);
 }
