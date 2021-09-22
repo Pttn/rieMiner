@@ -1,9 +1,10 @@
-// (c) 2018-2021 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2021 Pttn (https://riecoin.dev/en/rieMiner)
 
 #ifndef HEADER_GBTClient_hpp
 #define HEADER_GBTClient_hpp
 
 #include <curl/curl.h>
+#include <nlohmann/json.hpp>
 
 #include "Client.hpp"
 #include "tools.hpp"
@@ -39,7 +40,7 @@ class GBTClient : public NetworkedClient {
 	NetworkInfo _info;
 	GetBlockTemplateData _gbtd;
 	
-	json_t* _sendRPCCall(const std::string&) const; // Send a RPC call to the server and returns the response
+	nlohmann::json _sendRequestToWallet(const std::string&, const nlohmann::json&) const; // Sends a RPC call to the Riecoin server and returns the response
 	bool _fetchWork(); // Via getblocktemplate
 	void _submit(const Job& job); // Sends a pending result via submitblock
 public:

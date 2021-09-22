@@ -30,15 +30,15 @@ Compilation should work fine for the systems below. If not, please report any is
 
 You can compile this C++ program with g++, as, m4 and make, install them if needed. Then, get if needed the following dependencies:
 
-* [Jansson](http://www.digip.org/jansson/)
-* [cURL](https://curl.haxx.se/)
-* [libSSL](https://www.openssl.org/)
 * [GMP](https://gmplib.org/)
+* [libSSL](https://www.openssl.org/)
+* [cURL](https://curl.haxx.se/)
+* [NLohmann Json](https://json.nlohmann.me/)
 
 On a recent enough Debian or Ubuntu, you can easily install these by doing as root:
 
 ```bash
-apt install g++ make m4 git libjansson-dev libcurl4-openssl-dev libssl-dev libgmp-dev
+apt install g++ make m4 git libgmp-dev libssl-dev libcurl4-openssl-dev nlohmann-json3-dev
 ```
 
 Then, just download the source files, go/`cd` to the directory, and do a simple make:
@@ -56,12 +56,13 @@ For other Linux, executing equivalent commands (using `pacman` instead of `apt`,
 You can compile rieMiner on Windows, and here is one way to do this. First, install [MSYS2](http://www.msys2.org/) (follow the instructions on the website), then enter in the MSYS **MinGW-w64** console, and install the tools and dependencies:
 
 ```bash
-pacman -S make git
-pacman -S mingw64/mingw-w64-x86_64-gcc
-pacman -S mingw64/mingw-w64-x86_64-curl
+pacman -S make m4 git
+pacman -S mingw-w64-x86_64-gcc
+pacman -S mingw-w64-x86_64-curl
+pacman -S mingw-w64-x86_64-nlohmann-json
 ```
 
-Note that you must install the `mingw64/mingw-w64-x86_64-...` packages and not just `gcc` or `curl`.
+Note that you must install the `mingw-w64-x86_64-...` packages and not just `gcc` or `curl`. Some dependencies are already included in others, for example GCC includes GMP.
 
 Clone rieMiner with `git`, go to its directory with `cd`, and compile with `make` (same commands as Linux, see above).
 

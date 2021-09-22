@@ -1,5 +1,7 @@
 // (c) 2018-2021 Pttn (https://riecoin.dev/en/rieMiner)
 
+#include <nlohmann/json.hpp>
+
 #include "main.hpp"
 #include "StratumClient.hpp"
 
@@ -41,47 +43,42 @@ void StratumData::merkleRootGen() {
 bool StratumClient::_fetchWork() {
 	std::lock_guard<std::mutex> lock(_workMutex);
 	uint8_t heightLength;
-	json_t *jsonMn(nullptr), *jsonMn_params(nullptr); // Mining.notify results
-	json_error_t err;
-	jsonMn = json_loads(_result.c_str(), 0, &err);
-	if (jsonMn == nullptr) {
-		std::cout << __func__ << ": invalid or no mining.notify result received!" << std::endl;
+	std::string jobId, prevhash, coinbase1, coinbase2, version, nbits, ntime;
+	int32_t powversion;
+	std::vector<std::string> merkleBranches;
+	std::vector<std::vector<uint64_t>> acceptedPatterns;
+	try {
+		nlohmann::json jsonMiningNotifyParams(nlohmann::json::parse(_result)["params"]);
+		jobId = jsonMiningNotifyParams[0];
+		prevhash = jsonMiningNotifyParams[1];
+		coinbase1 = jsonMiningNotifyParams[2];
+		coinbase2 = jsonMiningNotifyParams[3];
+		merkleBranches = jsonMiningNotifyParams[4].get<decltype(merkleBranches)>();
+		version = jsonMiningNotifyParams[5];
+		nbits = jsonMiningNotifyParams[6];
+		ntime = jsonMiningNotifyParams[7];
+		powversion = jsonMiningNotifyParams[9];
+		acceptedPatterns = jsonMiningNotifyParams[10].get<decltype(acceptedPatterns)>();
+	}
+	catch (std::exception &e) {
+		std::cout << __func__ << ": invalid mining.notify message or parameters - " << e.what() << std::endl;
+		std::cout << "It is probably due to an outdated pool, please wait for it to upgrade or choose another one." << std::endl;
 		return false;
 	}
-	jsonMn_params = json_object_get(jsonMn, "params");
-	if (jsonMn_params == nullptr) {
-		std::cout << __func__ << ": invalid or no params in mining.notify received!" << std::endl;
-		goto failure;
+	if (!isHexStrOfSize(prevhash, 64) || !isHexStr(coinbase1) || coinbase1.size() % 2 != 0 || !isHexStr(coinbase2) || coinbase2.size() % 2 != 0 || !isHexStrOfSize(version, 8) || !isHexStrOfSize(nbits, 8) || !isHexStr(ntime)) {
+		std::cout << __func__ << ": invalid parameters in mining.notify!" << std::endl;
+		return false;
 	}
-	const char *jobId, *prevhash, *coinbase1, *coinbase2, *version, *nbits, *ntime;
-	int32_t powversion;
-	json_t *jsonTxs, *patterns;
-	
-	jobId     = json_string_value(json_array_get(jsonMn_params, 0));
-	prevhash  = json_string_value(json_array_get(jsonMn_params, 1));
-	coinbase1 = json_string_value(json_array_get(jsonMn_params, 2));
-	coinbase2 = json_string_value(json_array_get(jsonMn_params, 3));
-	jsonTxs   = json_array_get(jsonMn_params, 4);
-	if (!jsonTxs || !json_is_array(jsonTxs)) {
-		std::cout << __func__ << ": missing or invalid Merkle data for params in mining.notify!" << std::endl;
-		goto failure;
+	if (powversion != 1) {
+		std::cout << __func__ << ": Unsupported PoW Version " << _info.powVersion << ", please upgrade rieMiner!" << std::endl;
+		return false;
 	}
-	version = json_string_value(json_array_get(jsonMn_params, 5));
-	nbits   = json_string_value(json_array_get(jsonMn_params, 6));
-	ntime   = json_string_value(json_array_get(jsonMn_params, 7));
-	powversion = json_integer_value(json_array_get(jsonMn_params, 9));
-	patterns = json_array_get(jsonMn_params, 10);
-	if (jobId == nullptr || prevhash == nullptr || coinbase1 == nullptr || coinbase2 == nullptr || version == nullptr || nbits == nullptr || ntime == nullptr || powversion == 0 || patterns == nullptr) {
-		std::cout << __func__ << ": missing params in mining.notify!" << std::endl;
-		std::cout << "The pool is outdated, please wait for it to upgrade or choose another one." << std::endl;
-		goto failure;
-	}
-	if (strlen(prevhash) != 64 || strlen(version) != 8 || strlen(nbits) != 8 || strlen(ntime) != 8 || !json_is_array(patterns)) {
-		std::cout << __func__ << ": invalid params in mining.notify!" << std::endl;
-		goto failure;
+	if (acceptedPatterns.size() == 0) {
+		std::cout << __func__ << ": empty or invalid accepted constellation patterns list!" << std::endl;
+		return false;
 	}
 	_sd.bh = BlockHeader();
-	_sd.txHashes = std::vector<std::array<uint8_t, 32>>();
+	_sd.txHashes = {};
 	_sd.bh.previousblockhash = v8ToA8(hexStrToV8(prevhash));
 	try {
 		_sd.bh.version = std::stoll(version, nullptr, 16);
@@ -89,160 +86,108 @@ bool StratumClient::_fetchWork() {
 		_sd.bh.bits = std::stoll(nbits, nullptr, 16);
 	}
 	catch (...) {
-		std::cout << __func__ << ": invalid Block Header hex values !" << std::endl;
-		goto failure;
+		std::cout << __func__ << ": invalid Block Header hex values!" << std::endl;
+		_sd = StratumData();
+		return false;
 	}
 	_info.powVersion = powversion;
-	if (_info.powVersion != 1) {
-		ERRORMSG("Unexpected PoW Version " << _info.powVersion << "! Please upgrade rieMiner!");
-		goto failure;
-	}
-	_info.acceptedPatterns = Client::extractAcceptedPatterns(patterns);
-	if (_info.acceptedPatterns.size() == 0) {
-		std::cout << __func__ << ": empty or invalid accepted constellation patterns list!" << std::endl;
-		goto failure;
-	}
+	_info.acceptedPatterns = acceptedPatterns;
 	_sd.sharePrimeCountMin = std::max(static_cast<int>(_info.acceptedPatterns[0].size()) - 2, 4);
 	_sd.coinbase1 = hexStrToV8(coinbase1);
 	_sd.coinbase2 = hexStrToV8(coinbase2);
-	_sd.jobId     = jobId;
-	// Get Transactions Hashes
-	for (uint32_t i(0) ; i < json_array_size(jsonTxs) ; i++) {
-		const std::string txStr(json_string_value(json_array_get(jsonTxs, i)));
-		if (txStr.size() != 64) {
-			std::cout << __func__ << ": invalid transaction ID size!" << std::endl;
-			goto failure;
+	_sd.jobId = jobId;
+	for (const auto &merkleBranch : merkleBranches) {
+		if (!isHexStrOfSize(merkleBranch, 64)) {
+			std::cout << __func__ << ": invalid Merkle Branch!" << std::endl;
+			_sd = StratumData();
+			return false;
 		}
-		const std::array<uint8_t, 32> txHash(v8ToA8(hexStrToV8(txStr)));
-		_sd.txHashes.push_back(txHash);
+		_sd.txHashes.push_back(v8ToA8(hexStrToV8(merkleBranch)));
 	}
 	// Extract BlockHeight from Coinbase
 	heightLength = _sd.coinbase1[42];
 	if (heightLength == 1) _sd.height = _sd.coinbase1[43];
 	else if (heightLength == 2) _sd.height = _sd.coinbase1[43] + 256*_sd.coinbase1[44];
 	else _sd.height = _sd.coinbase1[43] + 256*_sd.coinbase1[44] + 65536*_sd.coinbase1[45];
-	json_decref(jsonMn);
 	return true;
-failure:
-	_sd = StratumData();
-	json_decref(jsonMn);
-	return false;
 }
 
 void StratumClient::_getSubscribeInfo() {
 	std::string r;
-	json_t *jsonObj(nullptr), *jsonRes(nullptr), *jsonErr(nullptr);
-	json_error_t err;
-	
 	for (const auto &c : _result) {
-		if (c == '\n') break;
 		r += c;
+		if (c == '\n') break;
 	}
-	jsonObj = json_loads(r.c_str(), 0, &err);
-	if (jsonObj == nullptr)
-		std::cout << __func__ << ": JSON decode failed :| - " << err.text << std::endl;
+	try {
+		nlohmann::json jsonMiningSubscribe(nlohmann::json::parse(r));
+		nlohmann::json jsonResult(jsonMiningSubscribe["result"]);
+		if (jsonResult == nullptr) {
+			std::cout << __func__ << ": invalid or missing mining.subscribe data! Received: " << jsonMiningSubscribe.dump() << std::endl;
+			return;
+		}
+		_sd.sids = jsonResult[0].get<decltype(_sd.sids)>();
+		const std::string extraNonce1Str(jsonResult[1]);
+		if (!isHexStr(extraNonce1Str) || extraNonce1Str.size() % 2 != 0) {
+			std::cout << __func__ << ": Invalid Extra Nonce 1" << std::endl;
+			return;
+		}
+		_sd.extraNonce1 = hexStrToV8(extraNonce1Str);
+		_sd.extraNonce2Len = jsonResult[2];
+	}
+	catch (std::exception &e) {
+		std::cout << __func__ << ": invalid mining.subscribe message or parameters - " << e.what() << std::endl;
+		std::cout << "It is probably due to an outdated pool, please wait for it to upgrade or choose another one." << std::endl;
+		return;
+	}
+	_state = SUBSCRIBE_RCVD;
+	std::cout << "Subscriptions:";
+	if (_sd.sids.size() == 0)
+		std::cout << " none" << std::endl;
 	else {
-		jsonRes = json_object_get(jsonObj, "result");
-		jsonErr = json_object_get(jsonObj, "error");
-		if (!jsonRes || json_is_null(jsonRes) || (jsonErr && !json_is_null(jsonErr))) {
-			std::cout << __func__ << ": invalid or missing mining.subscribe data! " << std::endl;
-			if (jsonErr) std::cout << " Reason: " << json_dumps(jsonErr, JSON_INDENT(3)) << std::endl;
-			else std::cout << "No reason given" << std::endl;
-		}
-		else if (json_array_size(jsonRes) != 3)
-			std::cout << __func__ << ": invalid mining.subscribe result size!" << std::endl;
-		else {
-			json_t *jsonSids;
-			jsonSids = json_array_get(jsonRes, 0);
-			if (jsonSids == nullptr || !json_is_array(jsonSids))
-				std::cout << __func__ << ": invalid or missing mining.subscribe response!" << std::endl;
-			else {
-				_sd.sids = std::vector<std::pair<std::string, std::vector<uint8_t>>>();
-				if (json_array_size(jsonSids) == 2 && !json_is_array(json_array_get(jsonSids, 0)) && !json_is_array(json_array_get(jsonSids, 1))) {
-					std::string key;
-					std::vector<uint8_t> value;
-					if (json_string_value(json_array_get(jsonSids, 0)) != nullptr) key   = json_string_value(json_array_get(jsonSids, 0));
-					if (json_string_value(json_array_get(jsonSids, 1)) != nullptr) value = hexStrToV8(json_string_value(json_array_get(jsonSids, 1)));
-					_sd.sids.push_back(std::make_pair(key, value));
-				}
-				else {
-					for (uint16_t i(0) ; i < json_array_size(jsonSids) ; i++) {
-						json_t *jsonSid(json_array_get(jsonSids, i));
-						if (jsonSid == nullptr || !json_is_array(jsonSid))
-							std::cout << __func__ << ": invalid or missing Subscribtion Id " << i << " data received!" << std::endl;
-						else if (json_array_size(jsonSid) != 2)
-							std::cout << __func__ << ": invalid Subscribtion Id " << i << " array size!" << std::endl;
-						else {
-							std::string key;
-							std::vector<uint8_t> value;
-							if (json_string_value(json_array_get(jsonSid, 0)) != nullptr) key   = json_string_value(json_array_get(jsonSid, 0));
-							if (json_string_value(json_array_get(jsonSid, 1)) != nullptr) value = hexStrToV8(json_string_value(json_array_get(jsonSid, 1)));
-							_sd.sids.push_back(std::make_pair(key, value));
-						}
-						if (jsonSid != nullptr) json_decref(jsonSid);
-					}
-				}
-			}
-			_sd.extraNonce1 = hexStrToV8(json_string_value(json_array_get(jsonRes, 1)));
-			_sd.extraNonce2Len = json_integer_value(json_array_get(jsonRes, 2));
-			_state = SUBSCRIBE_RCVD;
-			std::cout << "Subscriptions:";
-			if (_sd.sids.size() == 0) std::cout << " none" << std::endl;
-			else {
-				std::cout << std::endl;
-				for (uint16_t i(0) ; i < _sd.sids.size() ; i++)
-					std::cout << " " << i << " - " << _sd.sids[i].first << ": " << v8ToHexStr(_sd.sids[i].second) << std::endl;
-			}
-			std::cout << "ExtraNonce1    = " << v8ToHexStr(_sd.extraNonce1) << std::endl;
-			std::cout << "extraNonce2Len = " << _sd.extraNonce2Len << std::endl;
-			
-			std::ostringstream oss;
-			oss << "{\"id\": 2, \"method\": \"mining.authorize\", \"params\": [\"" << _username << "\", \"" << _password << "\"]}\n";
-			send(_socket, oss.str().c_str(), oss.str().size(), 0);
-			_state = READY;
-		}
+		std::cout << std::endl;
+		for (const auto &sid : _sd.sids)
+			std::cout << "\t" << sid.first << ": " << sid.second << std::endl;
 	}
-	
-	if (jsonObj == nullptr) json_decref(jsonObj);
-	if (jsonRes == nullptr) json_decref(jsonRes);
-	if (jsonErr == nullptr) json_decref(jsonErr);
+	std::cout << "ExtraNonce1    = " << v8ToHexStr(_sd.extraNonce1) << std::endl;
+	std::cout << "extraNonce2Len = " << _sd.extraNonce2Len << std::endl;
+	std::ostringstream oss;
+	oss << "{\"id\": 2, \"method\": \"mining.authorize\", \"params\": [\"" << _username << "\", \"" << _password << "\"]}\n";
+	send(_socket, oss.str().c_str(), oss.str().size(), 0);
+	_state = READY;
 }
 
 void StratumClient::_handleSentShareResponse() {
-	json_error_t err;
-	json_t *jsonObj(json_loads(_result.c_str(), 0, &err));
-	if (jsonObj == nullptr)
-		std::cout << __func__ << ": JSON decode failed :| - " << err.text << std::endl;
-	else {
-		json_t *jsonRes(json_object_get(jsonObj, "result")),
-		       *jsonErr(json_object_get(jsonObj, "error"));
-		if (jsonRes == nullptr || json_is_null(jsonRes) || !json_is_null(jsonErr)) {
-			std::cout << "Share rejected :| ! Received: " << json_dumps(jsonObj, JSON_COMPACT) << std::endl;
-			_rejectedShares++;
-		}
-		json_decref(jsonObj);
+	nlohmann::json jsonObject;
+	nlohmann::json jsonResult;
+	try {
+		jsonObject = nlohmann::json::parse(_result);
+		jsonResult = jsonObject["result"];
+	}
+	catch (std::exception &e) {
+		std::cout << __func__ << ": bad share response - " << e.what() << std::endl;
+	}
+	if (jsonResult != true) {
+		std::cout << "Share rejected :| ! Received: " << jsonObject.dump() << std::endl;
+		_rejectedShares++;
 	}
 }
 
 void StratumClient::_handleOther() {
-	json_t *jsonObj;
-	json_error_t err;
-	jsonObj = json_loads(_result.c_str(), 0, &err);
-	if (jsonObj != nullptr) {
-		const char *method(nullptr);
-		method = json_string_value(json_object_get(jsonObj, "method"));
-		if (method == nullptr) {
+	try {
+		nlohmann::json jsonObject(nlohmann::json::parse(_result));
+		try {
+			const std::string method(jsonObject["method"]);
+			if (method == "mining.notify")
+				_fetchWork();
+		}
+		catch (...) {
 			if (_state == SHARE_SENT) {
 				_handleSentShareResponse();
 				_state = READY;
 			}
 		}
-		else {
-			if (strcasecmp(method, "mining.notify") == 0)
-				_fetchWork();
-		}
-		json_decref(jsonObj);
 	}
+	catch (...) {}
 }
 
 void StratumClient::connect() {

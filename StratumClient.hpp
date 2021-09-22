@@ -1,4 +1,4 @@
-// (c) 2018-2020 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2021 Pttn (https://riecoin.dev/en/rieMiner)
 
 #ifndef HEADER_StratumClient_hpp
 #define HEADER_StratumClient_hpp
@@ -19,7 +19,7 @@ struct StratumData {
 	uint32_t height, sharePrimeCountMin;
 	std::vector<uint8_t> coinbase1, coinbase2;
 	
-	std::vector<std::pair<std::string, std::vector<uint8_t>>> sids; // Subscription Ids
+	std::vector<std::pair<std::string, std::string>> sids; // Subscription Ids
 	std::vector<uint8_t> extraNonce1, extraNonce2;
 	std::string jobId; // This will never be converted to binary, so we can store this in a string; this will also help when there are leading zeros
 	uint16_t extraNonce2Len;

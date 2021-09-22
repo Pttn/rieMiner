@@ -1,4 +1,4 @@
-// (c) 2018-2020 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2018-2021 Pttn (https://riecoin.dev/en/rieMiner)
 // (c) 2018 Michael Bell/Rockhawk (CPUID tools)
 
 #ifndef HEADER_tools_hpp
@@ -25,6 +25,13 @@
 #define FIXED(x) std::fixed << std::setprecision(x)
 
 uint8_t rand(uint8_t, uint8_t);
+
+inline bool isHexStr(const std::string &str) {
+	return std::all_of(str.begin(), str.end(), [](unsigned char c){return std::isxdigit(c);});
+}
+inline bool isHexStrOfSize(const std::string &str, const std::string::size_type size) {
+	return str.size() == size && isHexStr(str);
+}
 
 inline std::string v8ToHexStr(const std::vector<uint8_t> &v) {
 	std::ostringstream oss;

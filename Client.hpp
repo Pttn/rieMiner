@@ -1,11 +1,10 @@
-// (c) 2017-2021 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2017-2021 Pttn (https://riecoin.dev/en/rieMiner)
 
 #ifndef HEADER_Client_hpp
 #define HEADER_Client_hpp
 
 #include <mutex>
 #include <vector>
-#include <jansson.h>
 #include "main.hpp"
 
 // Decodes the nBits field from a Block Header
@@ -67,7 +66,6 @@ public:
 	virtual double currentDifficulty() const = 0;
 	
 	// Tools for constellation pattern autodetection/selection
-	static std::vector<std::vector<uint64_t>> extractAcceptedPatterns(const json_t*);
 	static std::vector<uint64_t> choosePatterns(const std::vector<std::vector<uint64_t>>&, const std::vector<uint64_t>&);
 };
 

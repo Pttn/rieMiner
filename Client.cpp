@@ -1,4 +1,4 @@
-// (c) 2017-2021 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2017-2021 Pttn (https://riecoin.dev/en/rieMiner)
 
 #include "Client.hpp"
 
@@ -54,22 +54,6 @@ std::array<uint8_t, 32> Job::encodedOffset() const {
 	else
 		ERRORMSG("Unexpected PoW Version " << powVersion << "! Please upgrade rieMiner!");
 	return nOffset;
-}
-
-std::vector<std::vector<uint64_t>> Client::extractAcceptedPatterns(const json_t* jsonPatterns) {
-	std::vector<std::vector<uint64_t>> acceptedPatterns;
-	if (json_array_size(jsonPatterns) == 0)
-		return acceptedPatterns;
-	for (uint16_t i(0) ; i < json_array_size(jsonPatterns) ; i++) {
-		std::vector<uint64_t> acceptedPattern;
-		if (json_array_size(json_array_get(jsonPatterns, i)) == 0)
-			return {};
-		json_t *jsonPattern(json_array_get(jsonPatterns, i));
-		for (uint16_t j(0) ; j < json_array_size(jsonPattern) ; j++)
-			acceptedPattern.push_back(json_integer_value(json_array_get(jsonPattern, j)));
-		acceptedPatterns.push_back(acceptedPattern);
-	}
-	return acceptedPatterns;
 }
 
 std::vector<uint64_t> Client::choosePatterns(const std::vector<std::vector<uint64_t>>& acceptedPatterns, const std::vector<uint64_t>& givenPattern) {

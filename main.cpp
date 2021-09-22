@@ -1,6 +1,7 @@
 // (c) 2017-2021 Pttn and contributors (https://riecoin.dev/en/rieMiner)
 
 #include <iomanip>
+#include <nlohmann/json.hpp>
 #include <unistd.h>
 #ifndef _WIN32
 	#include <arpa/inet.h>
@@ -272,8 +273,9 @@ int main(int argc, char** argv) {
 	std::cout << "Assembly code by Michael Bell (Rockhawk)" << std::endl;
 	std::cout << "G++ " << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__ << " - https://gcc.gnu.org/" << std::endl;
 	std::cout << "GMP " << __GNU_MP_VERSION << "." << __GNU_MP_VERSION_MINOR << "." << __GNU_MP_VERSION_PATCHLEVEL << " - https://gmplib.org/" << std::endl;
+	std::cout << OPENSSL_VERSION_TEXT << " - https://www.openssl.org/" << std::endl;
 	std::cout << "Curl " << LIBCURL_VERSION << " - https://curl.haxx.se/" << std::endl;
-	std::cout << "Jansson " << JANSSON_VERSION << " - https://digip.org/jansson/" << std::endl;
+	std::cout << "NLohmann Json " << NLOHMANN_JSON_VERSION_MAJOR << "." << NLOHMANN_JSON_VERSION_MINOR << "." << NLOHMANN_JSON_VERSION_PATCH << " - https://json.nlohmann.me/" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
 	
 	if (argc >= 2)

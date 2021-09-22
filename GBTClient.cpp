@@ -116,18 +116,21 @@ std::array<uint8_t, 32> GetBlockTemplateData::coinbaseTxId() const {
 	return sha256sha256(coinbase2.data(), coinbase2.size());
 }
 
+
 static size_t curlWriteCallback(void *data, size_t size, size_t nmemb, std::string *s) {
 	s->append((char*) data, size*nmemb);
 	return size*nmemb;
 }
-json_t* GBTClient::_sendRPCCall(const std::string& req) const {
-	std::string s;
-	json_t *jsonObj(nullptr);
+nlohmann::json GBTClient::_sendRequestToWallet(const std::string &method, const nlohmann::json &params) const {
+	static uint64_t id(0ULL);
+	nlohmann::json jsonObj;
 	if (_curl) {
-		json_error_t err;
+		std::string s;
+		const nlohmann::json request{{"method", method}, {"params", params}, {"id", id++}};
+		const std::string requestStr(request.dump());
 		curl_easy_setopt(_curl, CURLOPT_URL, _url.c_str());
-		curl_easy_setopt(_curl, CURLOPT_POSTFIELDSIZE, (long) strlen(req.c_str()));
-		curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, req.c_str());
+		curl_easy_setopt(_curl, CURLOPT_POSTFIELDSIZE, requestStr.size());
+		curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, requestStr.c_str());
 		curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
 		curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &s);
 		curl_easy_setopt(_curl, CURLOPT_USERPWD, _credentials.c_str());
@@ -136,9 +139,8 @@ json_t* GBTClient::_sendRPCCall(const std::string& req) const {
 		if (cc != CURLE_OK)
 			ERRORMSG("Curl_easy_perform() failed: " << curl_easy_strerror(cc));
 		else {
-			jsonObj = json_loads(s.c_str(), 0, &err);
-			if (jsonObj == nullptr)
-				ERRORMSG("JSON decoding failed: " << err.text);
+			try {jsonObj = nlohmann::json::parse(s);}
+			catch (nlohmann::json::parse_error &e) {ERRORMSG("Bad JSON object received: " << e.what());}
 		}
 	}
 	return jsonObj;
@@ -146,97 +148,72 @@ json_t* GBTClient::_sendRPCCall(const std::string& req) const {
 
 bool GBTClient::_fetchWork() {
 	std::lock_guard<std::mutex> lock(_workMutex);
-	std::string req;
-	if (_rules.size() == 0) req = "{\"method\": \"getblocktemplate\", \"params\": [], \"id\": 0}\n";
-	else {
-		std::ostringstream oss;
-		oss << "{\"method\": \"getblocktemplate\", \"params\": [{\"rules\":[";
-		for (uint32_t i(0) ; i < _rules.size() ; i++) {
-			oss << "\"" << _rules[i] << "\"";
-			if (i < _rules.size() - 1) oss << ", ";
-		}
-		oss << "]}], \"id\": 0}\n";
-		req = oss.str();
+	nlohmann::json getblocktemplate;
+	try {
+		getblocktemplate = _sendRequestToWallet("getblocktemplate", {{{"rules", _rules}}})["result"];
 	}
-	
-	json_t *jsonGbt(_sendRPCCall(req.c_str())),
-	       *jsonGbt_Res(json_object_get(jsonGbt, "result")),
-	       *jsonGbt_Res_Txs(json_object_get(jsonGbt_Res, "transactions")),
-	       *jsonGbt_Res_Rules(json_object_get(jsonGbt_Res, "rules")),
-	       *jsonGbt_Res_Dwc(json_object_get(jsonGbt_Res, "default_witness_commitment")),
-	       *jsonGbt_Res_Patterns(json_object_get(jsonGbt_Res, "patterns"));
-	
-	// Failure to GetBlockTemplate (or invalid response)
-	if (jsonGbt == nullptr || jsonGbt_Res == nullptr || jsonGbt_Res_Txs == nullptr || jsonGbt_Res_Rules == nullptr || jsonGbt_Res_Dwc == nullptr || json_array_size(jsonGbt_Res_Patterns) == 0) {
-		std::cout << __func__ << ": invalid GetBlockTemplate response! Ensure that you use Riecoin Core 0.20+ and that it is properly configured and synced!" << std::endl;
-		if (jsonGbt != nullptr) json_decref(jsonGbt);
+	catch (std::exception &e) {
+		std::cout << __func__ << ": Could not get GetBlockTemplate Data - " << e.what() << std::endl;
 		return false;
 	}
-	
 	_gbtd.bh = BlockHeader();
 	_gbtd.transactions = std::string();
 	_gbtd.txHashes = std::vector<std::array<uint8_t, 32>>();
 	_gbtd.default_witness_commitment = std::string();
-	
-	// Extract and build GetBlockTemplate data
-	_gbtd.bh.version = json_integer_value(json_object_get(jsonGbt_Res, "version"));
-	_gbtd.bh.previousblockhash = v8ToA8(reverse(hexStrToV8(json_string_value(json_object_get(jsonGbt_Res, "previousblockhash")))));
-	
-	_gbtd.coinbasevalue = json_integer_value(json_object_get(jsonGbt_Res, "coinbasevalue"));
-	_gbtd.bh.curtime = json_integer_value(json_object_get(jsonGbt_Res, "curtime"));
-	_gbtd.bh.bits = std::stoll(json_string_value(json_object_get(jsonGbt_Res, "bits")), nullptr, 16);
-	_gbtd.height = json_integer_value(json_object_get(jsonGbt_Res, "height"));
-	
-	_info.powVersion = json_integer_value(json_object_get(jsonGbt_Res, "powversion"));
-	if (_info.powVersion != 1) {
-		ERRORMSG("Unexpected PoW Version " << _info.powVersion << "! Please upgrade rieMiner!");
-		json_decref(jsonGbt);
+	try { // Extract and build GetBlockTemplate data
+		_gbtd.bh.version = getblocktemplate["version"];
+		_gbtd.bh.previousblockhash = v8ToA8(reverse(hexStrToV8(getblocktemplate["previousblockhash"])));
+		_gbtd.coinbasevalue = getblocktemplate["coinbasevalue"];
+		_gbtd.bh.curtime = getblocktemplate["curtime"];
+		_gbtd.bh.bits = std::stoll(std::string(getblocktemplate["bits"]), nullptr, 16);
+		_gbtd.height = getblocktemplate["height"];
+		_info.powVersion = getblocktemplate["powversion"];
+		if (_info.powVersion != 1) {
+			std::cout << __func__ << ": Unsupported PoW Version " << _info.powVersion << ", please upgrade rieMiner!" << std::endl;
+			return false;
+		}
+		_info.acceptedPatterns = getblocktemplate["patterns"].get<decltype(_info.acceptedPatterns)>();
+		if (_info.acceptedPatterns.size() == 0) {
+			std::cout << __func__ << ": Empty or invalid accepted patterns list!" << std::endl;
+			return false;
+		}
+		_gbtd.default_witness_commitment = getblocktemplate["default_witness_commitment"];
+		for (const auto &transaction : getblocktemplate["transactions"]) {
+			const std::vector<uint8_t> txId(reverse(hexStrToV8(transaction["txid"])));
+			_gbtd.transactions += transaction["data"];
+			_gbtd.txHashes.push_back(v8ToA8(txId));
+		}
+	}
+	catch (std::exception &e) {
+		std::cout << __func__ << ": Invalid GetBlockTemplate Data - " << e.what() << std::endl;
 		return false;
 	}
-	_info.acceptedPatterns = Client::extractAcceptedPatterns(jsonGbt_Res_Patterns);
-	if (_info.acceptedPatterns.size() == 0) {
-		std::cout << __func__ << ": empty or invalid accepted patterns list!" << std::endl;
-		json_decref(jsonGbt);
-		return false;
-	}
-	
-	_gbtd.default_witness_commitment = json_string_value(jsonGbt_Res_Dwc);
-	_gbtd.transactions += v8ToHexStr(_gbtd.coinbase);
-	for (uint32_t i(0) ; i < json_array_size(jsonGbt_Res_Txs) ; i++) {
-		const std::vector<uint8_t> txHash(reverse(hexStrToV8(json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "txid")))));
-		_gbtd.transactions += json_string_value(json_object_get(json_array_get(jsonGbt_Res_Txs, i), "data"));
-		_gbtd.txHashes.push_back(v8ToA8(txHash));
-	}
-	json_decref(jsonGbt);
 	return true;
 }
 
 void GBTClient::_submit(const Job& job) {
 	std::cout << "Submitting block with " << job.txCount << " transaction(s) (including coinbase)..." << std::endl;
-	std::ostringstream oss;
-	std::string req;
-	
 	BlockHeader bh(job.bh);
 	bh.nOffset = job.encodedOffset();
-	oss << "{\"method\": \"submitblock\", \"params\": [\"" << v8ToHexStr(bh.toV8());
-	// Using the Variable Length Integer format
+	std::ostringstream oss;
+	oss << v8ToHexStr(bh.toV8());
+	// Using the Variable Length Integer format; having more than 65535 transactions is currently impossible
 	if (job.txCount < 0xFD)
 		oss << std::setfill('0') << std::setw(2) << std::hex << job.txCount;
-	else // Having more than 65535 transactions is currently impossible
+	else
 		oss << "fd" << std::setfill('0') << std::setw(2) << std::hex << job.txCount % 256 << std::setw(2) << job.txCount/256;
-	oss << job.transactions << "\"], \"id\": 0}\n";
-	req = oss.str();
-	
-	DBG(std::cout << "Sending: " << req;);
-	json_t *jsonSb(_sendRPCCall(req)); // SubmitBlock response
-	if (jsonSb == nullptr) ERRORMSG("Failure submitting block");
-	else {
-		json_t *jsonSb_Res(json_object_get(jsonSb, "result")),
-			    *jsonSb_Err(json_object_get(jsonSb, "error"));
-		if (json_is_null(jsonSb_Res) && json_is_null(jsonSb_Err)) std::cout << "Submission accepted :D !" << std::endl;
-		else std::cout << "Submission rejected :| ! Received: " << json_dumps(jsonSb, JSON_COMPACT) << std::endl;
+	oss << job.transactions;
+	try {
+		nlohmann::json submitblockResponse(_sendRequestToWallet("submitblock", {oss.str()}));
+		if (submitblockResponse["result"] == nullptr && submitblockResponse["error"] == nullptr)
+			std::cout << "Submission accepted :D !" << std::endl;
+		else
+			std::cout << "Submission rejected :| ! Received: " << submitblockResponse.dump() << std::endl;
 	}
-	if (jsonSb != nullptr) json_decref(jsonSb);
+	catch (std::exception &e) {
+		ERRORMSG("Failure submitting block");
+		return;
+	}
 }
 
 void GBTClient::process() {
