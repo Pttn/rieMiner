@@ -6,7 +6,7 @@ double decodeBits(const uint32_t nBits, const int32_t powVersion) {
 	if (powVersion == 1)
 		return static_cast<double>(nBits)/256.;
 	else
-		ERRORMSG("Unexpected PoW Version " << powVersion << "! Please upgrade rieMiner!");
+		ERRORMSG("Unexpected PoW Version " << powVersion);
 	return 1.;
 }
 
@@ -38,7 +38,7 @@ mpz_class BlockHeader::target(const int32_t powVersion) const {
 		target <<= trailingZeros;
 	}
 	else
-		ERRORMSG("Unexpected PoW Version " << powVersion << "! Please upgrade rieMiner!");
+		ERRORMSG("Unexpected PoW Version " << powVersion);
 	return target;
 }
 
@@ -52,7 +52,7 @@ std::array<uint8_t, 32> Job::encodedOffset() const {
 		*reinterpret_cast<uint16_t*>(&nOffset.data()[30]) = primorialNumber;
 	}
 	else
-		ERRORMSG("Unexpected PoW Version " << powVersion << "! Please upgrade rieMiner!");
+		ERRORMSG("Unexpected PoW Version " << powVersion);
 	return nOffset;
 }
 
@@ -89,7 +89,7 @@ std::vector<uint64_t> Client::choosePatterns(const std::vector<std::vector<uint6
 }
 
 void BMClient::process() {
-	std::lock_guard<std::mutex> lock(_workMutex);
+	std::lock_guard<std::mutex> lock(_jobMutex);
 	if (_height != 0 && _blockInterval > 0. && timeSince(_timer) >= _blockInterval) {
 		_height++;
 		_requests = 0;
@@ -97,13 +97,18 @@ void BMClient::process() {
 	}
 }
 
-bool BMClient::getJob(Job& job, const bool dummy) {
-	std::lock_guard<std::mutex> lock(_workMutex);
+Job BMClient::getJob(const bool dummy) {
+	std::lock_guard<std::mutex> lock(_jobMutex);
 	if (_height == 0 && !dummy) {
 		_height = 1;
 		_timer = std::chrono::steady_clock::now();
 	}
+	Job job;
 	job.height = _height;
+	job.powVersion = 1;
+	job.acceptedPatterns = {_pattern};
+	job.primeCountTarget = _pattern.size();
+	job.primeCountMin = job.primeCountTarget;
 	job.difficulty = _difficulty;
 	const uint64_t difficultyAsInteger(std::round(65536.*job.difficulty));
 	// Target: (in binary) 1 . Leading Digits L (16 bits) . Height (32 bits) . Requests (32 bits) . (Difficulty - 80) zeros = 2^(Difficulty - 80)(2^80 + 2^64*L + 2^32*Height + Requests)
@@ -115,14 +120,17 @@ bool BMClient::getJob(Job& job, const bool dummy) {
 	job.target <<= 32;
 	job.target += _requests;
 	job.target <<= (difficultyAsInteger/65536ULL - 80ULL);
-	job.primeCountTarget = _pattern.size();
-	job.primeCountMin = job.primeCountTarget;
 	if (!dummy) _requests++;
-	return job.height != 0 || dummy;
+	return job;
 }
 
-bool SearchClient::getJob(Job& job, const bool) {
+Job SearchClient::getJob(const bool) {
+	Job job;
 	job.height = 1;
+	job.powVersion = 1;
+	job.acceptedPatterns = {_pattern};
+	job.primeCountTarget = _pattern.size();
+	job.primeCountMin = job.primeCountTarget;
 	job.difficulty = _difficulty;
 	// Target: (in binary) 1 . Leading Digits L (16 bits) . 80 Random Bits . (Difficulty - 96) zeros = 2^(Difficulty - 96)*(2^96 + 2^80*L + Random)
 	const uint64_t difficultyAsInteger(std::round(65536.*job.difficulty));
@@ -136,9 +144,7 @@ bool SearchClient::getJob(Job& job, const bool) {
 		job.target += reinterpret_cast<uint16_t*>(random.data())[4 - i];
 	}
 	job.target <<= (job.difficulty - 96);
-	job.primeCountTarget = _pattern.size();
-	job.primeCountMin = job.primeCountTarget;
-	return true;
+	return job;
 }
 
 void SearchClient::handleResult(const Job& job) {
@@ -161,7 +167,7 @@ void TestClient::connect() {
 }
 
 void TestClient::process() {
-	std::lock_guard<std::mutex> lock(_workMutex);
+	std::lock_guard<std::mutex> lock(_jobMutex);
 	if (!_starting && timeSince(_timer) >= _timeBeforeNextBlock) {
 		_height++;
 		_requests = 0;
@@ -186,20 +192,22 @@ void TestClient::process() {
 	_bh.bits = 256*_difficulty;
 }
 
-bool TestClient::getJob(Job& job, const bool dummy) {
-	std::lock_guard<std::mutex> lock(_workMutex);
+Job TestClient::getJob(const bool dummy) {
+	std::lock_guard<std::mutex> lock(_jobMutex);
 	if (_starting && !dummy) {
 		_timer = std::chrono::steady_clock::now();
 		_requests = 0;
 		_starting = false;
 	}
-	job.bh = _bh;
+	Job job;
+	job.clientData.bh = _bh;
 	job.height = _connected ? _height : 0;
 	job.powVersion = 1;
-	job.difficulty = _difficulty;
-	job.target = job.bh.target(job.powVersion);
+	job.acceptedPatterns = {_currentPattern};
 	job.primeCountTarget = _currentPattern.size();
 	job.primeCountMin = job.primeCountTarget;
+	job.difficulty = _difficulty;
+	job.target = job.clientData.bh.target(job.powVersion);
 	if (!dummy) _requests++;
-	return job.height != 0 || dummy;
+	return job;
 }

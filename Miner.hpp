@@ -6,9 +6,8 @@
 #include <atomic>
 #include <cassert>
 #include <immintrin.h>
-#include "Stats.hpp"
 #include "Client.hpp"
-#include "StratumClient.hpp"
+#include "Stats.hpp"
 
 struct Job;
 

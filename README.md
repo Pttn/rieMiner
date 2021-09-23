@@ -1,4 +1,4 @@
-# rieMiner 0.92
+# rieMiner
 
 ![rieMiner Logo](https://riecoin.dev/files/w/thumb.php?f=rieMiner.svg&width=128)
 

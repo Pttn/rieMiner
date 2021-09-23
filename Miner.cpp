@@ -1,4 +1,4 @@
-/* (c) 2017-2021 Pttn (https://github.com/Pttn/rieMiner)
+/* (c) 2017-2021 Pttn (https://riecoin.dev/en/rieMiner)
 (c) 2018-2020 Michael Bell/Rockhawk (assembly optimizations, improvements of work management between threads, and some more) (https://github.com/MichaelBell/) */
 
 #include <gmpxx.h> // With Uint64_Ts, we still need to use the Mpz_ functions, otherwise there are "ambiguous overload" errors on Windows...
@@ -27,12 +27,12 @@ void Miner::init(const MinerParameters &minerParameters) {
 		ERRORMSG("The miner is already inited");
 		return;
 	}
-	Job job;
 	if (_client == nullptr) {
 		ERRORMSG("The miner cannot be initialized without a client");
 		return;
 	}
-	else if (!_client->getJob(job, true)) {
+	Job job(_client->getJob(true));
+	if (job.powVersion == 0) { // Using this check rather than Height = 0 to make Benchmark Mode work
 		std::cout << "Could not get data from Client :|" << std::endl;
 		return;
 	}
@@ -1111,14 +1111,16 @@ void Miner::_manageTasks() {
 	Job job; // Block's data (target, blockheader if applicable, ...) from the Client
 	_currentWorkIndex = 0;
 	uint32_t oldHeight(0);
-	while (_running && _client->getJob(job)) {
+	while (_running) {
+		job = _client->getJob();
+		if (job.height == 0)
+			return;
 		if (job.difficulty < _difficultyAtInit/_parameters.restartDifficultyFactor || job.difficulty > _difficultyAtInit*_parameters.restartDifficultyFactor) { // Restart to retune parameters.
 			_keepStats = true;
 			_shouldRestart = true;
 		}
 		if (std::dynamic_pointer_cast<NetworkedClient>(_client) != nullptr) {
-			const NetworkInfo networkInfo(std::dynamic_pointer_cast<NetworkedClient>(_client)->info());
-			if (!hasAcceptedPatterns(networkInfo.acceptedPatterns)) { // Restart if the pattern changed and is no longer compatible with the current one (notably, for the 0.20 fork)
+			if (!hasAcceptedPatterns(job.acceptedPatterns)) { // Restart if the pattern changed and is no longer compatible with the current one
 				_keepStats = false;
 				_shouldRestart = true;
 			}

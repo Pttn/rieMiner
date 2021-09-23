@@ -1,34 +1,10 @@
 // (c) 2018-2021 Pttn (https://riecoin.dev/en/rieMiner)
 
-#include "GBTClient.hpp"
+#include "Client.hpp"
 #include "main.hpp"
 
-std::array<uint8_t, 32> calculateMerkleRoot(const std::vector<std::array<uint8_t, 32>> &txHashes) {
-	std::array<uint8_t, 32> merkleRoot{};
-	if (txHashes.size() == 0)
-		ERRORMSG("No transaction to hash");
-	else if (txHashes.size() == 1)
-		return txHashes[0];
-	else {
-		std::vector<std::array<uint8_t, 32>> txHashes2;
-		for (uint32_t i(0) ; i < txHashes.size() ; i += 2) {
-			std::array<uint8_t, 64> concat;
-			std::copy(txHashes[i].begin(), txHashes[i].end(), concat.begin());
-			if (i == txHashes.size() - 1) // Concatenation of the last element with itself for an odd number of transactions
-				std::copy(txHashes[i].begin(), txHashes[i].end(), concat.begin() + 32);
-			else
-				std::copy(txHashes[i + 1].begin(), txHashes[i + 1].end(), concat.begin() + 32);
-			txHashes2.push_back(sha256sha256(concat.data(), 64));
-		}
-		// Process the next step
-		merkleRoot = calculateMerkleRoot(txHashes2);
-	}
-	return merkleRoot;
-}
-
-void GetBlockTemplateData::coinBaseGen(const std::vector<uint8_t> &scriptPubKey, const std::string &cbMsg, uint16_t donationPercent) {
-	coinbase = {};
-	const std::vector<uint8_t> dwc(hexStrToV8(default_witness_commitment)); // for SegWit
+static std::vector<uint8_t> coinbaseGen(const std::vector<uint8_t> &scriptPubKey, const std::string &cbMsg, const uint32_t height, const uint64_t coinbasevalue, const uint16_t donationPercent, const std::vector<uint8_t> &dwc) {
+	std::vector<uint8_t> coinbase;
 	// Version (01000000)
 	coinbase.insert(coinbase.end(), {0x01, 0x00, 0x00, 0x00});
 	// Marker (00) and Flag (01) for SegWit
@@ -106,9 +82,10 @@ void GetBlockTemplateData::coinBaseGen(const std::vector<uint8_t> &scriptPubKey,
 	}
 	// Lock Time (00000000)
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0);
+	return coinbase;
 }
 
-std::array<uint8_t, 32> GetBlockTemplateData::coinbaseTxId() const {
+std::array<uint8_t, 32> coinbaseTxId(const std::vector<uint8_t> &coinbase) {
 	std::vector<uint8_t> coinbase2;
 	for (uint32_t i(0) ; i < 4 ; i++) coinbase2.push_back(coinbase[i]); // nVersion
 	for (uint32_t i(6) ; i < coinbase.size() - 38 ; i++) coinbase2.push_back(coinbase[i]); // txins . txouts
@@ -116,6 +93,28 @@ std::array<uint8_t, 32> GetBlockTemplateData::coinbaseTxId() const {
 	return sha256sha256(coinbase2.data(), coinbase2.size());
 }
 
+static std::array<uint8_t, 32> calculateMerkleRoot(const std::vector<std::array<uint8_t, 32>> &txHashes) {
+	std::array<uint8_t, 32> merkleRoot{};
+	if (txHashes.size() == 0)
+		ERRORMSG("No transaction to hash");
+	else if (txHashes.size() == 1)
+		return txHashes[0];
+	else {
+		std::vector<std::array<uint8_t, 32>> txHashes2;
+		for (uint32_t i(0) ; i < txHashes.size() ; i += 2) {
+			std::array<uint8_t, 64> concat;
+			std::copy(txHashes[i].begin(), txHashes[i].end(), concat.begin());
+			if (i == txHashes.size() - 1) // Concatenation of the last element with itself for an odd number of transactions
+				std::copy(txHashes[i].begin(), txHashes[i].end(), concat.begin() + 32);
+			else
+				std::copy(txHashes[i + 1].begin(), txHashes[i + 1].end(), concat.begin() + 32);
+			txHashes2.push_back(sha256sha256(concat.data(), 64));
+		}
+		// Process the next step
+		merkleRoot = calculateMerkleRoot(txHashes2);
+	}
+	return merkleRoot;
+}
 
 static size_t curlWriteCallback(void *data, size_t size, size_t nmemb, std::string *s) {
 	s->append((char*) data, size*nmemb);
@@ -140,69 +139,83 @@ nlohmann::json GBTClient::_sendRequestToWallet(const std::string &method, const 
 			ERRORMSG("Curl_easy_perform() failed: " << curl_easy_strerror(cc));
 		else {
 			try {jsonObj = nlohmann::json::parse(s);}
-			catch (nlohmann::json::parse_error &e) {ERRORMSG("Bad JSON object received: " << e.what());}
+			catch (nlohmann::json::parse_error &e) {
+				if (s.size() == 0)
+					std::cout << "Nothing was received from the server!" << std::endl;
+				else {
+					std::cout << "Received bad JSON object!" << std::endl;
+					std::cout << "Server message was: " << s << std::endl;
+				}
+			}
 		}
 	}
 	return jsonObj;
 }
 
-bool GBTClient::_fetchWork() {
-	std::lock_guard<std::mutex> lock(_workMutex);
-	nlohmann::json getblocktemplate;
+bool GBTClient::_fetchJob() {
+	nlohmann::json getblocktemplate, getblocktemplateResult;
 	try {
-		getblocktemplate = _sendRequestToWallet("getblocktemplate", {{{"rules", _rules}}})["result"];
+		getblocktemplate = _sendRequestToWallet("getblocktemplate", {{{"rules", _rules}}});
+		if (getblocktemplate == nullptr)
+			return false;
+		getblocktemplateResult = getblocktemplate["result"];
 	}
-	catch (std::exception &e) {
-		std::cout << __func__ << ": Could not get GetBlockTemplate Data - " << e.what() << std::endl;
+	catch (...) {
+		std::cout << "Could not get GetBlockTemplate Data!" << std::endl;
 		return false;
 	}
-	_gbtd.bh = BlockHeader();
-	_gbtd.transactions = std::string();
-	_gbtd.txHashes = std::vector<std::array<uint8_t, 32>>();
-	_gbtd.default_witness_commitment = std::string();
+	JobTemplate newJobTemplate;
+	std::vector<std::vector<uint64_t>> acceptedPatterns;
 	try { // Extract and build GetBlockTemplate data
-		_gbtd.bh.version = getblocktemplate["version"];
-		_gbtd.bh.previousblockhash = v8ToA8(reverse(hexStrToV8(getblocktemplate["previousblockhash"])));
-		_gbtd.coinbasevalue = getblocktemplate["coinbasevalue"];
-		_gbtd.bh.curtime = getblocktemplate["curtime"];
-		_gbtd.bh.bits = std::stoll(std::string(getblocktemplate["bits"]), nullptr, 16);
-		_gbtd.height = getblocktemplate["height"];
-		_info.powVersion = getblocktemplate["powversion"];
-		if (_info.powVersion != 1) {
-			std::cout << __func__ << ": Unsupported PoW Version " << _info.powVersion << ", please upgrade rieMiner!" << std::endl;
-			return false;
-		}
-		_info.acceptedPatterns = getblocktemplate["patterns"].get<decltype(_info.acceptedPatterns)>();
-		if (_info.acceptedPatterns.size() == 0) {
-			std::cout << __func__ << ": Empty or invalid accepted patterns list!" << std::endl;
-			return false;
-		}
-		_gbtd.default_witness_commitment = getblocktemplate["default_witness_commitment"];
-		for (const auto &transaction : getblocktemplate["transactions"]) {
+		newJobTemplate.job.clientData.bh.version = getblocktemplateResult["version"];
+		newJobTemplate.job.clientData.bh.previousblockhash = v8ToA8(reverse(hexStrToV8(getblocktemplateResult["previousblockhash"])));
+		newJobTemplate.job.clientData.bh.curtime = getblocktemplateResult["curtime"];
+		newJobTemplate.job.clientData.bh.bits = std::stoll(std::string(getblocktemplateResult["bits"]), nullptr, 16);
+		newJobTemplate.coinbasevalue = getblocktemplateResult["coinbasevalue"];
+		for (const auto &transaction : getblocktemplateResult["transactions"]) {
 			const std::vector<uint8_t> txId(reverse(hexStrToV8(transaction["txid"])));
-			_gbtd.transactions += transaction["data"];
-			_gbtd.txHashes.push_back(v8ToA8(txId));
+			newJobTemplate.job.clientData.transactionsHex += transaction["data"];
+			newJobTemplate.txHashes.push_back(v8ToA8(txId));
 		}
+		newJobTemplate.default_witness_commitment = getblocktemplateResult["default_witness_commitment"];
+		newJobTemplate.job.clientData.txCount = newJobTemplate.txHashes.size() + 1; // Include Coinbase
+		newJobTemplate.job.height = getblocktemplateResult["height"];
+		newJobTemplate.job.powVersion = getblocktemplateResult["powversion"];
+		if (newJobTemplate.job.powVersion != 1) {
+			std::cout << "Unsupported PoW Version " << newJobTemplate.job.powVersion << ", your rieMiner version is likely outdated!" << std::endl;
+			return false;
+		}
+		newJobTemplate.job.acceptedPatterns = getblocktemplateResult["patterns"].get<decltype(newJobTemplate.job.acceptedPatterns)>();
+		if (newJobTemplate.job.acceptedPatterns.size() == 0) {
+			std::cout << "Empty or invalid accepted patterns list!" << std::endl;
+			return false;
+		}
+		newJobTemplate.job.primeCountTarget = newJobTemplate.job.acceptedPatterns[0].size();
+		newJobTemplate.job.primeCountMin = newJobTemplate.job.primeCountTarget;
+		newJobTemplate.job.difficulty = decodeBits(newJobTemplate.job.clientData.bh.bits, newJobTemplate.job.powVersion);
 	}
-	catch (std::exception &e) {
-		std::cout << __func__ << ": Invalid GetBlockTemplate Data - " << e.what() << std::endl;
+	catch (...) {
+		std::cout << "Received GetBlockTemplate Data with invalid parameters!" << std::endl;
+		std::cout << "Json Object was: " << getblocktemplate.dump() << std::endl;
 		return false;
 	}
+	std::lock_guard<std::mutex> lock(_jobMutex);
+	_currentJobTemplate = newJobTemplate;
 	return true;
 }
 
 void GBTClient::_submit(const Job& job) {
-	std::cout << "Submitting block with " << job.txCount << " transaction(s) (including coinbase)..." << std::endl;
-	BlockHeader bh(job.bh);
+	std::cout << "Submitting block with " << job.clientData.txCount << " transaction(s) (including coinbase)..." << std::endl;
+	BlockHeader bh(job.clientData.bh);
 	bh.nOffset = job.encodedOffset();
 	std::ostringstream oss;
 	oss << v8ToHexStr(bh.toV8());
 	// Using the Variable Length Integer format; having more than 65535 transactions is currently impossible
-	if (job.txCount < 0xFD)
-		oss << std::setfill('0') << std::setw(2) << std::hex << job.txCount;
+	if (job.clientData.txCount < 0xFD)
+		oss << std::setfill('0') << std::setw(2) << std::hex << job.clientData.txCount;
 	else
-		oss << "fd" << std::setfill('0') << std::setw(2) << std::hex << job.txCount % 256 << std::setw(2) << job.txCount/256;
-	oss << job.transactions;
+		oss << "fd" << std::setfill('0') << std::setw(2) << std::hex << job.clientData.txCount % 256 << std::setw(2) << job.clientData.txCount/256;
+	oss << job.clientData.transactionsHex;
 	try {
 		nlohmann::json submitblockResponse(_sendRequestToWallet("submitblock", {oss.str()}));
 		if (submitblockResponse["result"] == nullptr && submitblockResponse["error"] == nullptr)
@@ -216,6 +229,19 @@ void GBTClient::_submit(const Job& job) {
 	}
 }
 
+void GBTClient::connect() {
+	if (!_connected) {
+		_currentJobTemplate = JobTemplate();
+		_pendingSubmissions = {};
+		process();
+		if (_currentJobTemplate.job.height == 0) {
+			std::cout << "Could not get a first job from the server!" << std::endl;
+			return;
+		}
+		_connected = true;
+	}
+}
+
 void GBTClient::process() {
 	// Process pending submissions
 	_submitMutex.lock();
@@ -225,68 +251,24 @@ void GBTClient::process() {
 	}
 	_submitMutex.unlock();
 	// Update work
-	if (!_fetchWork()) _connected = false; // If _fetchWork() failed, this means that the client is disconnected
-}
-
-void GBTClient::connect() {
-	if (!_connected) {
-		_gbtd = GetBlockTemplateData();
-		_pendingSubmissions = std::vector<Job>();
-		_info = info();
-		if (_info.powVersion != 0)
-			_connected = true;
+	if (!_fetchJob()) {
+		_connected = false; // If _fetchJob() failed, this means that the client is disconnected
+		std::lock_guard<std::mutex> lock(_jobMutex);
+		_currentJobTemplate.job.height = 0;
 	}
 }
 
-NetworkInfo GBTClient::info() {
-	const std::chrono::time_point<std::chrono::steady_clock> timeOutTimer(std::chrono::steady_clock::now());
-	while (_info.powVersion == 0) { // Poll until valid work data is generated, with 0.5 s time out
-		_fetchWork();
-		if (timeSince(timeOutTimer) > 0.5) {
-			std::cout << "Unable to get mining data from the server :| !" << std::endl;
-			std::cout << "================================================================" << std::endl;
-			std::cout << "There is certainly a problem with your configuration files " << confPath << " or riecoin.conf." << std::endl;
-			std::cout << "Be sure to have carefully read the Solo Mining guide" << std::endl;
-			std::cout << "\thttps://riecoin.dev/en/rieMiner/Solo_Mining" << std::endl;
-			std::cout << "and also check the following hints before asking for help!" << std::endl;
-			std::cout << "Check that Riecoin Core is running, connected and synced." << std::endl;
-			std::cout << "Common riecoin.conf issues:" << std::endl;
-			std::cout << "\tMissing 'rpcuser=...' or 'rpcpassword=...'" << std::endl;
-			std::cout << "\tNot configured as server with 'server=1'" << std::endl;
-			if (_host != "127.0.0.1") {
-				std::cout << "\tYour miner's IP was not allowed with 'rpcallowip=...'" << std::endl;
-				std::cout << "\tYou may need to add 'rpcbind=" << _host << "' (IP of the node)" << std::endl;
-			}
-			std::cout << "Common " << confPath << " issues:" << std::endl;
-			std::cout << "\tWrong syntax (lines are in the form 'Key = Value', no ':', no ';', etc.)" << std::endl;
-			std::cout << "\tMaybe you meant to do pooled mining? In this case use 'Mode = Pool'" << std::endl;
-			std::cout << "\tWrong Username/Password (must be the same as the rpcuser/rpcpassword)" << std::endl;
-			std::cout << "If you still have problems, you can ask for help on the Riecoin discussion channels, but please give detailed infos! What you tried to do, your configuration files, don't just say that you have trouble connecting or are getting an error!" << std::endl;
-			std::cout << "================================================================" << std::endl;
-			_connected = false;
-			return {0, {}};
-		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(50));
-	}
-	return _info;
-}
-
-bool GBTClient::getJob(Job& job, const bool) {
-	std::lock_guard<std::mutex> lock(_workMutex);
-	GetBlockTemplateData gbtd(_gbtd);
-	gbtd.coinBaseGen(_scriptPubKey, _coinbaseMessage, _donate);
-	gbtd.transactions = v8ToHexStr(gbtd.coinbase) + gbtd.transactions;
-	gbtd.txHashes.insert(gbtd.txHashes.begin(), gbtd.coinbaseTxId());
-	gbtd.merkleRootGen();
-	
-	job.bh               = gbtd.bh;
-	job.height           = gbtd.height;
-	job.powVersion       = _info.powVersion;
-	job.difficulty       = decodeBits(job.bh.bits, job.powVersion);
-	job.primeCountTarget = _info.acceptedPatterns.size() != 0 ? _info.acceptedPatterns[0].size() : 1;
-	job.primeCountMin    = job.primeCountTarget;
-	job.target           = job.bh.target(job.powVersion);
-	job.transactions     = gbtd.transactions;
-	job.txCount          = gbtd.txHashes.size();
-	return job.height != 0;
+Job GBTClient::getJob(const bool) {
+	std::lock_guard<std::mutex> lock(_jobMutex);
+	Job job(_currentJobTemplate.job);
+	if (job.height == 0) // Invalid Job
+		return job;
+	const std::vector<uint8_t> coinbase(coinbaseGen(_scriptPubKey, _coinbaseMessage, job.height, _currentJobTemplate.coinbasevalue, _donate, hexStrToV8(_currentJobTemplate.default_witness_commitment)));
+	job.clientData.transactionsHex = v8ToHexStr(coinbase) + job.clientData.transactionsHex;
+	std::vector<std::array<uint8_t, 32>> txHashesWithCoinbase{coinbaseTxId(coinbase)};
+	txHashesWithCoinbase.insert(txHashesWithCoinbase.end(), _currentJobTemplate.txHashes.begin(), _currentJobTemplate.txHashes.end());
+	_jobMutex.unlock();
+	job.clientData.bh.merkleRoot = calculateMerkleRoot(txHashesWithCoinbase);
+	job.target = job.clientData.bh.target(job.powVersion);
+	return job;
 }

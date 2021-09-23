@@ -10,8 +10,7 @@
 #else
 	#include <winsock2.h>
 #endif
-#include "GBTClient.hpp"
-#include "StratumClient.hpp"
+#include "Client.hpp"
 #include "main.hpp"
 #include "Miner.hpp"
 #include "tools.hpp"
@@ -342,21 +341,17 @@ int main(int argc, char** argv) {
 				std::cout << "Connecting to Riecoin server..." << std::endl;
 				std::dynamic_pointer_cast<NetworkedClient>(client)->connect();
 				if (!std::dynamic_pointer_cast<NetworkedClient>(client)->connected()) {
-					std::cout << "Failure :| ! Check your connection, configuration or credentials. Retry in " << waitReconnect << " s..." << std::endl;
+					std::cout << "Please check your connection, configuration or credentials. Retry in " << waitReconnect << " s..." << std::endl;
 					std::this_thread::sleep_for(std::chrono::seconds(waitReconnect));
 				}
-				else {
-					std::cout << "Success!" << std::endl;
+				else if (!miner->inited()) {
+					MinerParameters minerParameters(options.minerParameters());
+					minerParameters.pattern = Client::choosePatterns(client->getJob(true).acceptedPatterns, minerParameters.pattern);
+					miner->init(minerParameters);
 					if (!miner->inited()) {
-						const NetworkInfo networkInfo(std::dynamic_pointer_cast<NetworkedClient>(client)->info());
-						MinerParameters minerParameters(options.minerParameters());
-						minerParameters.pattern = Client::choosePatterns(networkInfo.acceptedPatterns, minerParameters.pattern);
-						miner->init(minerParameters);
-						if (!miner->inited()) {
-							std::cout << "Something went wrong during the miner initialization, rieMiner cannot continue." << std::endl;
-							running = false;
-							break;
-						}
+						std::cerr << "Something went wrong during the miner initialization, rieMiner cannot continue." << std::endl;
+						running = false;
+						break;
 					}
 				}
 			}
@@ -367,7 +362,7 @@ int main(int argc, char** argv) {
 				}
 				client->process();
 				if (!std::dynamic_pointer_cast<NetworkedClient>(client)->connected()) {
-					std::cout << "Connection lost :|, reconnecting in " << waitReconnect << " s..." << std::endl;
+					std::cout << "Connection lost, reconnecting in " << waitReconnect << " s..." << std::endl;
 					miner->stopThreads();
 					std::this_thread::sleep_for(std::chrono::seconds(waitReconnect));
 				}
@@ -375,17 +370,16 @@ int main(int argc, char** argv) {
 					if (miner->shouldRestart()) {
 						std::cout << "Restarting miner to take in account Difficulty variations or other network changes." << std::endl;
 						miner->stop();
-						const NetworkInfo networkInfo(std::dynamic_pointer_cast<NetworkedClient>(client)->info());
 						MinerParameters minerParameters(options.minerParameters());
-						minerParameters.pattern = Client::choosePatterns(networkInfo.acceptedPatterns, minerParameters.pattern);
+						minerParameters.pattern = Client::choosePatterns(client->getJob(true).acceptedPatterns, minerParameters.pattern);
 						miner->init(minerParameters);
 						if (!miner->inited()) {
-							std::cout << "Something went wrong during the miner reinitialization, rieMiner cannot continue." << std::endl;
+							std::cerr << "Something went wrong during the miner reinitialization, rieMiner cannot continue." << std::endl;
 							running = false;
 							break;
 						}
 					}
-					if (!miner->running() && client->currentHeight() != 0) {
+					if (!miner->running()) {
 						miner->startThreads();
 						timer = std::chrono::steady_clock::now();
 					}
