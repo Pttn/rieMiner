@@ -51,6 +51,30 @@ make
 
 For other Linux, executing equivalent commands (using `pacman` instead of `apt`,...) should work.
 
+#### Static building
+
+rieMiner can be built statically, in order to have a binary that can be distributed. A script that retrieves the dependencies' source codes from Riecoin.dev and compile them is provided. If you use it, you should first ensure that you can decompress `tar.xz` and `tar.lz` (for GMP, usually you can install `lzip` for this) files using `tar`. If you already built the dependencies once, you can usually reuse existing `incs` and `libs` folders and skip this step, though the dependencies may be updated once a while on Riecoin.dev.
+
+Run the script with
+
+```bash
+sh GetDependencies.sh
+```
+
+Then wait for the download and compilation to finish. The script must not have been interrupted by an error and the `incs` and `libs` folders must have appeared. Then, use
+
+```bash
+make static
+```
+
+or to have AVX2 support,
+
+```bash
+make staticAVX2
+```
+
+Note that GLibC is still linked dynamically so rieMiner may fail to run on very old Linux distributions.
+
 ### On Windows x64
 
 You can compile rieMiner on Windows, and here is one way to do this. First, install [MSYS2](http://www.msys2.org/) (follow the instructions on the website), then enter in the MSYS **MinGW-w64** console, and install the tools and dependencies:
@@ -68,24 +92,7 @@ Clone rieMiner with `git`, go to its directory with `cd`, and compile with `make
 
 #### Static building
 
-The produced executable will only run in the MSYS console, or if all the needed DLLs are next to the executable. To obtain a standalone executable, you need to link statically the dependencies. For this, you need to compile libcurl yourself.
-
-First, download the [latest official libcurl code](https://curl.haxx.se/download.html) on their website, under "Source Archives", and decompress the folder somewhere (for example, next to the rieMiner's one).
-
-In the MSYS MinGW-w64 console, cd to the libcurl directory. We will now configure it to not build unused features, then compile it:
-
-```bash
-./configure --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-ldap --disable-ldaps --disable-pop3 --disable-rtsp --disable-smtp --disable-telnet --disable-tftp --without-ssl --without-libssh2 --without-zlib --without-brotli --without-zstd --without-libidn2  --without-ldap  --without-ldaps --without-rtsp --without-psl --without-librtmp --without-libpsl --without-nghttp2 --disable-shared --disable-libcurl-option
-make
-```
-
-Once done:
-
-* Create "incs" and "libs" folders in the rieMiner directory;
-* In the downloaded libcurl directory, go to the include directory and copy the "curl" folder to the "incs" folder;
-* Do the same with the file "libcurl.a" from the libs/.lib folder to the rieMiner's "libs" folder.
-
-Now, you should be able to compile rieMiner with `make static` and produce a standalone executable.
+The produced executable will only run in the MSYS console, or if all the needed DLLs are next to the executable. To obtain a standalone executable, you need to link statically the dependencies. For this, follow the static building instructions above in the MSYS MinGW-w64 console, they also work here.
 
 ## Configure this program
 

@@ -1,4 +1,7 @@
 # Build artifacts
+*.tar.gz
+incs
+libs
 *.o
 rieMiner
 rieMiner.exe
