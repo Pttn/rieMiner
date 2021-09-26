@@ -68,7 +68,6 @@ static const std::vector<std::pair<std::vector<uint64_t>, std::vector<uint64_t>>
 struct MinerParameters {
 	uint16_t threads, sieveWorkers, tupleLengthMin;
 	uint64_t primorialNumber, primeTableLimit;
-	bool useAvx2;
 	uint64_t sieveBits, sieveSize, sieveWords, sieveIterations;
 	std::vector<uint64_t> pattern, primorialOffsets;
 	double restartDifficultyFactor;
@@ -76,7 +75,6 @@ struct MinerParameters {
 	MinerParameters() :
 		threads(0), sieveWorkers(0), tupleLengthMin(0),
 		primorialNumber(0), primeTableLimit(0),
-		useAvx2(false),
 		sieveBits(0), sieveSize(0), sieveWords(0), sieveIterations(0),
 		pattern{}, primorialOffsets{},
 		restartDifficultyFactor(1.03) {}

@@ -1,4 +1,4 @@
-// (c) 2017-2020 Pttn and contributors (https://github.com/Pttn/rieMiner)
+// (c) 2017-2021 Pttn and contributors (https://riecoin.dev/en/rieMiner)
 
 #ifndef HEADER_Miner_hpp
 #define HEADER_Miner_hpp
@@ -154,11 +154,15 @@ class Miner {
 	void _processSieve(uint64_t*, uint32_t*, const uint64_t, const uint64_t);
 	void _processSieve6(uint64_t*, uint32_t*, uint64_t, const uint64_t);
 	void _processSieve7(uint64_t*, uint32_t*, uint64_t, const uint64_t);
-	void _processSieve7_avx2(uint64_t*, uint32_t*, uint64_t, const uint64_t);
 	void _processSieve8(uint64_t*, uint32_t*, uint64_t, const uint64_t);
+#ifdef __AVX2__
+	void _processSieve7_avx2(uint64_t*, uint32_t*, uint64_t, const uint64_t);
 	void _processSieve8_avx2(uint64_t*, uint32_t*, uint64_t, const uint64_t);
+#endif
 	void _doSieveTask(Task);
+#ifdef __AVX2__
 	bool _testPrimesIspc(const std::array<uint32_t, maxCandidatesPerCheckTask>&, uint32_t[maxCandidatesPerCheckTask], const mpz_class&, mpz_class&);
+#endif
 	void _doCheckTask(Task);
 	void _doTasks(uint16_t);
 	void _manageTasks();

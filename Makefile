@@ -16,10 +16,10 @@ endif
 all: standard
 
 standard: CFLAGS += -march=native -s
-standard: rieMiner
+standard: rieMinerAVX2
 
 debug: CFLAGS += -march=native -g
-debug: rieMiner
+debug: rieMinerAVX2
 
 ifneq ($(msys_version), 0)
 static: CFLAGS += -march=x86-64 -s -D CURL_STATICLIB -I incs/
@@ -28,7 +28,7 @@ static: rieMiner
 
 staticAVX2: CFLAGS += -march=haswell -s -D CURL_STATICLIB -I incs/
 staticAVX2: LIBS   := -static -L libs/ $(LIBS)
-staticAVX2: rieMiner
+staticAVX2: rieMinerAVX2
 else
 static: CFLAGS += -march=x86-64 -s -D CURL_STATICLIB -I incs/
 static: LIBS   :=  -Wl,-Bstatic -static-libstdc++ -L libs/ $(LIBS) -Wl,-Bdynamic
@@ -36,10 +36,13 @@ static: rieMiner
 
 staticAVX2: CFLAGS += -march=haswell -s -D CURL_STATICLIB -I incs/
 staticAVX2: LIBS   := -Wl,-Bstatic -static-libstdc++ -L libs/ $(LIBS) -Wl,-Bdynamic
-staticAVX2: rieMiner
+staticAVX2: rieMinerAVX2
 endif
 
-rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o Stats.o tools.o mod_1_4.o mod_1_2_avx.o mod_1_2_avx2.o fermat.o primetest.o primetest512.o
+rieMinerAVX2: main.o Miner.o StratumClient.o GBTClient.o Client.o Stats.o tools.o mod_1_4.o mod_1_2_avx.o mod_1_2_avx2.o fermat.o primetest.o primetest512.o
+	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
+
+rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o Stats.o tools.o mod_1_4.o mod_1_2_avx.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
 main.o: main.cpp main.hpp Miner.hpp Client.hpp Stats.hpp tools.hpp

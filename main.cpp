@@ -94,7 +94,6 @@ void Options::parseOptions() {
 			else if (key == "Username") _username = value;
 			else if (key == "Password") _password = value;
 			else if (key == "PayoutAddress") _payoutAddress = value;
-			else if (key == "EnableAVX2") _minerParameters.useAvx2 = (value == "Yes");
 			else if (key == "Secret!!!") _secret = value;
 			else if (key == "Threads") {
 				try {_minerParameters.threads = std::stoi(value);}
@@ -265,7 +264,13 @@ int main(int argc, char** argv) {
 	sigaction(SIGINT, &SIGINTHandler, NULL);
 #endif
 	
-	std::cout << versionString << ", Riecoin miner by Pttn and contributors" << std::endl;
+	std::cout << versionString;
+#ifdef __AVX2__
+	std::cout << " + AVX2";
+#else
+	std::cout << " (no AVX2)";
+#endif
+	std::cout << ", Riecoin miner by Pttn and contributors" << std::endl;
 	std::cout << "Project page: https://riecoin.dev/en/rieMiner" << std::endl;
 	std::cout << "Launch with 'help' as first argument for a quick usage guide" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;

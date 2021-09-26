@@ -4,14 +4,18 @@
 #include <gmpxx.h> // With Uint64_Ts, we still need to use the Mpz_ functions, otherwise there are "ambiguous overload" errors on Windows...
 
 #include "external/gmp_util.h"
+#ifdef __AVX2__
 #include "ispc/fermat.h"
+#endif
 #include "Miner.hpp"
 
 extern "C" {
 	void rie_mod_1s_4p_cps(uint64_t *cps, uint64_t p);
 	mp_limb_t rie_mod_1s_4p(mp_srcptr ap, mp_size_t n, uint64_t ps, uint64_t cnt, uint64_t* cps);
 	mp_limb_t rie_mod_1s_2p_4times(mp_srcptr ap, mp_size_t n, uint32_t* ps, uint32_t cnt, uint64_t* cps, uint64_t* remainders);
+#ifdef __AVX2__
 	mp_limb_t rie_mod_1s_2p_8times(mp_srcptr ap, mp_size_t n, uint32_t* ps, uint32_t cnt, uint64_t* cps, uint64_t* remainders);
+#endif
 }
 
 constexpr uint64_t nPrimesTo2p32(203280221);
@@ -78,10 +82,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 	std::cout << " (" << _parameters.sieveWorkers << " Sieve Worker(s))" << std::endl;
 	std::cout << "Best SIMD instructions supported:";
 	if (_cpuInfo.hasAVX512()) std::cout << " AVX-512";
-	else if (_cpuInfo.hasAVX2()) {
-		std::cout << " AVX2";
-		if (!_parameters.useAvx2) std::cout << " (disabled -> AVX)";
-	}
+	else if (_cpuInfo.hasAVX2()) std::cout << " AVX2";
 	else if (_cpuInfo.hasAVX()) std::cout << " AVX";
 	else std::cout << " AVX not suppported";
 	std::cout << std::endl;
@@ -440,7 +441,11 @@ void Miner::_doPresieveTask(const Task &task) {
 	const uint64_t precompLimit(_modPrecompute.size()), tupleSize(_parameters.pattern.size());
 	
 	uint64_t avxLimit(0);
-	const uint64_t avxWidth(_parameters.useAvx2 ? 8 : 4);
+#ifdef __AVX2__
+	const uint64_t avxWidth(8);
+#else
+	const uint64_t avxWidth(4);
+#endif
 	if (_cpuInfo.hasAVX()) {
 		avxLimit = nPrimesTo2p32 - avxWidth;
 		avxLimit -= (avxLimit - firstPrimeIndex) & (avxWidth - 1);  // Must be enough primes in range to use AVX
@@ -479,8 +484,11 @@ void Miner::_doPresieveTask(const Task &task) {
 						ps32[j] = static_cast<uint32_t>(_primes32[i + j]) << cnt;
 						nextRemainder[j] = _modularInverses32[i + j];
 					}
-					if (_parameters.useAvx2) rie_mod_1s_2p_8times(firstCandidate.get_mpz_t()->_mp_d, firstCandidate.get_mpz_t()->_mp_size, &ps32[0], cnt, &_modPrecompute[i], &nextRemainder[0]);
-					else rie_mod_1s_2p_4times(firstCandidate.get_mpz_t()->_mp_d, firstCandidate.get_mpz_t()->_mp_size, &ps32[0], cnt, &_modPrecompute[i], &nextRemainder[0]);
+#ifdef __AVX2__
+					rie_mod_1s_2p_8times(firstCandidate.get_mpz_t()->_mp_d, firstCandidate.get_mpz_t()->_mp_size, &ps32[0], cnt, &_modPrecompute[i], &nextRemainder[0]);
+#else
+					rie_mod_1s_2p_4times(firstCandidate.get_mpz_t()->_mp_d, firstCandidate.get_mpz_t()->_mp_size, &ps32[0], cnt, &_modPrecompute[i], &nextRemainder[0]);
+#endif
 					haveRemainder = true;
 					fp = nextRemainder[0];
 					nextRemainderIndex = 1;
@@ -663,10 +671,8 @@ void Miner::_processSieve6(uint64_t *factorsTable, uint32_t* factorsToEliminate,
 
 void Miner::_processSieve7(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 7-tuples by Michael Bell
 	assert(_parameters.pattern.size() == 7);
-
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
-
 	xmmreg_t offsetmax;
 	offsetmax.m128 = _mm_set1_epi32(_parameters.sieveSize);
 	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i += 1) {
@@ -702,13 +708,51 @@ void Miner::_processSieve7(uint64_t *factorsTable, uint32_t* factorsToEliminate,
 	_endSieveCache(factorsTable, sieveCache);
 }
 
-void Miner::_processSieve7_avx2(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 7-tuples by Michael Bell
-	assert(_parameters.pattern.size() == 7);
-
-#ifdef __AVX2__
+void Miner::_processSieve8(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 8-tuples by Michael Bell
+	assert(_parameters.pattern.size() == 8);
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
+	xmmreg_t offsetmax;
+	offsetmax.m128 = _mm_set1_epi32(_parameters.sieveSize);
+	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i += 1) {
+		xmmreg_t p1;
+		xmmreg_t factor1, factor2, nextIncr1, nextIncr2;
+		xmmreg_t cmpres1, cmpres2;
+		p1.m128 = _mm_set1_epi32(_primes32[i]);
+		factor1.m128 = _mm_load_si128(reinterpret_cast<__m128i const*>(&factorsToEliminate[i*8 + 0]));
+		factor2.m128 = _mm_load_si128(reinterpret_cast<__m128i const*>(&factorsToEliminate[i*8 + 4]));
+		while (true) {
+			cmpres1.m128 = _mm_cmpgt_epi32(offsetmax.m128, factor1.m128);
+			cmpres2.m128 = _mm_cmpgt_epi32(offsetmax.m128, factor2.m128);
+			const int mask1(_mm_movemask_epi8(cmpres1.m128));
+			const int mask2(_mm_movemask_epi8(cmpres2.m128));
+			if ((mask1 == 0) && (mask2 == 0)) break;
+			if (mask1 & 0x0008) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[0]);
+			if (mask1 & 0x0080) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[1]);
+			if (mask1 & 0x0800) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[2]);
+			if (mask1 & 0x8000) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[3]);
+			if (mask2 & 0x0008) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[0]);
+			if (mask2 & 0x0080) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[1]);
+			if (mask2 & 0x0800) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[2]);
+			if (mask2 & 0x8000) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[3]);
+			nextIncr1.m128 = _mm_and_si128(cmpres1.m128, p1.m128);
+			nextIncr2.m128 = _mm_and_si128(cmpres2.m128, p1.m128);
+			factor1.m128 = _mm_add_epi32(factor1.m128, nextIncr1.m128);
+			factor2.m128 = _mm_add_epi32(factor2.m128, nextIncr2.m128);
+		}
+		factor1.m128 = _mm_sub_epi32(factor1.m128, offsetmax.m128);
+		factor2.m128 = _mm_sub_epi32(factor2.m128, offsetmax.m128);
+		_mm_store_si128(reinterpret_cast<__m128i*>(&factorsToEliminate[i*8 + 0]), factor1.m128);
+		_mm_store_si128(reinterpret_cast<__m128i*>(&factorsToEliminate[i*8 + 4]), factor2.m128);
+	}
+	_endSieveCache(factorsTable, sieveCache);
+}
 
+#ifdef __AVX2__
+void Miner::_processSieve7_avx2(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 7-tuples by Michael Bell
+	assert(_parameters.pattern.size() == 7);
+	std::array<uint32_t, sieveCacheSize> sieveCache{0};
+	uint64_t sieveCachePos(0);
 	assert((lastPrimeIndex & 1) == 0);
 	// Already eliminate for the first prime to sieve if it is odd to align for the optimizations
 	if ((firstPrimeIndex & 1) != 0) {
@@ -721,7 +765,7 @@ void Miner::_processSieve7_avx2(uint64_t *factorsTable, uint32_t* factorsToElimi
 		}
 		firstPrimeIndex++;
 	}
-
+	
 	ymmreg_t offsetmax;
 	offsetmax.m256 = _mm256_set1_epi32(_parameters.sieveSize);
 	ymmreg_t storemask;
@@ -766,56 +810,10 @@ void Miner::_processSieve7_avx2(uint64_t *factorsTable, uint32_t* factorsToElimi
 		_mm256_maskstore_epi32(reinterpret_cast<int*>(&factorsToEliminate[i*7 + 6]), storemask.m256, factor2.m256);
 	}
 	_endSieveCache(factorsTable, sieveCache);
-#else
-	printf("Not compiled with AVX2.  Exit\n");
-	exit(3);
-#endif
-}
-
-void Miner::_processSieve8(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 8-tuples by Michael Bell
-	assert(_parameters.pattern.size() == 8);
-	std::array<uint32_t, sieveCacheSize> sieveCache{0};
-	uint64_t sieveCachePos(0);
-	xmmreg_t offsetmax;
-	offsetmax.m128 = _mm_set1_epi32(_parameters.sieveSize);
-	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i += 1) {
-		xmmreg_t p1;
-		xmmreg_t factor1, factor2, nextIncr1, nextIncr2;
-		xmmreg_t cmpres1, cmpres2;
-		p1.m128 = _mm_set1_epi32(_primes32[i]);
-		factor1.m128 = _mm_load_si128(reinterpret_cast<__m128i const*>(&factorsToEliminate[i*8 + 0]));
-		factor2.m128 = _mm_load_si128(reinterpret_cast<__m128i const*>(&factorsToEliminate[i*8 + 4]));
-		while (true) {
-			cmpres1.m128 = _mm_cmpgt_epi32(offsetmax.m128, factor1.m128);
-			cmpres2.m128 = _mm_cmpgt_epi32(offsetmax.m128, factor2.m128);
-			const int mask1(_mm_movemask_epi8(cmpres1.m128));
-			const int mask2(_mm_movemask_epi8(cmpres2.m128));
-			if ((mask1 == 0) && (mask2 == 0)) break;
-			if (mask1 & 0x0008) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[0]);
-			if (mask1 & 0x0080) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[1]);
-			if (mask1 & 0x0800) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[2]);
-			if (mask1 & 0x8000) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor1.v[3]);
-			if (mask2 & 0x0008) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[0]);
-			if (mask2 & 0x0080) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[1]);
-			if (mask2 & 0x0800) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[2]);
-			if (mask2 & 0x8000) _addToSieveCache(factorsTable, sieveCache, sieveCachePos, factor2.v[3]);
-			nextIncr1.m128 = _mm_and_si128(cmpres1.m128, p1.m128);
-			nextIncr2.m128 = _mm_and_si128(cmpres2.m128, p1.m128);
-			factor1.m128 = _mm_add_epi32(factor1.m128, nextIncr1.m128);
-			factor2.m128 = _mm_add_epi32(factor2.m128, nextIncr2.m128);
-		}
-		factor1.m128 = _mm_sub_epi32(factor1.m128, offsetmax.m128);
-		factor2.m128 = _mm_sub_epi32(factor2.m128, offsetmax.m128);
-		_mm_store_si128(reinterpret_cast<__m128i*>(&factorsToEliminate[i*8 + 0]), factor1.m128);
-		_mm_store_si128(reinterpret_cast<__m128i*>(&factorsToEliminate[i*8 + 4]), factor2.m128);
-	}
-	_endSieveCache(factorsTable, sieveCache);
 }
 
 void Miner::_processSieve8_avx2(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 8-tuples by Michael Bell
 	assert(_parameters.pattern.size() == 8);
-
-#ifdef __AVX2__
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
 
@@ -875,11 +873,8 @@ void Miner::_processSieve8_avx2(uint64_t *factorsTable, uint32_t* factorsToElimi
 		_mm256_store_si256(reinterpret_cast<__m256i*>(&factorsToEliminate[i*8 + 8]), factor2.m256);
 	}
 	_endSieveCache(factorsTable, sieveCache);
-#else
-	printf("Not compiled with AVX2.  Exit\n");
-	exit(3);
-#endif
 }
+#endif
 
 void Miner::_doSieveTask(Task task) {
 	Sieve& sieve(_sieves[task.sieve.id]);
@@ -898,15 +893,17 @@ void Miner::_doSieveTask(Task task) {
 	if (_parameters.pattern.size() == 6)
 		_processSieve6(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
 	else if (_parameters.pattern.size() == 7)
-		if (_parameters.useAvx2)
+#ifdef __AVX2__
 			_processSieve7_avx2(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
-		else
+#else
 			_processSieve7(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
+#endif
 	else if (_parameters.pattern.size() == 8)
-		if (_parameters.useAvx2)
+#ifdef __AVX2__
 			_processSieve8_avx2(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
-		else
+#else
 			_processSieve8(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
+#endif
 	else
 		_processSieve(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
 	
@@ -970,6 +967,7 @@ bool isPrimeFermat(const mpz_class& n) {
 	return r == 1;
 }
 
+#ifdef __AVX2__
 bool Miner::_testPrimesIspc(const std::array<uint32_t, maxCandidatesPerCheckTask> &factorOffsets, uint32_t is_prime[maxCandidatesPerCheckTask], const mpz_class &candidateStart, mpz_class &candidate) { // Assembly optimized prime testing by Michael Bell
 	uint32_t M[maxCandidatesPerCheckTask*MAX_N_SIZE], bits(0), N_Size;
 	uint32_t *mp(&M[0]);
@@ -987,6 +985,7 @@ bool Miner::_testPrimesIspc(const std::array<uint32_t, maxCandidatesPerCheckTask
 	fermatTest(N_Size, maxCandidatesPerCheckTask, M, is_prime, _cpuInfo.hasAVX512());
 	return true;
 }
+#endif
 
 void Miner::_doCheckTask(Task task) {
 	const uint16_t workIndex(task.workIndex);
@@ -997,8 +996,9 @@ void Miner::_doCheckTask(Task task) {
 	candidateStart += _works[workIndex].primorialMultipleStart;
 	candidateStart += _primorialOffsets[task.check.offsetId];
 	
+#ifdef __AVX2__
 	bool firstTestDone(false);
-	if (_parameters.useAvx2 && task.check.nCandidates == maxCandidatesPerCheckTask) { // Test candidates + 0 primality with assembly optimizations if possible.
+	if (task.check.nCandidates == maxCandidatesPerCheckTask) { // Test candidates + 0 primality with assembly optimizations if possible.
 		uint32_t isPrime[maxCandidatesPerCheckTask];
 		firstTestDone = _testPrimesIspc(task.check.factorOffsets, isPrime, candidateStart, candidate);
 		if (firstTestDone) {
@@ -1012,16 +1012,23 @@ void Miner::_doCheckTask(Task task) {
 			}
 		}
 	}
+#endif
 	
 	for (uint32_t i(0) ; i < task.check.nCandidates ; i++) {
 		if (_works[workIndex].job.height != _client->currentHeight()) break;
 		candidate = candidateStart + _primorial*task.check.factorOffsets[i];
 		
+#ifdef __AVX2__
 		if (!firstTestDone) { // Test candidate + 0 primality without optimizations if not done before.
 			tupleCounts[0]++;
 			if (!isPrimeFermat(candidate)) continue;
 			tupleCounts[1]++;
 		}
+#else
+		tupleCounts[0]++;
+		if (!isPrimeFermat(candidate)) continue;
+		tupleCounts[1]++;
+#endif
 		
 		uint32_t primeCount(1), offsetSum(0);
 		// Test primality of the other elements of the tuple if candidate + 0 is prime.
