@@ -5,12 +5,15 @@
 
 #include <atomic>
 #include <cassert>
+#ifndef LIGHT
 #include <immintrin.h>
+#endif
 #include "Client.hpp"
 #include "Stats.hpp"
 
 struct Job;
 
+#ifndef LIGHT
 union xmmreg_t {
 	uint32_t v[4];
 	uint64_t v64[2];
@@ -22,6 +25,7 @@ union ymmreg_t {
 	uint64_t v64[4];
 	__m256i m256;
 };
+#endif
 
 constexpr uint32_t sieveCacheSize(32);
 constexpr uint32_t nWorks(2);
@@ -114,12 +118,17 @@ class Miner {
 	StatManager _statManager;
 	std::thread _masterThread;
 	std::vector<std::thread> _workerThreads;
+#ifndef LIGHT
 	CpuID _cpuInfo;
+#endif
 	// Miner data (generated in init)
 	mpz_class _primorial;
 	uint64_t _nPrimes, _nPrimes32, _factorMax, _primesIndexThreshold;
 	std::vector<uint32_t> _primes32, _modularInverses32;
-	std::vector<uint64_t> _primes64, _modularInverses64, _modPrecompute;
+	std::vector<uint64_t> _primes64, _modularInverses64;
+#ifndef LIGHT
+	std::vector<uint64_t> _modPrecompute;
+#endif
 	std::vector<mpz_class> _primorialOffsets;
 	std::vector<uint64_t> _halfPattern, _primorialOffsetDiff;
 	// Miner state variables
@@ -152,17 +161,17 @@ class Miner {
 	void _addCachedAdditionalFactorsToEliminate(Sieve&, uint64_t*, uint64_t*, const int);
 	void _doPresieveTask(const Task&);
 	void _processSieve(uint64_t*, uint32_t*, const uint64_t, const uint64_t);
+#ifndef LIGHT
 	void _processSieve6(uint64_t*, uint32_t*, uint64_t, const uint64_t);
 	void _processSieve7(uint64_t*, uint32_t*, uint64_t, const uint64_t);
 	void _processSieve8(uint64_t*, uint32_t*, uint64_t, const uint64_t);
 #ifdef __AVX2__
 	void _processSieve7_avx2(uint64_t*, uint32_t*, uint64_t, const uint64_t);
 	void _processSieve8_avx2(uint64_t*, uint32_t*, uint64_t, const uint64_t);
-#endif
-	void _doSieveTask(Task);
-#ifdef __AVX2__
 	bool _testPrimesIspc(const std::array<uint32_t, maxCandidatesPerCheckTask>&, uint32_t[maxCandidatesPerCheckTask], const mpz_class&, mpz_class&);
 #endif
+#endif
+	void _doSieveTask(Task);
 	void _doCheckTask(Task);
 	void _doTasks(uint16_t);
 	void _manageTasks();

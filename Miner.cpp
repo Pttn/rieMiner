@@ -2,13 +2,15 @@
 (c) 2018-2020 Michael Bell/Rockhawk (assembly optimizations, improvements of work management between threads, and some more) (https://github.com/MichaelBell/) */
 
 #include <gmpxx.h> // With Uint64_Ts, we still need to use the Mpz_ functions, otherwise there are "ambiguous overload" errors on Windows...
-
+#ifndef LIGHT
 #include "external/gmp_util.h"
 #ifdef __AVX2__
 #include "ispc/fermat.h"
 #endif
+#endif
 #include "Miner.hpp"
 
+#ifndef LIGHT
 extern "C" {
 	void rie_mod_1s_4p_cps(uint64_t *cps, uint64_t p);
 	mp_limb_t rie_mod_1s_4p(mp_srcptr ap, mp_size_t n, uint64_t ps, uint64_t cnt, uint64_t* cps);
@@ -17,6 +19,18 @@ extern "C" {
 	mp_limb_t rie_mod_1s_2p_8times(mp_srcptr ap, mp_size_t n, uint32_t* ps, uint32_t cnt, uint64_t* cps, uint64_t* remainders);
 #endif
 }
+#else
+uint64_t mulMod(const uint64_t a, const uint64_t b, const uint64_t c) { // (ab) % c without assembly optimizations
+#ifdef __SIZEOF_INT128__
+	return (static_cast<__uint128_t>(a)*b) % c;
+#else
+	mpz_class tmp;
+	mpz_set_ui(tmp.get_mpz_t(), a);
+	mpz_mul_ui(tmp.get_mpz_t(), tmp.get_mpz_t(), b);
+	return mpz_tdiv_ui(tmp.get_mpz_t(), c);
+#endif
+}
+#endif
 
 constexpr uint64_t nPrimesTo2p32(203280221);
 constexpr int factorsCacheSize(16384);
@@ -43,7 +57,9 @@ void Miner::init(const MinerParameters &minerParameters) {
 	_difficultyAtInit = job.difficulty;
 	
 	std::cout << "Initializing miner..." << std::endl;
+#ifndef LIGHT
 	std::cout << "Processor: " << _cpuInfo.getBrand() << std::endl;
+#endif
 	// Get settings from Configuration File.
 	_parameters = minerParameters;
 	if (_parameters.threads == 0) {
@@ -80,13 +96,14 @@ void Miner::init(const MinerParameters &minerParameters) {
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, maxSieveWorkers);
 	_parameters.sieveWorkers = std::min(static_cast<int>(_parameters.sieveWorkers), static_cast<int>(_primorialOffsets.size()));
 	std::cout << " (" << _parameters.sieveWorkers << " Sieve Worker(s))" << std::endl;
+#ifndef LIGHT
 	std::cout << "Best SIMD instructions supported:";
 	if (_cpuInfo.hasAVX512()) std::cout << " AVX-512";
 	else if (_cpuInfo.hasAVX2()) std::cout << " AVX2";
 	else if (_cpuInfo.hasAVX()) std::cout << " AVX";
 	else std::cout << " AVX not suppported";
 	std::cout << std::endl;
-	
+#endif
 	std::vector<uint64_t> cumulativeOffsets(_parameters.pattern.size(), 0);
 	std::partial_sum(_parameters.pattern.begin(), _parameters.pattern.end(), cumulativeOffsets.begin(), std::plus<uint64_t>());
 	std::cout << "Constellation pattern: n + (" << formatContainer(cumulativeOffsets) << "), length " << _parameters.pattern.size() << std::endl;
@@ -97,7 +114,11 @@ void Miner::init(const MinerParameters &minerParameters) {
 	}
 	
 	if (_parameters.primeTableLimit == 0) {
+#ifndef LIGHT
 		constexpr uint64_t primeTableLimitMax(2147483648ULL);
+#else
+		constexpr uint64_t primeTableLimitMax(1073741824ULL);
+#endif
 		_parameters.primeTableLimit = std::pow(_difficultyAtInit, 6.)/std::pow(2., 3.*static_cast<double>(_parameters.pattern.size()) + 7.);
 		if (_parameters.threads > 16) {
 			_parameters.primeTableLimit *= 16;
@@ -160,7 +181,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 		primes.pop_back();
 	
 	try {
-		_primes32.reserve(std::min(nPrimesTo2p32, primes.size()));
+		_primes32.reserve(std::min(static_cast<decltype(_primes32)::value_type>(nPrimesTo2p32), static_cast<decltype(_primes32)::value_type>(primes.size())));
 		if (primes.size() > nPrimesTo2p32) _primes64.reserve(primes.size() - nPrimesTo2p32);
 	}
 	catch (std::bad_alloc& ba) {
@@ -179,7 +200,11 @@ void Miner::init(const MinerParameters &minerParameters) {
 	primes.clear();
 
 	if (_parameters.sieveBits == 0)
+#ifndef LIGHT
 		_parameters.sieveBits = _parameters.sieveWorkers <= 4 ? 25 : 24;
+#else
+		_parameters.sieveBits = _parameters.sieveWorkers <= 4 ? 23 : 22;
+#endif
 	_parameters.sieveSize = 1 << _parameters.sieveBits;
 	_parameters.sieveWords = _parameters.sieveSize/64;
 	std::cout << "Sieve Size: " << "2^" << _parameters.sieveBits << " = " << _parameters.sieveSize << " (" << _parameters.sieveWords << " words)" << std::endl;
@@ -256,13 +281,21 @@ void Miner::init(const MinerParameters &minerParameters) {
 	const uint64_t additionalFactorsEntriesPerIteration(17ULL*(additionalFactorsCountEstimation/_parameters.sieveIterations)/16ULL + 64ULL); // Have some margin
 	std::cout << "Estimated additional factors: " << additionalFactorsCountEstimation << " (allocated per iteration: " << additionalFactorsEntriesPerIteration << ")" << std::endl;
 	{
+#ifndef LIGHT
 		std::cout << "Precomputing modular inverses and division data..." << std::endl; // The precomputed data is used to speed up computations in _doPresieveTask.
+#else
+		std::cout << "Precomputing modular inverses..." << std::endl;
+#endif
 		t0 = std::chrono::steady_clock::now();
+#ifndef LIGHT
 		const uint64_t precompPrimes(std::min(_nPrimes, 5586502348UL)); // Precomputation only works up to p = 2^37
+#endif
 		try {
 			_modularInverses32.resize(_primes32.size());
 			_modularInverses64.resize(_primes64.size()); // Table of inverses of the primorial modulo a prime number in the table with index >= primorialNumber.
+#ifndef LIGHT
 			_modPrecompute.resize(precompPrimes);
+#endif
 		}
 		catch (std::bad_alloc& ba) {
 			ERRORMSG("Unable to allocate memory for the precomputed data");
@@ -281,13 +314,19 @@ void Miner::init(const MinerParameters &minerParameters) {
 					mpz_invert(modularInverse.get_mpz_t(), _primorial.get_mpz_t(), prime.get_mpz_t()); // modularInverse*primorial ≡ 1 (mod prime)
 					if (i < nPrimesTo2p32) _modularInverses32[i] = static_cast<uint32_t>(mpz_get_ui(modularInverse.get_mpz_t()));
 					else _modularInverses64[i - nPrimesTo2p32] = mpz_get_ui(modularInverse.get_mpz_t());
+#ifndef LIGHT
 					if (i < precompPrimes)
 						rie_mod_1s_4p_cps(&_modPrecompute[i], p);
+#endif
 				}
 			});
 		}
 		for (uint16_t j(0) ; j < _parameters.threads ; j++) threads[j].join();
-		std::cout << "Tables of " << _modularInverses32.size() + _modularInverses64.size() - _parameters.primorialNumber << " modular inverses and " << precompPrimes - _parameters.primorialNumber << " division entries generated in " << timeSince(t0) << " s (" << (_modularInverses64.size() + precompPrimes - 2*_parameters.primorialNumber)*sizeof(decltype(_modularInverses64)::value_type) + _modularInverses32.size()*sizeof(decltype(_modularInverses32)::value_type) << " bytes)." << std::endl;
+#ifndef LIGHT
+		std::cout << "Tables of " << _modularInverses32.size() + _modularInverses64.size() - _parameters.primorialNumber << " modular inverses and " << precompPrimes - _parameters.primorialNumber << " division entries generated in " << timeSince(t0) << " s (" << (_modularInverses64.size() + precompPrimes)*sizeof(decltype(_modularInverses64)::value_type) + _modularInverses32.size()*sizeof(decltype(_modularInverses32)::value_type) << " bytes)." << std::endl;
+#else
+		std::cout << "Tables of " << _modularInverses32.size() + _modularInverses64.size() - _parameters.primorialNumber << " modular inverses generated in " << timeSince(t0) << " s (" << _modularInverses64.size()*sizeof(decltype(_modularInverses64)::value_type) + _modularInverses32.size()*sizeof(decltype(_modularInverses32)::value_type) << " bytes)." << std::endl;
+#endif
 	}
 	
 	try {
@@ -310,7 +349,11 @@ void Miner::init(const MinerParameters &minerParameters) {
 	try {
 		std::cout << "Allocating " << sizeof(uint32_t)*_parameters.sieveWorkers*factorsToEliminateEntries << " bytes for the primorial factors..." << std::endl;
 		for (auto &sieve : _sieves) {
+#ifndef LIGHT
 			sieve.factorsToEliminate = reinterpret_cast<uint32_t*>(new __m256i[(factorsToEliminateEntries + 7) / 8]);
+#else
+			sieve.factorsToEliminate = new uint32_t[factorsToEliminateEntries];
+#endif
 			memset(sieve.factorsToEliminate, 0, sizeof(uint32_t)*factorsToEliminateEntries);
 		}
 	}
@@ -409,7 +452,9 @@ void Miner::clear() {
 		_primes64.clear();
 		_modularInverses32.clear();
 		_modularInverses64.clear();
+#ifndef LIGHT
 		_modPrecompute.clear();
+#endif
 		_primorialOffsets.clear();
 		_halfPattern.clear();
 		_primorialOffsetDiff.clear();
@@ -438,8 +483,8 @@ void Miner::_doPresieveTask(const Task &task) {
 	std::array<int, maxSieveWorkers> factorsCacheTotalCounts{0};
 	uint64_t** factorsCacheRef(factorsCache); // On Windows, caching these thread_local pointers on the stack makes a noticeable perf difference.
 	uint64_t** factorsCacheCountsRef(factorsCacheCounts);
+#ifndef LIGHT
 	const uint64_t precompLimit(_modPrecompute.size()), tupleSize(_parameters.pattern.size());
-	
 	uint64_t avxLimit(0);
 #ifdef __AVX2__
 	const uint64_t avxWidth(8);
@@ -450,9 +495,11 @@ void Miner::_doPresieveTask(const Task &task) {
 		avxLimit = nPrimesTo2p32 - avxWidth;
 		avxLimit -= (avxLimit - firstPrimeIndex) & (avxWidth - 1);  // Must be enough primes in range to use AVX
 	}
-	
 	uint64_t nextRemainder[8];
 	uint64_t nextRemainderIndex(8);
+#else
+	const uint64_t tupleSize(_parameters.pattern.size());
+#endif
 	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i++) {
 		const uint64_t p(_getPrime(i));
 		uint64_t mi[4];
@@ -467,6 +514,7 @@ void Miner::_doPresieveTask(const Task &task) {
 		// fp is the solution of firstCandidate + primorial*f ≡ 0 (mod p) for 0 <= f < p: fp = (p - (firstCandidate % p))*mi[0] % p.
 		// In the sieving phase, numbers of the form firstCandidate + (p*i + fp)*primorial for 0 <= i < factorMax are eliminated as they are divisible by p.
 		// This is for the first number of the constellation. Later, the mi[1-3] will be used to adjust fp for the other elements of the constellation.
+#ifndef LIGHT
 		uint64_t fp, cnt(0ULL), ps(0ULL);
 		if (i < precompLimit) { // Assembly optimized computation of fp by Michael Bell
 			bool haveRemainder(false);
@@ -514,6 +562,10 @@ void Miner::_doPresieveTask(const Task &task) {
 			umul_ppmm(n[1], n[0], pa, mi[0]);
 			udiv_qrnnd(q, fp, n[1], n[0], p);
 		}
+#else
+		const uint64_t remainder(mpz_tdiv_ui(firstCandidate.get_mpz_t(), p)), pa(p - remainder);
+		uint64_t fp(mulMod(pa, mi[0], p)); // (pa*mi[0]) % p
+#endif
 
 		// We use a macro here to ensure the compiler inlines the code, and also make it easier to early
 		// out of the function completely if the current height has changed.
@@ -551,6 +603,7 @@ void Miner::_doPresieveTask(const Task &task) {
 		if (_parameters.sieveWorkers == 1) continue;
 		
 		// Recompute fp to adjust to the PrimorialOffsets of other Sieve Workers.
+#ifndef LIGHT
 		uint64_t r;
 #define recomputeFp(sieveWorkerIndex) {				                                      \
 			if (i < precompLimit && _primorialOffsetDiff[sieveWorkerIndex - 1] < p) {	  \
@@ -567,13 +620,20 @@ void Miner::_doPresieveTask(const Task &task) {
 			}                                                                             \
 		}
 		recomputeFp(1);
+#else
+		uint64_t r(mulMod(_primorialOffsetDiff[0], mi[0], p));
+#endif
 		if (fp < r) fp += p;
 		fp -= r;
 		addFactorsToEliminateForP(1);
 		
 		for (int j(2) ; j < _parameters.sieveWorkers ; j++) {
 			if (_primorialOffsetDiff[j - 1] != _primorialOffsetDiff[j - 2])
+#ifndef LIGHT
 				recomputeFp(j);
+#else
+				r = mulMod(_primorialOffsetDiff[j - 1], mi[0], p);
+#endif
 			if (fp < r) fp += p;
 			fp -= r;
 			addFactorsToEliminateForP(j);
@@ -607,6 +667,7 @@ void Miner::_processSieve(uint64_t *factorsTable, uint32_t* factorsToEliminate, 
 	_endSieveCache(factorsTable, sieveCache);
 }
 
+#ifndef LIGHT
 void Miner::_processSieve6(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 6-tuples by Michael Bell
 	assert(_parameters.pattern.size() == 6);
 	assert((lastPrimeIndex & 1) == 0);
@@ -875,6 +936,7 @@ void Miner::_processSieve8_avx2(uint64_t *factorsTable, uint32_t* factorsToElimi
 	_endSieveCache(factorsTable, sieveCache);
 }
 #endif
+#endif
 
 void Miner::_doSieveTask(Task task) {
 	Sieve& sieve(_sieves[task.sieve.id]);
@@ -890,6 +952,7 @@ void Miner::_doSieveTask(Task task) {
 	memset(sieve.factorsTable, 0, sizeof(uint64_t)*_parameters.sieveWords);
 	
 	// Eliminate the p*i + fp factors (p < factorMax).
+#ifndef LIGHT
 	if (_parameters.pattern.size() == 6)
 		_processSieve6(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
 	else if (_parameters.pattern.size() == 7)
@@ -906,6 +969,9 @@ void Miner::_doSieveTask(Task task) {
 #endif
 	else
 		_processSieve(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
+#else
+	_processSieve(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
+#endif
 	
 	if (_works[workIndex].job.height != _client->currentHeight())
 		goto sieveEnd;
@@ -967,6 +1033,7 @@ bool isPrimeFermat(const mpz_class& n) {
 	return r == 1;
 }
 
+#ifndef LIGHT
 #ifdef __AVX2__
 bool Miner::_testPrimesIspc(const std::array<uint32_t, maxCandidatesPerCheckTask> &factorOffsets, uint32_t is_prime[maxCandidatesPerCheckTask], const mpz_class &candidateStart, mpz_class &candidate) { // Assembly optimized prime testing by Michael Bell
 	uint32_t M[maxCandidatesPerCheckTask*MAX_N_SIZE], bits(0), N_Size;
@@ -986,6 +1053,7 @@ bool Miner::_testPrimesIspc(const std::array<uint32_t, maxCandidatesPerCheckTask
 	return true;
 }
 #endif
+#endif
 
 void Miner::_doCheckTask(Task task) {
 	const uint16_t workIndex(task.workIndex);
@@ -996,6 +1064,7 @@ void Miner::_doCheckTask(Task task) {
 	candidateStart += _works[workIndex].primorialMultipleStart;
 	candidateStart += _primorialOffsets[task.check.offsetId];
 	
+#ifndef LIGHT
 #ifdef __AVX2__
 	bool firstTestDone(false);
 	if (task.check.nCandidates == maxCandidatesPerCheckTask) { // Test candidates + 0 primality with assembly optimizations if possible.
@@ -1013,12 +1082,13 @@ void Miner::_doCheckTask(Task task) {
 		}
 	}
 #endif
+#endif
 	
 	for (uint32_t i(0) ; i < task.check.nCandidates ; i++) {
 		if (_works[workIndex].job.height != _client->currentHeight()) break;
 		candidate = candidateStart + _primorial*task.check.factorOffsets[i];
 		
-#ifdef __AVX2__
+#if !defined(LIGHT) && defined(__AVX2__)
 		if (!firstTestDone) { // Test candidate + 0 primality without optimizations if not done before.
 			tupleCounts[0]++;
 			if (!isPrimeFermat(candidate)) continue;

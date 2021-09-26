@@ -18,7 +18,9 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#ifndef LIGHT
 #include <cpuid.h>
+#endif
 #include <gmpxx.h>
 
 #define leading0s(x) std::setw(x) << std::setfill('0')
@@ -84,6 +86,7 @@ inline double timeSince(const std::chrono::time_point<std::chrono::steady_clock>
 	return dt.count();
 }
 
+#ifndef LIGHT
 class CpuID {
 	std::string _brand;
 	bool _avx, _avx2, _avx512;
@@ -94,6 +97,7 @@ public:
 	bool hasAVX2() const {return _avx2;}
 	bool hasAVX512() const {return _avx512;}
 };
+#endif
 
 template<class T> class TsQueue {
 	std::deque<T> _q;

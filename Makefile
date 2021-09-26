@@ -18,6 +18,9 @@ all: standard
 standard: CFLAGS += -march=native -s
 standard: rieMinerAVX2
 
+light: CFLAGS += -march=native -s -D LIGHT
+light: rieMinerL
+
 debug: CFLAGS += -march=native -g
 debug: rieMinerAVX2
 
@@ -43,6 +46,9 @@ rieMinerAVX2: main.o Miner.o StratumClient.o GBTClient.o Client.o Stats.o tools.
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
 rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o Stats.o tools.o mod_1_4.o mod_1_2_avx.o
+	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
+	
+rieMinerL: main.o Miner.o StratumClient.o GBTClient.o Client.o Stats.o tools.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
 main.o: main.cpp main.hpp Miner.hpp Client.hpp Stats.hpp tools.hpp

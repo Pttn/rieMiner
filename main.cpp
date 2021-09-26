@@ -265,10 +265,14 @@ int main(int argc, char** argv) {
 #endif
 	
 	std::cout << versionString;
+#ifdef LIGHT
+	std::cout << "L";
+#else
 #ifdef __AVX2__
 	std::cout << " + AVX2";
 #else
 	std::cout << " (no AVX2)";
+#endif
 #endif
 	std::cout << ", Riecoin miner by Pttn and contributors" << std::endl;
 	std::cout << "Project page: https://riecoin.dev/en/rieMiner" << std::endl;

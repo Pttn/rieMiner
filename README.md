@@ -10,25 +10,24 @@ Happy Mining or Good Luck on finding a new record!
 
 ## Minimum requirements
 
-Only x64 systems with SSE are supported. If you want to run rieMiner on other systems, in particular with x86 or ARM CPUs (this includes Raspberry Pis), you need to use the [Light branch](https://github.com/Pttn/rieMiner/tree/Light) and compile yourself the code. 
-
 * Windows 8.1 or recent enough Linux;
-* x64 CPU with SSE instruction set;
-* 1 GiB of RAM (the prime table limit must be manually set at a lower value in the options).
+* Virtually any usual 32 or 64 bits CPU (should work for any x86 since Pentium Pro and recent ARMs);
+* 512 MiB of RAM (the prime table limit must be manually set at a lower value in the options);
+* We only provide binaries for Windows and Linux x64. In the other cases, you must have access to an appropriate build environment and compile yourself the code.
 
 Recommended:
 
-* Windows 10 (latest version) or Debian 10;
-* Recent Intel or AMD, with 8 cores or more;
+* Windows 11 (latest version) or Debian 11;
+* Recent x64 with AVX2 (Intel Haswell, AMD Zen2, or better), with 8 cores or more;
 * 8 GiB (16 if using more than 8 cores) of RAM or more.
 
 ## Compile this program
 
-Compilation should work fine for the systems below. If not, please report any issue. However, if you are trying to compile on another system or an older version, you are on your own, please don't report any problem in these cases.
+Compilation should work fine for the systems below. If not, you are welcomed to report issues, however do not make reports when using an old OS.
 
-### On Debian/Ubuntu x64
+### Debian/Ubuntu
 
-You can compile this C++ program with g++, as, m4 and make, install them if needed. Then, get if needed the following dependencies:
+You can compile this C++ program with g++, as, m4 and make, install them if needed (as and m4 are not required if compiling on non-x64 platforms). Then, get if needed the following dependencies:
 
 * [GMP](https://gmplib.org/)
 * [libSSL](https://www.openssl.org/)
@@ -41,17 +40,28 @@ On a recent enough Debian or Ubuntu, you can easily install these by doing as ro
 apt install g++ make m4 git libgmp-dev libssl-dev libcurl4-openssl-dev nlohmann-json3-dev
 ```
 
-Then, just download the source files, go/`cd` to the directory, and do a simple make:
+Then, download the source files, go/`cd` to the directory:
 
 ```bash
 git clone https://github.com/Pttn/rieMiner.git
 cd rieMiner
+```
+
+If your platform is x64, do a simple make:
+
+```bash
 make
+```
+
+Otherwise (in x86, ARM,...), use
+
+```bash
+make light
 ```
 
 For other Linux, executing equivalent commands (using `pacman` instead of `apt`,...) should work.
 
-#### Static building
+#### Static building for x64
 
 rieMiner can be built statically, in order to have a binary that can be distributed. A script that retrieves the dependencies' source codes from Riecoin.dev and compile them is provided. If you use it, you should first ensure that you can decompress `tar.xz` and `tar.lz` (for GMP, usually you can install `lzip` for this) files using `tar`. If you already built the dependencies once, you can usually reuse existing `incs` and `libs` folders and skip this step, though the dependencies may be updated once a while on Riecoin.dev.
 
@@ -75,9 +85,11 @@ make staticAVX2
 
 Note that GLibC is still linked dynamically so rieMiner may fail to run on very old Linux distributions.
 
-### On Windows x64
+### On Windows x64 or x86
 
-You can compile rieMiner on Windows, and here is one way to do this. First, install [MSYS2](http://www.msys2.org/) (follow the instructions on the website), then enter in the MSYS **MinGW-w64** console, and install the tools and dependencies:
+You can compile rieMiner on Windows, and here is one way to do this. First, install [MSYS2](http://www.msys2.org/) (follow the instructions on the website).
+
+Then, for x64, enter in the MSYS **MinGW 64** console, and install the tools and dependencies:
 
 ```bash
 pacman -S make m4 git
@@ -88,9 +100,11 @@ pacman -S mingw-w64-x86_64-nlohmann-json
 
 Note that you must install the `mingw-w64-x86_64-...` packages and not just `gcc` or `curl`. Some dependencies are already included in others, for example GCC includes GMP.
 
+If building for x86, enter instead in the **MinGW 32** console and use the `mingw-w64-i686-...` prefix for the packages.
+
 Clone rieMiner with `git`, go to its directory with `cd`, and compile with `make` (same commands as Linux, see above).
 
-#### Static building
+#### Static building for x64
 
 The produced executable will only run in the MSYS console, or if all the needed DLLs are next to the executable. To obtain a standalone executable, you need to link statically the dependencies. For this, follow the static building instructions above in the MSYS MinGW-w64 console, they also work here.
 

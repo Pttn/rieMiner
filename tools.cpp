@@ -113,6 +113,7 @@ std::vector<uint8_t> bech32ToScriptPubKey(const std::string &address) {
 	return spk;
 }
 
+#ifndef LIGHT
 CpuID::CpuID() {
 	if (!__get_cpuid_max(0x80000004, NULL))
 		_brand = "Unknown CPU";
@@ -146,3 +147,4 @@ CpuID::CpuID() {
 		_avx512 = (ebx & (1 << 16)) != 0;
 	}
 }
+#endif
