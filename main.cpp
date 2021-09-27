@@ -60,6 +60,7 @@ bool Configuration::parse(const int argc, char** argv) {
 		std::cout << "\t./rieMiner Benchmark.conf" << std::endl;
 		std::cout << "\t./rieMiner SoloMining.conf Threads=7" << std::endl;
 		std::cout << "\t./rieMiner noconffile Mode=Pool Host=mining.example.com Port=5000 Username=username.worker Password=password" << std::endl;
+		waitForUser();
 		return false;
 	}
 	
@@ -77,6 +78,7 @@ bool Configuration::parse(const int argc, char** argv) {
 		std::cout << "https://riecoin.dev/en/rieMiner" << std::endl;
 		std::cout << "https://github.com/Pttn/rieMiner/" << std::endl;
 		std::cout << "https://riecoin.dev/en/rieMiner-Qt" << std::endl;
+		waitForUser();
 		return false;
 	}
 	
@@ -236,6 +238,7 @@ bool Configuration::parse(const int argc, char** argv) {
 			std::cout << "Payout address: " << _options.payoutAddress << std::endl;
 			if (scriptPubKey.size() == 0) {
 				std::cout << "Invalid payout address! Please check it. Note that only Bech32 addresses are supported." << std::endl;
+				waitForUser();
 				return false;
 			}
 			else
@@ -245,6 +248,7 @@ bool Configuration::parse(const int argc, char** argv) {
 			std::cout << "Consensus rules: " << formatContainer(_options.rules) << std::endl;
 			if (std::find(_options.rules.begin(), _options.rules.end(), "segwit") == _options.rules.end()) {
 				std::cout << "'segwit' rule must be present!" << std::endl;
+				waitForUser();
 				return false;
 			}
 		}

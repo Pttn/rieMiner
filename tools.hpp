@@ -86,6 +86,11 @@ inline double timeSince(const std::chrono::time_point<std::chrono::steady_clock>
 	return dt.count();
 }
 
+inline void waitForUser() {
+	std::cout << "Press Enter to continue...";
+	std::cin.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+}
+
 #ifndef LIGHT
 class CpuID {
 	std::string _brand;
