@@ -187,7 +187,7 @@ class Miner {
 	}
 public:
 	Miner(const Options &options) :
-		_mode(options.mode()), _parameters(MinerParameters()),
+		_mode(options.mode), _parameters(MinerParameters()),
 		_client(nullptr),
 		_inited(false), _running(false), _shouldRestart(false), _keepStats(false) {
 		_nPrimes = 0;

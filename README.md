@@ -166,7 +166,7 @@ For other Modes or more options, you need to know how to write a configuration f
 Option = Value
 ```
 
-It is case sensitive. A line starting with "#" will be ignored, as well as invalid ones. A single space or tab before or after "=" is also ignored. If an option is missing, the default value(s) will be used. If there are duplicate lines for the same option, the last one will be used.
+It is case sensitive. A line starting with `#` will be ignored, as well as invalid ones. Spaces or tabs just before or after `=` are also trimmed. If an option is missing, the default value(s) will be used. If there are duplicate lines for the same option, the last one will be used.
 
 Alternatively, command line options can be used like
 

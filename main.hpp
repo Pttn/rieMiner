@@ -71,7 +71,6 @@ struct MinerParameters {
 	uint64_t sieveBits, sieveSize, sieveWords, sieveIterations;
 	std::vector<uint64_t> pattern, primorialOffsets;
 	double restartDifficultyFactor;
-	
 	MinerParameters() :
 		threads(0), sieveWorkers(0), tupleLengthMin(0),
 		primorialNumber(0), primeTableLimit(0),
@@ -80,61 +79,40 @@ struct MinerParameters {
 		restartDifficultyFactor(1.03) {}
 };
 
-class Options {
-	MinerParameters _minerParameters;
-	std::string _host, _username, _password, _mode, _payoutAddress, _secret, _tuplesFile;
-	uint64_t _filePrimeTableLimit;
-	uint16_t _debug, _port, _threads, _donate;
-	double _refreshInterval, _difficulty, _benchmarkBlockInterval, _benchmarkTimeLimit;
-	uint64_t _benchmarkPrimeCountLimit;
-	std::vector<std::string> _rules;
-	std::vector<std::string> _options;
-	
-	void _parseLine(std::string, std::string&, std::string&) const;
-	void _stopConfig() const;
-	
-	public:
+struct Options {
+	MinerParameters minerParameters;
+	std::string host, username, password, mode, payoutAddress, secret, tuplesFile;
+	uint64_t filePrimeTableLimit;
+	uint16_t debug, port, donate;
+	double refreshInterval, difficulty, benchmarkBlockInterval, benchmarkTimeLimit;
+	uint64_t benchmarkPrimeCountLimit;
+	std::vector<std::string> rules;
 	Options() : // Default options: Standard Benchmark with 8 threads
-		_host("127.0.0.1"),
-		_username(""),
-		_password(""),
-		_mode("Benchmark"),
-		_payoutAddress("ric1qr3yxckxtl7lacvtuzhrdrtrlzvlydane2h37ja"),
-		_secret("/rM0.93a/"),
-		_tuplesFile("Tuples.txt"),
-		_filePrimeTableLimit(0),
-		_debug(0),
-		_port(28332),
-		_donate(2),
-		_refreshInterval(30.),
-		_difficulty(1024.),
-		_benchmarkBlockInterval(150.),
-		_benchmarkTimeLimit(86400.),
-		_benchmarkPrimeCountLimit(1000000),
-		_rules{"segwit"},
-		_options{} {}
-	
-	void loadFileOptions(const std::string&, const bool);
-	void loadCommandOptions(const int, char**);
-	void parseOptions();
-	
-	MinerParameters minerParameters() const {return _minerParameters;}
-	std::string mode() const {return _mode;}
-	std::string host() const {return _host;}
-	uint16_t port() const {return _port;}
-	std::string username() const {return _username;}
-	std::string password() const {return _password;}
-	std::string payoutAddress() const {return _payoutAddress;}
-	std::string secret() const {return _secret;}
-	std::string tuplesFile() const {return _tuplesFile;}
-	uint64_t filePrimeTableLimit() const {return _filePrimeTableLimit;}
-	uint16_t donate() const {return _donate;}
-	double refreshInterval() const {return _refreshInterval;}
-	double difficulty() const {return _difficulty;}
-	double benchmarkBlockInterval() const {return _benchmarkBlockInterval;}
-	double benchmarkTimeLimit() const {return _benchmarkTimeLimit;}
-	uint64_t benchmarkPrimeCountLimit() const {return _benchmarkPrimeCountLimit;}
-	std::vector<std::string> rules() const {return _rules;}
+		host("127.0.0.1"),
+		username(""),
+		password(""),
+		mode("Benchmark"),
+		payoutAddress("ric1qr3yxckxtl7lacvtuzhrdrtrlzvlydane2h37ja"),
+		secret("/rM0.93a/"),
+		tuplesFile("Tuples.txt"),
+		filePrimeTableLimit(0),
+		debug(0),
+		port(28332),
+		donate(2),
+		refreshInterval(30.),
+		difficulty(1024.),
+		benchmarkBlockInterval(150.),
+		benchmarkTimeLimit(86400.),
+		benchmarkPrimeCountLimit(1000000),
+		rules{"segwit"} {}
+};
+
+class Configuration {
+	Options _options;
+	std::optional<std::pair<std::string, std::string>> _parseLine(const std::string&) const;
+public:
+	bool parse(const int, char**);
+	Options options() const {return _options;}
 };
 
 #endif

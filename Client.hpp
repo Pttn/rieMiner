@@ -108,13 +108,13 @@ class GBTClient : public NetworkedClient {
 	void _submit(const Job& job); // Sends a pending result via submitblock
 public:
 	GBTClient(const Options &options) :
-		_rules(options.rules()),
-		_host(options.host()),
-		_url("http://" + options.host() + ":" + std::to_string(options.port()) + "/"),
-		_credentials(options.username() + ":" + options.password()),
-		_coinbaseMessage(options.secret()),
-		_donate(options.donate()),
-		_scriptPubKey(bech32ToScriptPubKey(options.payoutAddress())),
+		_rules(options.rules),
+		_host(options.host),
+		_url("http://" + options.host + ":" + std::to_string(options.port) + "/"),
+		_credentials(options.username + ":" + options.password),
+		_coinbaseMessage(options.secret),
+		_donate(options.donate),
+		_scriptPubKey(bech32ToScriptPubKey(options.payoutAddress)),
 		_curl(curl_easy_init()) {}
 	void connect();
 	void process();
@@ -152,7 +152,7 @@ class StratumClient : public NetworkedClient {
 	void _processMessage(const std::string&); // Processes a message received from the pool
 	void _submit(const Job&); // Submit share to pool with Mining.Submit
 public:
-	StratumClient(const Options &options) : _username(options.username()), _password(options.password()), _host(options.host()), _port(options.port()) {}
+	StratumClient(const Options &options) : _username(options.username), _password(options.password), _host(options.host), _port(options.port) {}
 	void connect(); // Also sends mining.subscribe
 	void process(); // Get messages from the server and calls _processMessage to handle them
 	Job getJob(const bool = false);
@@ -178,7 +178,7 @@ class BMClient : public Client {
 	uint32_t _height, _requests;
 	std::chrono::time_point<std::chrono::steady_clock> _timer;
 public:
-	BMClient(const Options &options) : _pattern(options.minerParameters().pattern), _difficulty(options.difficulty()), _blockInterval(options.benchmarkBlockInterval()), _height(0), _requests(0) {} // The timer is initialized at the first getJob call.
+	BMClient(const Options &options) : _pattern(options.minerParameters.pattern), _difficulty(options.difficulty), _blockInterval(options.benchmarkBlockInterval), _height(0), _requests(0) {} // The timer is initialized at the first getJob call.
 	void process();
 	Job getJob(const bool = false); // Dummy boolean to avoid prevent the block timer of Benchmark and Test Clients from starting when the miner initializes.
 	uint32_t currentHeight() const {return _height;}
@@ -194,7 +194,7 @@ class SearchClient : public Client {
 	// Client State Variables
 	std::mutex _tupleFileMutex;
 public:
-	SearchClient(const Options &options) : _pattern(options.minerParameters().pattern), _difficulty(options.difficulty()), _tuplesFilename(options.tuplesFile()) {
+	SearchClient(const Options &options) : _pattern(options.minerParameters.pattern), _difficulty(options.difficulty), _tuplesFilename(options.tuplesFile) {
 		std::cout << "Tuples will be written to file " << _tuplesFilename << std::endl;
 	}
 	Job getJob(const bool = false); // Work is generated here
