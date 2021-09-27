@@ -3,8 +3,7 @@
 incs
 libs
 *.o
-rieMiner
-rieMiner.exe
+rieMiner*
 
 # Per user configuration
 *.conf

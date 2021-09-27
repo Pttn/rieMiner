@@ -16,9 +16,11 @@ else
 fi
 
 tar -xf "${deps}.tar.gz"
-cd $deps
-./Build.sh
-mv incs ..
-mv libs ..
-cd ..
-rm -rf $deps
+if test ${1:-nobuild} = "build" ; then
+	cd $deps
+	./Build.sh
+	mv incs ..
+	mv libs ..
+	cd ..
+	rm -rf $deps
+fi

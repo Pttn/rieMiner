@@ -21,6 +21,11 @@ standard: rieMinerAVX2
 light: CFLAGS += -march=native -s -D LIGHT
 light: rieMinerL
 
+android: CXX    = $(shell printenv CXX)
+android: CFLAGS = -Wall -Wextra -std=c++17 -O3 -D LIGHT -I incs/
+android: LIBS   := -Wl,-Bstatic -static-libstdc++ -L libs/ $(LIBS) -Wl,-Bdynamic -Wl,--strip-all
+android: rieMinerL
+
 debug: CFLAGS += -march=native -g
 debug: rieMinerAVX2
 

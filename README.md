@@ -27,7 +27,7 @@ Compilation should work fine for the systems below. If not, you are welcomed to 
 
 ### Debian/Ubuntu
 
-You can compile this C++ program with g++, as, m4 and make, install them if needed (as and m4 are not required if compiling on non-x64 platforms). Then, get if needed the following dependencies:
+You can compile this C++ program with g++, as, m4 and make, install them if needed. Then, get if needed the following dependencies:
 
 * [GMP](https://gmplib.org/)
 * [libSSL](https://www.openssl.org/)
@@ -68,7 +68,7 @@ rieMiner can be built statically, in order to have a binary that can be distribu
 Run the script with
 
 ```bash
-sh GetDependencies.sh
+sh GetDependencies.sh build
 ```
 
 Then wait for the download and compilation to finish. The script must not have been interrupted by an error and the `incs` and `libs` folders must have appeared. Then, use
@@ -85,7 +85,7 @@ make staticAVX2
 
 Note that GLibC is still linked dynamically so rieMiner may fail to run on very old Linux distributions.
 
-### On Windows x64 or x86
+### Windows x64 or x86
 
 You can compile rieMiner on Windows, and here is one way to do this. First, install [MSYS2](http://www.msys2.org/) (follow the instructions on the website).
 
@@ -107,6 +107,48 @@ Clone rieMiner with `git`, go to its directory with `cd`, and compile with `make
 #### Static building for x64
 
 The produced executable will only run in the MSYS console, or if all the needed DLLs are next to the executable. To obtain a standalone executable, you need to link statically the dependencies. For this, follow the static building instructions above in the MSYS MinGW-w64 console, they also work here.
+
+### Android Arm64
+
+Here are instructions to cross-compile rieMiner for Android using a Linux distribution like Debian.
+
+Firstly, get the Android NDK Tools from [here](https://developer.android.com/ndk/downloads).
+
+You should now have an `android-ndk-r23` folder or similar somewhere, remember its path.
+
+Then, you may need to install basic build tools like `make`. Install them using your package manager, for example
+
+```bash
+apt install make m4 git
+```
+
+If later you still encounter error messages indicating that something was not found, try to install the missing tool.
+
+Now, get the rieMiner's source code.
+
+```bash
+git clone https://github.com/Pttn/rieMiner.git
+cd rieMiner
+```
+
+Download the dependencies' source codes, but do not build them yet.
+
+```bash
+sh GetDependencies.sh
+```
+
+You must now choose your target Android API Level. Each level correspond to a minimum Android version with which an application is compatible, for example API Level 30 corresponds to Android 11. A list can be found [here](https://developer.android.com/studio/releases/platforms). By default, it is set to 29.
+
+Then, replace accordingly the `export ANDROIDAPI` and `export NDK` lines in the the `BuildAndroid.sh` file in `rieMiner0.93Deps`, which was downloaded and extracted with the script above. Then, run this script to build the dependencies and rieMiner.
+
+```bash
+cd rieMiner0.93Deps
+sh BuildAndroid.sh
+```
+
+The binary is statically built and should work on any Arm64 Android with a high enough API.
+
+Warning: there is no built-in temperature control and you are responsible that the heat does not damage your device.
 
 ## Configure this program
 
