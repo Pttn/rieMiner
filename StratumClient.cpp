@@ -141,6 +141,19 @@ void StratumClient::_processMessage(const std::string &message) {
 			std::lock_guard<std::mutex> lock(_jobMutex);
 			_currentJobTemplate = newJobTemplate;
 		}
+		else if (method == "client.show_message") {
+			std::string messageToShow;
+			try {
+				nlohmann::json jsonParams(jsonMessage["params"]);
+				messageToShow = jsonParams[0];
+				std::cout << "Message from pool: \"" << messageToShow << "\"" << std::endl;
+			}
+			catch (std::exception &e) {
+				std::cout << "Received invalid client.show_message request - " << e.what() << std::endl;
+				std::cout << "Pool message was: " << message << std::endl;
+				return;
+			}
+		}
 		else {
 			DBG(std::cout << "Received request from pool with unsupported method " << method << std::endl;);
 			DBG(std::cout << "Pool message was: " << message << std::endl;);
