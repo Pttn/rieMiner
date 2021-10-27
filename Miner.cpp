@@ -1256,7 +1256,10 @@ void Miner::_manageTasks() {
 		int nRemainingSieves(_parameters.sieveWorkers);
 		while (nRemainingAdditionalPresieveTasks > 0) {
 			const TaskDoneInfo taskDoneInfo(_tasksDoneInfos.blocking_pop_front());
-			if (!_running) return;
+			if (!_running) {
+				for (auto &sieve : _sieves) sieve.presieveLock.unlock();
+				return;
+			}
 			if (taskDoneInfo.type == Task::Type::Presieve) nRemainingAdditionalPresieveTasks--;
 			else if (taskDoneInfo.type == Task::Type::Sieve) nRemainingSieves--;
 			else _works[taskDoneInfo.workIndex].nRemainingCheckTasks--;
