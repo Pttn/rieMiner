@@ -216,7 +216,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 	
 	uint32_t bitsForOffset;
 	// The primorial times the maximum factor should be smaller than the allowed limit for the target offset.
-	if (_mode == "Solo" || _mode == "Pool" || _mode == "Test")
+	if (_mode == "Solo" || _mode == "Pool")
 		bitsForOffset = std::floor(static_cast<double>(_difficultyAtInit)/_parameters.restartDifficultyFactor - 265.); // 1 . leading 8 bits . hash (256 bits) . remaining bits for the offset, and some margin to take in account the Difficulty fluctuations
 	else if (_mode == "Search")
 		bitsForOffset = std::floor(_difficultyAtInit - 97.); // 1 . leading 16 bits . random 80 bits . remaining bits for the offset

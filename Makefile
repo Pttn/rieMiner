@@ -47,6 +47,11 @@ staticAVX2: LIBS   := -Wl,-Bstatic -static-libstdc++ -L libs/ $(LIBS) -Wl,-Bdyna
 staticAVX2: rieMinerAVX2
 endif
 
+testServer: rieMinerTestServer
+
+rieMinerTestServer: TestServer.cpp
+	$(CXX) -Wall -Wextra -std=c++20 $^ -o $@
+
 rieMinerAVX2: main.o Miner.o StratumClient.o GBTClient.o Client.o Stats.o tools.o mod_1_4.o mod_1_2_avx.o mod_1_2_avx2.o fermat.o primetest.o primetest512.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 

@@ -98,7 +98,7 @@ bool Configuration::parse(const int argc, char** argv) {
 			catch (...) {_options.debug = 0;}
 		}
 		else if (key == "Mode") {
-			if (value == "Solo" || value == "Pool" || value == "Benchmark" || value == "Search" || value == "Test")
+			if (value == "Solo" || value == "Pool" || value == "Benchmark" || value == "Search")
 				_options.mode = value;
 			else std::cout << "Invalid mode!" << std::endl;
 		}
@@ -221,8 +221,6 @@ bool Configuration::parse(const int argc, char** argv) {
 		if (_options.minerParameters.pattern.size() == 0) // Pick a default pattern if none was chosen
 			_options.minerParameters.pattern = {0, 2, 4, 2, 4, 6, 2};
 	}
-	else if (_options.mode == "Test")
-		std::cout << "Test Mode" << std::endl;
 	else {
 		if (_options.mode == "Solo") std::cout << "Solo mining";
 		else if (_options.mode == "Pool") std::cout << "Pooled mining";
@@ -325,8 +323,6 @@ int main(int argc, char** argv) {
 		client = std::make_shared<StratumClient>(configuration.options());
 	else if (configuration.options().mode == "Search")
 		client = std::make_shared<SearchClient>(configuration.options());
-	else if (configuration.options().mode == "Test")
-		client = std::make_shared<TestClient>();
 	else
 		client = std::make_shared<BMClient>(configuration.options());
 	miner->setClient(client);

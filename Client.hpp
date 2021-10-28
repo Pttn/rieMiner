@@ -180,7 +180,7 @@ class BMClient : public Client {
 public:
 	BMClient(const Options &options) : _pattern(options.minerParameters.pattern), _difficulty(options.difficulty), _blockInterval(options.benchmarkBlockInterval), _height(0), _requests(0) {} // The timer is initialized at the first getJob call.
 	void process();
-	Job getJob(const bool = false); // Dummy boolean to avoid prevent the block timer of Benchmark and Test Clients from starting when the miner initializes.
+	Job getJob(const bool = false); // Dummy boolean to prevent the block timer of the Benchmark Client from starting when the miner initializes.
 	uint32_t currentHeight() const {return _height;}
 	double currentDifficulty() const {return _difficulty;}
 };
@@ -201,24 +201,6 @@ public:
 	void handleResult(const Job&); // Save tuple to file
 	uint32_t currentHeight() const {return 1;};
 	double currentDifficulty() const {return _difficulty;}
-};
-
-// Simulates various network situations to test/debug code.
-class TestClient : public NetworkedClient { // Actually not networked, but behaves like one
-	BlockHeader _bh;
-	uint32_t _height, _difficulty, _requests, _timeBeforeNextBlock;
-	std::vector<uint64_t> _currentPattern;
-	bool _starting; // Used to set the timer so the time taken to initialize the miner the first time not counted
-	std::chrono::time_point<std::chrono::steady_clock> _timer;
-	
-	bool _fetchWork();
-public:
-	TestClient() : _height(1), _difficulty(1600), _requests(0), _timeBeforeNextBlock(10), _currentPattern{0, 2, 4, 2, 4} {}
-	void connect();
-	void process();
-	Job getJob(const bool = false);
-	uint32_t currentHeight() const {return _connected ? _height : 0;};
-	double currentDifficulty() const {return _difficulty;};
 };
 
 #endif

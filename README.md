@@ -183,20 +183,7 @@ rieMiner proposes the following Modes depending on what you want to do. Use the 
 * `Solo`: solo mining via GetBlockTemplate;
 * `Pool`: pooled mining using Stratum;
 * `Benchmark`: test performance with a simulated and deterministic network (use this to compare different settings or share your benchmark results);
-* `Search`: pure prime constellation search (useful for record attempts);
-* `Test`: simulates various network situations for testing, see below.
-
-#### Test Mode
-
-It does the following:
-
-* Start at Difficulty 1600, the first time with constellation pattern 0, 2, 4, 2, 4;
-* Increases Difficulty by 10 every 10 s two times;
-* After 10 more seconds, sets Difficulty to 1200 and the constellation pattern to 0, 2, 4, 2, 4, 6, 2;
-* Decreases Difficulty by 20 every 10 s (the time taken to restart the miner is counted, so if it takes more than 10 s, it is normal that a new block appears immediately after the reinitialization);
-* The miner restarts several times due to the Difficulty variation (this adjusts some parameters if not set);
-* When the Difficulty reaches 1040, a disconnect is simulated;
-* Repeat (keeping the 7-tuple constellation). The miner will restart twice as when it disconnects, it is not aware that the Difficulty increased a lot.
+* `Search`: pure prime constellation search (useful for record attempts).
 
 ### Solo and Pooled Mining options
 
@@ -240,7 +227,7 @@ During mining, rieMiner will regularly print some statistics (use the `RefreshIn
 
 rieMiner will also notify if it found a block or a share, and if the network found a new block. If it finds a block or a share, it will tell if the submission was accepted (solo mining only) or not by the server.
 
-In Benchmark, Search and Test Modes, the behavior is essentially the same as Solo mining. In mining and Test Modes, the statistics are based on the tuples found during the latest five blocks, including the current one. In the other Modes, everything since the beginning is taken in account.
+In Benchmark and Search Modes, the behavior is essentially the same as Solo mining. In mining Modes, the statistics are based on the tuples found during the latest five blocks, including the current one, while in the other Modes, everything since the beginning is taken in account.
 
 ## Developers and license
 
@@ -267,12 +254,23 @@ Donations to the Riecoin Project are welcome (you can also set a higher Donate v
 * Riecoin: ric1qr3yxckxtl7lacvtuzhrdrtrlzvlydane2h37ja
 * Bitcoin: bc1qr3yxckxtl7lacvtuzhrdrtrlzvlydaneqela0u
 
+### Testing
+
+Code for a testing server is provided. It acts like a mining pool, and tests the rieMiner's behavior in various network situations like whether it restarts properly when the Difficulty increases a lot or if it reconnects when there are disconnects. It was only tested on Debian 11. The server can be built and run with
+
+```bash
+make testServer
+./rieMinerTestServer
+```
+
+Then, launch rieMiner using the `Pool` Mode and Port `3004`. Watch whether strange things happen, if there are crashes or deadlocks, test with several machines and different rieMiner parameters, run several loops, also do not hesitate to changes some parameters in the code...
+
 ### Quick contributor's checklist
 
 * Your code must compile and work on recent Debian based distributions, and Windows using MSYS;
 * If modifying the miner, you must ensure that your changes do not cause any performance loss. You have to do proper and long enough before/after benchmarks;
 * Document well non trivial contributions to the miner so other and future developers can understand easily and quickly the code;
-* rieMiner must work for any realistic setting, the Test Mode must work as expected;
+* rieMiner must work for any realistic setting, you should make tests with the Test Server;
 * Ensure that your changes did not break anything, even if it compiles. Examples (if applicable):
   * There should never be random (or not) segmentation faults or any other bug, try to do actual mining with Gdb, debugging symbols and Debug Mode enabled during hours or even days to catch possible bugs;
   * Ensure that valid work is produced (pools and Riecoin Core must not reject submissions);
