@@ -1,4 +1,4 @@
-// (c) 2021 Pttn (https://github.com/Pttn/rieMiner)
+// (c) 2021 Pttn (https://riecoin.dev/en/rieMiner)
 
 #include <chrono>
 #include <cstdio>

@@ -11,7 +11,7 @@
 
 #include "Client.hpp"
 
-constexpr const char* userAgent("rieMiner/0.93b");
+constexpr const char* userAgent("rieMiner/0.93");
 
 static std::array<uint8_t, 32> calculateMerkleRootStratum(const std::vector<std::array<uint8_t, 32>> &merkleBranches) {
 	std::array<uint8_t, 32> merkleRoot{};

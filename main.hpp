@@ -17,7 +17,7 @@
 
 using namespace std::string_literals;
 
-#define versionString	"rieMiner 0.93beta1"
+#define versionString	"rieMiner 0.93"
 #define primeTableFile	"PrimeTable64.bin"
 
 extern int DEBUG;
@@ -93,7 +93,7 @@ struct Options {
 		password(""),
 		mode("Benchmark"),
 		payoutAddress("ric1qr3yxckxtl7lacvtuzhrdrtrlzvlydane2h37ja"),
-		secret("/rM0.93b/"),
+		secret("/rM0.93/"),
 		tuplesFile("Tuples.txt"),
 		filePrimeTableLimit(0),
 		debug(0),
