@@ -440,12 +440,16 @@ void Miner::clear() {
 		std::cout << "Clearing miner's data..." << std::endl;
 		_inited = false;
 		for (auto &sieve : _sieves) {
-			delete sieve.factorsTable;
-			delete sieve.factorsToEliminate;
+			delete[] sieve.factorsTable;
+#ifndef LIGHT
+			delete[] reinterpret_cast<__m256i*>(sieve.factorsToEliminate);
+#else
+			delete[] sieve.factorsToEliminate;
+#endif
 			for (uint64_t j(0) ; j < _parameters.sieveIterations ; j++)
-				delete sieve.additionalFactorsToEliminate[j];
-			delete sieve.additionalFactorsToEliminate;
-			delete sieve.additionalFactorsToEliminateCounts;
+				delete[] sieve.additionalFactorsToEliminate[j];
+			delete[] sieve.additionalFactorsToEliminate;
+			delete[] sieve.additionalFactorsToEliminateCounts;
 		}
 		_sieves.clear();
 		_primes32.clear();
@@ -1177,11 +1181,11 @@ void Miner::_doTasks(const uint16_t id) { // Worker Threads run here until the m
 	}
 	// Thread clean up.
 	for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
-		delete factorsCacheCounts[i];
-		delete factorsCache[i];
+		delete[] factorsCacheCounts[i];
+		delete[] factorsCache[i];
 	}
-	delete factorsCacheCounts;
-	delete factorsCache;
+	delete[] factorsCacheCounts;
+	delete[] factorsCache;
 }
 
 void Miner::_manageTasks() {
@@ -1329,6 +1333,7 @@ void Miner::_suggestLessMemoryIntensiveOptions(const uint64_t suggestedPrimeTabl
 	std::cout << "Try to use the following options in the " << confPath << " configuration file and retry:" << std::endl;
 	std::cout << "PrimeTableLimit = " << suggestedPrimeTableLimit << std::endl;
 	std::cout << "SieveWorkers = " << suggestedSieveWorkers << std::endl;
+	waitForUser();
 }
 
 bool Miner::hasAcceptedPatterns(const std::vector<std::vector<uint64_t>> &acceptedPatterns) const {
