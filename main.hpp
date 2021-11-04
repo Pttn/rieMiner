@@ -17,6 +17,7 @@
 
 using namespace std::string_literals;
 
+#define versionShort	"0.93"
 #define versionString	"rieMiner 0.93"
 #define primeTableFile	"PrimeTable64.bin"
 
@@ -87,6 +88,7 @@ struct Options {
 	double refreshInterval, difficulty, benchmarkBlockInterval, benchmarkTimeLimit;
 	uint64_t benchmarkPrimeCountLimit;
 	std::vector<std::string> rules;
+	uint16_t apiPort;
 	Options() : // Default options: Standard Benchmark with 8 threads
 		host("127.0.0.1"),
 		username(""),
@@ -104,7 +106,8 @@ struct Options {
 		benchmarkBlockInterval(150.),
 		benchmarkTimeLimit(86400.),
 		benchmarkPrimeCountLimit(1000000),
-		rules{"segwit"} {}
+		rules{"segwit"},
+		apiPort(0) {}
 };
 
 class Configuration {

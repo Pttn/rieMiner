@@ -166,6 +166,8 @@ public:
 		std::cout << " ; Sh: " << _shares - _rejectedShares << "/" << _shares;
 		if (_shares > 0) std::cout << " (" << FIXED(1) << 100.*(static_cast<double>(_shares - _rejectedShares)/static_cast<double>(_shares)) << "%)";
 	}
+	uint32_t shares() const {return _shares;}
+	uint32_t sharesRejected() const {return _rejectedShares;}
 };
 
 // For BenchMarking, emulates a client to allow similar conditions to actual mining by providing

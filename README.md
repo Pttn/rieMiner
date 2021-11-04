@@ -217,7 +217,8 @@ rieMiner proposes the following Modes depending on what you want to do. Use the 
 * `PrimorialOffsets`: list of offsets from a primorial multiple to use for the sieve process, separated by commas. If empty, a default one will be chosen if possible (see main.hpp source file), otherwise rieMiner will not start (if the chosen constellation pattern is not in main.hpp). Default: empty;
 * `RefreshInterval`: refresh rate of the stats in seconds. <= 0 to disable them and only notify when a long enough tuple or share is found, or when the network finds a block. Default: 30;
 * `GeneratePrimeTableFileUpTo`: if > 1, generates the table of primes up to the given limit and saves it to a `PrimeTable64.bin` file, which will be reused instead of recomputing the table at every miner initialization. This does not affect mining, but is useful if restarting rieMiner often with large Prime Table Limits, notably for debugging or benchmarks. However, the file will take a few GB of disk space for large limits and you should have a fast SSD. Default: 0;
-* `Debug`: activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, 0 to disable. Other values may introduce some more specific debug messages. Default : 0.
+* `Debug`: activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, 0 to disable. Other values may introduce some more specific debug messages. Default : 0;
+* `APIPort`: sets the port to use for the rieMiner's API server. 0 to disable the API. Default : 0.
 
 ## Interface
 
@@ -228,6 +229,25 @@ During mining, rieMiner will regularly print some statistics (use the `RefreshIn
 rieMiner will also notify if it found a block or a share, and if the network found a new block. If it finds a block or a share, it will tell if the submission was accepted (solo mining only) or not by the server.
 
 In Benchmark and Search Modes, the behavior is essentially the same as Solo mining. In mining Modes, the statistics are based on the tuples found during the latest five blocks, including the current one, while in the other Modes, everything since the beginning is taken in account.
+
+### API
+
+A basic API server is implemented in rieMiner. Currently, it only provides simple statistics and the version, and it will be improved and completed in the future. Use the `APIPort` option to choose the port. Methods:
+
+* `getstats`/`getstatsjson`: `getstats` returns the following stats in a simple format (one line per entry) for easy parsing: whether the miner is running (true of false), since how much time in s, the candidates/s, the ratio, the blocks/day, the mining power, the number of shares found and the number of rejected shares (both always 0 if not pooled mining). `getstatsjson` formats these in JSON;
+* `getminerinfo`/`getminerinfojson`: `getminerinfo` returns the miner's name and the version (one line per entry). `getminerinfojson` formats these in JSON.
+
+If you have `netcat`, you can do for example
+
+```bash
+echo -n getstatsjson | nc localhost 2001
+```
+
+to get
+
+```bash
+{"running": true, "uptime": 1547.53, "cps": 15286.2, "r": 16.5296, "bpd": 3.91715, "miningpower": 0.433537, "shares": 169, "sharesrejected": 0}
+```
 
 ## Developers and license
 

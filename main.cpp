@@ -10,6 +10,7 @@
 #else
 	#include <winsock2.h>
 #endif
+#include "API.hpp"
 #include "Client.hpp"
 #include "main.hpp"
 #include "Miner.hpp"
@@ -18,6 +19,7 @@
 int DEBUG(0);
 std::string confPath("rieMiner.conf");
 bool running(false);
+std::shared_ptr<API> api(nullptr);
 std::shared_ptr<Miner> miner(nullptr);
 std::shared_ptr<Client> client(nullptr);
 
@@ -202,6 +204,10 @@ bool Configuration::parse(const int argc, char** argv) {
 			std::string tmp;
 			while (offsets >> tmp) _options.rules.push_back(tmp);
 		}
+		else if (key == "APIPort") {
+			try {_options.apiPort = std::stoi(value);}
+			catch (...) {_options.apiPort = 0U;}
+		}
 		else std::cout << "Ignoring line with unused key '" << key << "'" << std::endl;
 	}
 	DEBUG = _options.debug;
@@ -258,9 +264,10 @@ bool Configuration::parse(const int argc, char** argv) {
 
 void signalHandler(int signum) {
 	std::cout << std::endl << "Signal " << signum << " received, stopping rieMiner." << std::endl;
-	if (miner == nullptr) exit(0);
-	if (miner->inited()) miner->stop();
-	else exit(0);
+	if (miner == nullptr || api == nullptr) exit(0);
+	if (api->running()) api->stop();
+	if (!miner->inited()) exit(0);
+	miner->stop();
 	running = false;
 }
 
@@ -326,6 +333,12 @@ int main(int argc, char** argv) {
 	else
 		client = std::make_shared<BMClient>(configuration.options());
 	miner->setClient(client);
+	api = std::make_shared<API>(configuration.options().apiPort);
+	if (configuration.options().apiPort != 0) {
+		api->setMiner(miner);
+		api->setClient(client);
+		api->start();
+	}
 	
 	std::chrono::time_point<std::chrono::steady_clock> timer;
 	running = true;

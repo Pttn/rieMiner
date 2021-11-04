@@ -52,13 +52,13 @@ testServer: rieMinerTestServer
 rieMinerTestServer: TestServer.cpp
 	$(CXX) -Wall -Wextra -std=c++20 $^ -o $@
 
-rieMinerAVX2: main.o Miner.o StratumClient.o GBTClient.o Client.o Stats.o tools.o mod_1_4.o mod_1_2_avx.o mod_1_2_avx2.o fermat.o primetest.o primetest512.o
+rieMinerAVX2: main.o Miner.o StratumClient.o GBTClient.o Client.o API.o Stats.o tools.o mod_1_4.o mod_1_2_avx.o mod_1_2_avx2.o fermat.o primetest.o primetest512.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
-rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o Stats.o tools.o mod_1_4.o mod_1_2_avx.o
+rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o API.o Stats.o tools.o mod_1_4.o mod_1_2_avx.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 	
-rieMinerL: main.o Miner.o StratumClient.o GBTClient.o Client.o Stats.o tools.o
+rieMinerL: main.o Miner.o StratumClient.o GBTClient.o Client.o API.o Stats.o tools.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
 main.o: main.cpp main.hpp Miner.hpp Client.hpp Stats.hpp tools.hpp
@@ -75,6 +75,9 @@ GBTClient.o: GBTClient.cpp
 
 Client.o: Client.cpp
 	$(CXX) $(CFLAGS) -c -o $@ Client.cpp
+
+API.o: API.cpp
+	$(CXX) $(CFLAGS) -c -o $@ API.cpp
 
 Stats.o: Stats.cpp
 	$(CXX) $(CFLAGS) -c -o $@ Stats.cpp

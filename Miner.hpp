@@ -212,6 +212,8 @@ public:
 	bool running() {return _running;}
 	bool shouldRestart() {return _shouldRestart;}
 	
+	Stats getStats() const {return _statManager.stats(true);}
+	Stats getStatsRecent() const {return _statManager.stats(false);}
 	void printStats() const;
 	bool benchmarkFinishedTimeOut(const double) const;
 	bool benchmarkFinishedEnoughPrimes(const uint64_t) const;
