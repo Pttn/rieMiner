@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iomanip>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <unistd.h>
