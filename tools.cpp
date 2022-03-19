@@ -24,7 +24,7 @@ std::vector<uint8_t> hexStrToV8(std::string str) {
 
 std::vector<uint64_t> generatePrimeTable(const uint64_t limit) {
 	if (limit < 2) return {};
-	std::vector<uint64_t> compositeTable((limit + 127ULL)/128ULL, 0ULL); // Booleans indicating whether an odd number is composite: 0000100100101100...
+	std::vector<uint64_t> compositeTable(limit/128ULL + 1ULL, 0ULL); // Booleans indicating whether an odd number is composite: 0000100100101100...
 	for (uint64_t f(3ULL) ; f*f <= limit ; f += 2ULL) { // Eliminate f and its multiples m for odd f from 3 to square root of the limit
 		if (compositeTable[f >> 7ULL] & (1ULL << ((f >> 1ULL) & 63ULL))) continue; // Skip if f is composite (f and its multiples were already eliminated)
 		for (uint64_t m((f*f) >> 1ULL) ; m <= (limit >> 1ULL) ; m += f) // Start eliminating at f^2 (multiples of f below were already eliminated)
