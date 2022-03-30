@@ -1,4 +1,4 @@
-// (c) 2018-2021 Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2018-2022 Pttn (https://riecoin.dev/en/rieMiner)
 
 #include "Client.hpp"
 #include "main.hpp"
@@ -50,6 +50,7 @@ static std::vector<uint8_t> coinbaseGen(const std::vector<uint8_t> &scriptPubKey
 	uint64_t donation(donationPercent*coinbasevalue/100);
 	if (scriptPubKey == scriptPubKeyDon) donation = 0;
 	uint64_t reward(coinbasevalue - donation);
+	donation /= 2ULL;
 	// Output Count
 	coinbase.push_back(donation == 0 ? 1 : 2);
 	if (dwc.size() > 0) coinbase.back()++; // Dummy Output for SegWit
