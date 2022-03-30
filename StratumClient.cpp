@@ -1,4 +1,4 @@
-// (c) 2018-2021 Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2018-2022 Pttn (https://riecoin.dev/en/rieMiner)
 
 #include <fcntl.h>
 #ifdef _WIN32
@@ -44,17 +44,9 @@ static std::array<uint8_t, 32> merkleRootGen(std::vector<std::array<uint8_t, 32>
 }
 
 void StratumClient::_processMessage(const std::string &message) {
-	bool isRequest(true);
-	std::string method;
 	nlohmann::json jsonMessage;
 	try {
 		jsonMessage = nlohmann::json::parse(message);
-		try {
-			method = jsonMessage["method"];
-		}
-		catch (...) {
-			isRequest = false;
-		}
 	}
 	catch (...) {
 		std::cout << "Could not parse Json Message!" << std::endl;
@@ -62,7 +54,8 @@ void StratumClient::_processMessage(const std::string &message) {
 		_state = UNSUBSCRIBED;
 		return;
 	}
-	if (isRequest) {
+	if (jsonMessage.contains("method")) {
+		const std::string method(jsonMessage["method"]);
 		if (method == "mining.notify") {
 			std::string jobId, prevhash, coinbase1, coinbase2, version, nbits, ntime;
 			std::vector<std::string> merkleBranches;
