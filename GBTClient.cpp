@@ -161,12 +161,14 @@ bool GBTClient::_fetchJob() {
 		newJobTemplate.job.clientData.bh.curtime = getblocktemplateResult["curtime"];
 		newJobTemplate.job.clientData.bh.bits = std::stoll(std::string(getblocktemplateResult["bits"]), nullptr, 16);
 		newJobTemplate.coinbasevalue = getblocktemplateResult["coinbasevalue"];
+		std::vector<std::array<uint8_t, 32>> wTxIds{std::array<uint8_t, 32>{}};
 		for (const auto &transaction : getblocktemplateResult["transactions"]) {
 			const std::vector<uint8_t> txId(reverse(hexStrToV8(transaction["txid"])));
 			newJobTemplate.job.clientData.transactionsHex += transaction["data"];
 			newJobTemplate.txHashes.push_back(v8ToA8(txId));
+			wTxIds.push_back(v8ToA8(reverse(hexStrToV8(transaction["hash"]))));
 		}
-		newJobTemplate.default_witness_commitment = getblocktemplateResult["default_witness_commitment"];
+		newJobTemplate.default_witness_commitment = "6a24aa21a9ed" + v8ToHexStr(a8ToV8(calculateMerkleRoot({calculateMerkleRoot(wTxIds), std::array<uint8_t, 32>{}})));
 		newJobTemplate.job.clientData.txCount = newJobTemplate.txHashes.size() + 1; // Include Coinbase
 		newJobTemplate.job.height = getblocktemplateResult["height"];
 		newJobTemplate.job.powVersion = getblocktemplateResult["powversion"];
