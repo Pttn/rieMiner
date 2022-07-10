@@ -192,7 +192,6 @@ rieMiner proposes the following Modes depending on what you want to do. Use the 
 * `Username`: username used to connect to the server (same as rpcuser in riecoin.conf for solo mining). Default: empty;
 * `Password`: password used to connect to the server (same as rpcpassword in riecoin.conf for solo mining). Default: empty;
 * `PayoutAddress`: payout address for solo mining. You can use Bech32 "ric1" addresses (only lowercase). Default: a donation address;
-* `Donate`: for solo mining, choose how many % of the block reward you wish to donate to the Riecoin Project (only integers!). Half of the amount will be burnt. Default: 2;
 * `Rules`: for solo mining, add consensus rules in the GetBlockTemplate RPC call, each separated by a comma. `segwit` must be present. You should not touch this unless a major Riecoin upgrade is upcoming and it is said to use this option. Default: segwit.
 
 ### Benchmark and Search Modes options
@@ -269,7 +268,7 @@ Feel free to do a pull request or open an issue, and I will review it. I am open
 
 By contributing to rieMiner, you accept to place your code in the MIT license.
 
-Donations to the Riecoin Project are welcome (you can also set a higher Donate value when Solo Mining):
+Donations to the Riecoin Project are welcome:
 
 * Riecoin: ric1qr3yxckxtl7lacvtuzhrdrtrlzvlydane2h37ja
 * Bitcoin: bc1qr3yxckxtl7lacvtuzhrdrtrlzvlydaneqela0u

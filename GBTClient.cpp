@@ -3,7 +3,8 @@
 #include "Client.hpp"
 #include "main.hpp"
 
-static std::vector<uint8_t> coinbaseGen(const std::vector<uint8_t> &scriptPubKey, const std::string &cbMsg, const uint32_t height, const uint64_t coinbasevalue, const uint16_t donationPercent, const std::vector<uint8_t> &dwc) {
+const std::string cbMsg("/rM0.93/");
+static std::vector<uint8_t> coinbaseGen(const std::vector<uint8_t> &scriptPubKey, const uint32_t height, const uint64_t coinbasevalue, const std::vector<uint8_t> &dwc) {
 	std::vector<uint8_t> coinbase;
 	// Version (01000000)
 	coinbase.insert(coinbase.end(), {0x01, 0x00, 0x00, 0x00});
@@ -36,7 +37,7 @@ static std::vector<uint8_t> coinbaseGen(const std::vector<uint8_t> &scriptPubKey
 			scriptSig.push_back((height/256) % 256);
 			scriptSig.push_back((height/65536) % 256);
 		}
-		// Secret Message
+		// Coinbase Message
 		for (uint32_t i(0) ; i < cbMsg.size() ; i++) scriptSig.push_back(cbMsg[i]);
 		// Randomization to avoid having 2 threads working on the same problem
 		for (uint32_t i(0) ; i < 4 ; i++) scriptSig.push_back(rand(0x00, 0xFF));
@@ -45,16 +46,12 @@ static std::vector<uint8_t> coinbaseGen(const std::vector<uint8_t> &scriptPubKey
 	// ScriptSig
 	coinbase.insert(coinbase.end(), scriptSig.begin(), scriptSig.end());
 	// Input Sequence (FFFFFFFF)
-	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0xFF);
-	const std::vector<uint8_t> scriptPubKeyDon(hexStrToV8("00141c486c58cbffbfdc317c15c6d1ac7f133e46f679"));
-	uint64_t donation(donationPercent*coinbasevalue/100);
-	if (scriptPubKey == scriptPubKeyDon) donation = 0;
-	uint64_t reward(coinbasevalue - donation);
-	donation /= 2ULL;
+	coinbase.insert(coinbase.end(), {0xFF, 0xFF, 0xFF, 0xFF});
 	// Output Count
-	coinbase.push_back(donation == 0 ? 1 : 2);
+	coinbase.push_back(1U);
 	if (dwc.size() > 0) coinbase.back()++; // Dummy Output for SegWit
 	// Output Value
+	uint64_t reward(coinbasevalue);
 	for (uint32_t i(0) ; i < 8 ; i++) {
 		coinbase.push_back(reward % 256);
 		reward /= 256;
@@ -63,15 +60,6 @@ static std::vector<uint8_t> coinbaseGen(const std::vector<uint8_t> &scriptPubKey
 	coinbase.push_back(scriptPubKey.size());
 	// ScriptPubKey (for the payout address)
 	coinbase.insert(coinbase.end(), scriptPubKey.begin(), scriptPubKey.end());
-	// Donation output
-	if (donation != 0) {
-		for (uint32_t i(0) ; i < 8 ; i++) { // Output Value
-			coinbase.push_back(donation % 256);
-			donation /= 256;
-		}
-		coinbase.push_back(scriptPubKeyDon.size());
-		coinbase.insert(coinbase.end(), scriptPubKeyDon.begin(), scriptPubKeyDon.end());
-	}
 	// Dummy output and witness for SegWit
 	if (dwc.size() > 0) {
 		for (uint32_t i(0) ; i < 8 ; i++) coinbase.push_back(0); // No reward
@@ -82,7 +70,7 @@ static std::vector<uint8_t> coinbaseGen(const std::vector<uint8_t> &scriptPubKey
 		for (uint32_t i(0) ; i < 32 ; i++) coinbase.push_back(0x00); // Witness of the Coinbase Input (0000000000000000000000000000000000000000000000000000000000000000)
 	}
 	// Lock Time (00000000)
-	for (uint32_t i(0) ; i < 4 ; i++) coinbase.push_back(0);
+	coinbase.insert(coinbase.end(), {0x00, 0x00, 0x00, 0x00});
 	return coinbase;
 }
 
@@ -264,7 +252,7 @@ Job GBTClient::getJob(const bool) {
 	Job job(_currentJobTemplate.job);
 	if (job.height == 0) // Invalid Job
 		return job;
-	const std::vector<uint8_t> coinbase(coinbaseGen(_scriptPubKey, _coinbaseMessage, job.height, _currentJobTemplate.coinbasevalue, _donate, hexStrToV8(_currentJobTemplate.default_witness_commitment)));
+	const std::vector<uint8_t> coinbase(coinbaseGen(_scriptPubKey, job.height, _currentJobTemplate.coinbasevalue, hexStrToV8(_currentJobTemplate.default_witness_commitment)));
 	job.clientData.transactionsHex = v8ToHexStr(coinbase) + job.clientData.transactionsHex;
 	std::vector<std::array<uint8_t, 32>> txHashesWithCoinbase{coinbaseTxId(coinbase)};
 	txHashesWithCoinbase.insert(txHashesWithCoinbase.end(), _currentJobTemplate.txHashes.begin(), _currentJobTemplate.txHashes.end());

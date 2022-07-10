@@ -1,4 +1,4 @@
-// (c) 2017-2021 Pttn and contributors (https://riecoin.dev/en/rieMiner)
+// (c) 2017-2022 Pttn and contributors (https://riecoin.dev/en/rieMiner)
 
 #include <iomanip>
 #include <nlohmann/json.hpp>
@@ -112,7 +112,6 @@ bool Configuration::parse(const int argc, char** argv) {
 		else if (key == "Username") _options.username = value;
 		else if (key == "Password") _options.password = value;
 		else if (key == "PayoutAddress") _options.payoutAddress = value;
-		else if (key == "Secret!!!") _options.secret = value;
 		else if (key == "Threads") {
 			try {_options.minerParameters.threads = std::stoi(value);}
 			catch (...) {_options.minerParameters.threads = 0;}
@@ -146,11 +145,6 @@ bool Configuration::parse(const int argc, char** argv) {
 		else if (key == "TupleLengthMin") {
 			try {_options.minerParameters.tupleLengthMin = std::stoi(value);}
 			catch (...) {_options.minerParameters.tupleLengthMin = 0;}
-		}
-		else if (key == "Donate") {
-			try {_options.donate = std::stoi(value);}
-			catch (...) {_options.donate = 2;}
-			if (_options.donate > 99) _options.donate = 99;
 		}
 		else if (key == "RefreshInterval") {
 			try {_options.refreshInterval = std::stod(value);}
@@ -247,8 +241,6 @@ bool Configuration::parse(const int argc, char** argv) {
 			}
 			else
 				std::cout << "  ScriptPubKey: " << v8ToHexStr(scriptPubKey) << std::endl;
-			if (_options.donate > 0) std::cout << "Donating " << _options.donate << "% to the Riecoin Project" << std::endl;
-			else std::cout << "You Meanie!" << std::endl;
 			std::cout << "Consensus rules: " << formatContainer(_options.rules) << std::endl;
 			if (std::find(_options.rules.begin(), _options.rules.end(), "segwit") == _options.rules.end()) {
 				std::cout << "'segwit' rule must be present!" << std::endl;

@@ -1,4 +1,4 @@
-// (c) 2017-2021 Pttn and contributors (https://riecoin.dev/en/rieMiner)
+// (c) 2017-2022 Pttn and contributors (https://riecoin.dev/en/rieMiner)
 
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
@@ -83,9 +83,9 @@ struct MinerParameters {
 
 struct Options {
 	MinerParameters minerParameters;
-	std::string host, username, password, mode, payoutAddress, secret, tuplesFile;
+	std::string host, username, password, mode, payoutAddress, tuplesFile;
 	uint64_t filePrimeTableLimit;
-	uint16_t debug, port, donate;
+	uint16_t debug, port;
 	double refreshInterval, difficulty, benchmarkBlockInterval, benchmarkTimeLimit;
 	uint64_t benchmarkPrimeCountLimit;
 	std::vector<std::string> rules;
@@ -96,12 +96,10 @@ struct Options {
 		password(""),
 		mode("Benchmark"),
 		payoutAddress("ric1qr3yxckxtl7lacvtuzhrdrtrlzvlydane2h37ja"),
-		secret("/rM0.93/"),
 		tuplesFile("Tuples.txt"),
 		filePrimeTableLimit(0),
 		debug(0),
 		port(28332),
-		donate(2),
 		refreshInterval(30.),
 		difficulty(1024.),
 		benchmarkBlockInterval(150.),

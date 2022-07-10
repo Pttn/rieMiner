@@ -1,4 +1,4 @@
-// (c) 2017-2021 Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2017-2022 Pttn (https://riecoin.dev/en/rieMiner)
 
 #ifndef HEADER_Client_hpp
 #define HEADER_Client_hpp
@@ -88,8 +88,7 @@ public:
 class GBTClient : public NetworkedClient {
 	// Options
 	const std::vector<std::string> _rules;
-	const std::string _host, _url, _credentials, _coinbaseMessage;
-	const uint16_t _donate;
+	const std::string _host, _url, _credentials;
 	const std::vector<uint8_t> _scriptPubKey;
 	// Client State Variables
 	CURL *_curl;
@@ -112,8 +111,6 @@ public:
 		_host(options.host),
 		_url("http://" + options.host + ":" + std::to_string(options.port) + "/"),
 		_credentials(options.username + ":" + options.password),
-		_coinbaseMessage(options.secret),
-		_donate(options.donate),
 		_scriptPubKey(bech32ToScriptPubKey(options.payoutAddress)),
 		_curl(curl_easy_init()) {}
 	void connect();
