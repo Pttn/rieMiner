@@ -103,11 +103,11 @@ void Miner::init(const MinerParameters &minerParameters) {
 	}
 	
 	if (_parameters.primeTableLimit == 0) {
-#ifndef LIGHT
-		constexpr uint64_t primeTableLimitMax(2147483648ULL);
-#else
-		constexpr uint64_t primeTableLimitMax(1073741824ULL);
-#endif
+		uint64_t primeTableLimitMax(2147483648ULL);
+		if (sysInfo.getPhysicalMemory() < 1073741824ULL)
+			primeTableLimitMax = 268435456ULL;
+		else if (sysInfo.getPhysicalMemory() < 8589934592ULL)
+			primeTableLimitMax = sysInfo.getPhysicalMemory()/4ULL;
 		_parameters.primeTableLimit = std::pow(_difficultyAtInit, 6.)/std::pow(2., 3.*static_cast<double>(_parameters.pattern.size()) + 7.);
 		if (_parameters.threads > 16) {
 			_parameters.primeTableLimit *= 16;
@@ -188,12 +188,12 @@ void Miner::init(const MinerParameters &minerParameters) {
 	_nPrimes32 = _primes32.size();
 	primes.clear();
 
-	if (_parameters.sieveBits == 0)
-#ifndef LIGHT
-		_parameters.sieveBits = _parameters.sieveWorkers <= 4 ? 25 : 24;
-#else
-		_parameters.sieveBits = _parameters.sieveWorkers <= 4 ? 23 : 22;
-#endif
+	if (_parameters.sieveBits == 0) {
+		if (sysInfo.getCpuArchitecture() == "x64")
+			_parameters.sieveBits = _parameters.sieveWorkers <= 4 ? 25 : 24;
+		else
+			_parameters.sieveBits = _parameters.sieveWorkers <= 4 ? 23 : 22;
+	}
 	_parameters.sieveSize = 1 << _parameters.sieveBits;
 	_parameters.sieveWords = _parameters.sieveSize/64;
 	std::cout << "Sieve Size: " << "2^" << _parameters.sieveBits << " = " << _parameters.sieveSize << " (" << _parameters.sieveWords << " words)" << std::endl;
