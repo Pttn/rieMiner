@@ -1,4 +1,4 @@
-// (c) 2017-2021 Pttn and contributors (https://riecoin.dev/en/rieMiner)
+// (c) 2017-2022 Pttn and contributors (https://riecoin.dev/en/rieMiner)
 
 #ifndef HEADER_Miner_hpp
 #define HEADER_Miner_hpp
@@ -118,9 +118,6 @@ class Miner {
 	StatManager _statManager;
 	std::thread _masterThread;
 	std::vector<std::thread> _workerThreads;
-#ifndef LIGHT
-	CpuID _cpuInfo;
-#endif
 	// Miner data (generated in init)
 	mpz_class _primorial;
 	uint64_t _nPrimes, _nPrimes32, _factorMax, _primesIndexThreshold;

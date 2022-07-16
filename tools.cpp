@@ -1,4 +1,4 @@
-// (c) 2018-2021 Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2018-2022 Pttn (https://riecoin.dev/en/rieMiner)
 // (c) 2018 Michael Bell/Rockhawk (CPUID tools)
 
 #include "tools.hpp"
@@ -113,31 +113,58 @@ std::vector<uint8_t> bech32ToScriptPubKey(const std::string &address) {
 	return spk;
 }
 
-#ifndef LIGHT
-CpuID::CpuID() {
-	if (!__get_cpuid_max(0x80000004, NULL))
-		_brand = "Unknown CPU";
-	else {
+
+#if defined(__x86_64__) || defined(__i586__)
+#include <cpuid.h>
+#define CPUID
+#endif
+#if defined(__linux__)
+#include <sys/sysinfo.h>
+#elif defined(_WIN32)
+#include <sysinfoapi.h>
+#endif
+
+SysInfo::SysInfo() : _os("Unknown/Unsupported OS"), _cpuArchitecture("Unknown Architecture"), _cpuBrand("Unknown CPU"), _physicalMemory(0ULL), _avx(false), _avx2(false), _avx512(false) {
+#if defined(__linux__)
+	_os = "Linux";
+	struct sysinfo si;
+	if (sysinfo(&si) == 0)
+		_physicalMemory = si.totalram;
+#elif defined(_WIN32)
+	_os = "Windows";
+	MEMORYSTATUSEX statex;
+	statex.dwLength = sizeof(statex);
+	if (GlobalMemoryStatusEx(&statex) != 0)
+		_physicalMemory = statex.ullTotalPhys;
+#endif
+#if defined(__x86_64__)
+	_cpuArchitecture = "x64";
+	_cpuBrand = "Unknown x64 CPU";
+#elif defined(__i386__)
+	_cpuArchitecture = "x86";
+	_cpuBrand = "Unknown x86 CPU";
+#elif defined(__aarch64__)
+	_cpuArchitecture = "Arm64";
+	_cpuBrand = "Unknown Arm64 CPU";
+#elif defined(__arm__)
+	_cpuArchitecture = "Arm";
+	_cpuBrand = "Unknown Arm32 CPU";
+#endif
+#if defined(CPUID)
+	if (__get_cpuid_max(0x80000004, nullptr)) {
 		uint32_t brand[64];
 		__get_cpuid(0x80000002, brand    , brand + 1, brand +  2, brand + 3);
 		__get_cpuid(0x80000003, brand + 4, brand + 5, brand +  6, brand + 7);
 		__get_cpuid(0x80000004, brand + 8, brand + 9, brand + 10, brand + 11);
-		_brand = reinterpret_cast<char*>(brand);
+		_cpuBrand = reinterpret_cast<char*>(brand);
 	}
 	
 	uint32_t eax(0), ebx(0), ecx(0), edx(0);
 	__get_cpuid(0, &eax, &ebx, &ecx, &edx);
-	if (eax < 7) {
-		_avx = false;
-		_avx2 = false;
-		_avx512 = false;
-	}
-	else {
+	if (eax >= 7) {
 		__get_cpuid(1, &eax, &ebx, &ecx, &edx);
 		_avx = (ecx & (1 << 28)) != 0;
-
-		// Must do this with inline assembly as __get_cpuid is unreliable for level 7
-		// and __get_cpuid_count is not always available.
+		// Must do this with inline assembly as __get_cpuid is unreliable for level 7 and __get_cpuid_count is not always available.
 		//__get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx);
 		uint32_t level(7), zero(0);
 		asm ("cpuid\n\t"
@@ -146,5 +173,5 @@ CpuID::CpuID() {
 		_avx2 = (ebx & (1 << 5)) != 0;
 		_avx512 = (ebx & (1 << 16)) != 0;
 	}
-}
 #endif
+}

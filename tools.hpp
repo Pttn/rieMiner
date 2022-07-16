@@ -1,5 +1,5 @@
-// (c) 2018-2021 Pttn (https://riecoin.dev/en/rieMiner)
-// (c) 2018 Michael Bell/Rockhawk (CPUID tools)
+// (c) 2018-2022 Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2018 Michael Bell/Rockhawk (CPUID Avx detection)
 
 #ifndef HEADER_tools_hpp
 #define HEADER_tools_hpp
@@ -18,9 +18,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#ifndef LIGHT
-#include <cpuid.h>
-#endif
 #include <gmpxx.h>
 
 #define leading0s(x) std::setw(x) << std::setfill('0')
@@ -91,19 +88,6 @@ inline void waitForUser() {
 	std::cin.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
 }
 
-#ifndef LIGHT
-class CpuID {
-	std::string _brand;
-	bool _avx, _avx2, _avx512;
-public:
-	CpuID();
-	std::string getBrand() const {return _brand;}
-	bool hasAVX() const {return _avx;}
-	bool hasAVX2() const {return _avx2;}
-	bool hasAVX512() const {return _avx512;}
-};
-#endif
-
 template<class T> class TsQueue {
 	std::deque<T> _q;
 	std::mutex _m;
@@ -144,6 +128,21 @@ public:
 		std::unique_lock<std::mutex> lock(_m);
 		return _q.size();
 	}
+};
+
+class SysInfo {
+	std::string _os, _cpuArchitecture, _cpuBrand;
+	uint64_t _physicalMemory;
+	bool _avx, _avx2, _avx512;
+public:
+	SysInfo();
+	std::string getOs() const {return _os;}
+	uint64_t getPhysicalMemory() const {return _physicalMemory;}
+	std::string getCpuArchitecture() const {return _cpuArchitecture;}
+	std::string getCpuBrand() const {return _cpuBrand;}
+	bool hasAVX() const {return _avx;}
+	bool hasAVX2() const {return _avx2;}
+	bool hasAVX512() const {return _avx512;}
 };
 
 #endif

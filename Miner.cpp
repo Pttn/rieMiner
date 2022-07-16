@@ -1,4 +1,4 @@
-/* (c) 2017-2021 Pttn (https://riecoin.dev/en/rieMiner)
+/* (c) 2017-2022 Pttn (https://riecoin.dev/en/rieMiner)
 (c) 2018-2020 Michael Bell/Rockhawk (assembly optimizations, improvements of work management between threads, and some more) (https://github.com/MichaelBell/) */
 
 #include <gmpxx.h> // With Uint64_Ts, we still need to use the Mpz_ functions, otherwise there are "ambiguous overload" errors on Windows...
@@ -57,9 +57,6 @@ void Miner::init(const MinerParameters &minerParameters) {
 	_difficultyAtInit = job.difficulty;
 	
 	std::cout << "Initializing miner..." << std::endl;
-#ifndef LIGHT
-	std::cout << "Processor: " << _cpuInfo.getBrand() << std::endl;
-#endif
 	// Get settings from Configuration File.
 	_parameters = minerParameters;
 	if (_parameters.threads == 0) {
@@ -96,14 +93,6 @@ void Miner::init(const MinerParameters &minerParameters) {
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, maxSieveWorkers);
 	_parameters.sieveWorkers = std::min(static_cast<int>(_parameters.sieveWorkers), static_cast<int>(_primorialOffsets.size()));
 	std::cout << " (" << _parameters.sieveWorkers << " Sieve Worker(s))" << std::endl;
-#ifndef LIGHT
-	std::cout << "Best SIMD instructions supported:";
-	if (_cpuInfo.hasAVX512()) std::cout << " AVX-512";
-	else if (_cpuInfo.hasAVX2()) std::cout << " AVX2";
-	else if (_cpuInfo.hasAVX()) std::cout << " AVX";
-	else std::cout << " AVX not suppported";
-	std::cout << std::endl;
-#endif
 	std::vector<uint64_t> cumulativeOffsets(_parameters.pattern.size(), 0);
 	std::partial_sum(_parameters.pattern.begin(), _parameters.pattern.end(), cumulativeOffsets.begin(), std::plus<uint64_t>());
 	std::cout << "Constellation pattern: n + (" << formatContainer(cumulativeOffsets) << "), length " << _parameters.pattern.size() << std::endl;
@@ -495,7 +484,7 @@ void Miner::_doPresieveTask(const Task &task) {
 #else
 	const uint64_t avxWidth(4);
 #endif
-	if (_cpuInfo.hasAVX()) {
+	if (sysInfo.hasAVX()) {
 		avxLimit = nPrimesTo2p32 - avxWidth;
 		avxLimit -= (avxLimit - firstPrimeIndex) & (avxWidth - 1);  // Must be enough primes in range to use AVX
 	}
@@ -1053,7 +1042,7 @@ bool Miner::_testPrimesIspc(const std::array<uint32_t, maxCandidatesPerCheckTask
 		memcpy(mp, candidate.get_mpz_t()->_mp_d, N_Size*4);
 		mp += N_Size;
 	}
-	fermatTest(N_Size, maxCandidatesPerCheckTask, M, is_prime, _cpuInfo.hasAVX512());
+	fermatTest(N_Size, maxCandidatesPerCheckTask, M, is_prime, sysInfo.hasAVX512());
 	return true;
 }
 #endif

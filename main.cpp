@@ -274,16 +274,9 @@ int main(int argc, char** argv) {
 	SIGINTHandler.sa_flags = 0;
 	sigaction(SIGINT, &SIGINTHandler, NULL);
 #endif
-	
 	std::cout << versionString;
 #ifdef LIGHT
 	std::cout << "L";
-#else
-#ifdef __AVX2__
-	std::cout << " + AVX2";
-#else
-	std::cout << " (no AVX2)";
-#endif
 #endif
 	std::cout << ", Riecoin miner by Pttn and contributors" << std::endl;
 	std::cout << "Project page: https://riecoin.dev/en/rieMiner" << std::endl;
@@ -295,6 +288,34 @@ int main(int argc, char** argv) {
 	std::cout << OPENSSL_VERSION_TEXT << " - https://www.openssl.org/" << std::endl;
 	std::cout << "Curl " << LIBCURL_VERSION << " - https://curl.haxx.se/" << std::endl;
 	std::cout << "NLohmann Json " << NLOHMANN_JSON_VERSION_MAJOR << "." << NLOHMANN_JSON_VERSION_MINOR << "." << NLOHMANN_JSON_VERSION_PATCH << " - https://json.nlohmann.me/" << std::endl;
+	std::cout << "-----------------------------------------------------------" << std::endl;
+	std::cout << "Build for: " << sysInfo.getOs() << " on " << sysInfo.getCpuArchitecture();
+#ifdef __AVX2__
+	std::cout << " + AVX2";
+#else
+	if (sysInfo.getCpuArchitecture() == "x64")
+		std::cout << " (no AVX2)";
+#endif
+	std::cout << std::endl << "Processor: " << sysInfo.getCpuBrand() << std::endl;
+	if (sysInfo.getCpuArchitecture() == "x64") {
+		std::cout << "Best SIMD instructions supported: ";
+		if (sysInfo.hasAVX512()) std::cout << "AVX-512";
+		else if (sysInfo.hasAVX2()) std::cout << "AVX2";
+		else if (sysInfo.hasAVX()) std::cout << "AVX";
+		else std::cout << " None";
+		std::cout << std::endl;
+	}
+	const double physicalMemory(sysInfo.getPhysicalMemory());
+	std::cout << "Physical Memory: ";
+	if (physicalMemory < 1.)
+		std::cout << "Detection Failed";
+	else if (physicalMemory > 1099511627776.)
+		std::cout << physicalMemory/1099511627776. << " TiB";
+	else if (physicalMemory > 1073741824.)
+		std::cout << physicalMemory/1073741824. << " GiB";
+	else
+		std::cout << physicalMemory/1048576. << " MiB";
+	std::cout << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
 	
 	Configuration configuration;

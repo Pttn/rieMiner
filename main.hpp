@@ -22,6 +22,8 @@ using namespace std::string_literals;
 #define versionString	"rieMiner 0.93"
 #define primeTableFile	"PrimeTable64.bin"
 
+inline SysInfo sysInfo;
+
 extern int DEBUG;
 extern std::string confPath;
 
