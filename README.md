@@ -23,18 +23,20 @@ Recommended:
 
 ## Compile this program
 
-Compilation should work fine for the systems below. If not, you are welcomed to report issues, however do not make reports when using an old OS.
+rieMiner should be compilable on recent Linuxes. Building on another system is not supported, and Debian 11 Amd64 is our reference OS. It should be used for cross compiling in order to generate binaries for other systems, that can be distributed. If you don't have Debian 11, you can install it in a virtual machine, as Dual Boot, or in a spare machine.
 
-### Debian/Ubuntu
+### Native building on Debian/Ubuntu
 
-You can compile this C++ program with g++, as, m4 and make, install them if needed. Then, get if needed the following dependencies:
+Here is how to build rieMiner to run it directly on the same computer. Libraries are dynamically linked and G++ optimizes the build for your CPU, though this does actually not affect performance much.
+
+You will need g++, as, m4, make, and the following dependencies:
 
 * [GMP](https://gmplib.org/)
 * [libSSL](https://www.openssl.org/)
 * [cURL](https://curl.haxx.se/)
 * [NLohmann Json](https://json.nlohmann.me/)
 
-On a recent enough Debian or Ubuntu, you can easily install these by doing as root:
+On a recent enough Debian or Ubuntu, you can easily install these if needed by doing as root:
 
 ```bash
 apt install g++ make m4 git libgmp-dev libssl-dev libcurl4-openssl-dev nlohmann-json3-dev
@@ -47,82 +49,33 @@ git clone https://github.com/Pttn/rieMiner.git
 cd rieMiner
 ```
 
-If your platform is x64, do a simple make:
+Finally, do a simple make:
 
 ```bash
 make
 ```
 
-Otherwise (in x86, ARM,...), use
-
-```bash
-make light
-```
-
 For other Linux, executing equivalent commands (using `pacman` instead of `apt`,...) should work.
 
-#### Static building for x64
+### Static/Cross Compiling
 
-rieMiner can be built statically, in order to have a binary that can be distributed. A script that retrieves the dependencies' source codes from Riecoin.dev and compile them is provided. If you use it, you should first ensure that you can decompress `tar.xz` and `tar.lz` (for GMP, usually you can install `lzip` for this) files using `tar`. If you already built the dependencies once, you can usually reuse existing `incs` and `libs` folders and skip this step, though the dependencies may be updated once a while on Riecoin.dev.
+To generage binaries that can be distributed, cross compiling is done on Debian 11 Amd64. This statically links the libraries and the compiler does not optimize for a particular processor. Here is how you can do it yourself.
 
-Run the script with
-
-```bash
-sh GetDependencies.sh build
-```
-
-Then wait for the download and compilation to finish. The script must not have been interrupted by an error and the `incs` and `libs` folders must have appeared. Then, use
+Firstly, make sure that you are running Debian 11 x64. You may need to install some basic tools,
 
 ```bash
-make static
+apt install make m4 git wget lzip
 ```
 
-or to have AVX2 support,
+You will also need appropriate compilers depending on the target system, use this table to find out what to install.
 
-```bash
-make staticAVX2
-```
+| Target        | Package to install via Apt    |
+|---------------|-------------------------------|
+| Windows x64   | `g++-mingw-w64-x86-64-posix`  |
+| Linux x64     | none                          |
+| Linux Arm64   | `g++-aarch64-linux-gnu`       |
+| Android Arm64 | not in repository, see below  |
 
-Note that GLibC is still linked dynamically so rieMiner may fail to run on very old Linux distributions.
-
-### Windows x64 or x86
-
-You can compile rieMiner on Windows, and here is one way to do this. First, install [MSYS2](http://www.msys2.org/) (follow the instructions on the website).
-
-Then, for x64, enter in the MSYS **MinGW 64** console, and install the tools and dependencies:
-
-```bash
-pacman -S make m4 git
-pacman -S mingw-w64-x86_64-gcc
-pacman -S mingw-w64-x86_64-curl
-pacman -S mingw-w64-x86_64-nlohmann-json
-```
-
-Note that you must install the `mingw-w64-x86_64-...` packages and not just `gcc` or `curl`. Some dependencies are already included in others, for example GCC includes GMP.
-
-If building for x86, enter instead in the **MinGW 32** console and use the `mingw-w64-i686-...` prefix for the packages.
-
-Clone rieMiner with `git`, go to its directory with `cd`, and compile with `make` (same commands as Linux, see above).
-
-#### Static building for x64
-
-The produced executable will only run in the MSYS console, or if all the needed DLLs are next to the executable. To obtain a standalone executable, you need to link statically the dependencies. For this, follow the static building instructions above in the MSYS MinGW-w64 console, they also work here.
-
-### Android Arm64
-
-Here are instructions to cross-compile rieMiner for Android using a Linux distribution like Debian.
-
-Firstly, get the Android NDK Tools from [here](https://developer.android.com/ndk/downloads).
-
-You should now have an `android-ndk-r23` folder or similar somewhere, remember its path.
-
-Then, you may need to install basic build tools like `make`. Install them using your package manager, for example
-
-```bash
-apt install make m4 git
-```
-
-If later you still encounter error messages indicating that something was not found, try to install the missing tool.
 
 Now, get the rieMiner's source code.
 
@@ -131,24 +84,67 @@ git clone https://github.com/Pttn/rieMiner.git
 cd rieMiner
 ```
 
-Download the dependencies' source codes, but do not build them yet.
+A script that retrieves the dependencies' source codes from Riecoin.dev and compiles them is provided. Run the script with
 
 ```bash
 sh GetDependencies.sh
 ```
 
-You must now choose your target Android API Level. Each level correspond to a minimum Android version with which an application is compatible, for example API Level 30 corresponds to Android 11. A list can be found [here](https://developer.android.com/studio/releases/platforms). By default, it is set to 29.
+A folder named `rieMiner0.93aDeps` must have appeared. We assume that you are in it when starting a subsection below.
 
-Then, replace accordingly the `export ANDROIDAPI` and `export NDK` lines in the the `BuildAndroid.sh` file in `rieMiner0.93Deps`, which was downloaded and extracted with the script above. Then, run this script to build the dependencies and rieMiner.
 
 ```bash
-cd rieMiner0.93Deps
-sh BuildAndroid.sh
+cd rieMiner0.93aDeps
 ```
 
-The binary is statically built and should work on any Arm64 Android with a high enough API.
+If you are going to compile for several systems, doing `make clean`s in the rieMiner's directory will be very useful between builds (it will not delete rieMiner binaries). If you already built the dependencies once, you can usually reuse existing `incs` and `libs` folders and skip several steps, though the dependencies may be updated once a while on Riecoin.dev.
 
-Warning: there is no built-in temperature control and you are responsible that the heat does not damage your device.
+#### For Windows x64, Linux x64, or Linux Arm64
+
+Here are the instructions to generate a binary for Windows x64. Just a few adaptations are needed for other systems. In the dependencies folder, build them by doing
+
+
+```bash
+sh Build.sh Win64
+```
+
+The `incsWin64` and `libsWin64` folders must have appeared next to the dependencies folder (they will have another suffix when building dependencies for other systems).
+
+Now, build rieMiner itself.
+
+```bash
+cd ..
+make Win64
+```
+
+or use `Win64AVX2` for AVX2 support.
+
+For Linux x64, do the same steps, but with `Deb64` or `Deb64AVX2` instead of `Win64`. Note that GLibC is still linked dynamically for Linux builds so rieMiner may fail to run on very old Linux distributions.
+
+For Linux Arm64, use `Arm64` instead of `Win64`.
+
+#### For Android Arm64
+
+Note that this will not produce an Apk file, only a binary that can be launched in something like Termux. There is also no built-in temperature control and you are responsible that the heat does not damage your device.
+
+The compiler is not included in the Debian's repositories and you will need to install it manually: get the Android NDK Tools from [here](https://developer.android.com/ndk/downloads).
+
+You should now have an `android-ndk-r25` folder or similar somewhere, remember its path.
+
+You must now choose your target Android API Level. Each level correspond to a minimum Android version with which an application is compatible, for example API Level 30 corresponds to Android 11. A list can be found [here](https://developer.android.com/studio/releases/platforms). By default, it is set to 26.
+
+Replace accordingly the `export ANDROIDAPI` and `export NDK` lines in the `Build.sh` file. Then, build the dependencies.
+
+```bash
+sh Build.sh And64
+```
+
+The `incsAnd64` and `libsAnd64` folders must have appeared next to the dependencies folder. You must now adapt the `And64: CXX =` line in the rieMiner's Makefile (outside the dependencies folder) before building rieMiner itself.
+
+```bash
+cd ..
+make And64
+```
 
 ## Configure this program
 

@@ -1,7 +1,7 @@
 # Build artifacts
 *.tar.gz
-incs
-libs
+incs*
+libs*
 *.o
 rieMiner*
 

@@ -5,26 +5,26 @@
 
 #include <atomic>
 #include <cassert>
-#ifndef LIGHT
-#include <immintrin.h>
-#endif
 #include "Client.hpp"
 #include "Stats.hpp"
 
 struct Job;
 
-#ifndef LIGHT
+#ifdef __SSE2__
+#include <immintrin.h>
 union xmmreg_t {
 	uint32_t v[4];
 	uint64_t v64[2];
 	__m128i m128;
 };
-
+#ifdef __AVX2__
+#include "ispc/fermat.h"
 union ymmreg_t {
 	uint32_t v[8];
 	uint64_t v64[4];
 	__m256i m256;
 };
+#endif
 #endif
 
 constexpr uint32_t sieveCacheSize(32);
@@ -123,7 +123,7 @@ class Miner {
 	uint64_t _nPrimes, _nPrimes32, _factorMax, _primesIndexThreshold;
 	std::vector<uint32_t> _primes32, _modularInverses32;
 	std::vector<uint64_t> _primes64, _modularInverses64;
-#ifndef LIGHT
+#ifdef __SSE2__
 	std::vector<uint64_t> _modPrecompute;
 #endif
 	std::vector<mpz_class> _primorialOffsets;
@@ -158,7 +158,7 @@ class Miner {
 	void _addCachedAdditionalFactorsToEliminate(Sieve&, uint64_t*, uint64_t*, const int);
 	void _doPresieveTask(const Task&);
 	void _processSieve(uint64_t*, uint32_t*, const uint64_t, const uint64_t);
-#ifndef LIGHT
+#ifdef __SSE2__
 	void _processSieve6(uint64_t*, uint32_t*, uint64_t, const uint64_t);
 	void _processSieve7(uint64_t*, uint32_t*, uint64_t, const uint64_t);
 	void _processSieve8(uint64_t*, uint32_t*, uint64_t, const uint64_t);

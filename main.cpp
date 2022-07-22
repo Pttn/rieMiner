@@ -275,9 +275,6 @@ int main(int argc, char** argv) {
 	sigaction(SIGINT, &SIGINTHandler, NULL);
 #endif
 	std::cout << versionString;
-#ifdef LIGHT
-	std::cout << "L";
-#endif
 	std::cout << ", Riecoin miner by Pttn and contributors" << std::endl;
 	std::cout << "Project page: https://riecoin.dev/en/rieMiner" << std::endl;
 	std::cout << "Launch with 'help' as first argument for a quick usage guide" << std::endl;
@@ -290,20 +287,19 @@ int main(int argc, char** argv) {
 	std::cout << "NLohmann Json " << NLOHMANN_JSON_VERSION_MAJOR << "." << NLOHMANN_JSON_VERSION_MINOR << "." << NLOHMANN_JSON_VERSION_PATCH << " - https://json.nlohmann.me/" << std::endl;
 	std::cout << "-----------------------------------------------------------" << std::endl;
 	std::cout << "Build for: " << sysInfo.getOs() << " on " << sysInfo.getCpuArchitecture();
-#ifdef __AVX2__
-	std::cout << " + AVX2";
-#else
-	if (sysInfo.getCpuArchitecture() == "x64")
-		std::cout << " (no AVX2)";
-#endif
 	std::cout << std::endl << "Processor: " << sysInfo.getCpuBrand() << std::endl;
 	if (sysInfo.getCpuArchitecture() == "x64") {
-		std::cout << "Best SIMD instructions supported: ";
+		std::cout << "Best SIMD instructions supported by the CPU: ";
 		if (sysInfo.hasAVX512()) std::cout << "AVX-512";
 		else if (sysInfo.hasAVX2()) std::cout << "AVX2";
 		else if (sysInfo.hasAVX()) std::cout << "AVX";
-		else std::cout << " None";
+		else std::cout << "None";
 		std::cout << std::endl;
+#ifdef __AVX2__
+		std::cout << "This build supports AVX2" << std::endl;
+#else
+		std::cout << "This build does not support AVX2" << std::endl;
+#endif
 	}
 	const double physicalMemory(sysInfo.getPhysicalMemory());
 	std::cout << "Physical Memory: ";
