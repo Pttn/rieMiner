@@ -254,19 +254,27 @@ bool Configuration::parse(const int argc, char** argv) {
 	return true;
 }
 
+#ifdef _WIN32
+BOOL WINAPI signalHandler(DWORD signum) {
+#else
 void signalHandler(int signum) {
+#endif
 	std::cout << std::endl << "Signal " << signum << " received, stopping rieMiner." << std::endl;
 	if (miner == nullptr || api == nullptr) exit(0);
 	if (api->running()) api->stop();
 	if (!miner->inited()) exit(0);
 	miner->stop();
 	running = false;
+#ifdef _WIN32
+	return true;
+#endif
 }
 
 int main(int argc, char** argv) {
 #ifdef _WIN32
-	// Set lower priority, else the whole Windows system would lag a lot if using all threads
-	SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
+	SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS); // Set lower priority, else the whole Windows system would lag a lot if using all threads
+	if (!SetConsoleCtrlHandler((PHANDLER_ROUTINE) signalHandler, TRUE))
+		std::cerr << "Could not set the Console Ctrl Handler" << std::endl;
 #else
 	struct sigaction SIGINTHandler;
 	SIGINTHandler.sa_handler = signalHandler;
@@ -396,7 +404,7 @@ int main(int argc, char** argv) {
 							break;
 						}
 					}
-					if (!miner->running()) {
+					if (running && !miner->running()) {
 						miner->startThreads();
 						timer = std::chrono::steady_clock::now();
 					}
