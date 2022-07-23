@@ -1,4 +1,4 @@
-VER    = 0.93
+VER    = 0.93a
 CXX    = g++
 M4     = m4
 AS     = as
@@ -81,7 +81,7 @@ rieMinerWin64: main.o Miner.o StratumClient.o GBTClient.o Client.o API.o Stats.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
 main.o: main.cpp main.hpp Miner.hpp Client.hpp Stats.hpp tools.hpp
-	$(CXX) $(CFLAGS) -c -o $@ main.cpp
+	$(CXX) $(CFLAGS) -c -o $@ -DversionShort=\"$(VER)\" -DversionString=\"rieMiner$(VER)\" main.cpp
 
 Miner.o: Miner.cpp Miner.hpp
 	$(CXX) $(CFLAGS) -c -o $@ Miner.cpp

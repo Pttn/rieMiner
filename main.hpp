@@ -18,8 +18,12 @@
 
 using namespace std::string_literals;
 
-#define versionShort	"0.93"
-#define versionString	"rieMiner 0.93"
+#ifndef versionShort
+	#define versionShort	"0.9x"
+#endif
+#ifndef versionString
+	#define versionString	"rieMiner 0.9x"
+#endif
 #define primeTableFile	"PrimeTable64.bin"
 
 inline SysInfo sysInfo;

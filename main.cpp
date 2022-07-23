@@ -76,10 +76,9 @@ bool Configuration::parse(const int argc, char** argv) {
 		file.close();
 	}
 	else if (argc <= 2) {
-		std::cout << confPath << " not found or unreadable and no other arguments given. Please read the guides and README to learn how to configure rieMiner. Alternatively, you can use rieMiner-Qt which provides an easy to use interface." << std::endl;
+		std::cout << confPath << " not found or unreadable and no other arguments given. Please read the guides and README to learn how to configure rieMiner." << std::endl;
 		std::cout << "https://riecoin.dev/en/rieMiner" << std::endl;
 		std::cout << "https://github.com/Pttn/rieMiner/" << std::endl;
-		std::cout << "https://riecoin.dev/en/rieMiner-Qt" << std::endl;
 		waitForUser();
 		return false;
 	}
