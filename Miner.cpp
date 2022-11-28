@@ -98,10 +98,10 @@ void Miner::init(const MinerParameters &minerParameters) {
 	
 	if (_parameters.primeTableLimit == 0) {
 		uint64_t primeTableLimitMax(2147483648ULL);
-		if (sysInfo.getPhysicalMemory() < 1073741824ULL)
-			primeTableLimitMax = 268435456ULL;
-		else if (sysInfo.getPhysicalMemory() < 8589934592ULL)
-			primeTableLimitMax = sysInfo.getPhysicalMemory()/4ULL;
+		if (sysInfo.getPhysicalMemory() < 536870912ULL)
+			primeTableLimitMax = 67108864ULL;
+		else if (sysInfo.getPhysicalMemory() < 17179869184ULL)
+			primeTableLimitMax = sysInfo.getPhysicalMemory()/8ULL;
 		_parameters.primeTableLimit = std::pow(_difficultyAtInit, 6.)/std::pow(2., 3.*static_cast<double>(_parameters.pattern.size()) + 7.);
 		if (_parameters.threads > 16) {
 			_parameters.primeTableLimit *= 16;
