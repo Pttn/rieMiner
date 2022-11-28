@@ -1334,28 +1334,33 @@ bool Miner::hasAcceptedPatterns(const std::vector<std::vector<uint64_t>> &accept
 }
 
 void Miner::printStats() const {
+	std::string message;
 	Stats statsRecent(statManager.stats(false)), statsSinceStart(statManager.stats(true));
 	if (_mode == "Benchmark" || _mode == "Search") {
 		statsRecent = statsSinceStart;
-		logger.log(Stats::formattedTime(statManager.timeSinceStart()));
+		message = Stats::formattedTime(statManager.timeSinceStart());
 	}
 	else
-		logger.log(Stats::formattedClockTimeNow());
-	logger.log(" "s + doubleToString(statsRecent.cps(), 2U) + " c/s, r "s + doubleToString(statsRecent.r(), 2U));
+		message = Stats::formattedClockTimeNow();
+	message += " "s;
 	if (_mode != "Pool") {
-		logger.log(" ; (1-"s + std::to_string(_parameters.pattern.size()) + "t) = "s + statsSinceStart.formattedCounts(1));
-		if (statsRecent.count(1) >= 10)
-			logger.log(" | "s + Stats::formattedDuration(statsRecent.estimatedAverageTimeToFindBlock(_works[_currentWorkIndex].job.primeCountTarget)));
+		if (statsRecent.count(1ULL) >= 10ULL)
+			message += Stats::formattedDuration(statsRecent.estimatedAverageTimeToFindBlock(_works[_currentWorkIndex].job.primeCountTarget));
+		else
+			message += "...";
+		message += " ("s + doubleToString(statsRecent.cps(), 1U) + " c/s, r "s + doubleToString(statsRecent.r(), 2U) + "), (1-"s + std::to_string(_parameters.pattern.size()) + "t) = "s + statsSinceStart.formattedCounts(1ULL);
 	}
 	else {
 		const uint64_t shares(statManager.shares()), rejectedShares(statManager.rejectedShares());
-		logger.log(" ; Sh: "s + std::to_string(shares - rejectedShares) + "/"s + std::to_string(shares));
-		if (shares > 0)
-			logger.log(" ("s + doubleToString(100.*(static_cast<double>(shares - rejectedShares)/static_cast<double>(shares)), 2U) + "%)"s);
-		if (statsRecent.count(1) >= 10)
-			logger.log(" | "s + doubleToString(86400.*(50./static_cast<double>(1 << _client->currentHeight()/840000))/statsRecent.estimatedAverageTimeToFindBlock(_works[_currentWorkIndex].job.primeCountTarget), 1U) + " RIC/d"s);
+		if (statsRecent.count(1ULL) >= 10ULL)
+			message += doubleToString(86400.*(50./static_cast<double>(1 << _client->currentHeight()/840000))/statsRecent.estimatedAverageTimeToFindBlock(_works[_currentWorkIndex].job.primeCountTarget), 1U);
+		else
+			message += "-.-"s;
+		message += " RIC/d ("s + doubleToString(statsRecent.cps(), 1U) + " c/s, r "s + doubleToString(statsRecent.r(), 2U) + "), Sh: "s + std::to_string(shares - rejectedShares) + "/"s + std::to_string(shares);
+		if (shares > 0ULL)
+			message += " ("s + doubleToString(100.*(static_cast<double>(shares - rejectedShares)/static_cast<double>(shares)), 2U) + "%)"s;
 	}
-	logger.log("\n");
+	logger.log(message + "\n"s);
 }
 bool Miner::benchmarkFinishedTimeOut(const double benchmarkTimeLimit) const {
 	const Stats stats(statManager.stats(true));
