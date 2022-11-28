@@ -1,4 +1,4 @@
-// (c) 2021 Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2021-2022 Pttn (https://riecoin.dev/en/rieMiner)
 
 #ifdef _WIN32
 	#include <winsock2.h>
@@ -19,19 +19,19 @@
 
 constexpr uint16_t maxMessageSize(64);
 void API::_process() {
-	std::cout << "Starting rieMiner's API server, port " << _port << std::endl;
+	logger.log("Starting rieMiner's API server, port "s + std::to_string(_port) + "\n"s);
 #ifdef _WIN32
 		WORD wVersionRequested(MAKEWORD(2, 2));
 		WSADATA wsaData;
 		const int err(WSAStartup(wVersionRequested, &wsaData));
 		if (err != 0) {
-			ERRORMSG("WSAStartup failed with error " << err);
+			logger.log("WSAStartup failed with error  "s + std::to_string(err) + "\n"s, MessageType::ERROR);
 			return;
 		}
 #endif
 	int apiFd;
 	if ((apiFd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-		ERRORMSG("Could not get a File Descriptor for the API Server");
+		logger.log("Could not get a File Descriptor for the API Server\n"s, MessageType::ERROR);
 		return;
 	}
 #ifdef _WIN32
@@ -40,7 +40,7 @@ void API::_process() {
 #else
 	if (fcntl(apiFd, F_SETFL, fcntl(apiFd, F_GETFL, 0) | O_NONBLOCK) == -1) {
 #endif
-		ERRORMSG("Unable to make the socket non-blocking");
+		logger.log("Unable to make the socket non-blocking\n"s, MessageType::ERROR);
 		return;
 	}
 	
@@ -51,15 +51,15 @@ void API::_process() {
 #ifndef _WIN32
 	int optval(1);
 	if (setsockopt(apiFd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &optval, sizeof(decltype(optval))) != 0) {
-		ERRORMSG("Setsockopt could not set SO_REUSEADDR | SO_REUSEPORT");
+		logger.log("Setsockopt could not set SO_REUSEADDR | SO_REUSEPORT\n"s, MessageType::ERROR);
 	}
 #endif
 	if (bind(apiFd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) < 0) {
-		ERRORMSG("Could not bind");
+		logger.log("Could not bind\n"s, MessageType::ERROR);
 		return;
 	}
 	if (listen(apiFd, 1) < 0) {
-		ERRORMSG("Could not listen");
+		logger.log("Could not listen\n"s, MessageType::ERROR);
 		return;
 	}
 	
@@ -73,7 +73,7 @@ void API::_process() {
 #endif
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			else
-				ERRORMSG("Could not accept connection");
+				logger.log("Could not accept connection\n"s, MessageType::ERROR);
 		}
 		else {
 #ifdef _WIN32
@@ -103,8 +103,8 @@ void API::_process() {
 						double uptime(0.), cps(0.), r(0.), bpd(0.), miningPower(0.), difficulty(600.);
 						uint16_t patternLength(0U);
 						uint32_t shares(0ULL), sharesRejected(0ULL);
-						if (_miner != nullptr && _client != nullptr ? _miner->inited() : false) {
-							const Stats statsRecent(_miner->getStatsRecent()), stats(_miner->getStats());
+						if (_client != nullptr) {
+							const Stats statsRecent(statManager.stats(false)), stats(statManager.stats(true));
 							const Job job(_client->getJob());
 							if (job.acceptedPatterns.size() > 0)
 								patternLength = job.acceptedPatterns[0].size();
@@ -115,10 +115,8 @@ void API::_process() {
 							bpd = statsRecent.estimatedAverageTimeToFindBlock(patternLength) == 0. ? 0. : (86400./statsRecent.estimatedAverageTimeToFindBlock(patternLength));
 							difficulty = job.difficulty;
 							miningPower = 150.*bpd*std::pow(difficulty/600., static_cast<double>(patternLength) + 2.3)/86400.;
-							if (std::dynamic_pointer_cast<StratumClient>(_client) != nullptr) {
-								shares = std::dynamic_pointer_cast<StratumClient>(_client)->shares();
-								sharesRejected = std::dynamic_pointer_cast<StratumClient>(_client)->sharesRejected();
-							}
+							shares = statManager.shares();
+							sharesRejected = statManager.rejectedShares();
 						}
 						if (method == "getstatsjson") {
 							oss << "{\"running\": " << (running ? "true" : "false") << ", ";

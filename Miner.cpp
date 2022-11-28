@@ -37,35 +37,34 @@ thread_local uint16_t threadId(65535);
 void Miner::init(const MinerParameters &minerParameters) {
 	_shouldRestart = false;
 	if (_inited) {
-		ERRORMSG("The miner is already inited");
+		logger.log("The miner is already initialized\n"s, MessageType::ERROR);
 		return;
 	}
 	if (_client == nullptr) {
-		ERRORMSG("The miner cannot be initialized without a client");
+		logger.log("The miner cannot be initialized without a client\n"s, MessageType::ERROR);
 		return;
 	}
 	Job job(_client->getJob(true));
 	if (job.powVersion == 0) { // Using this check rather than Height = 0 to make Benchmark Mode work
-		std::cout << "Could not get data from Client :|" << std::endl;
+		logger.log("Could not get data from Client\n"s, MessageType::ERROR);
 		return;
 	}
 	_difficultyAtInit = job.difficulty;
 	
-	std::cout << "Initializing miner..." << std::endl;
+	logger.log("Initializing miner...\n"s);
 	// Get settings from Configuration File.
 	_parameters = minerParameters;
 	if (_parameters.threads == 0) {
 		_parameters.threads = std::thread::hardware_concurrency();
 		if (_parameters.threads == 0) {
-			std::cout << "Could not detect number of Threads, setting to 1." << std::endl;
+			logger.log("Could not detect number of Threads, setting to 1.\n"s, MessageType::WARNING);
 			_parameters.threads = 1;
 		}
 	}
-	std::cout << "Threads: " << _parameters.threads;
 	if (_parameters.primorialOffsets.size() == 0) { // Set the default Primorial Offsets if not chosen (must be chosen if the chosen pattern is not hardcoded)
 		auto defaultPrimorialOffsetsIterator(std::find_if(defaultConstellationData.begin(), defaultConstellationData.end(), [this](const auto& constellationData) {return constellationData.first == _parameters.pattern;}));
 		if (defaultPrimorialOffsetsIterator == defaultConstellationData.end()) {
-			std::cout << std::endl << "Not hardcoded Constellation Offsets chosen and no Primorial Offset set." << std::endl;
+			logger.log("No hardcoded Constellation Offsets chosen and no Primorial Offset set.\n"s, MessageType::ERROR);
 			return;
 		}
 		else
@@ -87,14 +86,14 @@ void Miner::init(const MinerParameters &minerParameters) {
 	_parameters.sieveWorkers = std::max(static_cast<int>(_parameters.sieveWorkers), 1);
 	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, maxSieveWorkers);
 	_parameters.sieveWorkers = std::min(static_cast<int>(_parameters.sieveWorkers), static_cast<int>(_primorialOffsets.size()));
-	std::cout << " (" << _parameters.sieveWorkers << " Sieve Worker(s))" << std::endl;
+	logger.log("Threads: "s + std::to_string(_parameters.threads) + " ("s + std::to_string(_parameters.sieveWorkers) + " Sieve Worker(s))\n"s);
 	std::vector<uint64_t> cumulativeOffsets(_parameters.pattern.size(), 0);
 	std::partial_sum(_parameters.pattern.begin(), _parameters.pattern.end(), cumulativeOffsets.begin(), std::plus<uint64_t>());
-	std::cout << "Constellation pattern: n + (" << formatContainer(cumulativeOffsets) << "), length " << _parameters.pattern.size() << std::endl;
+	logger.log("Constellation pattern: n + ("s + formatContainer(cumulativeOffsets) + "), length "s + std::to_string(_parameters.pattern.size()) + "\n"s);
 	if (_mode == "Search") {
 		if (_parameters.tupleLengthMin < 1 || _parameters.tupleLengthMin > _parameters.pattern.size())
 			_parameters.tupleLengthMin = std::max(1, static_cast<int>(_parameters.pattern.size()) - 1);
-		std::cout << "Will show tuples of at least length " << _parameters.tupleLengthMin << std::endl;
+		logger.log("Will show tuples of at least length "s + std::to_string(_parameters.tupleLengthMin) + "\n"s);
 	}
 	
 	if (_parameters.primeTableLimit == 0) {
@@ -110,7 +109,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 		}
 		_parameters.primeTableLimit = std::min(_parameters.primeTableLimit, primeTableLimitMax);
 	}
-	std::cout << "Prime Table Limit: " << _parameters.primeTableLimit << std::endl;
+	logger.log("Prime Table Limit: "s + std::to_string(_parameters.primeTableLimit) + "\n"s);
 	std::transform(_parameters.pattern.begin(), _parameters.pattern.end(), std::back_inserter(_halfPattern), [](uint64_t n) {return n >> 1;});
 	
 	std::vector<uint64_t> primes;
@@ -127,13 +126,13 @@ void Miner::init(const MinerParameters &minerParameters) {
 	}
 	std::chrono::time_point<std::chrono::steady_clock> t0(std::chrono::steady_clock::now());
 	if (savedPrimes > 0 && _parameters.primeTableLimit >= 1048576 && _parameters.primeTableLimit <= largestSavedPrime) {
-		std::cout << "Extracting prime numbers from " << primeTableFile << " (" << primeTableFileBytes << " bytes, " << savedPrimes << " primes, largest " << largestSavedPrime << ")..." << std::endl;
+		logger.log("Extracting prime numbers from "s + primeTableFile + " ("s + std::to_string(primeTableFileBytes) + " bytes, "s + std::to_string(savedPrimes) + " primes, largest "s + std::to_string(largestSavedPrime) + ")...\n"s);
 		uint64_t nPrimesUpperBound(std::min(1.085*static_cast<double>(_parameters.primeTableLimit)/std::log(static_cast<double>(_parameters.primeTableLimit)), static_cast<double>(savedPrimes))); // 1.085 = max(π(p)log(p)/p) for p >= 2^20
 		try {
 			primes = std::vector<uint64_t>(nPrimesUpperBound);
 		}
 		catch (std::bad_alloc& ba) {
-			ERRORMSG("Unable to allocate memory for the prime table");
+			logger.log("Unable to allocate memory for the prime table\n"s, MessageType::ERROR);
 			_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/8, _parameters.sieveWorkers);
 			return;
 		}
@@ -146,19 +145,19 @@ void Miner::init(const MinerParameters &minerParameters) {
 				break;
 			}
 		}
-		std::cout << primes.size() << " first primes extracted in " << timeSince(t0) << " s (" << primes.size()*sizeof(decltype(primes)::value_type) << " bytes)." << std::endl;
+		logger.log(std::to_string(primes.size()) + " first primes extracted in "s + doubleToString(timeSince(t0)) + " s ("s + std::to_string(primes.size()*sizeof(decltype(primes)::value_type)) + " bytes).\n"s);
 	}
 	else {
-		std::cout << "Generating prime table using sieve of Eratosthenes..." << std::endl;
+		logger.log("Generating prime table using sieve of Eratosthenes...\n"s);
 		try {
 			primes = generatePrimeTable(_parameters.primeTableLimit);
 		}
 		catch (std::bad_alloc& ba) {
-			ERRORMSG("Unable to allocate memory for the prime table");
+			logger.log("Unable to allocate memory for the prime table\n"s, MessageType::ERROR);
 			_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/8, _parameters.sieveWorkers);
 			return;
 		}
-		std::cout << "Table with all " << primes.size() << " first primes generated in " << timeSince(t0) << " s (" << primes.size()*sizeof(decltype(primes)::value_type) << " bytes)." << std::endl;
+		logger.log("Table with all "s + std::to_string(primes.size()) + " first primes generated in "s + doubleToString(timeSince(t0)) + " s ("s + std::to_string(primes.size()*sizeof(decltype(primes)::value_type)) + " bytes)...\n"s);
 	}
 
 	if (primes.size() % 2 == 1) // Needs to be even to use SIMD sieving optimizations
@@ -169,7 +168,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 		if (primes.size() > nPrimesTo2p32) _primes64.reserve(primes.size() - nPrimesTo2p32);
 	}
 	catch (std::bad_alloc& ba) {
-		ERRORMSG("Unable to allocate memory for the prime table");
+		logger.log("Unable to allocate memory for the prime table\n"s, MessageType::ERROR);
 		_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/8, _parameters.sieveWorkers);
 		return;
 	}
@@ -191,12 +190,12 @@ void Miner::init(const MinerParameters &minerParameters) {
 	}
 	_parameters.sieveSize = 1 << _parameters.sieveBits;
 	_parameters.sieveWords = _parameters.sieveSize/64;
-	std::cout << "Sieve Size: " << "2^" << _parameters.sieveBits << " = " << _parameters.sieveSize << " (" << _parameters.sieveWords << " words)" << std::endl;
+	logger.log("Sieve Size: 2^"s + std::to_string(_parameters.sieveBits) + " = "s + std::to_string(_parameters.sieveSize) + " ("s + std::to_string(_parameters.sieveWords) + " words)\n"s);
 	if (_parameters.sieveIterations == 0)
 		_parameters.sieveIterations = 16;
-	std::cout << "Sieve Iterations: " << _parameters.sieveIterations << std::endl;
+	logger.log("Sieve Iterations: "s + std::to_string(_parameters.sieveIterations) + "\n"s);
 	_factorMax = _parameters.sieveIterations*_parameters.sieveSize;
-	std::cout << "Primorial Factor Max: " << _factorMax << std::endl;
+	logger.log("Primorial Factor Max: "s + std::to_string(_factorMax) + "\n"s);
 	
 	uint32_t bitsForOffset;
 	// The primorial times the maximum factor should be smaller than the allowed limit for the target offset.
@@ -210,8 +209,8 @@ void Miner::init(const MinerParameters &minerParameters) {
 	primorialLimit <<= bitsForOffset;
 	primorialLimit /= u64ToMpz(_factorMax);
 	if (primorialLimit == 0) {
-		std::cout << "The Difficulty is too low. Try to increase it or decrease the Sieve Size/Iterations." << std::endl;
-		std::cout << "Available digits for the offsets: " << bitsForOffset << std::endl;
+		logger.log("The Difficulty is too low. Try to increase it or decrease the Sieve Size/Iterations.\n"s
+		           "Available digits for the offsets: "s + std::to_string(bitsForOffset) + "\n"s, MessageType::ERROR);
 		return;
 	}
 	mpz_set_ui(_primorial.get_mpz_t(), 1);
@@ -221,7 +220,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 		else {
 			if (_primorial*_primes32[i] >= primorialLimit) {
 				if (_parameters.primorialNumber != 0)
-					std::cout << "The provided Primorial Number " <<_parameters.primorialNumber  << " is too large and will be reduced." << std::endl;
+					logger.log("The provided Primorial Number "s + std::to_string(_parameters.primorialNumber) + " is too large and will be reduced.\n"s, MessageType::WARNING);
 				_parameters.primorialNumber = i;
 				break;
 			}
@@ -230,14 +229,14 @@ void Miner::init(const MinerParameters &minerParameters) {
 		if (i + 1 == _primes32.size())
 			_parameters.primorialNumber = i + 1;
 	}
-	std::cout << "Primorial Number: " << _parameters.primorialNumber << std::endl;
-	std::cout << "Primorial: p" << _parameters.primorialNumber << "# = " << _primes32[_parameters.primorialNumber - 1] << "# = ";
+	logger.log("Primorial Number: "s + std::to_string(_parameters.primorialNumber) + "\n"s);
+	logger.log("Primorial: p"s + std::to_string(_parameters.primorialNumber) + "# = "s + std::to_string(_primes32[_parameters.primorialNumber - 1]) + "# = "s);
 	if (mpz_sizeinbase(_primorial.get_mpz_t(), 10) < 18)
-		std::cout << _primorial;
+		logger.log(_primorial.get_str());
 	else
-		std::cout << "~" << _primorial.get_str()[0] << "." << _primorial.get_str().substr(1, 12) << "*10^" << _primorial.get_str().size() - 1;
-	std::cout << " (" << mpz_sizeinbase(_primorial.get_mpz_t(), 2) << " bits)" << std::endl;
-	std::cout << "Primorial Offsets: " << _primorialOffsets.size() << std::endl;
+		logger.log("~"s + _primorial.get_str()[0] + "."s + _primorial.get_str().substr(1, 12) + "*10^"s + std::to_string(_primorial.get_str().size() - 1));
+	logger.log(" ("s + std::to_string(mpz_sizeinbase(_primorial.get_mpz_t(), 2)) + " bits)\n"s);
+	logger.log("Primorial Offsets: "s + std::to_string(_primorialOffsets.size()) + "\n"s);
 	_primorialOffsetDiff.resize(_parameters.sieveWorkers - 1);
 	const uint64_t constellationDiameter(cumulativeOffsets.back());
 	for (int j(1) ; j < _parameters.sieveWorkers ; j++)
@@ -259,16 +258,16 @@ void Miner::init(const MinerParameters &minerParameters) {
 	}
 	if (_primesIndexThreshold == 0)
 		_primesIndexThreshold = _nPrimes;
-	std::cout << "Prime index threshold: " << _primesIndexThreshold << std::endl;
+	logger.log("Prime index threshold: "s + std::to_string(_primesIndexThreshold) + "\n"s);
 	const uint64_t factorsToEliminateEntries(_parameters.pattern.size()*_primesIndexThreshold); // PatternLength entries for every prime < factorMax
 	additionalFactorsCountEstimation = _parameters.pattern.size()*ceil(static_cast<double>(_factorMax)*sumInversesOfPrimes);
 	const uint64_t additionalFactorsEntriesPerIteration(17ULL*(additionalFactorsCountEstimation/_parameters.sieveIterations)/16ULL + 64ULL); // Have some margin
-	std::cout << "Estimated additional factors: " << additionalFactorsCountEstimation << " (allocated per iteration: " << additionalFactorsEntriesPerIteration << ")" << std::endl;
+	logger.log("Estimated additional factors: "s + std::to_string(additionalFactorsCountEstimation) + " (allocated per iteration: " + std::to_string(additionalFactorsEntriesPerIteration) + ")\n"s);
 	{
 #ifdef __SSE2__
-		std::cout << "Precomputing modular inverses and division data..." << std::endl; // The precomputed data is used to speed up computations in _doPresieveTask.
+		logger.log("Precomputing modular inverses and division data...\n"s); // The precomputed data is used to speed up computations in _doPresieveTask.
 #else
-		std::cout << "Precomputing modular inverses..." << std::endl;
+		logger.log("Precomputing modular inverses...\n"s);
 #endif
 		t0 = std::chrono::steady_clock::now();
 #ifdef __SSE2__
@@ -282,7 +281,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 #endif
 		}
 		catch (std::bad_alloc& ba) {
-			ERRORMSG("Unable to allocate memory for the precomputed data");
+			logger.log("Unable to allocate memory for the precomputed data\n"s, MessageType::ERROR);
 			_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/4, _parameters.sieveWorkers);
 			return;
 		}
@@ -307,9 +306,9 @@ void Miner::init(const MinerParameters &minerParameters) {
 		}
 		for (uint16_t j(0) ; j < _parameters.threads ; j++) threads[j].join();
 #ifdef __SSE2__
-		std::cout << "Tables of " << _modularInverses32.size() + _modularInverses64.size() - _parameters.primorialNumber << " modular inverses and " << precompPrimes - _parameters.primorialNumber << " division entries generated in " << timeSince(t0) << " s (" << (_modularInverses64.size() + precompPrimes)*sizeof(decltype(_modularInverses64)::value_type) + _modularInverses32.size()*sizeof(decltype(_modularInverses32)::value_type) << " bytes)." << std::endl;
+		logger.log("Tables of "s + std::to_string(_modularInverses32.size() + _modularInverses64.size() - _parameters.primorialNumber) + " modular inverses and "s + std::to_string(precompPrimes - _parameters.primorialNumber) + " division entries generated in "s + doubleToString(timeSince(t0)) + " s ("s + std::to_string((_modularInverses64.size() + precompPrimes)*sizeof(decltype(_modularInverses64)::value_type) + _modularInverses32.size()*sizeof(decltype(_modularInverses32)::value_type)) + " bytes).\n"s);
 #else
-		std::cout << "Tables of " << _modularInverses32.size() + _modularInverses64.size() - _parameters.primorialNumber << " modular inverses generated in " << timeSince(t0) << " s (" << _modularInverses64.size()*sizeof(decltype(_modularInverses64)::value_type) + _modularInverses32.size()*sizeof(decltype(_modularInverses32)::value_type) << " bytes)." << std::endl;
+		logger.log("Tables of "s + std::to_string(_modularInverses32.size() + _modularInverses64.size() - _parameters.primorialNumber) + " modular inverses generated in "s + doubleToString(timeSince(t0)) + " s ("s + std::to_string(_modularInverses64.size()*sizeof(decltype(_modularInverses64)::value_type) + _modularInverses32.size()*sizeof(decltype(_modularInverses32)::value_type)) + " bytes).\n"s);
 #endif
 	}
 	
@@ -320,18 +319,18 @@ void Miner::init(const MinerParameters &minerParameters) {
 			_sieves[i].id = i;
 			_sieves[i].additionalFactorsToEliminateCounts = new std::atomic<uint64_t>[_parameters.sieveIterations];
 		}
-		std::cout << "Allocating " << sizeof(uint64_t)*_parameters.sieveWorkers*_parameters.sieveWords << " bytes for the primorial factors tables..." << std::endl;
+		logger.log("Allocating "s + std::to_string(sizeof(uint64_t)*_parameters.sieveWorkers*_parameters.sieveWords) + " bytes for the primorial factors tables...\n"s);
 		for (auto &sieve : _sieves)
 			sieve.factorsTable = new uint64_t[_parameters.sieveWords];
 	}
 	catch (std::bad_alloc& ba) {
-		ERRORMSG("Unable to allocate memory for the primorial factors tables");
+		logger.log("Unable to allocate memory for the primorial factors tables\n"s, MessageType::ERROR);
 		_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/3, _parameters.sieveWorkers);
 		return;
 	}
 	
 	try {
-		std::cout << "Allocating " << sizeof(uint32_t)*_parameters.sieveWorkers*factorsToEliminateEntries << " bytes for the primorial factors..." << std::endl;
+		logger.log("Allocating "s + std::to_string(sizeof(uint32_t)*_parameters.sieveWorkers*factorsToEliminateEntries) + " bytes for the primorial factors...\n"s);
 		for (auto &sieve : _sieves) {
 #ifdef __SSE2__
 			sieve.factorsToEliminate = reinterpret_cast<uint32_t*>(new __m256i[(factorsToEliminateEntries + 7) / 8]);
@@ -342,13 +341,13 @@ void Miner::init(const MinerParameters &minerParameters) {
 		}
 	}
 	catch (std::bad_alloc& ba) {
-		ERRORMSG("Unable to allocate memory for the primorial factors");
+		logger.log("Unable to allocate memory for the primorial factors\n"s, MessageType::ERROR);
 		_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/2, std::max(static_cast<int>(_parameters.sieveWorkers) - 1, 1));
 		return;
 	}
 	
 	try {
-		std::cout << "Allocating " << sizeof(uint32_t)*_parameters.sieveWorkers*_parameters.sieveIterations*additionalFactorsEntriesPerIteration << " bytes for the additional primorial factors..." << std::endl;
+		logger.log("Allocating "s + std::to_string(sizeof(uint32_t)*_parameters.sieveWorkers*_parameters.sieveIterations*additionalFactorsEntriesPerIteration) + " bytes for the additional primorial factors..\n"s);
 		for (auto &sieve : _sieves) {
 			sieve.additionalFactorsToEliminate = new uint32_t*[_parameters.sieveIterations];
 			for (uint64_t j(0) ; j < _parameters.sieveIterations ; j++)
@@ -356,58 +355,58 @@ void Miner::init(const MinerParameters &minerParameters) {
 		}
 	}
 	catch (std::bad_alloc& ba) {
-		ERRORMSG("Unable to allocate memory for the additional primorial factors");
+		logger.log("Unable to allocate memory for the additional primorial factors\n"s, MessageType::ERROR);
 		_suggestLessMemoryIntensiveOptions(2*_parameters.primeTableLimit/3, std::max(static_cast<int>(_parameters.sieveWorkers) - 1, 1));
 		return;
 	}
 	// Initial guess at a value for the threshold
 	_nRemainingCheckTasksThreshold = 32U*_parameters.threads*_parameters.sieveWorkers;
 	_inited = true;
-	std::cout << "Done initializing miner." << std::endl;
+	logger.log("Done initializing miner.\n"s, MessageType::SUCCESS);
 }
 
 void Miner::startThreads() {
 	if (!_inited)
-		ERRORMSG("The miner is not inited");
+		logger.log("The miner is not initialized!\n"s, MessageType::ERROR);
 	else if (_client == nullptr)
-		ERRORMSG("The miner cannot start mining without a client");
+		logger.log("The miner cannot start mining without a client!\n"s, MessageType::ERROR);
 	else if (_running)
-		ERRORMSG("The miner is already running");
+		logger.log("The miner is already running!\n"s, MessageType::ERROR);
 	else {
 		_running = true;
 		if (!_keepStats)
-			_statManager.start(_parameters.pattern.size());
+			statManager.start(_parameters.pattern.size());
 		_keepStats = false;
-		std::cout << "Starting the miner's master thread..." << std::endl;
+		logger.log("Starting the miner's master thread...\n"s);
 		_masterThread = std::thread(&Miner::_manageTasks, this);
-		std::cout << "Starting " << _parameters.threads << " miner's worker threads..." << std::endl;
+		logger.log("Starting " + std::to_string(_parameters.threads) + " miner's worker threads...\n"s);
 		for (uint16_t i(0) ; i < _parameters.threads ; i++)
 			_workerThreads.push_back(std::thread(&Miner::_doTasks, this, i));
-		std::cout << "-----------------------------------------------------------" << std::endl;
+		logger.hr();
 		if (_mode == "Benchmark" || _mode == "Search")
-			std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " Started " << _mode << ", difficulty " << FIXED(3) << _client->currentDifficulty() << std::endl;
+			logger.log(Stats::formattedTime(statManager.timeSinceStart()) + " Started "s + _mode + ", difficulty "s + doubleToString(_client->currentDifficulty(), 3U)  + "\n"s, MessageType::BOLD);
 		else
-			std::cout << Stats::formattedClockTimeNow() << " Started mining at block " << _client->currentHeight() << ", difficulty " << FIXED(3) << _client->currentDifficulty() << std::endl;
+			logger.log(Stats::formattedClockTimeNow() + " Started mining at block "s + std::to_string(_client->currentHeight()) + ", difficulty "s + doubleToString(_client->currentDifficulty(), 3U)  + "\n"s, MessageType::BOLD);
 	}
 }
 
 void Miner::stopThreads() {
 	if (!_running)
-		ERRORMSG("The miner is already not running");
+		logger.log("The miner is already stopped!\n"s, MessageType::ERROR);
 	else {
 		_running = false;
 		if (_mode == "Benchmark" || _mode == "Search")
 			printTupleStats();
-		std::cout << "Waiting for the miner's master thread to finish..." << std::endl;
+		logger.log("Waiting for the miner's master thread to finish...\n"s);
 		_tasksDoneInfos.push_front(TaskDoneInfo{Task::Type::Dummy, {}}); // Unblock if master thread stuck in blocking_pop_front().
 		_masterThread.join();
-		std::cout << "Waiting for the miner's worker threads to finish..." << std::endl;
+		logger.log("Waiting for the miner's worker threads to finish...\n"s);
 		for (uint16_t i(0) ; i < _parameters.threads ; i++)
 			_tasks.push_front(Task{Task::Type::Dummy, 0, {}}); // Unblock worker threads stuck in blocking_pop_front().
 		for (auto &workerThread : _workerThreads)
 			workerThread.join();
 		_workerThreads.clear();
-		std::cout << "Miner threads stopped." << std::endl;
+		logger.log("Miner threads stopped.\n"s, MessageType::SUCCESS);
 		_presieveTasks.clear();
 		_tasks.clear();
 		_tasksDoneInfos.clear();
@@ -417,11 +416,11 @@ void Miner::stopThreads() {
 
 void Miner::clear() {
 	if (_running)
-		ERRORMSG("Cannot clear the miner while it is running");
+		logger.log("Cannot clear the miner while it is running!\n"s, MessageType::ERROR);
 	else if (!_inited)
-		ERRORMSG("Cannot clear the miner if it is not inited");
+		logger.log("Cannot clear the miner if it is not initialized!\n"s, MessageType::ERROR);
 	else {
-		std::cout << "Clearing miner's data..." << std::endl;
+		logger.log("Clearing miner's data...\n"s);
 		_inited = false;
 		for (auto &sieve : _sieves) {
 			delete[] sieve.factorsTable;
@@ -447,7 +446,7 @@ void Miner::clear() {
 		_halfPattern.clear();
 		_primorialOffsetDiff.clear();
 		_parameters = MinerParameters();
-		std::cout << "Miner's data cleared." << std::endl;
+		logger.log("Miner's data cleared.\n"s, MessageType::SUCCESS);
 	}
 }
 
@@ -1101,16 +1100,20 @@ void Miner::_doCheckTask(Task task) {
 		}
 		// If tuple long enough or share, submit
 		if (primeCount >= _works[workIndex].job.primeCountMin || (_mode == "Search" && primeCount >= _parameters.tupleLengthMin)) {
+			std::string message;
 			const mpz_class basePrime(candidate - offsetSum);
 			if (_mode == "Benchmark" || _mode == "Search")
-				std::cout << Stats::formattedTime(_statManager.timeSinceStart()) << " " << primeCount;
+				message = Stats::formattedTime(statManager.timeSinceStart()) + " "s + std::to_string(primeCount);
 			else
-				std::cout << Stats::formattedClockTimeNow() << " " << primeCount;
-			if (_mode == "Pool")
-				std::cout << "-share found by worker thread " << threadId << std::endl;
+				message = Stats::formattedClockTimeNow() + " "s + std::to_string(primeCount);
+			if (_mode == "Pool") {
+				message += "-share found by worker thread "s + std::to_string(threadId) + "\n"s;
+				logger.logDebug(message);
+			}
 			else {
-				std::cout << "-tuple found by worker thread " << threadId << std::endl;
-				std::cout << "Base prime: " << basePrime << std::endl;
+				message += "-tuple found by worker thread "s + std::to_string(threadId) + "\n"s;
+				logger.log(message, MessageType::BOLD);
+				logger.log("Base prime: "s + basePrime.get_str() + "\n"s);
 			}
 			Job filledJob(_works[workIndex].job);
 			filledJob.result = basePrime;
@@ -1121,7 +1124,7 @@ void Miner::_doCheckTask(Task task) {
 			_client->handleResult(filledJob);
 		}
 	}
-	_statManager.addCounts(tupleCounts);
+	statManager.addCounts(tupleCounts);
 }
 
 void Miner::_doTasks(const uint16_t id) { // Worker Threads run here until the miner is stopped
@@ -1194,12 +1197,12 @@ void Miner::_manageTasks() {
 		const bool isNewHeight(oldHeight != _works[_currentWorkIndex].job.height);
 		// Notify when the network found a block
 		if (isNewHeight && oldHeight != 0) {
-			_statManager.newBlock();
+			statManager.newBlock();
 			if (_mode == "Benchmark" || _mode == "Search")
-				std::cout << Stats::formattedTime(_statManager.timeSinceStart());
+				logger.log(Stats::formattedTime(statManager.timeSinceStart()));
 			else
-				std::cout << Stats::formattedClockTimeNow();
-			std::cout << " Block " << job.height << ", average " << FIXED(1) << _statManager.averageBlockTime() << " s, difficulty " << FIXED(3) << job.difficulty << std::endl;
+				logger.log(Stats::formattedClockTimeNow());
+			logger.log(" Block "s + std::to_string(job.height) + ", average "s + doubleToString(statManager.averageBlockTime(), 1) + " s, difficulty "s + doubleToString(job.difficulty, 3) + "\n"s);
 		}
 		_works[_currentWorkIndex].primorialMultipleStart = _works[_currentWorkIndex].job.target + _primorial - (_works[_currentWorkIndex].job.target % _primorial);
 		// Reset Counts and create Presieve Tasks
@@ -1227,7 +1230,7 @@ void Miner::_manageTasks() {
 				else nRemainingAdditionalPresieveTasks--;
 			}
 			else if (taskDoneInfo.type == Task::Type::Check) _works[taskDoneInfo.workIndex].nRemainingCheckTasks--;
-			else ERRORMSG("Unexpected Sieve Task done during Presieving");
+			else logger.log("Unexpected Sieve Task done during Presieving!\n"s, MessageType::ERROR);
 		}
 		assert(_works[_currentWorkIndex].nRemainingCheckTasks == 0);
 		
@@ -1256,13 +1259,13 @@ void Miner::_manageTasks() {
 			if (!_running) return;
 			if (taskDoneInfo.type == Task::Type::Sieve) nRemainingSieves--;
 			else if (taskDoneInfo.type == Task::Type::Check) _works[taskDoneInfo.workIndex].nRemainingCheckTasks--;
-			else ERRORMSG("Unexpected Presieve Task done during Sieving");
+			else logger.log("Unexpected Presieve Task done during Sieving!\n"s, MessageType::ERROR);
 			nRemainingTasksMin = std::min(nRemainingTasksMin, _tasks.size());
 		}
 		
 		// Adjust the Remaining Tasks Threshold
 		if (_works[_currentWorkIndex].job.height == _client->currentHeight() && !isNewHeight) {
-			DBG(std::cout << "Min work outstanding during sieving: " << nRemainingTasksMin << std::endl;);
+			logger.logDebug("Min work outstanding during sieving: "s + std::to_string(nRemainingTasksMin) + "\n"s);
 			if (remainingTasks > _nRemainingCheckTasksThreshold - _parameters.threads*2) {
 				// If we are acheiving our work target, then adjust it towards the amount
 				// required to maintain a healthy minimum work queue length.
@@ -1281,11 +1284,11 @@ void Miner::_manageTasks() {
 				static int allowedFails(5);
 				if (--allowedFails == 0) { // Warn possible CPU Underuse
 					allowedFails = 5;
-					DBG(std::cout << "Unable to generate enough verification work to keep threads busy." << std::endl;);
+					logger.logDebug("Unable to generate enough verification work to keep threads busy.\n"s);
 				}
 			}
 			_nRemainingCheckTasksThreshold = std::min(_nRemainingCheckTasksThreshold, _tasksDoneInfos.size() - 9*_parameters.threads);
-			DBG(std::cout << "Work target before starting next block now: " << _nRemainingCheckTasksThreshold << std::endl;);
+			logger.logDebug("Work target before starting next block now: "s + std::to_string(_nRemainingCheckTasksThreshold) + "\n"s);
 		}
 		
 		oldHeight = _works[_currentWorkIndex].job.height;
@@ -1294,25 +1297,24 @@ void Miner::_manageTasks() {
 			const TaskDoneInfo taskDoneInfo(_tasksDoneInfos.blocking_pop_front());
 			if (!_running) return;
 			if (taskDoneInfo.type == Task::Type::Check) _works[taskDoneInfo.workIndex].nRemainingCheckTasks--;
-			else ERRORMSG("Expected Check Task done");
+			else logger.log("Expected Check Task done!\n"s, MessageType::ERROR);
 		}
 		_currentWorkIndex = (_currentWorkIndex + 1) % nWorks;
 		while (_works[_currentWorkIndex].nRemainingCheckTasks > 0) {
 			const TaskDoneInfo taskDoneInfo(_tasksDoneInfos.blocking_pop_front());
 			if (!_running) return;
 			if (taskDoneInfo.type == Task::Type::Check) _works[taskDoneInfo.workIndex].nRemainingCheckTasks--;
-			else ERRORMSG("Expected Check Task done 2");
+			else logger.log("Expected Check Task done 2!\n"s, MessageType::ERROR);
 		}
-		
-		DBG(std::cout << "Job Timing: " << _presieveTime.count() << "/" << _sieveTime.count() << "/" << _verifyTime.count() << ", tasks: " << _works[0].nRemainingCheckTasks << ", " << _works[1].nRemainingCheckTasks << std::endl;);
+		logger.logDebug("Job Timing: "s + std::to_string(_presieveTime.count()) + "/"s + std::to_string(_sieveTime.count()) + "/"s + std::to_string(_verifyTime.count()) + ", tasks: "s + std::to_string(_works[0].nRemainingCheckTasks) + ", "s + std::to_string(_works[1].nRemainingCheckTasks) + "\n"s);
 	}
 }
 
 void Miner::_suggestLessMemoryIntensiveOptions(const uint64_t suggestedPrimeTableLimit, const uint16_t suggestedSieveWorkers) const {
-	std::cout << "You don't have enough available memory to run rieMiner with the current options." << std::endl;
-	std::cout << "Try to use the following options in the " << confPath << " configuration file and retry:" << std::endl;
-	std::cout << "PrimeTableLimit = " << suggestedPrimeTableLimit << std::endl;
-	std::cout << "SieveWorkers = " << suggestedSieveWorkers << std::endl;
+	logger.log("You don't have enough available memory to run rieMiner with the current options.\n"s
+	           "Try to use the following options in the "s + confPath + " configuration file and retry:\n"s
+	           "PrimeTableLimit = "s + std::to_string(suggestedPrimeTableLimit) + "\n"s
+	           "SieveWorkers = "s + std::to_string(suggestedSieveWorkers) + "\n"s, MessageType::WARNING);
 	waitForUser();
 }
 
@@ -1332,42 +1334,45 @@ bool Miner::hasAcceptedPatterns(const std::vector<std::vector<uint64_t>> &accept
 }
 
 void Miner::printStats() const {
-	Stats statsRecent(_statManager.stats(false)), statsSinceStart(_statManager.stats(true));
+	Stats statsRecent(statManager.stats(false)), statsSinceStart(statManager.stats(true));
 	if (_mode == "Benchmark" || _mode == "Search") {
 		statsRecent = statsSinceStart;
-		std::cout << Stats::formattedTime(_statManager.timeSinceStart());
+		logger.log(Stats::formattedTime(statManager.timeSinceStart()));
 	}
 	else
-		std::cout << Stats::formattedClockTimeNow();
-	std::cout << " " << FIXED(2) << statsRecent.cps() << " c/s, r " << statsRecent.r();
+		logger.log(Stats::formattedClockTimeNow());
+	logger.log(" "s + doubleToString(statsRecent.cps(), 2U) + " c/s, r "s + doubleToString(statsRecent.r(), 2U));
 	if (_mode != "Pool") {
-		std::cout << " ; (1-" << _parameters.pattern.size() << "t) = " << statsSinceStart.formattedCounts(1);
+		logger.log(" ; (1-"s + std::to_string(_parameters.pattern.size()) + "t) = "s + statsSinceStart.formattedCounts(1));
 		if (statsRecent.count(1) >= 10)
-			std::cout << " | " << Stats::formattedDuration(statsRecent.estimatedAverageTimeToFindBlock(_works[_currentWorkIndex].job.primeCountTarget));
+			logger.log(" | "s + Stats::formattedDuration(statsRecent.estimatedAverageTimeToFindBlock(_works[_currentWorkIndex].job.primeCountTarget)));
 	}
 	else {
-		std::dynamic_pointer_cast<StratumClient>(_client)->printSharesStats();
+		const uint64_t shares(statManager.shares()), rejectedShares(statManager.rejectedShares());
+		logger.log(" ; Sh: "s + std::to_string(shares - rejectedShares) + "/"s + std::to_string(shares));
+		if (shares > 0)
+			logger.log(" ("s + doubleToString(100.*(static_cast<double>(shares - rejectedShares)/static_cast<double>(shares)), 2U) + "%)"s);
 		if (statsRecent.count(1) >= 10)
-			std::cout << " | " << 86400.*(50./static_cast<double>(1 << _client->currentHeight()/840000))/statsRecent.estimatedAverageTimeToFindBlock(_works[_currentWorkIndex].job.primeCountTarget) << " RIC/d";
+			logger.log(" | "s + doubleToString(86400.*(50./static_cast<double>(1 << _client->currentHeight()/840000))/statsRecent.estimatedAverageTimeToFindBlock(_works[_currentWorkIndex].job.primeCountTarget), 1U) + " RIC/d"s);
 	}
-	std::cout << std::endl;
+	logger.log("\n");
 }
 bool Miner::benchmarkFinishedTimeOut(const double benchmarkTimeLimit) const {
-	const Stats stats(_statManager.stats(true));
+	const Stats stats(statManager.stats(true));
 	return benchmarkTimeLimit > 0. && stats.duration() >= benchmarkTimeLimit;
 }
 bool Miner::benchmarkFinishedEnoughPrimes(const uint64_t benchmarkPrimeCountLimit) const {
-	const Stats stats(_statManager.stats(true));
+	const Stats stats(statManager.stats(true));
 	return benchmarkPrimeCountLimit > 0 && stats.count(1) >= benchmarkPrimeCountLimit;
 }
 void Miner::printBenchmarkResults() const {
-	Stats stats(_statManager.stats(true));
-	std::cout << "Benchmark finished after " << stats.duration() << " s." << std::endl;
-	std::cout << FIXED(6) << stats.cps() << " candidates/s, ratio " << stats.r() << " -> " << 86400./stats.estimatedAverageTimeToFindBlock(_works[_currentWorkIndex].job.primeCountTarget) << " block(s)/day" << std::endl;
+	Stats stats(statManager.stats(true));
+	logger.log("Benchmark finished after "s + doubleToString(stats.duration(), 6U) + " s.\n"s +
+	           doubleToString(stats.cps(), 6U) + " candidates/s, ratio "s + doubleToString(stats.r(), 6U) + " -> "s + doubleToString(86400./stats.estimatedAverageTimeToFindBlock(_works[_currentWorkIndex].job.primeCountTarget), 6U) + " block(s)/day\n", MessageType::SUCCESS);
 }
 void Miner::printTupleStats() const {
-	Stats stats(_statManager.stats(true));
-	std::cout << "Tuples found: " << stats.formattedCounts() << " in " << FIXED(6) << stats.duration() << " s" << std::endl;
-	std::cout << "Tuple rates : " << stats.formattedRates() << std::endl;
-	std::cout << "Tuple ratios: " << stats.formattedRatios() << std::endl;
+	Stats stats(statManager.stats(true));
+	logger.log("Tuples found: "s + stats.formattedCounts() + " in "s + doubleToString(stats.duration(), 6U) + " s.\n"s
+	           "Tuple rates : "s + stats.formattedRates() + "\n"s
+	           "Tuple ratios: "s + stats.formattedRatios() + "\n"s);
 }

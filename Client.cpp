@@ -6,7 +6,7 @@ double decodeBits(const uint32_t nBits, const int32_t powVersion) {
 	if (powVersion == 1)
 		return static_cast<double>(nBits)/256.;
 	else
-		ERRORMSG("Unexpected PoW Version " << powVersion);
+		logger.log("Unexpected PoW Version "s + std::to_string(powVersion) + "\n"s, MessageType::ERROR);
 	return 1.;
 }
 
@@ -38,7 +38,7 @@ mpz_class BlockHeader::target(const int32_t powVersion) const {
 		target <<= trailingZeros;
 	}
 	else
-		ERRORMSG("Unexpected PoW Version " << powVersion);
+		logger.log("Unexpected PoW Version "s + std::to_string(powVersion) + "\n"s, MessageType::ERROR);
 	return target;
 }
 
@@ -52,20 +52,20 @@ std::array<uint8_t, 32> Job::encodedOffset() const {
 		*reinterpret_cast<uint16_t*>(&nOffset.data()[30]) = primorialNumber;
 	}
 	else
-		ERRORMSG("Unexpected PoW Version " << powVersion);
+		logger.log("Unexpected PoW Version "s + std::to_string(powVersion) + "\n"s, MessageType::ERROR);
 	return nOffset;
 }
 
 std::vector<uint64_t> Client::choosePatterns(const std::vector<std::vector<uint64_t>>& acceptedPatterns, const std::vector<uint64_t>& givenPattern) {
-	std::cout << "Accepted constellation pattern(s):" << std::endl;
+	logger.log("Accepted constellation pattern(s):\n"s);
 	if (acceptedPatterns.size() == 0) {
-		std::cout << " None - something went wrong :|" << std::endl;
+		logger.log("\tNone - something went wrong :|\n"s, MessageType::ERROR);
 		return {};
 	}
 	else {
 		bool accepted(false);
 		for (uint16_t i(0) ; i < acceptedPatterns.size() ; i++) {
-			std::cout << " " << i << " - " << formatContainer(acceptedPatterns[i]);
+			logger.log("\t"s + std::to_string(i) + " - "s + formatContainer(acceptedPatterns[i]));
 			bool compatible(true);
 			for (uint16_t j(0) ; j < acceptedPatterns[i].size() ; j++) {
 				const auto offset(acceptedPatterns[i][j]);
@@ -73,14 +73,14 @@ std::vector<uint64_t> Client::choosePatterns(const std::vector<std::vector<uint6
 					compatible = false;
 			}
 			if (compatible) {
-				std::cout << " <- compatible";
+				logger.log(" <- compatible"s);
 				accepted = true;
 			}
-			std::cout << std::endl;
+			logger.log("\n"s);
 		}
 		if (!accepted) {
 			const uint16_t patternIndex(rand(0, acceptedPatterns.size() - 1));
-			std::cout << "None or not compatible one specified, choosing a random one: pattern " << patternIndex << std::endl;
+			logger.log("None or not compatible one specified, choosing a random one: pattern "s + std::to_string(patternIndex) + "\n");
 			return acceptedPatterns[patternIndex];
 		}
 		else
@@ -153,5 +153,5 @@ void SearchClient::handleResult(const Job& job) {
 	if (file)
 		file << job.resultPrimeCount << "-tuple: " << job.result << std::endl;
 	else
-		ERRORMSG("Unable to write tuple to file " << _tuplesFilename);
+		logger.log("Unable to write tuple to file "s + _tuplesFilename + "\n"s, MessageType::ERROR);
 }

@@ -85,7 +85,7 @@ std::array<uint8_t, 32> coinbaseTxId(const std::vector<uint8_t> &coinbase) {
 static std::array<uint8_t, 32> calculateMerkleRoot(const std::vector<std::array<uint8_t, 32>> &txHashes) {
 	std::array<uint8_t, 32> merkleRoot{};
 	if (txHashes.size() == 0)
-		ERRORMSG("No transaction to hash");
+		logger.log("No transaction to hash!\n"s, MessageType::ERROR);
 	else if (txHashes.size() == 1)
 		return txHashes[0];
 	else {
@@ -125,15 +125,15 @@ nlohmann::json GBTClient::_sendRequestToWallet(const std::string &method, const 
 		curl_easy_setopt(_curl, CURLOPT_TIMEOUT, 10);
 		const CURLcode cc(curl_easy_perform(_curl));
 		if (cc != CURLE_OK)
-			ERRORMSG("Curl_easy_perform() failed: " << curl_easy_strerror(cc));
+			logger.log("Curl_easy_perform() failed: "s + curl_easy_strerror(cc) + "\n"s, MessageType::ERROR);
 		else {
 			try {jsonObj = nlohmann::json::parse(s);}
 			catch (nlohmann::json::parse_error &e) {
 				if (s.size() == 0)
-					std::cout << "Nothing was received from the server!" << std::endl;
+					logger.log("Nothing was received from the server!\n"s, MessageType::ERROR);
 				else {
-					std::cout << "Received bad JSON object!" << std::endl;
-					std::cout << "Server message was: " << s << std::endl;
+					logger.log("Received bad JSON object!\n"s
+					           "Server message was: "s + s + "\n"s, MessageType::ERROR);
 				}
 			}
 		}
@@ -150,7 +150,7 @@ bool GBTClient::_fetchJob() {
 		getblocktemplateResult = getblocktemplate["result"];
 	}
 	catch (...) {
-		std::cout << "Could not get GetBlockTemplate Data!" << std::endl;
+		logger.log("Could not get GetBlockTemplate Data!\n"s, MessageType::ERROR);
 		return false;
 	}
 	JobTemplate newJobTemplate;
@@ -173,12 +173,12 @@ bool GBTClient::_fetchJob() {
 		newJobTemplate.job.height = getblocktemplateResult["height"];
 		newJobTemplate.job.powVersion = getblocktemplateResult["powversion"];
 		if (newJobTemplate.job.powVersion != 1) {
-			std::cout << "Unsupported PoW Version " << newJobTemplate.job.powVersion << ", your rieMiner version is likely outdated!" << std::endl;
+			logger.log("Unsupported PoW Version "s + std::to_string(newJobTemplate.job.powVersion) + ", your rieMiner version is likely outdated!\n"s, MessageType::ERROR);
 			return false;
 		}
 		newJobTemplate.job.acceptedPatterns = getblocktemplateResult["patterns"].get<decltype(newJobTemplate.job.acceptedPatterns)>();
 		if (newJobTemplate.job.acceptedPatterns.size() == 0) {
-			std::cout << "Empty or invalid accepted patterns list!" << std::endl;
+			logger.log("Empty or invalid accepted patterns list!\n"s, MessageType::ERROR);
 			return false;
 		}
 		newJobTemplate.job.primeCountTarget = newJobTemplate.job.acceptedPatterns[0].size();
@@ -186,8 +186,8 @@ bool GBTClient::_fetchJob() {
 		newJobTemplate.job.difficulty = decodeBits(newJobTemplate.job.clientData.bh.bits, newJobTemplate.job.powVersion);
 	}
 	catch (...) {
-		std::cout << "Received GetBlockTemplate Data with invalid parameters!" << std::endl;
-		std::cout << "Json Object was: " << getblocktemplate.dump() << std::endl;
+		logger.log("Received GetBlockTemplate Data with invalid parameters!\n"s
+		           "Json Object was: "s + getblocktemplate.dump() + "\n"s, MessageType::ERROR);
 		return false;
 	}
 	std::lock_guard<std::mutex> lock(_jobMutex);
@@ -196,7 +196,7 @@ bool GBTClient::_fetchJob() {
 }
 
 void GBTClient::_submit(const Job& job) {
-	std::cout << "Submitting block with " << job.clientData.txCount << " transaction(s) (including coinbase)..." << std::endl;
+	logger.log("Submitting block with "s + std::to_string(job.clientData.txCount) + " transaction(s) (including coinbase)...\n"s, MessageType::BOLD);
 	BlockHeader bh(job.clientData.bh);
 	bh.nOffset = job.encodedOffset();
 	std::ostringstream oss;
@@ -210,12 +210,12 @@ void GBTClient::_submit(const Job& job) {
 	try {
 		nlohmann::json submitblockResponse(_sendRequestToWallet("submitblock", {oss.str()}));
 		if (submitblockResponse["result"] == nullptr && submitblockResponse["error"] == nullptr)
-			std::cout << "Submission accepted :D !" << std::endl;
+			logger.log("Submission accepted :D !\n"s, MessageType::SUCCESS);
 		else
-			std::cout << "Submission rejected :| ! Received: " << submitblockResponse.dump() << std::endl;
+			logger.log("Submission rejected :| ! Received: " + submitblockResponse.dump() + "\n"s, MessageType::WARNING);
 	}
 	catch (std::exception &e) {
-		ERRORMSG("Failure submitting block");
+		logger.log("Failure submitting block :| !\n"s, MessageType::ERROR);
 		return;
 	}
 }
@@ -226,7 +226,7 @@ void GBTClient::connect() {
 		_pendingSubmissions = {};
 		process();
 		if (_currentJobTemplate.job.height == 0) {
-			std::cout << "Could not get a first job from the server!" << std::endl;
+			logger.log("Could not get a first job from the server!\n"s, MessageType::ERROR);
 			return;
 		}
 		_connected = true;

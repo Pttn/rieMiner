@@ -17,7 +17,12 @@ native: rieMiner
 endif
 
 debug: CFLAGS += -march=native -g
+debug: LIBS := -pthread $(LIBS)
+ifeq ($(shell uname -m),x86_64)
+debug: rieMinerx64
+else
 debug: rieMiner
+endif
 
 Deb64: CFLAGS += -march=x86-64 -s -D CURL_STATICLIB -I incsDeb64/
 Deb64AVX2: CFLAGS += -march=x86-64 -mavx2 -s -D CURL_STATICLIB -I incsDeb64/

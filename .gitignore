@@ -12,3 +12,5 @@ rieMiner*
 rieMiner.exe.stackdump
 .*.swp
 *.bin
+debug.log
+Tuples.txt

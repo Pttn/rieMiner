@@ -212,7 +212,7 @@ rieMiner proposes the following Modes depending on what you want to do. Use the 
 * `PrimorialOffsets`: list of offsets from a primorial multiple to use for the sieve process, separated by commas. If empty, a default one will be chosen if possible (see main.hpp source file), otherwise rieMiner will not start (if the chosen constellation pattern is not in main.hpp). Default: empty;
 * `RefreshInterval`: refresh rate of the stats in seconds. <= 0 to disable them and only notify when a long enough tuple or share is found, or when the network finds a block. Default: 30;
 * `GeneratePrimeTableFileUpTo`: if > 1, generates the table of primes up to the given limit and saves it to a `PrimeTable64.bin` file, which will be reused instead of recomputing the table at every miner initialization. This does not affect mining, but is useful if restarting rieMiner often with large Prime Table Limits, notably for debugging or benchmarks. However, the file will take a few GB of disk space for large limits and you should have a fast SSD. Default: 0;
-* `Debug`: activate Debug Mode: rieMiner will print a lot of debug messages. Set to 1 to enable, 0 to disable. Other values may introduce some more specific debug messages. Default : 0;
+* `RawOutput`: if you need to disable the coloring in the outputs, set this to `Yes`. Default : disabled;
 * `APIPort`: sets the port to use for the rieMiner's API server. 0 to disable the API. Default : 0.
 
 ## Interface
@@ -224,6 +224,10 @@ During mining, rieMiner will regularly print some statistics (use the `RefreshIn
 rieMiner will also notify if it found a block or a share, and if the network found a new block. If it finds a block or a share, it will tell if the submission was accepted (solo mining only) or not by the server.
 
 In Benchmark and Search Modes, the behavior is essentially the same as Solo mining. In mining Modes, the statistics are based on the tuples found during the latest five blocks, including the current one, while in the other Modes, everything since the beginning is taken in account.
+
+### Troubleshooting
+
+rieMiner writes in a debug.log file, which contains more detailed outputs that can be useful when debugging rieMiner or asking for help. Note that the logging will not properly work if multiple instances of rieMiner are running.
 
 ### API
 

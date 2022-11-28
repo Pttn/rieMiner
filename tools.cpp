@@ -124,7 +124,7 @@ std::vector<uint8_t> bech32ToScriptPubKey(const std::string &address) {
 #include <sysinfoapi.h>
 #endif
 
-SysInfo::SysInfo() : _os("Unknown/Unsupported OS"), _cpuArchitecture("Unknown Architecture"), _cpuBrand("Unknown CPU"), _physicalMemory(0ULL), _avx(false), _avx2(false), _avx512(false) {
+SysInfo::SysInfo() : _os("Unknown/Unsupported"), _cpuArchitecture("Unknown"), _cpuBrand("Unknown"), _physicalMemory(0ULL), _avx(false), _avx2(false), _avx512(false) {
 #if defined(__linux__)
 	_os = "Linux";
 	struct sysinfo si;
@@ -159,10 +159,10 @@ SysInfo::SysInfo() : _os("Unknown/Unsupported OS"), _cpuArchitecture("Unknown Ar
 		_cpuBrand = reinterpret_cast<char*>(brand);
 	}
 	
-	uint32_t eax(0), ebx(0), ecx(0), edx(0);
-	__get_cpuid(0, &eax, &ebx, &ecx, &edx);
+	uint32_t eax(0U), ebx(0U), ecx(0U), edx(0U);
+	__get_cpuid(0U, &eax, &ebx, &ecx, &edx);
 	if (eax >= 7) {
-		__get_cpuid(1, &eax, &ebx, &ecx, &edx);
+		__get_cpuid(1U, &eax, &ebx, &ecx, &edx);
 		_avx = (ecx & (1 << 28)) != 0;
 		// Must do this with inline assembly as __get_cpuid is unreliable for level 7 and __get_cpuid_count is not always available.
 		//__get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx);
@@ -174,4 +174,50 @@ SysInfo::SysInfo() : _os("Unknown/Unsupported OS"), _cpuArchitecture("Unknown Ar
 		_avx512 = (ebx & (1 << 16)) != 0;
 	}
 #endif
+}
+
+void Logger::log(const std::string &message, const MessageType &type) {
+	std::lock_guard<std::mutex> lock(_mutex);
+	std::ofstream file(_debugLogFileName, std::ios::app);
+	if (file)
+		file << message;
+	else
+		std::cerr << "Unable to write output to file " << _debugLogFileName << std::endl;
+	if (_raw)
+		std::cout << message;
+	else {
+#ifdef _WIN32
+		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+		if (type == MessageType::BOLD)
+			SetConsoleTextAttribute(hConsole, 15);
+		else if (type == MessageType::WARNING)
+			SetConsoleTextAttribute(hConsole, 14);
+		else if (type == MessageType::SUCCESS)
+			SetConsoleTextAttribute(hConsole, 10);
+		else if (type == MessageType::ERROR)
+			SetConsoleTextAttribute(hConsole, 12);
+		std::cout << message;
+		SetConsoleTextAttribute(hConsole, 7);
+#else
+		if (type == MessageType::BOLD)
+			std::cout << "\e[1m" << message << "\e[0m";
+		else if (type == MessageType::WARNING)
+			std::cout << "\e[1m\x1B[33m" << message << "\e[0m";
+		else if (type == MessageType::SUCCESS)
+			std::cout << "\e[1m\x1B[32m" << message << "\e[0m";
+		else if (type == MessageType::ERROR)
+			std::cerr << "\e[1m\x1B[31m" << message << "\e[0m";
+		else
+			std::cout << message;
+#endif
+	}
+}
+
+void Logger::logDebug(const std::string &message) {
+	std::lock_guard<std::mutex> lock(_mutex);
+	std::ofstream file(_debugLogFileName, std::ios::app);
+	if (file)
+		file << message;
+	else
+		std::cerr << "Unable to write debug output to file " << _debugLogFileName << std::endl;
 }

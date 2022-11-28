@@ -142,7 +142,6 @@ class StratumClient : public NetworkedClient {
 	} _currentJobTemplate;
 	int _socket;
 	std::chrono::time_point<std::chrono::steady_clock> _lastPoolMessageTp; // Used to disconnect if the server sent nothing since a long time
-	uint32_t _shares, _rejectedShares;
 	enum State {UNSUBSCRIBED, SUBSCRIBED, AUTHORIZED} _state;
 	uint32_t _jsonId; // Counter for the Id field when sending requests to the pool
 	
@@ -159,12 +158,6 @@ public:
 	}
 	uint32_t currentHeight() const {return _currentJobTemplate.job.height;}
 	double currentDifficulty() const {return _currentJobTemplate.job.difficulty;}
-	void printSharesStats() const { // Must be after a Stats::printStats()
-		std::cout << " ; Sh: " << _shares - _rejectedShares << "/" << _shares;
-		if (_shares > 0) std::cout << " (" << FIXED(1) << 100.*(static_cast<double>(_shares - _rejectedShares)/static_cast<double>(_shares)) << "%)";
-	}
-	uint32_t shares() const {return _shares;}
-	uint32_t sharesRejected() const {return _rejectedShares;}
 };
 
 // For BenchMarking, emulates a client to allow similar conditions to actual mining by providing
@@ -194,7 +187,7 @@ class SearchClient : public Client {
 	std::mutex _tupleFileMutex;
 public:
 	SearchClient(const Options &options) : _pattern(options.minerParameters.pattern), _difficulty(options.difficulty), _tuplesFilename(options.tuplesFile) {
-		std::cout << "Tuples will be written to file " << _tuplesFilename << std::endl;
+		logger.log("Tuples will be written to file "s + _tuplesFilename + "\n"s);
 	}
 	Job getJob(const bool = false); // Work is generated here
 	void handleResult(const Job&); // Save tuple to file

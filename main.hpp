@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
-#include <fstream>
 #include <iomanip>
 #include <mutex>
 #include <optional>
@@ -14,9 +13,8 @@
 #include <thread>
 #include <unistd.h>
 #include <vector>
+#include "Stats.hpp"
 #include "tools.hpp"
-
-using namespace std::string_literals;
 
 #ifndef versionShort
 	#define versionShort	"0.9x"
@@ -27,13 +25,10 @@ using namespace std::string_literals;
 #define primeTableFile	"PrimeTable64.bin"
 
 inline SysInfo sysInfo;
+inline Logger logger;
+inline StatManager statManager;
 
-extern int DEBUG;
 extern std::string confPath;
-
-#define DBG(x) if (DEBUG) {x;};
-#define DBG_VERIFY(x) if (DEBUG > 1) { x; };
-#define ERRORMSG(message) std::cerr << __func__ << ": " << message << " :| !" << std::endl
 
 static const std::vector<std::pair<std::vector<uint64_t>, std::vector<uint64_t>>> defaultConstellationData = {
 	// 1-tuples
@@ -117,9 +112,9 @@ struct Options {
 
 class Configuration {
 	Options _options;
-	std::optional<std::pair<std::string, std::string>> _parseLine(const std::string&) const;
+	std::optional<std::pair<std::string, std::string>> _parseLine(const std::string&, std::string&) const;
 public:
-	bool parse(const int, char**);
+	bool parse(const int, char**, std::string&);
 	Options options() const {return _options;}
 };
 

@@ -16,7 +16,7 @@ constexpr const char* userAgent("rieMiner/0.93");
 static std::array<uint8_t, 32> calculateMerkleRootStratum(const std::vector<std::array<uint8_t, 32>> &merkleBranches) {
 	std::array<uint8_t, 32> merkleRoot{};
 	if (merkleBranches.size() == 0)
-		ERRORMSG("No merkle branch");
+		logger.log("No merkle branch!\n"s, MessageType::ERROR);
 	else if (merkleBranches.size() == 1)
 		return merkleBranches[0];
 	else {
@@ -49,8 +49,8 @@ void StratumClient::_processMessage(const std::string &message) {
 		jsonMessage = nlohmann::json::parse(message);
 	}
 	catch (...) {
-		std::cout << "Could not parse Json Message!" << std::endl;
-		std::cout << "Pool message was: " << message << std::endl;
+		logger.log("Could not parse Json Message!\n"s
+		           "Pool message was: "s + message + "\n"s, MessageType::ERROR);
 		_state = UNSUBSCRIBED;
 		return;
 	}
@@ -75,26 +75,26 @@ void StratumClient::_processMessage(const std::string &message) {
 				acceptedPatterns = jsonParams[10].get<decltype(acceptedPatterns)>();
 			}
 			catch (...) {
-				std::cout << "Could not parse mining.notify parameters!" << std::endl;
-				std::cout << "Please check whether the pool or rieMiner is outdated." << std::endl;
-				std::cout << "Pool message was: " << message << std::endl;
+				logger.log("Could not parse mining.notify parameters!\n"s
+				           "Please check whether the pool or rieMiner is outdated.\n"s
+				           "Pool message was: "s + message + "\n"s, MessageType::ERROR);
 				_state = UNSUBSCRIBED;
 				return;
 			}
 			if (!isHexStrOfSize(prevhash, 64) || !isHexStr(coinbase1) || coinbase1.size() % 2 != 0 || coinbase1.size() < 46 || !isHexStr(coinbase2) || coinbase2.size() % 2 != 0 || !isHexStrOfSize(version, 8) || !isHexStrOfSize(nbits, 8) || !isHexStr(ntime)) {
-				std::cout << "Received invalid mining.notify parameters!" << std::endl;
-				std::cout << "Please check whether the pool or rieMiner is outdated." << std::endl;
-				std::cout << "Pool message was: " << message << std::endl;
+				logger.log("Received invalid mining.notify parameters!\n"s
+				           "Please check whether the pool or rieMiner is outdated.\n"s
+				           "Pool message was: "s + message + "\n"s, MessageType::ERROR);
 				_state = UNSUBSCRIBED;
 				return;
 			}
 			if (powVersion != 1) {
-				std::cout << "The pool uses an unsupported PoW Version " << powVersion << ", your rieMiner version is likely outdated!" << std::endl;
+				logger.log("The pool uses an unsupported PoW Version "s + std::to_string(powVersion) + ", your rieMiner version is likely outdated!\n"s, MessageType::ERROR);
 				_state = UNSUBSCRIBED;
 				return;
 			}
 			if (acceptedPatterns.size() == 0) {
-				std::cout << "Received empty or invalid accepted constellation patterns list!" << std::endl;
+				logger.log("Received empty or invalid accepted constellation patterns list!\n"s, MessageType::ERROR);
 				_state = UNSUBSCRIBED;
 				return;
 			}
@@ -106,7 +106,7 @@ void StratumClient::_processMessage(const std::string &message) {
 				newJobTemplate.job.clientData.bh.bits = std::stoll(nbits, nullptr, 16);
 			}
 			catch (...) {
-				std::cout << "Received invalid Block Header hex values!" << std::endl;
+				logger.log("Received invalid Block Header hex values!\n"s, MessageType::ERROR);
 				_state = UNSUBSCRIBED;
 				return;
 			}
@@ -115,7 +115,7 @@ void StratumClient::_processMessage(const std::string &message) {
 			newJobTemplate.coinbase2 = hexStrToV8(coinbase2);
 			for (const auto &merkleBranch : merkleBranches) {
 				if (!isHexStrOfSize(merkleBranch, 64)) {
-					std::cout << "Received invalid Merkle Branch" << merkleBranch << "!" << std::endl;
+					logger.log("Received invalid Merkle Branch " + merkleBranch + "!\n"s, MessageType::ERROR);
 					_state = UNSUBSCRIBED;
 					return;
 				}
@@ -139,17 +139,17 @@ void StratumClient::_processMessage(const std::string &message) {
 			try {
 				nlohmann::json jsonParams(jsonMessage["params"]);
 				messageToShow = jsonParams[0];
-				std::cout << "Message from pool: \"" << messageToShow << "\"" << std::endl;
+				logger.log("Message from pool: \""s + messageToShow + "\"\n"s, MessageType::BOLD);
 			}
 			catch (std::exception &e) {
-				std::cout << "Received invalid client.show_message request - " << e.what() << std::endl;
-				std::cout << "Pool message was: " << message << std::endl;
+				logger.log("Received invalid client.show_message request - "s + e.what() + "\n"s
+				           "Pool message was: "s + message + "\n"s, MessageType::ERROR);
 				return;
 			}
 		}
 		else {
-			DBG(std::cout << "Received request from pool with unsupported method " << method << std::endl;);
-			DBG(std::cout << "Pool message was: " << message << std::endl;);
+			logger.logDebug("Received request from pool with unsupported method "s + method + "\n"s
+			                "Pool message was: "s + message);
 		}
 	}
 	else {
@@ -166,25 +166,26 @@ void StratumClient::_processMessage(const std::string &message) {
 				_extraNonce2Len = jsonResult[2];
 			}
 			catch (...) {
-				std::cout << "Received invalid mining.subscribe result!" << std::endl;
-				std::cout << "Please check whether the pool or rieMiner is outdated." << std::endl;
-				std::cout << "Pool message was: " << message << std::endl;
+				logger.log("Received invalid mining.subscribe result!\n"s
+				           "Please check whether the pool or rieMiner is outdated.\n"s
+				           "Pool message was: "s + message + "\n"s, MessageType::ERROR);
 				return;
 			}
 			_state = SUBSCRIBED;
-			std::cout << "Successfully subscribed to the pool. Subscriptions:";
+			logger.log("Successfully subscribed to the pool."s, MessageType::SUCCESS);
+			logger.log(" Subscriptions:"s);
 			if (_sids.size() == 0)
-				std::cout << " none" << std::endl;
+				logger.log("\tnone\n"s);
 			else {
-				std::cout << std::endl;
+				logger.log("\n"s);
 				for (const auto &sid : _sids)
-					std::cout << "\t" << sid.first << ": " << sid.second << std::endl;
+					logger.log("\t"s + sid.first + ": "s + sid.second + "\n"s);
 			}
-			std::cout << "ExtraNonce1    = " << v8ToHexStr(_extraNonce1) << std::endl;
-			std::cout << "extraNonce2Len = " << _extraNonce2Len << std::endl;
+			logger.log("ExtraNonce1    = "s + v8ToHexStr(_extraNonce1) + "\n"s);
+			logger.log("extraNonce2Len = "s + std::to_string(_extraNonce2Len) + "\n"s);
 			const std::string miningAuthorizeMessage("{\"id\": "s + std::to_string(_jsonId++) + ", \"method\": \"mining.authorize\", \"params\": [\""s + _username + "\", \""s + _password + "\"]}\n"s);
 			send(_socket, miningAuthorizeMessage.c_str(), miningAuthorizeMessage.size(), 0);
-			DBG(std::cout << "Sent to pool: " << miningAuthorizeMessage;);
+			// logger.logDebug("Sent to pool: "s + miningAuthorizeMessage);
 		}
 		else if (_state == SUBSCRIBED) {
 			nlohmann::json jsonResult;
@@ -192,18 +193,18 @@ void StratumClient::_processMessage(const std::string &message) {
 				jsonResult = jsonMessage["result"];
 			}
 			catch (...) {
-				std::cout << "Received bad mining.subscribe result!" << std::endl;
-				std::cout << "Pool message was: " << message << std::endl;
+				logger.log("Received bad mining.subscribe result!\n"s
+				           "Pool message was: "s + message + "\n"s, MessageType::ERROR);
 				_state = UNSUBSCRIBED;
 				return;
 			}
 			if (jsonResult != true) {
-				std::cout << "Authorization refused by the pool. Please check your credentials." << std::endl;
-				std::cout << "Pool message was: " << message << std::endl;
+				logger.log("Authorization refused by the pool. Please check your credentials.\n"s
+				           "Pool message was: "s + message + "\n", MessageType::ERROR);
 				_state = UNSUBSCRIBED;
 			}
 			else {
-				std::cout << "Successfully authorized by the pool." << std::endl;
+				logger.log("Successfully authorized by the pool.\n"s, MessageType::SUCCESS);
 				_state = AUTHORIZED;
 			}
 		}
@@ -213,14 +214,14 @@ void StratumClient::_processMessage(const std::string &message) {
 				jsonResult = jsonMessage["result"];
 			}
 			catch (...) {
-				std::cout << "Received bad mining.authorize result!" << std::endl;
-				std::cout << "Pool message was: " << message << std::endl;
+				logger.log("Received bad mining.authorize result!\n"s
+				           "Pool message was: "s + message + "\n", MessageType::ERROR);
 				_state = UNSUBSCRIBED;
 				return;
 			}
 			if (jsonResult != true) {
-				std::cout << "Share rejected :| ! Received: " << message << std::endl;
-				_rejectedShares++;
+				logger.log("Rejected share: "s + message + "\n", MessageType::WARNING);
+				statManager.incrementRejectedShares();
 			}
 		}
 	}
@@ -235,7 +236,7 @@ void StratumClient::_submit(const Job& share) {
 	    << std::setfill('0') << std::setw(16) << std::hex << share.clientData.bh.curtime << "\", \""
 	    << v8ToHexStr(reverse(a8ToV8(share.encodedOffset()))) << "\"]}\n";
 	send(_socket, oss.str().c_str(), oss.str().size(), 0);
-	DBG(std::cout << "Sent: " << oss.str(););
+	logger.logDebug("Sent to pool: "s + oss.str());
 }
 
 void StratumClient::connect() {
@@ -246,8 +247,6 @@ void StratumClient::connect() {
 		_extraNonce2Len = 0;
 		_currentJobTemplate = JobTemplate();
 		_lastPoolMessageTp = std::chrono::steady_clock::now();
-		_shares = 0;
-		_rejectedShares = 0;
 		_state = UNSUBSCRIBED;
 		_jsonId = 0U;
 #ifdef _WIN32
@@ -255,13 +254,13 @@ void StratumClient::connect() {
 		WSADATA wsaData;
 		const int err(WSAStartup(wVersionRequested, &wsaData));
 		if (err != 0) {
-			ERRORMSG("WSAStartup failed with error " << err);
+			logger.log("WSAStartup failed with error "s + std::to_string(err) + "\n"s, MessageType::ERROR);
 			return;
 		}
 #endif
 		hostent* hostInfo = gethostbyname(_host.c_str());
 		if (hostInfo == nullptr) {
-			std::cout << "Unable to resolve '" << _host << "', check the URL." << std::endl;
+			logger.log("Unable to resolve '"s + _host + "', check the URL.\n"s, MessageType::ERROR);
 			return;
 		}
 		void** ipListPtr((void**) hostInfo->h_addr_list);
@@ -269,13 +268,13 @@ void StratumClient::connect() {
 		if (ipListPtr[0]) ip = *(uint32_t*) ipListPtr[0];
 		std::ostringstream oss;
 		oss << ((ip >> 0) & 0xFF) << "." << ((ip >> 8) & 0xFF) << "." << ((ip >> 16) & 0xFF) << "." << ((ip >> 24) & 0xFF);
-		std::cout << "Host: " << _host  << " -> " << oss.str() << std::endl;
+		logger.log("Host: '"s + _host + " -> " + oss.str() + "\n"s);
 		_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		if (_socket == -1) {
 #ifdef _WIN32
-			std::cout << "Could not create endpoint, error " << WSAGetLastError() << std::endl;
+			logger.log("Could not create endpoint, error "s + std::to_string(WSAGetLastError()) + "\n"s, MessageType::ERROR);
 #else
-			std::cout << "Could not create endpoint - " << std::strerror(errno) << std::endl;
+			logger.log("Could not create endpoint: "s + std::strerror(errno) + "\n"s, MessageType::ERROR);
 #endif
 			return;
 		}
@@ -287,11 +286,11 @@ void StratumClient::connect() {
 		int result = ::connect(_socket, (sockaddr*) &addr, sizeof(sockaddr_in));
 		if (result != 0) {
 #ifdef _WIN32
-			std::cout << "Could not connect to the pool, error " << WSAGetLastError() << std::endl;
+			logger.log("Could not connect to the pool, error "s + std::to_string(WSAGetLastError()) + "\n"s +
 #else
-			std::cout << "Could not connect to the pool - " << std::strerror(errno) << std::endl;
+			logger.log("Could not connect to the pool: "s + std::strerror(errno) + "\n"s +
 #endif
-			std::cout << "Check the port." << std::endl;
+			"Check the port."s, MessageType::ERROR);
 			return;
 		}
 #ifdef _WIN32
@@ -300,20 +299,20 @@ void StratumClient::connect() {
 #else
 		if (fcntl(_socket, F_SETFL, fcntl(_socket, F_GETFL, 0) | O_NONBLOCK) == -1) {
 #endif
-			ERRORMSG("Unable to make the socket non-blocking");
+			logger.log("Unable to make the socket non-blocking\n"s, MessageType::ERROR);
 			return;
 		}
 	}
 	if (_state == UNSUBSCRIBED) {
 		const std::string miningSubscribeMessage("{\"id\": "s + std::to_string(_jsonId++) + ", \"method\": \"mining.subscribe\", \"params\": [\""s + userAgent + "\"]}\n"s);
 		send(_socket, miningSubscribeMessage.c_str(), miningSubscribeMessage.size(), 0);
-		DBG(std::cout << "Sent: " << miningSubscribeMessage;);
+		logger.logDebug("Sent to pool: "s + miningSubscribeMessage);
 	}
 	const std::chrono::time_point<std::chrono::steady_clock> timeOutTimer(std::chrono::steady_clock::now());
 	while (getJob().height == 0 || _state != AUTHORIZED) {
 		process();
 		if (timeSince(timeOutTimer) > 1.) {
-			std::cout << "Could not get a first job from the pool!" << std::endl;
+			logger.log("Could not get a first job from the pool!\n"s, MessageType::ERROR);
 			std::lock_guard<std::mutex> lock(_jobMutex);
 			_currentJobTemplate.job.height = 0;
 			return;
@@ -332,7 +331,7 @@ void StratumClient::process() {
 	if (_pendingSubmissions.size() > 0) {
 		for (const auto &submission : _pendingSubmissions) {
 			_submit(submission);
-			_shares++;
+			statManager.incrementShares();
 		}
 		_pendingSubmissions.clear();
 	}
@@ -344,15 +343,15 @@ void StratumClient::process() {
 	const ssize_t messageLength(recv(_socket, buffer, bufferSize - 1U, 0));
 	if (messageLength <= 0) { // No data received.
 		if (messageLength == 0)
-			std::cout << "Connection closed by the pool" << std::endl;
+			logger.log("Connection closed by the pool.\n"s, MessageType::WARNING);
 		else if (timeSince(_lastPoolMessageTp) > stratumTimeOut)
-			std::cout << "Received nothing from the pool since a long time, disconnection assumed." << std::endl;
+			logger.log("Received nothing from the pool since a long time, disconnection assumed.\n"s, MessageType::WARNING);
 #ifdef _WIN32
 		else if (WSAGetLastError() != WSAEWOULDBLOCK)
-			std::cout << "Error receiving work data from pool, error " << WSAGetLastError() << std::endl;
+			logger.log("Error receiving work data from pool, error "s + std::to_string(WSAGetLastError()) + "\n"s, MessageType::ERROR);
 #else
 		else if (errno != EWOULDBLOCK)
-			std::cout << "Error receiving work data from pool: " << std::strerror(errno) << std::endl;
+			logger.log("Error receiving work data from pool: "s + std::strerror(errno) + "\n"s, MessageType::ERROR);
 #endif
 		else // Nothing went wrong, it is expected to get nothing most of the times due to the non blocking socket.
 			return;
@@ -364,7 +363,7 @@ void StratumClient::process() {
 		return;
 	}
 	_lastPoolMessageTp = std::chrono::steady_clock::now();
-	DBG(std::cout << "Received: " << buffer;);
+	logger.logDebug("Received: "s + buffer);
 	// Sometimes, the pool sends multiple lines in a single response (example, if a share is found immediately before a mining.notify). We need to process all of them.
 	std::stringstream resultSS(buffer);
 	std::string line;

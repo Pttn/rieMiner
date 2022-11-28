@@ -47,7 +47,7 @@ std::string Stats::formattedClockTimeNow() {
 	const std::time_t timeT(std::chrono::system_clock::to_time_t(now));
 	const std::tm *timeTm(std::localtime(&timeT));
 	std::ostringstream oss;
-	oss << "[" << std::put_time(timeTm, "%H:%M:%S") << "." << static_cast<uint32_t>(std::floor(milliseconds.count()))/100 << "]";
+	oss << "[" << std::put_time(timeTm, "%b %d %H:%M:%S") << "." << static_cast<uint32_t>(std::floor(milliseconds.count()))/100 << "]";
 	return oss.str();
 }
 std::string Stats::formattedDuration(const double &duration) {

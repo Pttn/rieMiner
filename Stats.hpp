@@ -36,16 +36,21 @@ class StatManager {
 	};
 	uint64_t _tupleSize, _nBlocks, _countsRecentEntryPos;
 	Counts _countsSinceStart;
+	uint64_t _shares, _rejectedShares;
 	std::vector<Counts> _countsRecent; // Stores separately the counts for the last countsRecentEntries blocks
 	std::mutex _countsLock;
 public:
-	StatManager() {}
+	StatManager() : _shares(0ULL), _rejectedShares(0ULL) {}
 	void start(const uint64_t);
 	void newBlock();
 	void addCounts(const std::vector<uint64_t>&);
+	void incrementShares() {_shares++;}
+	void incrementRejectedShares() {_rejectedShares++;}
 	double timeSinceStart() const {return timeSince(_countsSinceStart.startTp);}
-	double averageBlockTime() const {return _nBlocks > 0 ? timeSinceStart()/static_cast<double>(_nBlocks) : 0;}
+	double averageBlockTime() const {return _nBlocks > 0ULL ? timeSinceStart()/static_cast<double>(_nBlocks) : 0.;}
 	Stats stats(const bool) const;
+	uint64_t shares() {return _shares;}
+	uint64_t rejectedShares() {return _rejectedShares;}
 };
 
 #endif

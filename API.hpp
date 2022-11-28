@@ -1,4 +1,4 @@
-// (c) 2021 Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2021-2022 Pttn (https://riecoin.dev/en/rieMiner)
 
 #ifndef HEADER_API_hpp
 #define HEADER_API_hpp
@@ -24,7 +24,7 @@ public:
 	bool running() {return _running;}
 	void start() {
 		if (_running)
-			ERRORMSG("The API is already running");
+			logger.log("The API is already running\n"s, MessageType::ERROR);
 		else {
 			_running = true;
 			_thread = std::thread(&API::_process, this);
@@ -32,7 +32,7 @@ public:
 	}
 	void stop() {
 		if (!_running)
-			ERRORMSG("The API is already not running");
+			logger.log("The API is already stopped\n"s, MessageType::ERROR);
 		else {
 			_running = false;
 			_thread.join();

@@ -16,14 +16,13 @@
 #include "Miner.hpp"
 #include "tools.hpp"
 
-int DEBUG(0);
 std::string confPath("rieMiner.conf");
 bool running(false);
 std::shared_ptr<API> api(nullptr);
 std::shared_ptr<Miner> miner(nullptr);
 std::shared_ptr<Client> client(nullptr);
 
-std::optional<std::pair<std::string, std::string>> Configuration::_parseLine(const std::string &line) const {
+std::optional<std::pair<std::string, std::string>> Configuration::_parseLine(const std::string &line, std::string &parsingMessages) const {
 	if (line.size() == 0)
 		return std::nullopt;
 	if (line[0] == '#')
@@ -36,32 +35,32 @@ std::optional<std::pair<std::string, std::string>> Configuration::_parseLine(con
 		return option;
 	}
 	else {
-		std::cout << "Cannot find the delimiter '=' for: '" << line << "'" << std::endl;
+		parsingMessages += "Cannot find the delimiter '=' for: '"s + line + "'\n"s;
 		return std::nullopt;
 	}
 }
 
-bool Configuration::parse(const int argc, char** argv) {
+bool Configuration::parse(const int argc, char** argv, std::string &parsingMessages) {
 	if (argc >= 2)
 		confPath = argv[1];
 	
 	if (confPath == "help") {
-		std::cout << "Configuration file line syntax: Key = Value" << std::endl;
-		std::cout << "Same syntax for the command line options." << std::endl;
-		std::cout << "Available options are documented here. https://github.com/Pttn/rieMiner" << std::endl;
-		std::cout << "Guides with configuration file examples can also be found here. https://riecoin.dev/en/rieMiner" << std::endl;
-		std::cout << "Use default rieMiner.conf configuration file" << std::endl;
-		std::cout << "\t./rieMiner" << std::endl;
-		std::cout << "Custom configuration file" << std::endl;
-		std::cout << "\t./rieMiner existingConfigFile.conf" << std::endl;
-		std::cout << "Custom configuration file and command line options" << std::endl;
-		std::cout << "\t./rieMiner existingConfigFile.conf Option1=Value1 \"Option2 = Value2\" Option3=WeirdValue\\!\\!" << std::endl;
-		std::cout << "No configuration file and command line options (dummy must not exist)" << std::endl;
-		std::cout << "\t./rieMiner dummy Option1=Value1 \"Option2 = Value2\" Option3=WeirdValue\\!\\!" << std::endl;
-		std::cout << "Examples:" << std::endl;
-		std::cout << "\t./rieMiner Benchmark.conf" << std::endl;
-		std::cout << "\t./rieMiner SoloMining.conf Threads=7" << std::endl;
-		std::cout << "\t./rieMiner noconffile Mode=Pool Host=mining.example.com Port=5000 Username=username.worker Password=password" << std::endl;
+		logger.log("Configuration file line syntax: Key = Value\n"
+		           "Same syntax for the command line options.\n"
+		           "Available options are documented here. https://github.com/Pttn/rieMiner\n"
+		           "Guides with configuration file examples can also be found here. https://riecoin.dev/en/rieMiner\n"
+		           "Use default rieMiner.conf configuration file\n"
+		           "\t./rieMiner\n"
+		           "Custom configuration file\n"
+		           "\t./rieMiner existingConfigFile.conf\n"
+		           "Custom configuration file and command line options\n"
+		           "\t./rieMiner existingConfigFile.conf Option1=Value1 \"Option2 = Value2\" Option3=WeirdValue\\!\\!\n"
+		           "No configuration file and command line options (a file named 'dummy' must not exist)\n"
+		           "\t./rieMiner dummy Option1=Value1 \"Option2 = Value2\" Option3=WeirdValue\\!\\!\n"
+		           "Examples:\n"
+		           "\t./rieMiner Benchmark.conf\n"
+		           "\t./rieMiner SoloMining.conf Threads=7\n"
+		           "\t./rieMiner noconffile Mode=Pool Host=mining.example.com Port=5000 Username=username.worker Password=password\n"s);
 		waitForUser();
 		return false;
 	}
@@ -69,39 +68,38 @@ bool Configuration::parse(const int argc, char** argv) {
 	std::vector<std::string> lines;
 	std::ifstream file(confPath, std::ios::in);
 	if (file) {
-		std::cout << "Opening configuration file " << confPath << "..." << std::endl;
+		logger.log("Opening configuration file "s + confPath + "...\n"s);
 		std::string line;
 		while (std::getline(file, line))
 			lines.push_back(line);
 		file.close();
 	}
 	else if (argc <= 2) {
-		std::cout << confPath << " not found or unreadable and no other arguments given. Please read the guides and README to learn how to configure rieMiner." << std::endl;
-		std::cout << "https://riecoin.dev/en/rieMiner" << std::endl;
-		std::cout << "https://github.com/Pttn/rieMiner/" << std::endl;
+		logger.log(confPath + " not found or unreadable and no other arguments given. Please read the guides and README to learn how to configure rieMiner.\n"
+		           "https://riecoin.dev/en/rieMiner\n"
+		           "https://github.com/Pttn/rieMiner/\n"s, MessageType::WARNING);
 		waitForUser();
 		return false;
 	}
 	
 	if (argc > 2) {
-		std::cout << "Parsing " << argc - 2 << " option(s) given by command line..." << std::endl;
+		logger.log("Parsing "s + std::to_string(argc - 2) + " option(s) given by command line...\n"s);
 		for (int i(2) ; i < argc ; i++)
 			lines.push_back(argv[i]);
 	}
 	
 	for (const auto &line : lines) {
-		const std::optional<std::pair<std::string, std::string>> option(_parseLine(line));
+		const std::optional<std::pair<std::string, std::string>> option(_parseLine(line, parsingMessages));
 		if (!option.has_value())
 			continue;
 		std::string key(option.value().first), value(option.value().second);
-		if (key == "Debug") {
-			try {_options.debug = std::stoi(value);}
-			catch (...) {_options.debug = 0;}
-		}
-		else if (key == "Mode") {
+		if (key == "Mode") {
 			if (value == "Solo" || value == "Pool" || value == "Benchmark" || value == "Search")
 				_options.mode = value;
-			else std::cout << "Invalid mode!" << std::endl;
+			else {
+				parsingMessages += "Invalid mode '"s + value + "'!\n"s
+				                   "Possible values (case sensitive) are: Solo, Pool, Benchmark, Search\n";
+			}
 		}
 		else if (key == "Host") _options.host = value;
 		else if (key == "Port") {
@@ -201,55 +199,19 @@ bool Configuration::parse(const int argc, char** argv) {
 			try {_options.apiPort = std::stoi(value);}
 			catch (...) {_options.apiPort = 0U;}
 		}
-		else std::cout << "Ignoring line with unused key '" << key << "'" << std::endl;
-	}
-	DEBUG = _options.debug;
-	DBG(std::cout << "Debug messages enabled" << std::endl;);
-	DBG_VERIFY(std::cout << "Debug verification messages enabled" << std::endl;);
-	if (_options.mode == "Benchmark") {
-		std::cout << "Benchmark Mode at difficulty " << _options.difficulty << std::endl;
-		if (_options.benchmarkBlockInterval > 0.) std::cout << " Block interval: " << _options.benchmarkBlockInterval << " s" << std::endl;
-		if (_options.benchmarkTimeLimit > 0.) std::cout << " Time limit: " << _options.benchmarkTimeLimit << " s" << std::endl;
-		if (_options.benchmarkPrimeCountLimit != 0) std::cout << " Prime (1-tuple) count limit: " << _options.benchmarkPrimeCountLimit << std::endl;
-		if (_options.minerParameters.pattern.size() == 0) // Pick a default pattern if none was chosen
-			_options.minerParameters.pattern = {0, 2, 4, 2, 4, 6, 2};
-	}
-	else if (_options.mode == "Search") {
-		const double base10Exp(_options.difficulty*0.301029996);
-		std::cout << "Search Mode at difficulty " << _options.difficulty << " (numbers around " << std::pow(10., base10Exp - std::floor(base10Exp)) << "*10^" << std::floor(base10Exp) << ") - Good luck!" << std::endl;
-		if (_options.minerParameters.pattern.size() == 0) // Pick a default pattern if none was chosen
-			_options.minerParameters.pattern = {0, 2, 4, 2, 4, 6, 2};
-	}
-	else {
-		if (_options.mode == "Solo") std::cout << "Solo mining";
-		else if (_options.mode == "Pool") std::cout << "Pooled mining";
-		else {
-			std::cout << "Invalid Mode" << std::endl;
-			return false;
-		}
-		std::cout << " via host " << _options.host << ", port " << _options.port << std::endl;
-		std::cout << "Username: " << _options.username << std::endl;
-		std::cout << "Password: ..." << std::endl;
-		if (_options.mode == "Solo") {
-			std::vector<uint8_t> scriptPubKey(bech32ToScriptPubKey(_options.payoutAddress));
-			std::cout << "Payout address: " << _options.payoutAddress << std::endl;
-			if (scriptPubKey.size() == 0) {
-				std::cout << "Invalid payout address! Please check it. Note that only Bech32 addresses are supported." << std::endl;
-				waitForUser();
-				return false;
-			}
+		else if (key == "RawOutput") {
+			if (value == "Yes")
+				logger.setRawMode(true);
 			else
-				std::cout << "  ScriptPubKey: " << v8ToHexStr(scriptPubKey) << std::endl;
-			std::cout << "Consensus rules: " << formatContainer(_options.rules) << std::endl;
-			if (std::find(_options.rules.begin(), _options.rules.end(), "segwit") == _options.rules.end()) {
-				std::cout << "'segwit' rule must be present!" << std::endl;
-				waitForUser();
-				return false;
-			}
+				logger.setRawMode(false);
 		}
-		std::cout << "Auto retune when the Difficulty varies by a factor " << _options.minerParameters.restartDifficultyFactor << std::endl;
+		else
+			parsingMessages += "Ignoring option with unused key '"s + key + "'\n"s;
 	}
-	if (_options.refreshInterval > 0.) std::cout << "Stats refresh interval: " << _options.refreshInterval << " s" << std::endl;
+	if (_options.mode == "Benchmark" || _options.mode == "Search") { // Pick a default pattern if none was chosen
+		if (_options.minerParameters.pattern.size() == 0)
+			_options.minerParameters.pattern = {0, 2, 4, 2, 4, 6, 2};
+	}
 	return true;
 }
 
@@ -258,7 +220,7 @@ BOOL WINAPI signalHandler(DWORD signum) {
 #else
 void signalHandler(int signum) {
 #endif
-	std::cout << std::endl << "Signal " << signum << " received, stopping rieMiner." << std::endl;
+	logger.log("\nSignal "s + std::to_string(signum) + " received, stopping rieMiner.\n", MessageType::WARNING);
 	if (miner == nullptr || api == nullptr) exit(0);
 	if (api->running()) api->stop();
 	if (!miner->inited()) exit(0);
@@ -273,7 +235,7 @@ int main(int argc, char** argv) {
 #ifdef _WIN32
 	SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS); // Set lower priority, else the whole Windows system would lag a lot if using all threads
 	if (!SetConsoleCtrlHandler((PHANDLER_ROUTINE) signalHandler, TRUE))
-		std::cerr << "Could not set the Console Ctrl Handler" << std::endl;
+		logger.log("Could not set the Console Ctrl Handler\n", MessageType::ERROR);
 #else
 	struct sigaction SIGINTHandler;
 	SIGINTHandler.sa_handler = signalHandler;
@@ -281,63 +243,107 @@ int main(int argc, char** argv) {
 	SIGINTHandler.sa_flags = 0;
 	sigaction(SIGINT, &SIGINTHandler, NULL);
 #endif
-	std::cout << versionString;
-	std::cout << ", Riecoin miner by Pttn and contributors" << std::endl;
-	std::cout << "Project page: https://riecoin.dev/en/rieMiner" << std::endl;
-	std::cout << "Launch with 'help' as first argument for a quick usage guide" << std::endl;
-	std::cout << "-----------------------------------------------------------" << std::endl;
-	std::cout << "Assembly code by Michael Bell (Rockhawk)" << std::endl;
-	std::cout << "G++ " << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__ << " - https://gcc.gnu.org/" << std::endl;
-	std::cout << "GMP " << __GNU_MP_VERSION << "." << __GNU_MP_VERSION_MINOR << "." << __GNU_MP_VERSION_PATCHLEVEL << " - https://gmplib.org/" << std::endl;
-	std::cout << OPENSSL_VERSION_TEXT << " - https://www.openssl.org/" << std::endl;
-	std::cout << "Curl " << LIBCURL_VERSION << " - https://curl.haxx.se/" << std::endl;
-	std::cout << "NLohmann Json " << NLOHMANN_JSON_VERSION_MAJOR << "." << NLOHMANN_JSON_VERSION_MINOR << "." << NLOHMANN_JSON_VERSION_PATCH << " - https://json.nlohmann.me/" << std::endl;
-	std::cout << "-----------------------------------------------------------" << std::endl;
-	std::cout << "Build for: " << sysInfo.getOs() << " on " << sysInfo.getCpuArchitecture();
-	std::cout << std::endl << "Processor: " << sysInfo.getCpuBrand() << std::endl;
+	Configuration configuration;
+	logger.log(std::string(versionString) + ", Riecoin miner by Pttn and contributors\n"s
+	           "Project page: https://riecoin.dev/en/rieMiner\n"s
+	           "Launch with 'help' as first argument for a quick usage guide\n"s);
+	logger.hr();
+	logger.log("Assembly code by Michael Bell (Rockhawk)\n"s
+	           "G++ "s + std::to_string(__GNUC__) + "."s + std::to_string(__GNUC_MINOR__) + "."s + std::to_string(__GNUC_PATCHLEVEL__) + " - https://gcc.gnu.org/\n"s +
+	           OPENSSL_VERSION_TEXT + " - https://www.openssl.org/\n"s
+	           "Curl "s + LIBCURL_VERSION + " - https://curl.haxx.se/\n"s
+	           "NLohmann Json "s + std::to_string(NLOHMANN_JSON_VERSION_MAJOR) + "."s + std::to_string(NLOHMANN_JSON_VERSION_MINOR) + "."s + std::to_string(NLOHMANN_JSON_VERSION_PATCH) + " - https://json.nlohmann.me/\n"s);
+	logger.hr();
+	logger.log("Build for: "s + sysInfo.getOs() + " on "s + sysInfo.getCpuArchitecture() + "\n"s
+	           "Processor: "s + sysInfo.getCpuBrand() + "\n"s);
 	if (sysInfo.getCpuArchitecture() == "x64") {
-		std::cout << "Best SIMD instructions supported by the CPU: ";
-		if (sysInfo.hasAVX512()) std::cout << "AVX-512";
-		else if (sysInfo.hasAVX2()) std::cout << "AVX2";
-		else if (sysInfo.hasAVX()) std::cout << "AVX";
-		else std::cout << "None";
-		std::cout << std::endl;
+		logger.log("Best SIMD instructions supported by the CPU: "s);
+		if (sysInfo.hasAVX512()) logger.log("AVX-512"s);
+		else if (sysInfo.hasAVX2()) logger.log("AVX2"s);
+		else if (sysInfo.hasAVX()) logger.log("AVX"s);
+		else logger.log("None"s);
+		logger.log("\n"s);
 #ifdef __AVX2__
-		std::cout << "This build supports AVX2" << std::endl;
+		logger.log("This build supports AVX2\n"s);
 #else
-		std::cout << "This build does not support AVX2" << std::endl;
+		logger.log("This build does not support AVX2\n"s, MessageType::BOLD);
 #endif
 	}
 	const double physicalMemory(sysInfo.getPhysicalMemory());
-	std::cout << "Physical Memory: ";
+	logger.log("Physical Memory: "s);
 	if (physicalMemory < 1.)
-		std::cout << "Detection Failed";
+		logger.log("Detection Failed"s, MessageType::WARNING);
 	else if (physicalMemory > 1099511627776.)
-		std::cout << physicalMemory/1099511627776. << " TiB";
+		logger.log(doubleToString(physicalMemory/1099511627776., 3) + " TiB"s);
 	else if (physicalMemory > 1073741824.)
-		std::cout << physicalMemory/1073741824. << " GiB";
+		logger.log(doubleToString(physicalMemory/1073741824., 3) + " GiB"s);
 	else
-		std::cout << physicalMemory/1048576. << " MiB";
-	std::cout << std::endl;
-	std::cout << "-----------------------------------------------------------" << std::endl;
+		logger.log(doubleToString(physicalMemory/1048576., 3) + " MiB"s);
+	logger.log("\n"s);
+	logger.hr();
 	
-	Configuration configuration;
-	if (!configuration.parse(argc, argv))
+	std::string parsingMessages;
+	if (!configuration.parse(argc, argv, parsingMessages))
 		return 0;
+	if (parsingMessages.size() > 0ULL)
+		logger.log(parsingMessages, MessageType::WARNING);
 	
 	if (configuration.options().filePrimeTableLimit > 1) {
-		std::cout << "Generating prime table up to " << configuration.options().filePrimeTableLimit << " and saving to " << primeTableFile << "..." << std::endl;
+		logger.log("Generating prime table up to "s + std::to_string(configuration.options().filePrimeTableLimit) + " and saving to "s + primeTableFile + "...\n"s);
 		std::fstream file(primeTableFile, std::ios::out | std::ios::binary);
 		if (file) {
 			const auto primeTable(generatePrimeTable(configuration.options().filePrimeTableLimit));
 			file.write(reinterpret_cast<const char*>(primeTable.data()), primeTable.size()*sizeof(decltype(primeTable)::value_type));
 			file.close();
-			std::cout << "Table of " << primeTable.size() << " primes generated. Don't forget to disable the generation in " << confPath << std::endl;
+			logger.log("Table of "s + std::to_string(primeTable.size()) + " primes generated. Don't forget to disable the generation in "s + confPath + ".\n"s, MessageType::SUCCESS);
 		}
 		else
-			ERRORMSG("Could not open file " << primeTableFile);
+			logger.log("Could not open file  "s + primeTableFile + "!\n"s, MessageType::ERROR);
 		return 0;
 	}
+	
+	if (configuration.options().mode == "Benchmark") {
+		logger.log("Benchmark Mode at difficulty "s + doubleToString(configuration.options().difficulty) + "\n"s);
+		if (configuration.options().benchmarkBlockInterval > 0.)
+			logger.log("\tBlock interval: " + doubleToString(configuration.options().benchmarkBlockInterval) + " s\n"s);
+		if (configuration.options().benchmarkTimeLimit > 0.)
+			logger.log("\tTime limit: " + doubleToString(configuration.options().benchmarkTimeLimit) + " s\n"s);
+		if (configuration.options().benchmarkPrimeCountLimit != 0)
+			logger.log("\tPrime (1-tuple) count limit: " + std::to_string(configuration.options().benchmarkPrimeCountLimit) + "\n"s);
+	}
+	else if (configuration.options().mode == "Search") {
+		const double base10Exp(configuration.options().difficulty*0.301029996);
+		logger.log("Search Mode at difficulty "s + doubleToString(configuration.options().difficulty) + " (numbers around "s + doubleToString(std::pow(10., base10Exp - std::floor(base10Exp))) + "*10^"s + doubleToString(std::floor(base10Exp)) + ") - Good luck!\n"s);
+	}
+	else {
+		if (configuration.options().mode == "Solo")
+			logger.log("Solo mining"s);
+		else
+			logger.log("Pooled mining"s);
+		logger.log(" via host "s + configuration.options().host + ", port "s + std::to_string(configuration.options().port) + "\n"s);
+		logger.log("Username: "s + configuration.options().username + "\n"s);
+		logger.log("Password: <"s + std::to_string(configuration.options().password.size()) + " character(s)>\n"s);
+		if (configuration.options().mode == "Solo") {
+			std::vector<uint8_t> scriptPubKey(bech32ToScriptPubKey(configuration.options().payoutAddress));
+			logger.log("Payout address: "s + configuration.options().payoutAddress + "\n"s);
+			if (scriptPubKey.size() == 0) {
+				logger.log("Invalid payout address! Please check it. Note that only Bech32 addresses are supported.\n"s, MessageType::ERROR);
+				waitForUser();
+				return false;
+			}
+			else
+			logger.log("ScriptPubKey:   "s + v8ToHexStr(scriptPubKey) + "\n"s);
+			logger.log("Consensus rules: "s + formatContainer(configuration.options().rules) + "\n"s);
+			if (std::find(configuration.options().rules.begin(), configuration.options().rules.end(), "segwit") == configuration.options().rules.end()) {
+				logger.log("'segwit' rule must be present!\n"s, MessageType::ERROR);
+				waitForUser();
+				return false;
+			}
+		}
+		logger.log("Auto retune when the Difficulty varies by a factor "s + doubleToString(configuration.options().minerParameters.restartDifficultyFactor) + "\n"s);
+	}
+	if (configuration.options().refreshInterval > 0.)
+		logger.log("Stats refresh interval: "s + doubleToString(configuration.options().refreshInterval) + " s\n"s);
 	
 	miner = std::make_shared<Miner>(configuration.options());
 	if (configuration.options().mode == "Solo")
@@ -362,10 +368,10 @@ int main(int argc, char** argv) {
 		const uint32_t waitReconnect(10); // Time in s to wait before auto reconnect.
 		while (running) {
 			if (!std::dynamic_pointer_cast<NetworkedClient>(client)->connected()) {
-				std::cout << "Connecting to Riecoin server..." << std::endl;
+				logger.log("Connecting to Riecoin server...\n"s);
 				std::dynamic_pointer_cast<NetworkedClient>(client)->connect();
 				if (!std::dynamic_pointer_cast<NetworkedClient>(client)->connected()) {
-					std::cout << "Please check your connection, configuration or credentials. Retry in " << waitReconnect << " s..." << std::endl;
+					logger.log("Please check your connection, configuration or credentials. Retry in " + std::to_string(waitReconnect) + " s...\n"s, MessageType::WARNING);
 					std::this_thread::sleep_for(std::chrono::seconds(waitReconnect));
 				}
 				else if (!miner->inited()) {
@@ -373,7 +379,7 @@ int main(int argc, char** argv) {
 					minerParameters.pattern = Client::choosePatterns(client->getJob(true).acceptedPatterns, minerParameters.pattern);
 					miner->init(minerParameters);
 					if (!miner->inited()) {
-						std::cerr << "Something went wrong during the miner initialization, rieMiner cannot continue." << std::endl;
+						logger.log("Something went wrong during the miner initialization, rieMiner cannot continue.\n"s, MessageType::ERROR);
 						running = false;
 						break;
 					}
@@ -386,19 +392,19 @@ int main(int argc, char** argv) {
 				}
 				client->process();
 				if (!std::dynamic_pointer_cast<NetworkedClient>(client)->connected()) {
-					std::cout << "Connection lost, reconnecting in " << waitReconnect << " s..." << std::endl;
+					logger.log("Connection lost, reconnecting in " + std::to_string(waitReconnect) + " s...\n"s, MessageType::WARNING);
 					miner->stopThreads();
 					std::this_thread::sleep_for(std::chrono::seconds(waitReconnect));
 				}
 				else {
 					if (miner->shouldRestart()) {
-						std::cout << "Restarting miner to take in account Difficulty variations or other network changes." << std::endl;
+						logger.log("Restarting miner to take in account Difficulty variations or other network changes.\n");
 						miner->stop();
 						MinerParameters minerParameters(configuration.options().minerParameters);
 						minerParameters.pattern = Client::choosePatterns(client->getJob(true).acceptedPatterns, minerParameters.pattern);
 						miner->init(minerParameters);
 						if (!miner->inited()) {
-							std::cerr << "Something went wrong during the miner reinitialization, rieMiner cannot continue." << std::endl;
+							logger.log("Something went wrong during the miner initialization, rieMiner cannot continue.\n"s, MessageType::ERROR);
 							running = false;
 							break;
 						}
@@ -415,7 +421,7 @@ int main(int argc, char** argv) {
 	else {
 		miner->init(configuration.options().minerParameters);
 		if (!miner->inited()) {
-			std::cout << "Something went wrong during the miner initialization, rieMiner cannot continue." << std::endl;
+			logger.log("Something went wrong during the miner initialization, rieMiner cannot continue.\n"s, MessageType::ERROR);
 			running = false;
 		}
 		miner->startThreads();

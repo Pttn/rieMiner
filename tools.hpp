@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstring>
 #include <deque>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <openssl/sha.h>
@@ -20,6 +21,7 @@
 #include <vector>
 #include <gmpxx.h>
 
+using namespace std::string_literals;
 #define leading0s(x) std::setw(x) << std::setfill('0')
 #define FIXED(x) std::fixed << std::setprecision(x)
 
@@ -144,5 +146,36 @@ public:
 	bool hasAVX2() const {return _avx2;}
 	bool hasAVX512() const {return _avx512;}
 };
+
+#ifdef _WIN32
+#include <windows.h>
+#ifdef ERROR
+#undef ERROR
+#endif
+#endif
+enum MessageType {NORMAL, BOLD, SUCCESS, WARNING, ERROR};
+class Logger {
+	bool _raw;
+	uint16_t _debugLevel;
+	std::string _debugLogFileName;
+	std::mutex _mutex;
+public:
+	Logger() : _raw(false), _debugLogFileName("debug.log"s) {}
+	void setRawMode(const bool& raw) {_raw = raw;}
+	void log(const std::string&, const MessageType& = MessageType::NORMAL);
+	void hr(const MessageType &type = MessageType::NORMAL) {
+		log("-----------------------------------------------------------\n", type);
+	}
+	void logDebug(const std::string&);
+};
+
+inline std::string doubleToString(const double d, const uint16_t precision = 0) {
+	std::ostringstream oss;
+	if (precision == 0)
+		oss << d;
+	else
+		oss << FIXED(precision) << d;
+	return oss.str();
+}
 
 #endif

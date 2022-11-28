@@ -6,7 +6,6 @@
 #include <atomic>
 #include <cassert>
 #include "Client.hpp"
-#include "Stats.hpp"
 
 struct Job;
 
@@ -115,7 +114,6 @@ class Miner {
 	const std::string _mode;
 	MinerParameters _parameters;
 	std::shared_ptr<Client> _client;
-	StatManager _statManager;
 	std::thread _masterThread;
 	std::vector<std::thread> _workerThreads;
 	// Miner data (generated in init)
@@ -209,8 +207,6 @@ public:
 	bool running() {return _running;}
 	bool shouldRestart() {return _shouldRestart;}
 	
-	Stats getStats() const {return _statManager.stats(true);}
-	Stats getStatsRecent() const {return _statManager.stats(false);}
 	void printStats() const;
 	bool benchmarkFinishedTimeOut(const double) const;
 	bool benchmarkFinishedEnoughPrimes(const uint64_t) const;
