@@ -41,6 +41,11 @@ On a recent enough Debian or Ubuntu, you can easily install these if needed by d
 ```bash
 apt install g++ make m4 git libgmp-dev libssl-dev libcurl4-openssl-dev nlohmann-json3-dev
 ```
+And on an Arch based distribution:
+
+```bash
+pacman -S gcc make m4 git gmp openssl curl nlohmann-json
+```
 
 Then, download the source files, go/`cd` to the directory:
 
