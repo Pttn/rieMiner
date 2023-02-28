@@ -205,6 +205,13 @@ bool Configuration::parse(const int argc, char** argv, std::string &parsingMessa
 			else
 				logger.setRawMode(false);
 		}
+		else if (key == "KeepRunning")
+		{
+			if(value == "Yes")
+				_options.keepRunning = true;
+			else
+				_options.keepRunning = false;
+		}
 		else
 			parsingMessages += "Ignoring option with unused key '"s + key + "'\n"s;
 	}
@@ -427,7 +434,15 @@ int main(int argc, char** argv) {
 		miner->startThreads();
 		timer = std::chrono::steady_clock::now();
 		while (running) {
-			if (configuration.options().mode == "Benchmark" && miner->running()) {
+			if (!configuration.options().keepRunning && configuration.options().mode == "Search" && miner->running()) {
+				if(miner->tupleFound()) {
+					miner->printStats();
+					miner->stop();
+					running = false;
+					break;
+				}
+			}
+			else if (configuration.options().mode == "Benchmark" && miner->running()) {
 				if (miner->benchmarkFinishedTimeOut(configuration.options().benchmarkTimeLimit) || miner->benchmarkFinishedEnoughPrimes(configuration.options().benchmarkPrimeCountLimit)) {
 					miner->printBenchmarkResults();
 					miner->stop();

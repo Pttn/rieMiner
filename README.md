@@ -218,7 +218,8 @@ rieMiner proposes the following Modes depending on what you want to do. Use the 
 * `RefreshInterval`: refresh rate of the stats in seconds. <= 0 to disable them and only notify when a long enough tuple or share is found, or when the network finds a block. Default: 30;
 * `GeneratePrimeTableFileUpTo`: if > 1, generates the table of primes up to the given limit and saves it to a `PrimeTable64.bin` file, which will be reused instead of recomputing the table at every miner initialization. This does not affect mining, but is useful if restarting rieMiner often with large Prime Table Limits, notably for debugging or benchmarks. However, the file will take a few GB of disk space for large limits and you should have a fast SSD. Default: 0;
 * `RawOutput`: if you need to disable the coloring in the outputs, set this to `Yes`. Default : disabled;
-* `APIPort`: sets the port to use for the rieMiner's API server. 0 to disable the API. Default : 0.
+* `APIPort`: sets the port to use for the rieMiner's API server. 0 to disable the API. Default : 0;
+* `KeepRunning`: if you need to continue running the miner even if you find a tuple in Search mode, set this to `Yes` Default : disabled.
 
 ## Interface
 

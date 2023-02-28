@@ -91,6 +91,7 @@ struct Options {
 	uint64_t benchmarkPrimeCountLimit;
 	std::vector<std::string> rules;
 	uint16_t apiPort;
+	bool keepRunning;
 	Options() : // Default options: Standard Benchmark with 8 threads
 		host("127.0.0.1"),
 		username(""),
@@ -107,7 +108,8 @@ struct Options {
 		benchmarkTimeLimit(86400.),
 		benchmarkPrimeCountLimit(1000000),
 		rules{"segwit"},
-		apiPort(0) {}
+		apiPort(0),
+		keepRunning(false) {}
 };
 
 class Configuration {

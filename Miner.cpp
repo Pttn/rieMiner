@@ -35,6 +35,7 @@ thread_local uint64_t** factorsCacheCounts{nullptr};
 thread_local uint16_t threadId(65535);
 
 void Miner::init(const MinerParameters &minerParameters) {
+	_tupleFound = false;
 	_shouldRestart = false;
 	if (_inited) {
 		logger.log("The miner is already initialized\n"s, MessageType::ERROR);
@@ -1114,6 +1115,8 @@ void Miner::_doCheckTask(Task task) {
 				message += "-tuple found by worker thread "s + std::to_string(threadId) + "\n"s;
 				logger.log(message, MessageType::BOLD);
 				logger.log("Base prime: "s + basePrime.get_str() + "\n"s);
+				if((_mode == "Search" && primeCount >= _parameters.pattern.size()))
+					_tupleFound = true;
 			}
 			Job filledJob(_works[workIndex].job);
 			filledJob.result = basePrime;
