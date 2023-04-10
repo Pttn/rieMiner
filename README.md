@@ -47,6 +47,12 @@ And on an Arch based distribution:
 pacman -S gcc make m4 git gmp openssl curl nlohmann-json
 ```
 
+For Apple Silicon:
+
+```bash
+brew install gcc make m4 git gmp openssl@1.1 curl nlohmann-json
+```
+
 Then, download the source files, go/`cd` to the directory:
 
 ```bash
@@ -58,6 +64,11 @@ Finally, do a simple make:
 
 ```bash
 make
+```
+
+For Apple Silicon:
+```bash
+make apple_silicon
 ```
 
 For other Linux, executing equivalent commands (using `pacman` instead of `apt`,...) should work.
