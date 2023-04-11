@@ -8,6 +8,11 @@ LIBS   = -lcurl -lcrypto -lgmpxx -lgmp
 
 all: native
 
+apple_silicon: CXX = clang++
+apple_silicon: CFLAGS += -march=armv8.3-a -target arm64-apple-macos -O3 -I/opt/homebrew/include -I/opt/homebrew/opt/openssl@1.1/include -I/opt/homebrew/opt/gmp/include
+apple_silicon: LIBS := -L/opt/homebrew/opt/openssl@1.1/lib -L/opt/homebrew/opt/gmp/lib -lcurl -lcrypto -lgmpxx -lgmp
+apple_silicon: rieMiner
+
 native: CFLAGS += -march=native -s
 native: LIBS := -pthread $(LIBS)
 ifeq ($(shell uname -m),x86_64)
