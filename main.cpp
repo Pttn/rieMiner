@@ -253,6 +253,7 @@ int main(int argc, char** argv) {
 	Configuration configuration;
 	logger.log(std::string(versionString) + ", Riecoin miner by Pttn and contributors\n"s
 	           "Project page: https://riecoin.dev/en/rieMiner\n"s
+	           "Riecoin Whitepaper: https://riecoin.dev/Whitepaper\n"s
 	           "Launch with 'help' as first argument for a quick usage guide\n"s);
 	logger.hr();
 	logger.log("Assembly code by Michael Bell (Rockhawk)\n"s

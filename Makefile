@@ -1,4 +1,4 @@
-VER    = 0.93a
+VER    = 0.93a2
 CXX    = g++
 M4     = m4
 AS     = as
@@ -55,13 +55,13 @@ Win64 Win64AVX2: CXX = x86_64-w64-mingw32-g++-posix
 Win64 Win64AVX2: AS = x86_64-w64-mingw32-as
 Win64: CFLAGS += -march=x86-64 -s -D CURL_STATICLIB -I incsWin64/
 Win64AVX2: CFLAGS += -march=x86-64 -mavx2 -s -D CURL_STATICLIB -I incsWin64/
-Win64 Win64AVX2: LIBS := -Wl,-Bstatic -static-libgcc -static-libstdc++ -Wl,-Bstatic,--whole-archive -lpthread -Wl,--no-whole-archive -L libsWin64/ $(LIBS) -lws2_32 -Wl,-Bdynamic
+Win64 Win64AVX2: LIBS := -Wl,-Bstatic -static-libgcc -static-libstdc++ -Wl,-Bstatic,--whole-archive -lpthread -Wl,--no-whole-archive -L libsWin64/ $(LIBS) -lws2_32 -Wl,-Bdynamic -Wl,--image-base -Wl,0x10000000
 Win64 Win64AVX2: rieMinerWin64
 	mv rieMiner.exe rieMiner$(VER)$@.exe
 
 Win32: CXX = i686-w64-mingw32-g++-posix
 Win32: AS = i686-w64-mingw32-as
-Win32: LIBS := -Wl,-Bstatic -static-libgcc -static-libstdc++ -Wl,-Bstatic,--whole-archive -lpthread -Wl,--no-whole-archive -L libsWin32/ $(LIBS) -lws2_32 -Wl,-Bdynamic
+Win32: LIBS := -Wl,-Bstatic -static-libgcc -static-libstdc++ -Wl,-Bstatic,--whole-archive -lpthread -Wl,--no-whole-archive -L libsWin32/ $(LIBS) -lws2_32 -Wl,-Bdynamic -Wl,--image-base -Wl,0x10000000
 Win32: CFLAGS += -march=i686 -s -D CURL_STATICLIB -I incsWin32/
 Win32: rieMiner
 	mv rieMiner.exe rieMiner$(VER)$@.exe

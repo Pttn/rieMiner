@@ -275,6 +275,8 @@ This work is released under the MIT license, except the modified GMP code which 
 
 * [Michael Bell](https://github.com/MichaelBell/): assembly optimizations, improvements of work management between threads, and some more.
 
+[More Contributors](https://github.com/Pttn/rieMiner/graphs/contributors)
+
 ### Versioning
 
 The version naming scheme is 0.9, 0.99, 0.999 and so on for major versions, analogous to 1.0, 2.0, 3.0,.... The first non 9 decimal digit is minor, etc. For example, the version 0.9925a can be thought as 2.2.5a. A perfect bug-free software will be version 1. No precise criteria have been decided about incrementing major or minor versions for now.
@@ -287,8 +289,8 @@ By contributing to rieMiner, you accept to place your code in the MIT license.
 
 Donations to the Riecoin Project are welcome:
 
-* Riecoin: ric1qr3yxckxtl7lacvtuzhrdrtrlzvlydane2h37ja
-* Bitcoin: bc1qr3yxckxtl7lacvtuzhrdrtrlzvlydaneqela0u
+* Riecoin: ric1pv3mxn0d5g59n6w6qkxdmavw767wgwqpg499xssqfkjfu5gjt0wjqkffwja
+* Bitcoin: bc1pv3mxn0d5g59n6w6qkxdmavw767wgwqpg499xssqfkjfu5gjt0wjqej6g08
 
 ### Testing
 
@@ -315,11 +317,12 @@ Then, launch rieMiner using the `Pool` Mode and Port `3004`. Watch whether stran
   * Avoid using old C style and prefer modern C++ code;
   * Prefer longer and explicit variable names (except for loops indexes where single letter variables should be used in most cases).
 
-## Resources
+## Resources and other links
 
 * [Riecoin website](https://Riecoin.dev/)
   * [rieMiner's page](https://riecoin.dev/en/rieMiner)
   * [Explanation of the miner algorithm](https://riecoin.dev/en/Mining_Algorithm), you can also learn the theoretics behind some options
+* [Stella](https://github.com/Pttn/Stella), possible reimplementation in Rust
 * [Bitcoin Wiki - Getblocktemplate](https://en.bitcoin.it/wiki/Getblocktemplate)
 * [BIP141](https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki) (Segwit)
 * [Bitcoin Wiki - Stratum](https://en.bitcoin.it/wiki/Stratum_mining_protocol)
