@@ -244,7 +244,7 @@ In Benchmark and Search Modes, the behavior is essentially the same as Solo mini
 
 ### Troubleshooting
 
-rieMiner writes in a debug.log file, which contains more detailed outputs that can be useful when debugging rieMiner or asking for help. Note that the logging will not properly work if multiple instances of rieMiner are running.
+rieMiner writes in `rieMiner_debug_YYYY-MM-DD_HHMMSS.log` files (named according to the start time, with possible suffixes if several instances are started at the same second), which contains more detailed outputs that can be useful when debugging rieMiner or asking for help.
 
 ### API
 

@@ -1,4 +1,4 @@
-// (c) 2017-2022 Pttn and contributors (https://riecoin.dev/en/rieMiner)
+// (c) 2017-2023 Pttn and contributors (https://riecoin.dev/en/rieMiner)
 
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
@@ -25,7 +25,7 @@
 #define primeTableFile	"PrimeTable64.bin"
 
 inline SysInfo sysInfo;
-inline Logger logger;
+inline Logger logger("rieMiner_debug_"s + timeNowStr());
 inline StatManager statManager;
 
 extern std::string confPath;

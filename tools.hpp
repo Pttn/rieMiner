@@ -1,4 +1,4 @@
-// (c) 2018-2022 Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2018-2023 Pttn (https://riecoin.dev/en/rieMiner)
 // (c) 2018 Michael Bell/Rockhawk (CPUID Avx detection)
 
 #ifndef HEADER_tools_hpp
@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstring>
 #include <deque>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -147,6 +148,15 @@ public:
 	bool hasAVX512() const {return _avx512;}
 };
 
+inline std::string timeNowStr() {
+	const auto now(std::chrono::system_clock::now());
+	const std::time_t timeT(std::chrono::system_clock::to_time_t(now));
+	const std::tm *timeTm(std::localtime(&timeT));
+	std::ostringstream oss;
+	oss << std::put_time(timeTm, "%Y-%m-%d_%H%M%S");
+	return oss.str();
+}
+
 #ifdef _WIN32
 #include <windows.h>
 #ifdef ERROR
@@ -160,7 +170,16 @@ class Logger {
 	std::string _debugLogFileName;
 	std::mutex _mutex;
 public:
-	Logger() : _raw(false), _debugLogFileName("debug.log"s) {}
+	Logger(const std::string &debugLogFileName) : _raw(false), _debugLogFileName(debugLogFileName) {
+		uint64_t nameSuffix(1);
+		if (std::filesystem::exists(_debugLogFileName + ".log"s))
+			_debugLogFileName = debugLogFileName + "_" + std::to_string(nameSuffix);
+		while (std::filesystem::exists(_debugLogFileName + ".log"s)) {
+			nameSuffix++;
+			_debugLogFileName = debugLogFileName + "_" + std::to_string(nameSuffix);
+		}
+		_debugLogFileName += ".log"s;
+	}
 	void setRawMode(const bool& raw) {_raw = raw;}
 	void log(const std::string&, const MessageType& = MessageType::NORMAL);
 	void hr(const MessageType &type = MessageType::NORMAL) {
