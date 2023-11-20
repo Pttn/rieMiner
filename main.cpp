@@ -1,4 +1,4 @@
-// (c) 2017-2022 Pttn and contributors (https://riecoin.dev/en/rieMiner)
+// (c) 2017-2023 Pttn and contributors (https://riecoin.dev/en/rieMiner)
 
 #include <iomanip>
 #include <nlohmann/json.hpp>
@@ -205,9 +205,16 @@ bool Configuration::parse(const int argc, char** argv, std::string &parsingMessa
 			else
 				logger.setRawMode(false);
 		}
+		else if (key == "LogDebug")
+		{
+			if (value == "Yes")
+				_options.logDebug = true;
+			else
+				_options.logDebug = false;
+		}
 		else if (key == "KeepRunning")
 		{
-			if(value == "Yes")
+			if (value == "Yes")
 				_options.keepRunning = true;
 			else
 				_options.keepRunning = false;
@@ -293,6 +300,14 @@ int main(int argc, char** argv) {
 	std::string parsingMessages;
 	if (!configuration.parse(argc, argv, parsingMessages))
 		return 0;
+	logger.setLogDebug(configuration.options().logDebug);
+	if (configuration.options().logDebug) {
+		logger.log("Debug file: "s + logger.getDebugFile() + "\n"s);
+		logger.log("Can be disabled with 'LogDebug = No'.\n"s);
+	}
+	else
+		logger.log("Debug File disabled.\n"s);
+	logger.endStartupLog();
 	if (parsingMessages.size() > 0ULL)
 		logger.log(parsingMessages, MessageType::WARNING);
 	

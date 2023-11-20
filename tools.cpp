@@ -177,12 +177,7 @@ SysInfo::SysInfo() : _os("Unknown/Unsupported"), _cpuArchitecture("Unknown"), _c
 }
 
 void Logger::log(const std::string &message, const MessageType &type) {
-	std::lock_guard<std::mutex> lock(_mutex);
-	std::ofstream file(_debugLogFileName, std::ios::app);
-	if (file)
-		file << message;
-	else
-		std::cerr << "Unable to write output to file " << _debugLogFileName << std::endl;
+	logDebug(message);
 	if (_raw)
 		std::cout << message;
 	else {
@@ -214,6 +209,12 @@ void Logger::log(const std::string &message, const MessageType &type) {
 }
 
 void Logger::logDebug(const std::string &message) {
+	if (!_logDebug)
+		return;
+	if (_inStartupLog) {
+		_startupLog += message;
+		return;
+	}
 	std::lock_guard<std::mutex> lock(_mutex);
 	std::ofstream file(_debugLogFileName, std::ios::app);
 	if (file)

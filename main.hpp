@@ -86,12 +86,12 @@ struct Options {
 	MinerParameters minerParameters;
 	std::string host, username, password, mode, payoutAddress, tuplesFile;
 	uint64_t filePrimeTableLimit;
-	uint16_t debug, port;
+	uint16_t port;
 	double refreshInterval, difficulty, benchmarkBlockInterval, benchmarkTimeLimit;
 	uint64_t benchmarkPrimeCountLimit;
 	std::vector<std::string> rules;
 	uint16_t apiPort;
-	bool keepRunning;
+	bool logDebug, keepRunning;
 	Options() : // Default options: Standard Benchmark with 8 threads
 		host("127.0.0.1"),
 		username(""),
@@ -100,7 +100,6 @@ struct Options {
 		payoutAddress("ric1qr3yxckxtl7lacvtuzhrdrtrlzvlydane2h37ja"),
 		tuplesFile("Tuples.txt"),
 		filePrimeTableLimit(0),
-		debug(0),
 		port(28332),
 		refreshInterval(30.),
 		difficulty(1024.),
@@ -109,6 +108,7 @@ struct Options {
 		benchmarkPrimeCountLimit(1000000),
 		rules{"segwit"},
 		apiPort(0),
+		logDebug(true),
 		keepRunning(false) {}
 };
 

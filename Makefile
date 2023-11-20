@@ -1,4 +1,4 @@
-VER    = 0.93a2
+VER    = 0.93a3
 CXX    = g++
 M4     = m4
 AS     = as

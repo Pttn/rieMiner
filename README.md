@@ -2,7 +2,7 @@
 
 ![rieMiner Logo](https://riecoin.dev/files/w/thumb.php?f=rieMiner.svg&width=128)
 
-rieMiner is a Riecoin miner supporting both solo and pooled mining, and can also be run standalone for prime constellation record attempts. Find the latest binaries [here](https://github.com/Pttn/rieMiner/releases) for Linux and Windows.
+rieMiner is a Riecoin miner supporting both solo and pooled mining, and can also be run standalone for prime constellation record attempts. Find the latest binaries [here](https://riecoin.dev/resources/Pttn/rieMiner.php) for Linux and Windows.
 
 This README is intended for advanced users and will mainly only describe the different configuration options and give information for developers like how to compile or contribute. For more practical information on how to use rieMiner like configuration file templates and mining or record attempts guides, visit the [rieMiner's page](https://riecoin.dev/en/rieMiner). **Before asking for any help or reporting an issue, ensure that you followed the instructions correctly, and try first to solve the issues by yourself**.
 
@@ -10,7 +10,7 @@ Happy Mining or Good Luck on finding a new record!
 
 ## Minimum requirements
 
-* Windows 8.1 or recent enough Linux;
+* Windows 10 or recent enough Linux;
 * Virtually any usual 32 or 64 bits CPU (should work for any x86 since Pentium Pro and recent ARMs);
 * 512 MiB of RAM (the prime table limit must be manually set at a lower value in the options);
 * We only provide binaries for Windows and Linux x64. In the other cases, you must have access to an appropriate build environment and compile yourself the code.
@@ -228,6 +228,7 @@ rieMiner proposes the following Modes depending on what you want to do. Use the 
 * `PrimorialOffsets`: list of offsets from a primorial multiple to use for the sieve process, separated by commas. If empty, a default one will be chosen if possible (see main.hpp source file), otherwise rieMiner will not start (if the chosen constellation pattern is not in main.hpp). Default: empty;
 * `RefreshInterval`: refresh rate of the stats in seconds. <= 0 to disable them and only notify when a long enough tuple or share is found, or when the network finds a block. Default: 30;
 * `GeneratePrimeTableFileUpTo`: if > 1, generates the table of primes up to the given limit and saves it to a `PrimeTable64.bin` file, which will be reused instead of recomputing the table at every miner initialization. This does not affect mining, but is useful if restarting rieMiner often with large Prime Table Limits, notably for debugging or benchmarks. However, the file will take a few GB of disk space for large limits and you should have a fast SSD. Default: 0;
+* `LogDebug`: if you don't want to log the console outputs and debugging info in debug files, set this to anything other than `Yes`. Default : enabled;
 * `RawOutput`: if you need to disable the coloring in the outputs, set this to `Yes`. Default : disabled;
 * `APIPort`: sets the port to use for the rieMiner's API server. 0 to disable the API. Default : 0;
 * `KeepRunning`: if you need to continue running the miner even if you find a tuple in Search mode, set this to `Yes` Default : disabled.

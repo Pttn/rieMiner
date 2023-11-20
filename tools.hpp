@@ -165,12 +165,11 @@ inline std::string timeNowStr() {
 #endif
 enum MessageType {NORMAL, BOLD, SUCCESS, WARNING, ERROR};
 class Logger {
-	bool _raw;
-	uint16_t _debugLevel;
-	std::string _debugLogFileName;
+	bool _raw, _inStartupLog, _logDebug;
+	std::string _startupLog, _debugLogFileName;
 	std::mutex _mutex;
 public:
-	Logger(const std::string &debugLogFileName) : _raw(false), _debugLogFileName(debugLogFileName) {
+	Logger(const std::string &debugLogFileName) : _raw(false), _inStartupLog(true), _logDebug(true), _debugLogFileName(debugLogFileName) {
 		uint64_t nameSuffix(1);
 		if (std::filesystem::exists(_debugLogFileName + ".log"s))
 			_debugLogFileName = debugLogFileName + "_" + std::to_string(nameSuffix);
@@ -180,7 +179,14 @@ public:
 		}
 		_debugLogFileName += ".log"s;
 	}
+	std::string getDebugFile() const {return _debugLogFileName;}
 	void setRawMode(const bool& raw) {_raw = raw;}
+	void endStartupLog() {
+		_inStartupLog = false;
+		logDebug(_startupLog);
+		_startupLog.clear();
+	}
+	void setLogDebug(const bool& logDebug) {_logDebug = logDebug;}
 	void log(const std::string&, const MessageType& = MessageType::NORMAL);
 	void hr(const MessageType &type = MessageType::NORMAL) {
 		log("-----------------------------------------------------------\n", type);
