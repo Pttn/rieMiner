@@ -1,4 +1,4 @@
-// (c) 2017-2023 Pttn and contributors (https://riecoin.dev/en/rieMiner)
+// (c) 2017-present Pttn and contributors (https://riecoin.dev/en/rieMiner)
 
 #include <iomanip>
 #include <nlohmann/json.hpp>
@@ -174,11 +174,6 @@ bool Configuration::parse(const int argc, char** argv, std::string &parsingMessa
 			uint64_t tmp;
 			while (offsetsSS >> tmp) offsets.push_back(tmp);
 			_options.minerParameters.pattern = offsets;
-		}
-		else if (key == "PrimorialNumber") {
-			try {_options.minerParameters.primorialNumber = std::stoll(value);}
-			catch (...) {_options.minerParameters.primorialNumber = 0;}
-			if (_options.minerParameters.primorialNumber > 65535) _options.minerParameters.primorialNumber = 65535;
 		}
 		else if (key == "PrimorialOffsets") {
 			for (uint16_t i(0) ; i < value.size() ; i++) {if (value[i] == ',') value[i] = ' ';}

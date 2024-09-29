@@ -1,4 +1,4 @@
-// (c) 2018-2022 Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2018-present Pttn (https://riecoin.dev/en/rieMiner)
 
 #include "Client.hpp"
 #include "main.hpp"
@@ -261,5 +261,6 @@ Job GBTClient::getJob(const bool) {
 	_jobMutex.unlock();
 	job.clientData.bh.merkleRoot = calculateMerkleRoot(txHashesWithCoinbase);
 	job.target = job.clientData.bh.target(job.powVersion);
+	job.targetOffsetMax = job.clientData.bh.targetOffsetMax(job.powVersion);
 	return job;
 }

@@ -1,4 +1,4 @@
-/* (c) 2017-2022 Pttn (https://riecoin.dev/en/rieMiner)
+/* (c) 2017-present Pttn (https://riecoin.dev/en/rieMiner)
 (c) 2018-2020 Michael Bell/Rockhawk (assembly optimizations, improvements of work management between threads, and some more) (https://github.com/MichaelBell/) */
 
 #include <gmpxx.h> // With Uint64_Ts, we still need to use the Mpz_ functions, otherwise there are "ambiguous overload" errors on Windows...
@@ -198,45 +198,31 @@ void Miner::init(const MinerParameters &minerParameters) {
 	_factorMax = _parameters.sieveIterations*_parameters.sieveSize;
 	logger.log("Primorial Factor Max: "s + std::to_string(_factorMax) + "\n"s);
 	
-	uint32_t bitsForOffset;
 	// The primorial times the maximum factor should be smaller than the allowed limit for the target offset.
-	if (_mode == "Solo" || _mode == "Pool")
-		bitsForOffset = std::floor(static_cast<double>(_difficultyAtInit)/_parameters.restartDifficultyFactor - 265.); // 1 . leading 8 bits . hash (256 bits) . remaining bits for the offset, and some margin to take in account the Difficulty fluctuations
-	else if (_mode == "Search")
-		bitsForOffset = std::floor(_difficultyAtInit - 97.); // 1 . leading 16 bits . random 80 bits . remaining bits for the offset
-	else
-		bitsForOffset = std::floor(_difficultyAtInit - 81.); // 1 . leading 16 bits . constructed 64 bits . remaining bits for the offset
-	mpz_class primorialLimit(1);
-	primorialLimit <<= bitsForOffset;
+	mpz_class primorialLimit(job.targetOffsetMax);
+	if (_mode == "Solo" || _mode == "Pool") // Some margin to take in account the Difficulty fluctuations
+		primorialLimit >>= std::ceil(_difficultyAtInit*(_parameters.restartDifficultyFactor - 1.));
 	primorialLimit /= u64ToMpz(_factorMax);
 	if (primorialLimit == 0) {
-		logger.log("The Difficulty is too low. Try to increase it or decrease the Sieve Size/Iterations.\n"s
-		           "Available digits for the offsets: "s + std::to_string(bitsForOffset) + "\n"s, MessageType::ERROR);
+		logger.log("The Difficulty is too low. Try to increase it or decrease the Sieve Size/Iterations.\n"s, MessageType::ERROR);
 		return;
 	}
 	mpz_set_ui(_primorial.get_mpz_t(), 1);
 	for (uint64_t i(0) ; i < _primes32.size() ; i++) {
-		if (i == _parameters.primorialNumber && _parameters.primorialNumber != 0)
+		if (_primorial*_primes32[i] >= primorialLimit) {
+			_primorialNumber = i;
+			logger.log("Primorial: p"s + std::to_string(_primorialNumber) + "# = "s + std::to_string(_primes32[_primorialNumber - 1]) + "# = "s);
+			if (mpz_sizeinbase(_primorial.get_mpz_t(), 10) < 18)
+				logger.log(_primorial.get_str());
+			else
+				logger.log("~"s + _primorial.get_str()[0] + "."s + _primorial.get_str().substr(1, 12) + "*10^"s + std::to_string(_primorial.get_str().size() - 1));
+			logger.log(" ("s + std::to_string(mpz_sizeinbase(_primorial.get_mpz_t(), 2)) + " bits)\n"s);
 			break;
-		else {
-			if (_primorial*_primes32[i] >= primorialLimit) {
-				if (_parameters.primorialNumber != 0)
-					logger.log("The provided Primorial Number "s + std::to_string(_parameters.primorialNumber) + " is too large and will be reduced.\n"s, MessageType::WARNING);
-				_parameters.primorialNumber = i;
-				break;
-			}
 		}
 		_primorial *= _primes32[i];
 		if (i + 1 == _primes32.size())
-			_parameters.primorialNumber = i + 1;
+			_primorialNumber = i + 1;
 	}
-	logger.log("Primorial Number: "s + std::to_string(_parameters.primorialNumber) + "\n"s);
-	logger.log("Primorial: p"s + std::to_string(_parameters.primorialNumber) + "# = "s + std::to_string(_primes32[_parameters.primorialNumber - 1]) + "# = "s);
-	if (mpz_sizeinbase(_primorial.get_mpz_t(), 10) < 18)
-		logger.log(_primorial.get_str());
-	else
-		logger.log("~"s + _primorial.get_str()[0] + "."s + _primorial.get_str().substr(1, 12) + "*10^"s + std::to_string(_primorial.get_str().size() - 1));
-	logger.log(" ("s + std::to_string(mpz_sizeinbase(_primorial.get_mpz_t(), 2)) + " bits)\n"s);
 	logger.log("Primorial Offsets: "s + std::to_string(_primorialOffsets.size()) + "\n"s);
 	_primorialOffsetDiff.resize(_parameters.sieveWorkers - 1);
 	const uint64_t constellationDiameter(cumulativeOffsets.back());
@@ -286,13 +272,13 @@ void Miner::init(const MinerParameters &minerParameters) {
 			_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/4, _parameters.sieveWorkers);
 			return;
 		}
-		const uint64_t blockSize((_nPrimes - _parameters.primorialNumber + _parameters.threads - 1)/_parameters.threads);
+		const uint64_t blockSize((_nPrimes - _primorialNumber + _parameters.threads - 1)/_parameters.threads);
 		std::thread threads[_parameters.threads];
 		for (uint16_t j(0) ; j < _parameters.threads ; j++) {
 			threads[j] = std::thread([&, j]() {
 				mpz_class modularInverse, prime;
-				const uint64_t endIndex(std::min(_parameters.primorialNumber + (j + 1)*blockSize, _nPrimes));
-				for (uint64_t i(_parameters.primorialNumber + j*blockSize) ; i < endIndex ; i++) {
+				const uint64_t endIndex(std::min(_primorialNumber + (j + 1)*blockSize, _nPrimes));
+				for (uint64_t i(_primorialNumber + j*blockSize) ; i < endIndex ; i++) {
 					uint64_t p(_getPrime(i));
 					mpz_set_ui(prime.get_mpz_t(), p);
 					mpz_invert(modularInverse.get_mpz_t(), _primorial.get_mpz_t(), prime.get_mpz_t()); // modularInverse*primorial ≡ 1 (mod prime)
@@ -307,9 +293,9 @@ void Miner::init(const MinerParameters &minerParameters) {
 		}
 		for (uint16_t j(0) ; j < _parameters.threads ; j++) threads[j].join();
 #ifdef __SSE2__
-		logger.log("Tables of "s + std::to_string(_modularInverses32.size() + _modularInverses64.size() - _parameters.primorialNumber) + " modular inverses and "s + std::to_string(precompPrimes - _parameters.primorialNumber) + " division entries generated in "s + doubleToString(timeSince(t0)) + " s ("s + std::to_string((_modularInverses64.size() + precompPrimes)*sizeof(decltype(_modularInverses64)::value_type) + _modularInverses32.size()*sizeof(decltype(_modularInverses32)::value_type)) + " bytes).\n"s);
+		logger.log("Tables of "s + std::to_string(_modularInverses32.size() + _modularInverses64.size() - _primorialNumber) + " modular inverses and "s + std::to_string(precompPrimes - _primorialNumber) + " division entries generated in "s + doubleToString(timeSince(t0)) + " s ("s + std::to_string((_modularInverses64.size() + precompPrimes)*sizeof(decltype(_modularInverses64)::value_type) + _modularInverses32.size()*sizeof(decltype(_modularInverses32)::value_type)) + " bytes).\n"s);
 #else
-		logger.log("Tables of "s + std::to_string(_modularInverses32.size() + _modularInverses64.size() - _parameters.primorialNumber) + " modular inverses generated in "s + doubleToString(timeSince(t0)) + " s ("s + std::to_string(_modularInverses64.size()*sizeof(decltype(_modularInverses64)::value_type) + _modularInverses32.size()*sizeof(decltype(_modularInverses32)::value_type)) + " bytes).\n"s);
+		logger.log("Tables of "s + std::to_string(_modularInverses32.size() + _modularInverses64.size() - _primorialNumber) + " modular inverses generated in "s + doubleToString(timeSince(t0)) + " s ("s + std::to_string(_modularInverses64.size()*sizeof(decltype(_modularInverses64)::value_type) + _modularInverses32.size()*sizeof(decltype(_modularInverses32)::value_type)) + " bytes).\n"s);
 #endif
 	}
 	
@@ -929,7 +915,7 @@ void Miner::_processSieve8_avx2(uint64_t *factorsTable, uint32_t* factorsToElimi
 void Miner::_doSieveTask(Task task) {
 	Sieve& sieve(_sieves[task.sieve.id]);
 	std::unique_lock<std::mutex> presieveLock(sieve.presieveLock, std::defer_lock);
-	const uint64_t workIndex(task.workIndex), sieveIteration(task.sieve.iteration), firstPrimeIndex(_parameters.primorialNumber);
+	const uint64_t workIndex(task.workIndex), sieveIteration(task.sieve.iteration), firstPrimeIndex(_primorialNumber);
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
 	Task checkTask{Task::Type::Check, workIndex, {}};
@@ -1121,7 +1107,7 @@ void Miner::_doCheckTask(Task task) {
 			Job filledJob(_works[workIndex].job);
 			filledJob.result = basePrime;
 			filledJob.resultPrimeCount = primeCount;
-			filledJob.primorialNumber = _parameters.primorialNumber;
+			filledJob.primorialNumber = _primorialNumber;
 			filledJob.primorialFactor = task.check.factorStart + task.check.factorOffsets[i];
 			filledJob.primorialOffset = _parameters.primorialOffsets[task.check.offsetId];
 			_client->handleResult(filledJob);
@@ -1216,8 +1202,8 @@ void Miner::_manageTasks() {
 		uint64_t nPresieveTasks(_parameters.threads*8ULL);
 		int32_t nRemainingNormalPresieveTasks(0), nRemainingAdditionalPresieveTasks(0);
 		const uint32_t remainingTasks(_tasks.size());
-		const uint64_t primesPerPresieveTask((_nPrimes - _parameters.primorialNumber)/nPresieveTasks + 1ULL);
-		for (uint64_t start(_parameters.primorialNumber) ; start < _nPrimes ; start += primesPerPresieveTask) {
+		const uint64_t primesPerPresieveTask((_nPrimes - _primorialNumber)/nPresieveTasks + 1ULL);
+		for (uint64_t start(_primorialNumber) ; start < _nPrimes ; start += primesPerPresieveTask) {
 			const uint64_t end(std::min(_nPrimes, start + primesPerPresieveTask));
 			_presieveTasks.push_back(Task::PresieveTask(_currentWorkIndex, start, end));
 			_tasks.push_front(Task{Task::Type::Dummy, _currentWorkIndex, {}}); // To ensure a thread wakes up to grab the mod work.

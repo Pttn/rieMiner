@@ -1,4 +1,4 @@
-// (c) 2017-2022 Pttn and contributors (https://riecoin.dev/en/rieMiner)
+// (c) 2017-present Pttn and contributors (https://riecoin.dev/en/rieMiner)
 
 #ifndef HEADER_Miner_hpp
 #define HEADER_Miner_hpp
@@ -118,7 +118,7 @@ class Miner {
 	std::vector<std::thread> _workerThreads;
 	// Miner data (generated in init)
 	mpz_class _primorial;
-	uint64_t _nPrimes, _nPrimes32, _factorMax, _primesIndexThreshold;
+	uint64_t _primorialNumber, _nPrimes, _nPrimes32, _factorMax, _primesIndexThreshold;
 	std::vector<uint32_t> _primes32, _modularInverses32;
 	std::vector<uint64_t> _primes64, _modularInverses64;
 #ifdef __SSE2__

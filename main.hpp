@@ -1,4 +1,4 @@
-// (c) 2017-2023 Pttn and contributors (https://riecoin.dev/en/rieMiner)
+// (c) 2017-present Pttn and contributors (https://riecoin.dev/en/rieMiner)
 
 #ifndef HEADER_main_hpp
 #define HEADER_main_hpp
@@ -70,14 +70,12 @@ static const std::vector<std::pair<std::vector<uint64_t>, std::vector<uint64_t>>
 
 struct MinerParameters {
 	uint16_t threads, sieveWorkers, tupleLengthMin;
-	uint64_t primorialNumber, primeTableLimit;
-	uint64_t sieveBits, sieveSize, sieveWords, sieveIterations;
+	uint64_t primeTableLimit, sieveBits, sieveSize, sieveWords, sieveIterations;
 	std::vector<uint64_t> pattern, primorialOffsets;
 	double restartDifficultyFactor;
 	MinerParameters() :
 		threads(0), sieveWorkers(0), tupleLengthMin(0),
-		primorialNumber(0), primeTableLimit(0),
-		sieveBits(0), sieveSize(0), sieveWords(0), sieveIterations(0),
+		primeTableLimit(0), sieveBits(0), sieveSize(0), sieveWords(0), sieveIterations(0),
 		pattern{}, primorialOffsets{},
 		restartDifficultyFactor(1.03) {}
 };

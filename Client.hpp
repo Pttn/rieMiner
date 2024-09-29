@@ -1,4 +1,4 @@
-// (c) 2017-2022 Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2017-present Pttn (https://riecoin.dev/en/rieMiner)
 
 #ifndef HEADER_Client_hpp
 #define HEADER_Client_hpp
@@ -25,6 +25,7 @@ struct BlockHeader { // The fields are named according to the GetBlockTemplate l
 	BlockHeader() : version(0), previousblockhash{0}, merkleRoot{0}, curtime(0), bits(0), nOffset{0} {}
 	std::vector<uint8_t> toV8() const;
 	mpz_class target(const int32_t) const;
+	mpz_class targetOffsetMax(const int32_t) const;
 };
 
 // Used by GBT and Stratum Clients to store required information for Block/Share submissions, that are unused by the miner
@@ -41,7 +42,7 @@ struct ClientData {
 // Stores all the information needed for the miner and submissions
 struct Job {
 	uint32_t height;
-	mpz_class target;
+	mpz_class target, targetOffsetMax;
 	int32_t powVersion;
 	std::vector<std::vector<uint64_t>> acceptedPatterns;
 	uint32_t primeCountTarget, primeCountMin; // The prime count can be interpreted either as tuple length or share prime count depending on the mining mode

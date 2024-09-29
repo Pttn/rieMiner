@@ -1,4 +1,4 @@
-// (c) 2017-2021 Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2017-present Pttn (https://riecoin.dev/en/rieMiner)
 
 #include "Client.hpp"
 
@@ -40,6 +40,19 @@ mpz_class BlockHeader::target(const int32_t powVersion) const {
 	else
 		logger.log("Unexpected PoW Version "s + std::to_string(powVersion) + "\n"s, MessageType::ERROR);
 	return target;
+}
+
+mpz_class BlockHeader::targetOffsetMax(const int32_t powVersion) const {
+	mpz_class targetOffsetMax(0);
+	if (powVersion == 1) {
+		const uint32_t difficultyIntegerPart(decodeBits(bits, powVersion));
+		targetOffsetMax = 1;
+		targetOffsetMax <<= difficultyIntegerPart - 264U;
+		targetOffsetMax--;
+	}
+	else
+		logger.log("Unexpected PoW Version "s + std::to_string(powVersion) + "\n"s, MessageType::ERROR);
+	return targetOffsetMax;
 }
 
 std::array<uint8_t, 32> Job::encodedOffset() const {
@@ -110,8 +123,8 @@ Job BMClient::getJob(const bool dummy) {
 	job.primeCountTarget = _pattern.size();
 	job.primeCountMin = job.primeCountTarget;
 	job.difficulty = _difficulty;
-	const uint64_t difficultyAsInteger(std::round(65536.*job.difficulty));
 	// Target: (in binary) 1 . Leading Digits L (16 bits) . Height (32 bits) . Requests (32 bits) . (Difficulty - 80) zeros = 2^(Difficulty - 80)(2^80 + 2^64*L + 2^32*Height + Requests)
+	const uint64_t difficultyAsInteger(std::round(65536.*job.difficulty)), offsetBits(difficultyAsInteger/65536ULL - 80ULL);
 	job.target = 1;
 	job.target <<= 16;
 	job.target += static_cast<uint16_t>(std::round(std::pow(2., 16. + static_cast<double>(difficultyAsInteger % 65536)/65536.)) - 65536.);
@@ -119,7 +132,10 @@ Job BMClient::getJob(const bool dummy) {
 	job.target += job.height;
 	job.target <<= 32;
 	job.target += _requests;
-	job.target <<= (difficultyAsInteger/65536ULL - 80ULL);
+	job.target <<= offsetBits;
+	job.targetOffsetMax = 1;
+	job.targetOffsetMax <<= offsetBits;
+	job.targetOffsetMax--;
 	if (!dummy) _requests++;
 	return job;
 }
@@ -133,7 +149,7 @@ Job SearchClient::getJob(const bool) {
 	job.primeCountMin = job.primeCountTarget;
 	job.difficulty = _difficulty;
 	// Target: (in binary) 1 . Leading Digits L (16 bits) . 80 Random Bits . (Difficulty - 96) zeros = 2^(Difficulty - 96)*(2^96 + 2^80*L + Random)
-	const uint64_t difficultyAsInteger(std::round(65536.*job.difficulty));
+	const uint64_t difficultyAsInteger(std::round(65536.*job.difficulty)), offsetBits(difficultyAsInteger/65536ULL - 96ULL);
 	std::array<uint8_t, 10> random;
 	for (auto &byte : random) byte = rand(0x00, 0xFF);
 	job.target = 1;
@@ -143,7 +159,10 @@ Job SearchClient::getJob(const bool) {
 		job.target <<= 16;
 		job.target += reinterpret_cast<uint16_t*>(random.data())[4 - i];
 	}
-	job.target <<= (job.difficulty - 96);
+	job.target <<= offsetBits;
+	job.targetOffsetMax = 1;
+	job.targetOffsetMax <<= offsetBits;
+	job.targetOffsetMax--;
 	return job;
 }
 

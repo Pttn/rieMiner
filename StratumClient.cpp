@@ -1,4 +1,4 @@
-// (c) 2018-2022 Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2018-present Pttn (https://riecoin.dev/en/rieMiner)
 
 #include <fcntl.h>
 #ifdef _WIN32
@@ -397,5 +397,6 @@ Job StratumClient::getJob(const bool) {
 	for (uint8_t i(0) ; i < 8 ; i++)
 		reinterpret_cast<uint32_t*>(job.clientData.bh.previousblockhash.data())[i] = toBEnd32(reinterpret_cast<uint32_t*>(job.clientData.bh.previousblockhash.data())[i]);
 	job.target = job.clientData.bh.target(job.powVersion);
+	job.targetOffsetMax = job.clientData.bh.targetOffsetMax(job.powVersion);
 	return job;
 }
