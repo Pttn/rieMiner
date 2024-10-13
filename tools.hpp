@@ -1,5 +1,4 @@
-// (c) 2018-2023 Pttn (https://riecoin.dev/en/rieMiner)
-// (c) 2018 Michael Bell/Rockhawk (CPUID Avx detection)
+// (c) 2018-present Pttn and contributors (https://riecoin.xyz/rieMiner)
 
 #ifndef HEADER_tools_hpp
 #define HEADER_tools_hpp
@@ -12,19 +11,11 @@
 #include <cstring>
 #include <deque>
 #include <filesystem>
-#include <fstream>
-#include <iomanip>
-#include <iostream>
 #include <openssl/sha.h>
 #include <random>
-#include <sstream>
-#include <string>
 #include <vector>
-#include <gmpxx.h>
 
-using namespace std::string_literals;
-#define leading0s(x) std::setw(x) << std::setfill('0')
-#define FIXED(x) std::fixed << std::setprecision(x)
+#include "Stella.hpp"
 
 uint8_t rand(uint8_t, uint8_t);
 
@@ -54,14 +45,6 @@ template <class C> inline C reverse(C c) {
 	std::reverse(c.begin(), c.end());
 	return c;
 }
-template <class C> std::string formatContainer(const C& container) {
-	std::ostringstream oss;
-	for (auto it(container.begin()) ; it < container.end() ; it++) {
-		oss << *it;
-		if (it != container.end() - 1) oss << ", ";
-	}
-	return oss.str();
-}
 
 inline std::array<uint8_t, 32> sha256(const uint8_t *data, uint32_t len) {
 	std::array<uint8_t, 32> hash;
@@ -75,86 +58,12 @@ inline std::array<uint8_t, 32> sha256sha256(const uint8_t *data, uint32_t len) {
 	return sha256(sha256(data, len).data(), 32);
 }
 
-std::vector<uint64_t> generatePrimeTable(const uint64_t);
-
 // Bech32 Code adapted from the reference C++ implementation, https://github.com/sipa/bech32/tree/master/ref/c%2B%2B
 std::vector<uint8_t> bech32ToScriptPubKey(const std::string&);
-
-inline double timeSince(const std::chrono::time_point<std::chrono::steady_clock> &t0) {
-	const std::chrono::time_point<std::chrono::steady_clock> t(std::chrono::steady_clock::now());
-	const std::chrono::duration<double> dt(t - t0);
-	return dt.count();
-}
 
 inline void waitForUser() {
 	std::cout << "Press Enter to continue...";
 	std::cin.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
-}
-
-template<class T> class TsQueue {
-	std::deque<T> _q;
-	std::mutex _m;
-	std::condition_variable _cv;
-public:
-	void push_back(T item) {
-		std::unique_lock<std::mutex> lock(_m);
-		_q.push_back(item);
-		_cv.notify_one();
-	}
-	void push_front(T item) {
-		std::unique_lock<std::mutex> lock(_m);
-		_q.push_front(item);
-		_cv.notify_one();
-	}
-	T blocking_pop_front() { // Blocks until an item is available to pop
-		std::unique_lock<std::mutex> lock(_m);
-		while (_q.empty())
-			_cv.wait(lock);
-		auto r(_q.front());
-		_q.pop_front();
-		return r;
-	}
-	bool try_pop_front(T& item) { // Pops the front and returns true if the queue isn't empty else returns false.
-		std::lock_guard<std::mutex> lock(_m);
-		if (_q.empty()) return false;
-		item = _q.front();
-		_q.pop_front();
-		return true;
-	}
-	typename std::deque<T>::size_type clear() { // Nonblocking - clears queue, returns number of items removed
-		std::unique_lock<std::mutex> lock(_m);
-		auto s(_q.size());
-		_q.clear();
-		return s;
-	}
-	uint32_t size() {
-		std::unique_lock<std::mutex> lock(_m);
-		return _q.size();
-	}
-};
-
-class SysInfo {
-	std::string _os, _cpuArchitecture, _cpuBrand;
-	uint64_t _physicalMemory;
-	bool _avx, _avx2, _avx512;
-public:
-	SysInfo();
-	std::string getOs() const {return _os;}
-	uint64_t getPhysicalMemory() const {return _physicalMemory;}
-	std::string getCpuArchitecture() const {return _cpuArchitecture;}
-	std::string getCpuBrand() const {return _cpuBrand;}
-	bool hasAVX() const {return _avx;}
-	bool hasAVX2() const {return _avx2;}
-	bool hasAVX512() const {return _avx512;}
-};
-
-inline std::string timeNowStr() {
-	const auto now(std::chrono::system_clock::now());
-	const std::time_t timeT(std::chrono::system_clock::to_time_t(now));
-	const std::tm *timeTm(std::localtime(&timeT));
-	std::ostringstream oss;
-	oss << std::put_time(timeTm, "%Y-%m-%d_%H%M%S");
-	return oss.str();
 }
 
 #ifdef _WIN32
@@ -193,14 +102,5 @@ public:
 	}
 	void logDebug(const std::string&);
 };
-
-inline std::string doubleToString(const double d, const uint16_t precision = 0) {
-	std::ostringstream oss;
-	if (precision == 0)
-		oss << d;
-	else
-		oss << FIXED(precision) << d;
-	return oss.str();
-}
 
 #endif

@@ -1,8 +1,86 @@
-/* (c) 2017-present Pttn (https://riecoin.dev/en/rieMiner)
-(c) 2018-2020 Michael Bell/Rockhawk (assembly optimizations, improvements of work management between threads, and some more) (https://github.com/MichaelBell/) */
+/* (c) 2017-present Pttn and contributors (https://riecoin.xyz/rieMiner)
+(c) 2018-2020 Michael Bell/Rockhawk (CPUID tools and Avx detection, assembly optimizations, improvements of work management between threads, and some more) (https://github.com/MichaelBell/) */
 
-#include <gmpxx.h> // With Uint64_Ts, we still need to use the Mpz_ functions, otherwise there are "ambiguous overload" errors on Windows...
-#include "Miner.hpp"
+#include "Stella.hpp"
+
+namespace Stella {
+#if defined(__x86_64__) || defined(__i586__)
+#include <cpuid.h>
+#define CPUID
+#endif
+#if defined(__linux__)
+#include <sys/sysinfo.h>
+#elif defined(_WIN32)
+#include <sysinfoapi.h>
+#endif
+
+SysInfo::SysInfo() : _os("Unknown/Unsupported"), _cpuArchitecture("Unknown"), _cpuBrand("Unknown"), _physicalMemory(0ULL), _avx(false), _avx2(false), _avx512(false) {
+#if defined(__linux__)
+	_os = "Linux";
+	struct sysinfo si;
+	if (sysinfo(&si) == 0)
+		_physicalMemory = si.totalram;
+#elif defined(_WIN32)
+	_os = "Windows";
+	MEMORYSTATUSEX statex;
+	statex.dwLength = sizeof(statex);
+	if (GlobalMemoryStatusEx(&statex) != 0)
+		_physicalMemory = statex.ullTotalPhys;
+#endif
+#if defined(__x86_64__)
+	_cpuArchitecture = "x64";
+	_cpuBrand = "Unknown x64 CPU";
+#elif defined(__i386__)
+	_cpuArchitecture = "x86";
+	_cpuBrand = "Unknown x86 CPU";
+#elif defined(__aarch64__)
+	_cpuArchitecture = "Arm64";
+	_cpuBrand = "Unknown Arm64 CPU";
+#elif defined(__arm__)
+	_cpuArchitecture = "Arm";
+	_cpuBrand = "Unknown Arm32 CPU";
+#endif
+#if defined(CPUID)
+	if (__get_cpuid_max(0x80000004, nullptr)) {
+		uint32_t brand[64];
+		__get_cpuid(0x80000002, brand    , brand + 1, brand +  2, brand + 3);
+		__get_cpuid(0x80000003, brand + 4, brand + 5, brand +  6, brand + 7);
+		__get_cpuid(0x80000004, brand + 8, brand + 9, brand + 10, brand + 11);
+		_cpuBrand = reinterpret_cast<char*>(brand);
+	}
+	
+	uint32_t eax(0U), ebx(0U), ecx(0U), edx(0U);
+	__get_cpuid(0U, &eax, &ebx, &ecx, &edx);
+	if (eax >= 7) {
+		__get_cpuid(1U, &eax, &ebx, &ecx, &edx);
+		_avx = (ecx & (1 << 28)) != 0;
+		// Must do this with inline assembly as __get_cpuid is unreliable for level 7 and __get_cpuid_count is not always available.
+		//__get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx);
+		uint32_t level(7), zero(0);
+		asm ("cpuid\n\t"
+		    : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
+		    : "0"(level), "2"(zero));
+		_avx2 = (ebx & (1 << 5)) != 0;
+		_avx512 = (ebx & (1 << 16)) != 0;
+	}
+#endif
+}
+
+std::vector<uint64_t> generatePrimeTable(const uint64_t limit) {
+	if (limit < 2) return {};
+	std::vector<uint64_t> compositeTable(limit/128ULL + 1ULL, 0ULL); // Booleans indicating whether an odd number is composite: 0000100100101100...
+	for (uint64_t f(3ULL) ; f*f <= limit ; f += 2ULL) { // Eliminate f and its multiples m for odd f from 3 to square root of the limit
+		if (compositeTable[f >> 7ULL] & (1ULL << ((f >> 1ULL) & 63ULL))) continue; // Skip if f is composite (f and its multiples were already eliminated)
+		for (uint64_t m((f*f) >> 1ULL) ; m <= (limit >> 1ULL) ; m += f) // Start eliminating at f^2 (multiples of f below were already eliminated)
+			compositeTable[m >> 6ULL] |= 1ULL << (m & 63ULL);
+	}
+	std::vector<uint64_t> primeTable(1, 2);
+	for (uint64_t i(1ULL) ; (i << 1ULL) + 1ULL <= limit ; i++) { // Fill the prime table using the composite table
+		if (!(compositeTable[i >> 6ULL] & (1ULL << (i & 63ULL))))
+			primeTable.push_back((i << 1ULL) + 1ULL); // Add prime number 2i + 1
+	}
+	return primeTable;
+}
 
 #ifdef __SSE2__
 #include "external/gmp_util.h"
@@ -34,84 +112,71 @@ thread_local uint64_t** factorsCache{nullptr};
 thread_local uint64_t** factorsCacheCounts{nullptr};
 thread_local uint16_t threadId(65535);
 
-void Miner::init(const MinerParameters &minerParameters) {
-	_tupleFound = false;
-	_shouldRestart = false;
+void Instance::init(const Configuration &configuration) {
+	_initMessages = {};
 	if (_inited) {
-		logger.log("The miner is already initialized\n"s, MessageType::ERROR);
+		_initMessages.push_back("The miner is already initialized\n"s);
 		return;
 	}
-	if (_client == nullptr) {
-		logger.log("The miner cannot be initialized without a client\n"s, MessageType::ERROR);
-		return;
-	}
-	Job job(_client->getJob(true));
-	if (job.powVersion == 0) { // Using this check rather than Height = 0 to make Benchmark Mode work
-		logger.log("Could not get data from Client\n"s, MessageType::ERROR);
-		return;
-	}
-	_difficultyAtInit = job.difficulty;
 	
-	logger.log("Initializing miner...\n"s);
-	// Get settings from Configuration File.
-	_parameters = minerParameters;
-	if (_parameters.threads == 0) {
-		_parameters.threads = std::thread::hardware_concurrency();
-		if (_parameters.threads == 0) {
-			logger.log("Could not detect number of Threads, setting to 1.\n"s, MessageType::WARNING);
-			_parameters.threads = 1;
+	_threads = configuration.threads;
+	if (_threads == 0) {
+		_threads = std::thread::hardware_concurrency();
+		if (_threads == 0) {
+			_initMessages.push_back("Could not detect number of Threads, setting to 1.\n"s);
+			_threads = 1;
 		}
 	}
-	if (_parameters.primorialOffsets.size() == 0) { // Set the default Primorial Offsets if not chosen (must be chosen if the chosen pattern is not hardcoded)
-		auto defaultPrimorialOffsetsIterator(std::find_if(defaultConstellationData.begin(), defaultConstellationData.end(), [this](const auto& constellationData) {return constellationData.first == _parameters.pattern;}));
+	
+	_pattern = configuration.pattern;
+	std::transform(_pattern.begin(), _pattern.end(), std::back_inserter(_halfPattern), [](uint64_t n) {return n >> 1;});
+	_patternMin = configuration.patternMin;
+	_primeCountTarget = configuration.primeCountTarget;
+	_primeCountMin = configuration.primeCountMin;
+	_primorialOffsetsU64 = configuration.primorialOffsets;
+	if (_primorialOffsetsU64.size() == 0) { // Set the default Primorial Offsets if not chosen (must be chosen if the chosen pattern is not hardcoded)
+		auto defaultPrimorialOffsetsIterator(std::find_if(defaultConstellationData.begin(), defaultConstellationData.end(), [this](const auto& constellationData) {return constellationData.first == _pattern;}));
 		if (defaultPrimorialOffsetsIterator == defaultConstellationData.end()) {
-			logger.log("No hardcoded Constellation Offsets chosen and no Primorial Offset set.\n"s, MessageType::ERROR);
+			_initMessages.push_back("No hardcoded Constellation Offsets chosen and no Primorial Offset set.\n"s);
 			return;
 		}
 		else
-			_parameters.primorialOffsets = defaultPrimorialOffsetsIterator->second;
+			_primorialOffsetsU64 = defaultPrimorialOffsetsIterator->second;
 	}
-	_primorialOffsets = v64ToVMpz(_parameters.primorialOffsets);
-	if (_parameters.sieveWorkers == 0) {
+	_primorialOffsets = v64ToVMpz(_primorialOffsetsU64);
+	
+	const auto initialBits(configuration.initialBits);
+	_sieveWorkers = configuration.sieveWorkers;
+	if (_sieveWorkers == 0) {
 		double proportion;
-		if (_parameters.pattern.size() >= 7) proportion = 0.85 - _difficultyAtInit/1920.;
-		else if (_parameters.pattern.size() == 6) proportion = 0.75 - _difficultyAtInit/1792.;
-		else if (_parameters.pattern.size() == 5) proportion = 0.7 - _difficultyAtInit/1280.;
-		else if (_parameters.pattern.size() == 4) proportion = 0.5 - _difficultyAtInit/1280.;
+		if (_pattern.size() >= 7) proportion = 0.85 - initialBits/1920.;
+		else if (_pattern.size() == 6) proportion = 0.75 - initialBits/1792.;
+		else if (_pattern.size() == 5) proportion = 0.7 - initialBits/1280.;
+		else if (_pattern.size() == 4) proportion = 0.5 - initialBits/1280.;
 		else proportion = 0.;
 		if (proportion < 0.) proportion = 0.;
 		if (proportion > 1.) proportion = 1.;
-		_parameters.sieveWorkers = std::ceil(proportion*static_cast<double>(_parameters.threads));
+		_sieveWorkers = std::ceil(proportion*static_cast<double>(_threads));
 	}
-	_parameters.sieveWorkers = std::min(static_cast<int>(_parameters.sieveWorkers), static_cast<int>(_parameters.threads) - 1);
-	_parameters.sieveWorkers = std::max(static_cast<int>(_parameters.sieveWorkers), 1);
-	_parameters.sieveWorkers = std::min(_parameters.sieveWorkers, maxSieveWorkers);
-	_parameters.sieveWorkers = std::min(static_cast<int>(_parameters.sieveWorkers), static_cast<int>(_primorialOffsets.size()));
-	logger.log("Threads: "s + std::to_string(_parameters.threads) + " ("s + std::to_string(_parameters.sieveWorkers) + " Sieve Worker(s))\n"s);
-	std::vector<uint64_t> cumulativeOffsets(_parameters.pattern.size(), 0);
-	std::partial_sum(_parameters.pattern.begin(), _parameters.pattern.end(), cumulativeOffsets.begin(), std::plus<uint64_t>());
-	logger.log("Constellation pattern: n + ("s + formatContainer(cumulativeOffsets) + "), length "s + std::to_string(_parameters.pattern.size()) + "\n"s);
-	if (_mode == "Search") {
-		if (_parameters.tupleLengthMin < 1 || _parameters.tupleLengthMin > _parameters.pattern.size())
-			_parameters.tupleLengthMin = std::max(1, static_cast<int>(_parameters.pattern.size()) - 1);
-		logger.log("Will show tuples of at least length "s + std::to_string(_parameters.tupleLengthMin) + "\n"s);
-	}
+	_sieveWorkers = std::min(static_cast<int>(_sieveWorkers), static_cast<int>(_threads) - 1);
+	_sieveWorkers = std::max(static_cast<int>(_sieveWorkers), 1);
+	_sieveWorkers = std::min(_sieveWorkers, maxSieveWorkers);
+	_sieveWorkers = std::min(static_cast<int>(_sieveWorkers), static_cast<int>(_primorialOffsets.size()));
 	
-	if (_parameters.primeTableLimit == 0) {
+	_primeTableLimit = configuration.primeTableLimit;
+	if (_primeTableLimit == 0) {
 		uint64_t primeTableLimitMax(2147483648ULL);
 		if (sysInfo.getPhysicalMemory() < 536870912ULL)
 			primeTableLimitMax = 67108864ULL;
 		else if (sysInfo.getPhysicalMemory() < 17179869184ULL)
 			primeTableLimitMax = sysInfo.getPhysicalMemory()/8ULL;
-		_parameters.primeTableLimit = std::pow(_difficultyAtInit, 6.)/std::pow(2., 3.*static_cast<double>(_parameters.pattern.size()) + 7.);
-		if (_parameters.threads > 16) {
-			_parameters.primeTableLimit *= 16;
-			_parameters.primeTableLimit /= static_cast<double>(_parameters.threads);
+		_primeTableLimit = std::pow(initialBits, 6.)/std::pow(2., 3.*static_cast<double>(_pattern.size()) + 7.);
+		if (_threads > 16) {
+			_primeTableLimit *= 16;
+			_primeTableLimit /= static_cast<double>(_threads);
 		}
-		_parameters.primeTableLimit = std::min(_parameters.primeTableLimit, primeTableLimitMax);
+		_primeTableLimit = std::min(_primeTableLimit, primeTableLimitMax);
 	}
-	logger.log("Prime Table Limit: "s + std::to_string(_parameters.primeTableLimit) + "\n"s);
-	std::transform(_parameters.pattern.begin(), _parameters.pattern.end(), std::back_inserter(_halfPattern), [](uint64_t n) {return n >> 1;});
 	
 	std::vector<uint64_t> primes;
 	uint64_t primeTableFileBytes, savedPrimes(0), largestSavedPrime;
@@ -126,39 +191,37 @@ void Miner::init(const MinerParameters &minerParameters) {
 		}
 	}
 	std::chrono::time_point<std::chrono::steady_clock> t0(std::chrono::steady_clock::now());
-	if (savedPrimes > 0 && _parameters.primeTableLimit >= 1048576 && _parameters.primeTableLimit <= largestSavedPrime) {
-		logger.log("Extracting prime numbers from "s + primeTableFile + " ("s + std::to_string(primeTableFileBytes) + " bytes, "s + std::to_string(savedPrimes) + " primes, largest "s + std::to_string(largestSavedPrime) + ")...\n"s);
-		uint64_t nPrimesUpperBound(std::min(1.085*static_cast<double>(_parameters.primeTableLimit)/std::log(static_cast<double>(_parameters.primeTableLimit)), static_cast<double>(savedPrimes))); // 1.085 = max(π(p)log(p)/p) for p >= 2^20
+	_primeTableExtracted = false;
+	if (savedPrimes > 0 && _primeTableLimit >= 1048576 && _primeTableLimit <= largestSavedPrime) {
+		uint64_t nPrimesUpperBound(std::min(1.085*static_cast<double>(_primeTableLimit)/std::log(static_cast<double>(_primeTableLimit)), static_cast<double>(savedPrimes))); // 1.085 = max(π(p)log(p)/p) for p >= 2^20
 		try {
 			primes = std::vector<uint64_t>(nPrimesUpperBound);
 		}
 		catch (std::bad_alloc& ba) {
-			logger.log("Unable to allocate memory for the prime table\n"s, MessageType::ERROR);
-			_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/8, _parameters.sieveWorkers);
+			_initMessages.push_back("Unable to allocate memory for the prime table. Try to reduce the PrimeTableLimit parameter.\n"s);
 			return;
 		}
 		file.seekg(0, std::ios::beg);
 		file.read(reinterpret_cast<char*>(primes.data()), nPrimesUpperBound*sizeof(decltype(primes)::value_type));
 		file.close();
 		for (auto i(primes.size() - 1) ; i > 0 ; i--) {
-			if (primes[i] <= _parameters.primeTableLimit) {
+			if (primes[i] <= _primeTableLimit) {
 				primes.resize(i + 1);
 				break;
 			}
 		}
-		logger.log(std::to_string(primes.size()) + " first primes extracted in "s + doubleToString(timeSince(t0)) + " s ("s + std::to_string(primes.size()*sizeof(decltype(primes)::value_type)) + " bytes).\n"s);
+		_primeTableExtracted = true;
+		_primeTableGenerationTime = timeSince(t0);
 	}
 	else {
-		logger.log("Generating prime table using sieve of Eratosthenes...\n"s);
 		try {
-			primes = generatePrimeTable(_parameters.primeTableLimit);
+			primes = generatePrimeTable(_primeTableLimit);
 		}
 		catch (std::bad_alloc& ba) {
-			logger.log("Unable to allocate memory for the prime table\n"s, MessageType::ERROR);
-			_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/8, _parameters.sieveWorkers);
+			_initMessages.push_back("Unable to allocate memory for the prime table. Try to reduce the PrimeTableLimit parameter.\n"s);
 			return;
 		}
-		logger.log("Table with all "s + std::to_string(primes.size()) + " first primes generated in "s + doubleToString(timeSince(t0)) + " s ("s + std::to_string(primes.size()*sizeof(decltype(primes)::value_type)) + " bytes)...\n"s);
+		_primeTableGenerationTime = timeSince(t0);
 	}
 
 	if (primes.size() % 2 == 1) // Needs to be even to use SIMD sieving optimizations
@@ -169,8 +232,7 @@ void Miner::init(const MinerParameters &minerParameters) {
 		if (primes.size() > nPrimesTo2p32) _primes64.reserve(primes.size() - nPrimesTo2p32);
 	}
 	catch (std::bad_alloc& ba) {
-		logger.log("Unable to allocate memory for the prime table\n"s, MessageType::ERROR);
-		_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/8, _parameters.sieveWorkers);
+		_initMessages.push_back("Unable to allocate memory for the prime table. Try to reduce the PrimeTableLimit parameter.\n"s);
 		return;
 	}
 
@@ -178,56 +240,89 @@ void Miner::init(const MinerParameters &minerParameters) {
 		if (primes[i] < (1ULL << 32)) _primes32.push_back(primes[i]);
 		else _primes64.push_back(primes[i]);
 	}
-
+	
 	_nPrimes = primes.size();
 	_nPrimes32 = _primes32.size();
 	primes.clear();
 
-	if (_parameters.sieveBits == 0) {
+	_sieveBits = configuration.sieveBits;
+	if (_sieveBits == 0) {
 		if (sysInfo.getCpuArchitecture() == "x64")
-			_parameters.sieveBits = _parameters.sieveWorkers <= 4 ? 25 : 24;
+			_sieveBits = _sieveWorkers <= 4 ? 25 : 24;
 		else
-			_parameters.sieveBits = _parameters.sieveWorkers <= 4 ? 23 : 22;
+			_sieveBits = _sieveWorkers <= 4 ? 23 : 22;
 	}
-	_parameters.sieveSize = 1 << _parameters.sieveBits;
-	_parameters.sieveWords = _parameters.sieveSize/64;
-	logger.log("Sieve Size: 2^"s + std::to_string(_parameters.sieveBits) + " = "s + std::to_string(_parameters.sieveSize) + " ("s + std::to_string(_parameters.sieveWords) + " words)\n"s);
-	if (_parameters.sieveIterations == 0)
-		_parameters.sieveIterations = 16;
-	logger.log("Sieve Iterations: "s + std::to_string(_parameters.sieveIterations) + "\n"s);
-	_factorMax = _parameters.sieveIterations*_parameters.sieveSize;
-	logger.log("Primorial Factor Max: "s + std::to_string(_factorMax) + "\n"s);
+	_sieveSize = 1 << _sieveBits;
+	_sieveWords = _sieveSize/64;
+	_sieveIterations = configuration.sieveIterations;
+	if (_sieveIterations == 0)
+		_sieveIterations = 16;
+	_factorMax = _sieveIterations*_sieveSize;
 	
 	// The primorial times the maximum factor should be smaller than the allowed limit for the target offset.
-	mpz_class primorialLimit(job.targetOffsetMax);
-	if (_mode == "Solo" || _mode == "Pool") // Some margin to take in account the Difficulty fluctuations
-		primorialLimit >>= std::ceil(_difficultyAtInit*(_parameters.restartDifficultyFactor - 1.));
+	mpz_class primorialLimit(1);
+	primorialLimit <<= configuration.initialTargetBits;
+	primorialLimit--;
 	primorialLimit /= u64ToMpz(_factorMax);
 	if (primorialLimit == 0) {
-		logger.log("The Difficulty is too low. Try to increase it or decrease the Sieve Size/Iterations.\n"s, MessageType::ERROR);
+		_initMessages.push_back("The Difficulty is too low. Try to increase it or decrease the Sieve Size/Iterations.\n"s);
 		return;
 	}
 	mpz_set_ui(_primorial.get_mpz_t(), 1);
 	for (uint64_t i(0) ; i < _primes32.size() ; i++) {
 		if (_primorial*_primes32[i] >= primorialLimit) {
 			_primorialNumber = i;
-			logger.log("Primorial: p"s + std::to_string(_primorialNumber) + "# = "s + std::to_string(_primes32[_primorialNumber - 1]) + "# = "s);
-			if (mpz_sizeinbase(_primorial.get_mpz_t(), 10) < 18)
-				logger.log(_primorial.get_str());
-			else
-				logger.log("~"s + _primorial.get_str()[0] + "."s + _primorial.get_str().substr(1, 12) + "*10^"s + std::to_string(_primorial.get_str().size() - 1));
-			logger.log(" ("s + std::to_string(mpz_sizeinbase(_primorial.get_mpz_t(), 2)) + " bits)\n"s);
 			break;
 		}
 		_primorial *= _primes32[i];
 		if (i + 1 == _primes32.size())
 			_primorialNumber = i + 1;
 	}
-	logger.log("Primorial Offsets: "s + std::to_string(_primorialOffsets.size()) + "\n"s);
-	_primorialOffsetDiff.resize(_parameters.sieveWorkers - 1);
-	const uint64_t constellationDiameter(cumulativeOffsets.back());
-	for (int j(1) ; j < _parameters.sieveWorkers ; j++)
-		_primorialOffsetDiff[j - 1] = _parameters.primorialOffsets[j] - _parameters.primorialOffsets[j - 1] - constellationDiameter;
+	_primorialOffsetDiff.resize(_sieveWorkers - 1);
+	_patternCumulative = std::vector<uint64_t>(_pattern.size(), 0);
+	std::partial_sum(_pattern.begin(), _pattern.end(), _patternCumulative.begin(), std::plus<uint64_t>());
+	const uint64_t constellationDiameter(_patternCumulative.back());
+	for (int j(1) ; j < _sieveWorkers ; j++)
+		_primorialOffsetDiff[j - 1] = _primorialOffsetsU64[j] - _primorialOffsetsU64[j - 1] - constellationDiameter;
+	
+	// Precomputing data used to speed up presieving computations.
+	t0 = std::chrono::steady_clock::now();
+#ifdef __SSE2__
+	const uint64_t precompPrimes(std::min(_nPrimes, 5586502348UL)); // Precomputation only works up to p = 2^37
+#endif
+	try {
+		_modularInverses32.resize(_primes32.size());
+		_modularInverses64.resize(_primes64.size()); // Table of inverses of the primorial modulo a prime number in the table with index >= primorialNumber.
+#ifdef __SSE2__
+		_modPrecompute.resize(precompPrimes);
+#endif
+	}
+	catch (std::bad_alloc& ba) {
+		_initMessages.push_back("Unable to allocate memory for the precomputed data. Try to reduce the PrimeTableLimit parameter.\n"s);
+		return;
+	}
+	const uint64_t blockSize((_nPrimes - _primorialNumber + _threads - 1)/_threads);
+	std::thread threads[_threads];
+	for (uint16_t j(0) ; j < _threads ; j++) {
+		threads[j] = std::thread([&, j]() {
+			mpz_class modularInverse, prime;
+			const uint64_t endIndex(std::min(_primorialNumber + (j + 1)*blockSize, _nPrimes));
+			for (uint64_t i(_primorialNumber + j*blockSize) ; i < endIndex ; i++) {
+				uint64_t p(_getPrime(i));
+				mpz_set_ui(prime.get_mpz_t(), p);
+				mpz_invert(modularInverse.get_mpz_t(), _primorial.get_mpz_t(), prime.get_mpz_t()); // modularInverse*primorial ≡ 1 (mod prime)
+				if (i < nPrimesTo2p32) _modularInverses32[i] = static_cast<uint32_t>(mpz_get_ui(modularInverse.get_mpz_t()));
+				else _modularInverses64[i - nPrimesTo2p32] = mpz_get_ui(modularInverse.get_mpz_t());
+#ifdef __SSE2__
+				if (i < precompPrimes)
+					rie_mod_1s_4p_cps(&_modPrecompute[i], p);
+#endif
+			}
+		});
+	}
+	for (uint16_t j(0) ; j < _threads ; j++)
+		threads[j].join();
+	_modularInversesGenerationTime = timeSince(t0);
 	
 	uint64_t additionalFactorsCountEstimation(0); // tupleSize*factorMax*(sum of 1/p, for p in the prime table >= factorMax); it is the estimation of how many such p will eliminate a factor (factorMax/p being the probability of the modulo p being < factorMax)
 	double sumInversesOfPrimes(0.);
@@ -245,220 +340,117 @@ void Miner::init(const MinerParameters &minerParameters) {
 	}
 	if (_primesIndexThreshold == 0)
 		_primesIndexThreshold = _nPrimes;
-	logger.log("Prime index threshold: "s + std::to_string(_primesIndexThreshold) + "\n"s);
-	const uint64_t factorsToEliminateEntries(_parameters.pattern.size()*_primesIndexThreshold); // PatternLength entries for every prime < factorMax
-	additionalFactorsCountEstimation = _parameters.pattern.size()*ceil(static_cast<double>(_factorMax)*sumInversesOfPrimes);
-	const uint64_t additionalFactorsEntriesPerIteration(17ULL*(additionalFactorsCountEstimation/_parameters.sieveIterations)/16ULL + 64ULL); // Have some margin
-	logger.log("Estimated additional factors: "s + std::to_string(additionalFactorsCountEstimation) + " (allocated per iteration: " + std::to_string(additionalFactorsEntriesPerIteration) + ")\n"s);
-	{
-#ifdef __SSE2__
-		logger.log("Precomputing modular inverses and division data...\n"s); // The precomputed data is used to speed up computations in _doPresieveTask.
-#else
-		logger.log("Precomputing modular inverses...\n"s);
-#endif
-		t0 = std::chrono::steady_clock::now();
-#ifdef __SSE2__
-		const uint64_t precompPrimes(std::min(_nPrimes, 5586502348UL)); // Precomputation only works up to p = 2^37
-#endif
-		try {
-			_modularInverses32.resize(_primes32.size());
-			_modularInverses64.resize(_primes64.size()); // Table of inverses of the primorial modulo a prime number in the table with index >= primorialNumber.
-#ifdef __SSE2__
-			_modPrecompute.resize(precompPrimes);
-#endif
-		}
-		catch (std::bad_alloc& ba) {
-			logger.log("Unable to allocate memory for the precomputed data\n"s, MessageType::ERROR);
-			_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/4, _parameters.sieveWorkers);
-			return;
-		}
-		const uint64_t blockSize((_nPrimes - _primorialNumber + _parameters.threads - 1)/_parameters.threads);
-		std::thread threads[_parameters.threads];
-		for (uint16_t j(0) ; j < _parameters.threads ; j++) {
-			threads[j] = std::thread([&, j]() {
-				mpz_class modularInverse, prime;
-				const uint64_t endIndex(std::min(_primorialNumber + (j + 1)*blockSize, _nPrimes));
-				for (uint64_t i(_primorialNumber + j*blockSize) ; i < endIndex ; i++) {
-					uint64_t p(_getPrime(i));
-					mpz_set_ui(prime.get_mpz_t(), p);
-					mpz_invert(modularInverse.get_mpz_t(), _primorial.get_mpz_t(), prime.get_mpz_t()); // modularInverse*primorial ≡ 1 (mod prime)
-					if (i < nPrimesTo2p32) _modularInverses32[i] = static_cast<uint32_t>(mpz_get_ui(modularInverse.get_mpz_t()));
-					else _modularInverses64[i - nPrimesTo2p32] = mpz_get_ui(modularInverse.get_mpz_t());
-#ifdef __SSE2__
-					if (i < precompPrimes)
-						rie_mod_1s_4p_cps(&_modPrecompute[i], p);
-#endif
-				}
-			});
-		}
-		for (uint16_t j(0) ; j < _parameters.threads ; j++) threads[j].join();
-#ifdef __SSE2__
-		logger.log("Tables of "s + std::to_string(_modularInverses32.size() + _modularInverses64.size() - _primorialNumber) + " modular inverses and "s + std::to_string(precompPrimes - _primorialNumber) + " division entries generated in "s + doubleToString(timeSince(t0)) + " s ("s + std::to_string((_modularInverses64.size() + precompPrimes)*sizeof(decltype(_modularInverses64)::value_type) + _modularInverses32.size()*sizeof(decltype(_modularInverses32)::value_type)) + " bytes).\n"s);
-#else
-		logger.log("Tables of "s + std::to_string(_modularInverses32.size() + _modularInverses64.size() - _primorialNumber) + " modular inverses generated in "s + doubleToString(timeSince(t0)) + " s ("s + std::to_string(_modularInverses64.size()*sizeof(decltype(_modularInverses64)::value_type) + _modularInverses32.size()*sizeof(decltype(_modularInverses32)::value_type)) + " bytes).\n"s);
-#endif
-	}
-	
+	const uint64_t factorsToEliminateEntries(_pattern.size()*_primesIndexThreshold); // PatternLength entries for every prime < factorMax
+	additionalFactorsCountEstimation = _pattern.size()*ceil(static_cast<double>(_factorMax)*sumInversesOfPrimes);
+	const uint64_t additionalFactorsEntriesPerIteration(17ULL*(additionalFactorsCountEstimation/_sieveIterations)/16ULL + 64ULL); // Have some margin
 	try {
-		std::vector<Sieve> sieves(_parameters.sieveWorkers);
-		_sieves.swap(sieves);
+		_sieves = std::vector<Sieve>(_sieveWorkers);
 		for (std::vector<Sieve>::size_type i(0) ; i < _sieves.size() ; i++) {
 			_sieves[i].id = i;
-			_sieves[i].additionalFactorsToEliminateCounts = new std::atomic<uint64_t>[_parameters.sieveIterations];
-		}
-		logger.log("Allocating "s + std::to_string(sizeof(uint64_t)*_parameters.sieveWorkers*_parameters.sieveWords) + " bytes for the primorial factors tables...\n"s);
-		for (auto &sieve : _sieves)
-			sieve.factorsTable = new uint64_t[_parameters.sieveWords];
-	}
-	catch (std::bad_alloc& ba) {
-		logger.log("Unable to allocate memory for the primorial factors tables\n"s, MessageType::ERROR);
-		_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/3, _parameters.sieveWorkers);
-		return;
-	}
-	
-	try {
-		logger.log("Allocating "s + std::to_string(sizeof(uint32_t)*_parameters.sieveWorkers*factorsToEliminateEntries) + " bytes for the primorial factors...\n"s);
-		for (auto &sieve : _sieves) {
+			_sieves[i].additionalFactorsToEliminateCounts = new std::atomic<uint64_t>[_sieveIterations];
+			_sieves[i].factorsTable = new uint64_t[_sieveWords];
 #ifdef __SSE2__
-			sieve.factorsToEliminate = reinterpret_cast<uint32_t*>(new __m256i[(factorsToEliminateEntries + 7) / 8]);
+			_sieves[i].factorsToEliminate = reinterpret_cast<uint32_t*>(new __m256i[(factorsToEliminateEntries + 7) / 8]);
 #else
-			sieve.factorsToEliminate = new uint32_t[factorsToEliminateEntries];
+			_sieves[i].factorsToEliminate = new uint32_t[factorsToEliminateEntries];
 #endif
-			memset(sieve.factorsToEliminate, 0, sizeof(uint32_t)*factorsToEliminateEntries);
+			memset(_sieves[i].factorsToEliminate, 0, sizeof(uint32_t)*factorsToEliminateEntries);
+			_sieves[i].additionalFactorsToEliminate = new uint32_t*[_sieveIterations];
+			for (uint64_t j(0) ; j < _sieveIterations ; j++)
+				_sieves[i].additionalFactorsToEliminate[j] = new uint32_t[additionalFactorsEntriesPerIteration];
 		}
 	}
 	catch (std::bad_alloc& ba) {
-		logger.log("Unable to allocate memory for the primorial factors\n"s, MessageType::ERROR);
-		_suggestLessMemoryIntensiveOptions(_parameters.primeTableLimit/2, std::max(static_cast<int>(_parameters.sieveWorkers) - 1, 1));
+		_initMessages.push_back("Unable to allocate memory for the sieves. Try to reduce the PrimeTableLimit parameter.\n"s);
 		return;
 	}
-	
-	try {
-		logger.log("Allocating "s + std::to_string(sizeof(uint32_t)*_parameters.sieveWorkers*_parameters.sieveIterations*additionalFactorsEntriesPerIteration) + " bytes for the additional primorial factors..\n"s);
-		for (auto &sieve : _sieves) {
-			sieve.additionalFactorsToEliminate = new uint32_t*[_parameters.sieveIterations];
-			for (uint64_t j(0) ; j < _parameters.sieveIterations ; j++)
-				sieve.additionalFactorsToEliminate[j] = new uint32_t[additionalFactorsEntriesPerIteration];
-		}
-	}
-	catch (std::bad_alloc& ba) {
-		logger.log("Unable to allocate memory for the additional primorial factors\n"s, MessageType::ERROR);
-		_suggestLessMemoryIntensiveOptions(2*_parameters.primeTableLimit/3, std::max(static_cast<int>(_parameters.sieveWorkers) - 1, 1));
-		return;
-	}
-	// Initial guess at a value for the threshold
-	_nRemainingCheckTasksThreshold = 32U*_parameters.threads*_parameters.sieveWorkers;
+	// Initial guess at a value for the Target.
+	_nRemainingCheckTasksTarget = 32U*_threads*_sieveWorkers;
 	_inited = true;
-	logger.log("Done initializing miner.\n"s, MessageType::SUCCESS);
 }
 
-void Miner::startThreads() {
-	if (!_inited)
-		logger.log("The miner is not initialized!\n"s, MessageType::ERROR);
-	else if (_client == nullptr)
-		logger.log("The miner cannot start mining without a client!\n"s, MessageType::ERROR);
-	else if (_running)
-		logger.log("The miner is already running!\n"s, MessageType::ERROR);
-	else {
-		_running = true;
-		if (!_keepStats)
-			statManager.start(_parameters.pattern.size());
-		_keepStats = false;
-		logger.log("Starting the miner's master thread...\n"s);
-		_masterThread = std::thread(&Miner::_manageTasks, this);
-		logger.log("Starting " + std::to_string(_parameters.threads) + " miner's worker threads...\n"s);
-		for (uint16_t i(0) ; i < _parameters.threads ; i++)
-			_workerThreads.push_back(std::thread(&Miner::_doTasks, this, i));
-		logger.hr();
-		if (_mode == "Benchmark" || _mode == "Search")
-			logger.log(Stats::formattedTime(statManager.timeSinceStart()) + " Started "s + _mode + ", difficulty "s + doubleToString(_client->currentDifficulty(), 3U)  + "\n"s, MessageType::BOLD);
-		else
-			logger.log(Stats::formattedClockTimeNow() + " Started mining at block "s + std::to_string(_client->currentHeight()) + ", difficulty "s + doubleToString(_client->currentDifficulty(), 3U)  + "\n"s, MessageType::BOLD);
-	}
+void Instance::startThreads() {
+	assert(_inited && !_running);
+	_running = true;
+	if (!_keepStats)
+		_tupleCounts = std::vector<uint64_t>(_pattern.size() + 1, 0ULL);
+	_keepStats = false;
+	_masterThread = std::thread(&Instance::_manageTasks, this);
+	for (uint16_t i(0) ; i < _threads ; i++)
+		_workerThreads.push_back(std::thread(&Instance::_doTasks, this, i));
 }
 
-void Miner::stopThreads() {
-	if (!_running)
-		logger.log("The miner is already stopped!\n"s, MessageType::ERROR);
-	else {
-		_running = false;
-		if (_mode == "Benchmark" || _mode == "Search")
-			printTupleStats();
-		logger.log("Waiting for the miner's master thread to finish...\n"s);
-		_tasksDoneInfos.push_front(TaskDoneInfo{Task::Type::Dummy, {}}); // Unblock if master thread stuck in blocking_pop_front().
-		_masterThread.join();
-		logger.log("Waiting for the miner's worker threads to finish...\n"s);
-		for (uint16_t i(0) ; i < _parameters.threads ; i++)
-			_tasks.push_front(Task{Task::Type::Dummy, 0, {}}); // Unblock worker threads stuck in blocking_pop_front().
-		for (auto &workerThread : _workerThreads)
-			workerThread.join();
-		_workerThreads.clear();
-		logger.log("Miner threads stopped.\n"s, MessageType::SUCCESS);
-		_presieveTasks.clear();
-		_tasks.clear();
-		_tasksDoneInfos.clear();
-		for (auto &work : _works) work.clear();
-	}
+void Instance::stopThreads() {
+	assert(_running);
+	_running = false;
+	invalidateWork();
+	_tasksDoneInfos.push_front(TaskDoneInfo{Task::Type::Dummy, {}}); // Unblock if master thread stuck in blocking_pop_front().
+	_masterThread.join();
+	for (uint16_t i(0) ; i < _threads ; i++)
+		_tasks.push_front(Task{Task::Type::Dummy, 0, {}}); // Unblock worker threads stuck in blocking_pop_front().
+	for (auto &workerThread : _workerThreads)
+		workerThread.join();
+	_workerThreads.clear();
+	_availableJobs.clear();
+	_presieveTasks.clear();
+	_tasks.clear();
+	_tasksDoneInfos.clear();
+	for (auto &work : _works) work.clear();
 }
 
-void Miner::clear() {
-	if (_running)
-		logger.log("Cannot clear the miner while it is running!\n"s, MessageType::ERROR);
-	else if (!_inited)
-		logger.log("Cannot clear the miner if it is not initialized!\n"s, MessageType::ERROR);
-	else {
-		logger.log("Clearing miner's data...\n"s);
-		_inited = false;
-		for (auto &sieve : _sieves) {
-			delete[] sieve.factorsTable;
+void Instance::clear() {
+	assert(_inited && !_running);
+	_inited = false;
+	for (auto &sieve : _sieves) {
+		delete[] sieve.factorsTable;
 #ifdef __SSE2__
-			delete[] reinterpret_cast<__m256i*>(sieve.factorsToEliminate);
+		delete[] reinterpret_cast<__m256i*>(sieve.factorsToEliminate);
 #else
-			delete[] sieve.factorsToEliminate;
+		delete[] sieve.factorsToEliminate;
 #endif
-			for (uint64_t j(0) ; j < _parameters.sieveIterations ; j++)
-				delete[] sieve.additionalFactorsToEliminate[j];
-			delete[] sieve.additionalFactorsToEliminate;
-			delete[] sieve.additionalFactorsToEliminateCounts;
-		}
-		_sieves.clear();
-		_primes32.clear();
-		_primes64.clear();
-		_modularInverses32.clear();
-		_modularInverses64.clear();
-#ifdef __SSE2__
-		_modPrecompute.clear();
-#endif
-		_primorialOffsets.clear();
-		_halfPattern.clear();
-		_primorialOffsetDiff.clear();
-		_parameters = MinerParameters();
-		logger.log("Miner's data cleared.\n"s, MessageType::SUCCESS);
+		for (uint64_t j(0) ; j < _sieveIterations ; j++)
+			delete[] sieve.additionalFactorsToEliminate[j];
+		delete[] sieve.additionalFactorsToEliminate;
+		delete[] sieve.additionalFactorsToEliminateCounts;
 	}
+	_sieves.clear();
+	_primes32.clear();
+	_primes64.clear();
+	_modularInverses32.clear();
+	_modularInverses64.clear();
+#ifdef __SSE2__
+	_modPrecompute.clear();
+#endif
+	_primorialOffsets.clear();
+	_primorialOffsetsU64.clear();
+	_pattern.clear();
+	_halfPattern.clear();
+	_primorialOffsetDiff.clear();
+	_patternMin.clear();
 }
 
-void Miner::_addCachedAdditionalFactorsToEliminate(Sieve& sieve, uint64_t *factorsCache, uint64_t *factorsCacheCounts, const int factorsCacheTotalCount) {
-	for (uint64_t i(0) ; i < _parameters.sieveIterations ; i++) // Initialize the counts for use as index and update the sieve's one
+void Instance::_addCachedAdditionalFactorsToEliminate(Sieve& sieve, uint64_t *factorsCache, uint64_t *factorsCacheCounts, const int factorsCacheTotalCount) {
+	for (uint64_t i(0) ; i < _sieveIterations ; i++) // Initialize the counts for use as index and update the sieve's one
 		factorsCacheCounts[i] = sieve.additionalFactorsToEliminateCounts[i].fetch_add(factorsCacheCounts[i]);
 	for (int i(0) ; i < factorsCacheTotalCount ; i++) {
 		const uint64_t factor(factorsCache[i]),
-		               sieveIteration(factor >> _parameters.sieveBits),
+		               sieveIteration(factor >> _sieveBits),
 		               indexInFactorsTable(factorsCacheCounts[sieveIteration]);
-		sieve.additionalFactorsToEliminate[sieveIteration][indexInFactorsTable] = factor & (_parameters.sieveSize - 1); // factor % sieveSize
+		sieve.additionalFactorsToEliminate[sieveIteration][indexInFactorsTable] = factor & (_sieveSize - 1); // factor % sieveSize
 		factorsCacheCounts[sieveIteration]++;
 	}
-	for (uint64_t i(0) ; i < _parameters.sieveIterations ; i++)
+	for (uint64_t i(0) ; i < _sieveIterations ; i++)
 		factorsCacheCounts[i] = 0;
 }
 
-void Miner::_doPresieveTask(const Task &task) {
+void Instance::_doPresieveTask(const Task &task) {
 	const uint64_t workIndex(task.workIndex), firstPrimeIndex(task.presieve.start), lastPrimeIndex(task.presieve.end);
 	const mpz_class firstCandidate(_works[workIndex].primorialMultipleStart + _primorialOffsets[0]);
 	std::array<int, maxSieveWorkers> factorsCacheTotalCounts{0};
 	uint64_t** factorsCacheRef(factorsCache); // On Windows, caching these thread_local pointers on the stack makes a noticeable perf difference.
 	uint64_t** factorsCacheCountsRef(factorsCacheCounts);
 #ifdef __SSE2__
-	const uint64_t precompLimit(_modPrecompute.size()), tupleSize(_parameters.pattern.size());
+	const uint64_t precompLimit(_modPrecompute.size()), tupleSize(_pattern.size());
 	uint64_t avxLimit(0);
 #ifdef __AVX2__
 	const uint64_t avxWidth(8);
@@ -472,7 +464,7 @@ void Miner::_doPresieveTask(const Task &task) {
 	uint64_t nextRemainder[8];
 	uint64_t nextRemainderIndex(8);
 #else
-	const uint64_t tupleSize(_parameters.pattern.size());
+	const uint64_t tupleSize(_pattern.size());
 #endif
 	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i++) {
 		const uint64_t p(_getPrime(i));
@@ -541,8 +533,7 @@ void Miner::_doPresieveTask(const Task &task) {
 		uint64_t fp(mulMod(pa, mi[0], p)); // (pa*mi[0]) % p
 #endif
 
-		// We use a macro here to ensure the compiler inlines the code, and also make it easier to early
-		// out of the function completely if the current height has changed.
+		// We use a macro here to ensure the compiler inlines the code, and also make it easier to early out of the function completely if the current height has changed.
 #define addFactorsToEliminateForP(sieveWorkerIndex) {						                                                   \
 			if (i < _primesIndexThreshold) {			                                                                       \
 				_sieves[sieveWorkerIndex].factorsToEliminate[tupleSize*i] = fp;		                                           \
@@ -553,28 +544,28 @@ void Miner::_doPresieveTask(const Task &task) {
 				}		                                                                                                       \
 			}			                                                                                                       \
 			else {			                                                                                                   \
-				if (factorsCacheTotalCounts[sieveWorkerIndex] + _halfPattern.size() >= factorsCacheSize) {		           \
-					if (_works[workIndex].job.height != _client->currentHeight())	                                           \
+				if (factorsCacheTotalCounts[sieveWorkerIndex] + _halfPattern.size() >= factorsCacheSize) {		               \
+					if (!_works[workIndex].current)	                                                                           \
 						return;                                                                                                \
 					_addCachedAdditionalFactorsToEliminate(_sieves[sieveWorkerIndex], factorsCacheRef[sieveWorkerIndex], factorsCacheCountsRef[sieveWorkerIndex], factorsCacheTotalCounts[sieveWorkerIndex]); \
-					factorsCacheTotalCounts[sieveWorkerIndex] = 0;	                                                   \
+					factorsCacheTotalCounts[sieveWorkerIndex] = 0;	                                                           \
 				}		                                                                                                       \
 				if (fp < _factorMax) {		                                                                                   \
-					factorsCacheRef[sieveWorkerIndex][factorsCacheTotalCounts[sieveWorkerIndex]++] = fp;	   \
-					factorsCacheCountsRef[sieveWorkerIndex][fp >> _parameters.sieveBits]++;	                       \
+					factorsCacheRef[sieveWorkerIndex][factorsCacheTotalCounts[sieveWorkerIndex]++] = fp;	                   \
+					factorsCacheCountsRef[sieveWorkerIndex][fp >> _sieveBits]++;	                                           \
 				}		                                                                                                       \
 				for (std::vector<uint64_t>::size_type f(1) ; f < _halfPattern.size() ; f++) {		                           \
 					if (fp < mi[_halfPattern[f]]) fp += p;	                                                                   \
 					fp -= mi[_halfPattern[f]];	                                                                               \
 					if (fp < _factorMax) {	                                                                                   \
-						factorsCacheRef[sieveWorkerIndex][factorsCacheTotalCounts[sieveWorkerIndex]++] = fp; \
-						factorsCacheCountsRef[sieveWorkerIndex][fp >> _parameters.sieveBits]++;                    \
+						factorsCacheRef[sieveWorkerIndex][factorsCacheTotalCounts[sieveWorkerIndex]++] = fp;                   \
+						factorsCacheCountsRef[sieveWorkerIndex][fp >> _sieveBits]++;                                           \
 					}	                                                                                                       \
 				}		                                                                                                       \
 			}		                                                                                                           \
 		};
 		addFactorsToEliminateForP(0);
-		if (_parameters.sieveWorkers == 1) continue;
+		if (_sieveWorkers == 1) continue;
 		
 		// Recompute fp to adjust to the PrimorialOffsets of other Sieve Workers.
 #ifdef __SSE2__
@@ -601,7 +592,7 @@ void Miner::_doPresieveTask(const Task &task) {
 		fp -= r;
 		addFactorsToEliminateForP(1);
 		
-		for (int j(2) ; j < _parameters.sieveWorkers ; j++) {
+		for (int j(2) ; j < _sieveWorkers ; j++) {
 			if (_primorialOffsetDiff[j - 1] != _primorialOffsetDiff[j - 2])
 #ifdef __SSE2__
 				recomputeFp(j);
@@ -615,7 +606,7 @@ void Miner::_doPresieveTask(const Task &task) {
 	}
 	
 	if (lastPrimeIndex > _primesIndexThreshold) {
-		for (int j(0) ; j < _parameters.sieveWorkers ; j++) {
+		for (int j(0) ; j < _sieveWorkers ; j++) {
 			if (factorsCacheTotalCounts[j] > 0) {
 				_addCachedAdditionalFactorsToEliminate(_sieves[j], factorsCacheRef[j], factorsCacheCountsRef[j], factorsCacheTotalCounts[j]);
 				factorsCacheTotalCounts[j] = 0;
@@ -624,40 +615,40 @@ void Miner::_doPresieveTask(const Task &task) {
 	}
 }
 
-void Miner::_processSieve(uint64_t *factorsTable, uint32_t* factorsToEliminate, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) {
-	const uint64_t tupleSize(_parameters.pattern.size());
+void Instance::_processSieve(uint64_t *factorsTable, uint32_t* factorsToEliminate, const uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) {
+	const uint64_t tupleSize(_pattern.size());
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
 	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i++) {
 		const uint32_t p(_primes32[i]);
 		for (uint64_t f(0) ; f < tupleSize; f++) {
-			while (factorsToEliminate[i*tupleSize + f] < _parameters.sieveSize) { // Eliminate primorial factors of the form p*m + fp for every m*p in the current table.
+			while (factorsToEliminate[i*tupleSize + f] < _sieveSize) { // Eliminate primorial factors of the form p*m + fp for every m*p in the current table.
 				_addToSieveCache(factorsTable, sieveCache, sieveCachePos, factorsToEliminate[i*tupleSize + f]);
 				factorsToEliminate[i*tupleSize + f] += p; // Increment the m
 			}
-			factorsToEliminate[i*tupleSize + f] -= _parameters.sieveSize; // Prepare for the next iteration
+			factorsToEliminate[i*tupleSize + f] -= _sieveSize; // Prepare for the next iteration
 		}
 	}
 	_endSieveCache(factorsTable, sieveCache);
 }
 
 #ifdef __SSE2__
-void Miner::_processSieve6(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 6-tuples by Michael Bell
-	assert(_parameters.pattern.size() == 6);
+void Instance::_processSieve6(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 6-tuples by Michael Bell
+	assert(_pattern.size() == 6);
 	assert((lastPrimeIndex & 1) == 0);
 	// Already eliminate for the first prime to sieve if it is odd to align for the optimizations
 	if ((firstPrimeIndex & 1) != 0) {
 		for (uint64_t f(0) ; f < 6 ; f++) {
-			while (factorsToEliminate[firstPrimeIndex*6 + f] < _parameters.sieveSize) {
+			while (factorsToEliminate[firstPrimeIndex*6 + f] < _sieveSize) {
 				factorsTable[factorsToEliminate[firstPrimeIndex*6 + f] >> 6U] |= (1ULL << ((factorsToEliminate[firstPrimeIndex*6 + f] & 63U)));
 				factorsToEliminate[firstPrimeIndex*6 + f] += _primes32[firstPrimeIndex];
 			}
-			factorsToEliminate[firstPrimeIndex*6 + f] -= _parameters.sieveSize;
+			factorsToEliminate[firstPrimeIndex*6 + f] -= _sieveSize;
 		}
 		firstPrimeIndex++;
 	}
 	xmmreg_t offsetmax;
-	offsetmax.m128 = _mm_set1_epi32(_parameters.sieveSize);
+	offsetmax.m128 = _mm_set1_epi32(_sieveSize);
 	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i += 2) {
 		xmmreg_t p1, p2, p3;
 		xmmreg_t factor1, factor2, factor3, nextIncr1, nextIncr2, nextIncr3;
@@ -704,12 +695,12 @@ void Miner::_processSieve6(uint64_t *factorsTable, uint32_t* factorsToEliminate,
 	}
 }
 
-void Miner::_processSieve7(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 7-tuples by Michael Bell
-	assert(_parameters.pattern.size() == 7);
+void Instance::_processSieve7(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 7-tuples by Michael Bell
+	assert(_pattern.size() == 7);
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
 	xmmreg_t offsetmax;
-	offsetmax.m128 = _mm_set1_epi32(_parameters.sieveSize);
+	offsetmax.m128 = _mm_set1_epi32(_sieveSize);
 	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i += 1) {
 		xmmreg_t p1;
 		xmmreg_t factor1, factor2, nextIncr1, nextIncr2;
@@ -743,12 +734,12 @@ void Miner::_processSieve7(uint64_t *factorsTable, uint32_t* factorsToEliminate,
 	_endSieveCache(factorsTable, sieveCache);
 }
 
-void Miner::_processSieve8(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 8-tuples by Michael Bell
-	assert(_parameters.pattern.size() == 8);
+void Instance::_processSieve8(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 8-tuples by Michael Bell
+	assert(_pattern.size() == 8);
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
 	xmmreg_t offsetmax;
-	offsetmax.m128 = _mm_set1_epi32(_parameters.sieveSize);
+	offsetmax.m128 = _mm_set1_epi32(_sieveSize);
 	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i += 1) {
 		xmmreg_t p1;
 		xmmreg_t factor1, factor2, nextIncr1, nextIncr2;
@@ -784,25 +775,25 @@ void Miner::_processSieve8(uint64_t *factorsTable, uint32_t* factorsToEliminate,
 }
 
 #ifdef __AVX2__
-void Miner::_processSieve7_avx2(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 7-tuples by Michael Bell
-	assert(_parameters.pattern.size() == 7);
+void Instance::_processSieve7_avx2(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 7-tuples by Michael Bell
+	assert(_pattern.size() == 7);
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
 	assert((lastPrimeIndex & 1) == 0);
 	// Already eliminate for the first prime to sieve if it is odd to align for the optimizations
 	if ((firstPrimeIndex & 1) != 0) {
 		for (uint64_t f(0) ; f < 7 ; f++) {
-			while (factorsToEliminate[firstPrimeIndex*7 + f] < _parameters.sieveSize) {
+			while (factorsToEliminate[firstPrimeIndex*7 + f] < _sieveSize) {
 				_addToSieveCache(factorsTable, sieveCache, sieveCachePos, factorsToEliminate[firstPrimeIndex*7 + f]);
 				factorsToEliminate[firstPrimeIndex*7 + f] += _primes32[firstPrimeIndex];
 			}
-			factorsToEliminate[firstPrimeIndex*7 + f] -= _parameters.sieveSize;
+			factorsToEliminate[firstPrimeIndex*7 + f] -= _sieveSize;
 		}
 		firstPrimeIndex++;
 	}
 	
 	ymmreg_t offsetmax;
-	offsetmax.m256 = _mm256_set1_epi32(_parameters.sieveSize);
+	offsetmax.m256 = _mm256_set1_epi32(_sieveSize);
 	ymmreg_t storemask;
 	storemask.m256 = _mm256_set1_epi32(0xffffffff);
 	storemask.v[0] = 0;
@@ -847,8 +838,8 @@ void Miner::_processSieve7_avx2(uint64_t *factorsTable, uint32_t* factorsToElimi
 	_endSieveCache(factorsTable, sieveCache);
 }
 
-void Miner::_processSieve8_avx2(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 8-tuples by Michael Bell
-	assert(_parameters.pattern.size() == 8);
+void Instance::_processSieve8_avx2(uint64_t *factorsTable, uint32_t* factorsToEliminate, uint64_t firstPrimeIndex, const uint64_t lastPrimeIndex) { // Assembly optimized sieving for 8-tuples by Michael Bell
+	assert(_pattern.size() == 8);
 	std::array<uint32_t, sieveCacheSize> sieveCache{0};
 	uint64_t sieveCachePos(0);
 
@@ -856,17 +847,17 @@ void Miner::_processSieve8_avx2(uint64_t *factorsTable, uint32_t* factorsToElimi
 	// Already eliminate for the first prime to sieve if it is odd to align for the optimizations
 	if ((firstPrimeIndex & 1) != 0) {
 		for (uint64_t f(0) ; f < 8 ; f++) {
-			while (factorsToEliminate[firstPrimeIndex*8 + f] < _parameters.sieveSize) {
+			while (factorsToEliminate[firstPrimeIndex*8 + f] < _sieveSize) {
 				_addToSieveCache(factorsTable, sieveCache, sieveCachePos, factorsToEliminate[firstPrimeIndex*8 + f]);
 				factorsToEliminate[firstPrimeIndex*8 + f] += _primes32[firstPrimeIndex];
 			}
-			factorsToEliminate[firstPrimeIndex*8 + f] -= _parameters.sieveSize;
+			factorsToEliminate[firstPrimeIndex*8 + f] -= _sieveSize;
 		}
 		firstPrimeIndex++;
 	}
 
 	ymmreg_t offsetmax;
-	offsetmax.m256 = _mm256_set1_epi32(_parameters.sieveSize);
+	offsetmax.m256 = _mm256_set1_epi32(_sieveSize);
 	for (uint64_t i(firstPrimeIndex) ; i < lastPrimeIndex ; i += 2) {
 		ymmreg_t p1, p2;
 		ymmreg_t factor1, factor2, nextIncr1, nextIncr2;
@@ -912,7 +903,7 @@ void Miner::_processSieve8_avx2(uint64_t *factorsTable, uint32_t* factorsToElimi
 #endif
 #endif
 
-void Miner::_doSieveTask(Task task) {
+void Instance::_doSieveTask(Task task) {
 	Sieve& sieve(_sieves[task.sieve.id]);
 	std::unique_lock<std::mutex> presieveLock(sieve.presieveLock, std::defer_lock);
 	const uint64_t workIndex(task.workIndex), sieveIteration(task.sieve.iteration), firstPrimeIndex(_primorialNumber);
@@ -920,22 +911,22 @@ void Miner::_doSieveTask(Task task) {
 	uint64_t sieveCachePos(0);
 	Task checkTask{Task::Type::Check, workIndex, {}};
 	
-	if (_works[workIndex].job.height != _client->currentHeight()) // Abort Sieve Task if new block (but count as Task done)
+	if (!_works[workIndex].current) // Abort Sieve Task if new block (but count as Task done)
 		goto sieveEnd;
 	
-	memset(sieve.factorsTable, 0, sizeof(uint64_t)*_parameters.sieveWords);
+	memset(sieve.factorsTable, 0, sizeof(uint64_t)*_sieveWords);
 	
 	// Eliminate the p*i + fp factors (p < factorMax).
 #ifdef __SSE2__
-	if (_parameters.pattern.size() == 6)
+	if (_pattern.size() == 6)
 		_processSieve6(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
-	else if (_parameters.pattern.size() == 7)
+	else if (_pattern.size() == 7)
 #ifdef __AVX2__
 		_processSieve7_avx2(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
 #else
 		_processSieve7(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
 #endif
-	else if (_parameters.pattern.size() == 8)
+	else if (_pattern.size() == 8)
 #ifdef __AVX2__
 		_processSieve8_avx2(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
 #else
@@ -947,7 +938,7 @@ void Miner::_doSieveTask(Task task) {
 	_processSieve(sieve.factorsTable, sieve.factorsToEliminate, firstPrimeIndex, _primesIndexThreshold);
 #endif
 	
-	if (_works[workIndex].job.height != _client->currentHeight())
+	if (!_works[workIndex].current)
 		goto sieveEnd;
 	
 	// Wait for the presieve tasks that generate the additional factors to finish.
@@ -958,21 +949,21 @@ void Miner::_doSieveTask(Task task) {
 		_addToSieveCache(sieve.factorsTable, sieveCache, sieveCachePos, sieve.additionalFactorsToEliminate[sieveIteration][i]);
 	_endSieveCache(sieve.factorsTable, sieveCache);
 	
-	if (_works[workIndex].job.height != _client->currentHeight())
+	if (!_works[workIndex].current)
 		goto sieveEnd;
 	
 	checkTask.check.nCandidates = 0;
 	checkTask.check.offsetId = sieve.id;
-	checkTask.check.factorStart = sieveIteration*_parameters.sieveSize;
+	checkTask.check.factorStart = sieveIteration*_sieveSize;
 	// Extract candidates from the sieve and create verify tasks of up to maxCandidatesPerCheckTask candidates.
-	for (uint32_t b(0) ; b < _parameters.sieveWords ; b++) {
+	for (uint32_t b(0) ; b < _sieveWords ; b++) {
 		uint64_t sieveWord(~sieve.factorsTable[b]); // ~ is the Bitwise Not: ones then indicate the candidates and zeros the previously eliminated numbers.
 		while (sieveWord != 0) {
 			const uint32_t nEliminatedUntilNext(__builtin_ctzll(sieveWord)), candidateIndex((b*64) + nEliminatedUntilNext); // __builtin_ctzll returns the number of leading 0s.
 			checkTask.check.factorOffsets[checkTask.check.nCandidates] = candidateIndex;
 			checkTask.check.nCandidates++;
 			if (checkTask.check.nCandidates == maxCandidatesPerCheckTask) {
-				if (_works[workIndex].job.height != _client->currentHeight()) // Low overhead but still often enough
+				if (!_works[workIndex].current)
 					goto sieveEnd;
 				_tasks.push_back(checkTask);
 				checkTask.check.nCandidates = 0;
@@ -981,14 +972,14 @@ void Miner::_doSieveTask(Task task) {
 			sieveWord &= sieveWord - 1; // Change the candidate's bit from 1 to 0.
 		}
 	}
-	if (_works[workIndex].job.height != _client->currentHeight())
+	if (!_works[workIndex].current)
 		goto sieveEnd;
 	if (checkTask.check.nCandidates > 0) {
 		_tasks.push_back(checkTask);
 		_works[workIndex].nRemainingCheckTasks++;
 	}
-	if (sieveIteration + 1 < _parameters.sieveIterations) {
-		if (_parameters.threads > 1)
+	if (sieveIteration + 1 < _sieveIterations) {
+		if (_threads > 1)
 			_tasks.push_front(Task::SieveTask(workIndex, sieve.id, sieveIteration + 1));
 		else // Allow mining with 1 Thread without having to wait for all the blocks to be processed.
 			_tasks.push_back(Task::SieveTask(workIndex, sieve.id, sieveIteration + 1));
@@ -998,7 +989,7 @@ sieveEnd:
 	_tasksDoneInfos.push_back(TaskDoneInfo{Task::Type::Sieve, {}});
 }
 
-// Riecoin uses the Miller-Rabin Test for the PoW, but the Fermat Test is significantly faster and more suitable for the miner.
+// Riecoin uses GMP's mpz_probab_prime_p for the PoW, but the Fermat Test is significantly faster and more suitable for the miner.
 // n is probably prime if a^(n - 1) ≡ 1 (mod n) for one 0 < a < p or more.
 static const mpz_class mpz2(2); // Here, we test with one a = 2.
 bool isPrimeFermat(const mpz_class& n) {
@@ -1008,7 +999,7 @@ bool isPrimeFermat(const mpz_class& n) {
 }
 
 #if defined(__SSE2__) && defined(__AVX2__)
-bool Miner::_testPrimesIspc(const std::array<uint32_t, maxCandidatesPerCheckTask> &factorOffsets, uint32_t is_prime[maxCandidatesPerCheckTask], const mpz_class &candidateStart, mpz_class &candidate) { // Assembly optimized prime testing by Michael Bell
+bool Instance::_testPrimesIspc(const std::array<uint32_t, maxCandidatesPerCheckTask> &factorOffsets, uint32_t is_prime[maxCandidatesPerCheckTask], const mpz_class &candidateStart, mpz_class &candidate) { // Assembly optimized prime testing by Michael Bell
 	uint32_t M[maxCandidatesPerCheckTask*MAX_N_SIZE], bits(0), N_Size;
 	uint32_t *mp(&M[0]);
 	for (uint32_t i(0) ; i < maxCandidatesPerCheckTask ; i++) {
@@ -1027,10 +1018,10 @@ bool Miner::_testPrimesIspc(const std::array<uint32_t, maxCandidatesPerCheckTask
 }
 #endif
 
-void Miner::_doCheckTask(Task task) {
+void Instance::_doCheckTask(Task task) {
 	const uint16_t workIndex(task.workIndex);
-	if (_works[workIndex].job.height != _client->currentHeight()) return;
-	std::vector<uint64_t> tupleCounts(_parameters.pattern.size() + 1, 0);
+	if (!_works[workIndex].current) return;
+	std::vector<uint64_t> tupleCounts(_pattern.size() + 1, 0);
 	mpz_class candidateStart, candidate;
 	mpz_mul_ui(candidateStart.get_mpz_t(), _primorial.get_mpz_t(), task.check.factorStart);
 	candidateStart += _works[workIndex].primorialMultipleStart;
@@ -1055,7 +1046,7 @@ void Miner::_doCheckTask(Task task) {
 #endif
 	
 	for (uint32_t i(0) ; i < task.check.nCandidates ; i++) {
-		if (_works[workIndex].job.height != _client->currentHeight()) break;
+		if (!_works[workIndex].current) break;
 		candidate = candidateStart + _primorial*task.check.factorOffsets[i];
 		
 #if defined(__SSE2__) && defined(__AVX2__)
@@ -1072,59 +1063,47 @@ void Miner::_doCheckTask(Task task) {
 		
 		uint32_t primeCount(1), offsetSum(0);
 		// Test primality of the other elements of the tuple if candidate + 0 is prime.
-		for (std::vector<uint64_t>::size_type i(1) ; i < _parameters.pattern.size() ; i++) {
-			offsetSum += _parameters.pattern[i];
-			mpz_add_ui(candidate.get_mpz_t(), candidate.get_mpz_t(), _parameters.pattern[i]);
+		for (std::vector<uint64_t>::size_type i(1) ; i < _pattern.size() ; i++) {
+			offsetSum += _pattern[i];
+			mpz_add_ui(candidate.get_mpz_t(), candidate.get_mpz_t(), _pattern[i]);
 			if (isPrimeFermat(mpz_class(candidate))) {
 				primeCount++;
 				tupleCounts[primeCount]++;
 			}
-			else if (_mode == "Pool" && primeCount > 1) {
-				int candidatesRemaining(_works[workIndex].job.primeCountTarget - 1 - i);
-				if ((primeCount + candidatesRemaining) < _works[workIndex].job.primeCountMin) break; // No chance to be a share anymore
+			else if (!_patternMin[i]) {
+				int candidatesRemaining(_primeCountTarget - 1 - i);
+				if ((primeCount + candidatesRemaining) < _primeCountMin) break; // No chance to met the requirement anymore.
 			}
 			else break;
 		}
-		// If tuple long enough or share, submit
-		if (primeCount >= _works[workIndex].job.primeCountMin || (_mode == "Search" && primeCount >= _parameters.tupleLengthMin)) {
+		// Submit if requirements satisfied (and Job still valid).
+		if (_works[_currentWorkIndex].current && primeCount >= _primeCountMin) {
 			std::string message;
 			const mpz_class basePrime(candidate - offsetSum);
-			if (_mode == "Benchmark" || _mode == "Search")
-				message = Stats::formattedTime(statManager.timeSinceStart()) + " "s + std::to_string(primeCount);
-			else
-				message = Stats::formattedClockTimeNow() + " "s + std::to_string(primeCount);
-			if (_mode == "Pool") {
-				message += "-share found by worker thread "s + std::to_string(threadId) + "\n"s;
-				logger.logDebug(message);
-			}
-			else {
-				message += "-tuple found by worker thread "s + std::to_string(threadId) + "\n"s;
-				logger.log(message, MessageType::BOLD);
-				logger.log("Base prime: "s + basePrime.get_str() + "\n"s);
-				if((_mode == "Search" && primeCount >= _parameters.pattern.size()))
-					_tupleFound = true;
-			}
-			Job filledJob(_works[workIndex].job);
-			filledJob.result = basePrime;
-			filledJob.resultPrimeCount = primeCount;
-			filledJob.primorialNumber = _primorialNumber;
-			filledJob.primorialFactor = task.check.factorStart + task.check.factorOffsets[i];
-			filledJob.primorialOffset = _parameters.primorialOffsets[task.check.offsetId];
-			_client->handleResult(filledJob);
+			_addResult({
+				.jobId = _works[workIndex].job.id,
+				.threadId = threadId,
+				.result = basePrime,
+				.primeCount = primeCount,
+				.primorialNumber = static_cast<uint16_t>(_primorialNumber),
+				.primorialFactor = task.check.factorStart + task.check.factorOffsets[i],
+				.primorialOffset = _primorialOffsetsU64[task.check.offsetId]});
 		}
 	}
-	statManager.addCounts(tupleCounts);
+	std::lock_guard<std::mutex> lock(_countsLock);
+	if (_tupleCounts.size() == tupleCounts.size()) // Do not update if Tuple Length changed meanwhile (in case of a Fork, or can be observed with the Test Server).
+		std::transform(_tupleCounts.begin(), _tupleCounts.end(), tupleCounts.begin(), _tupleCounts.begin(), std::plus<uint64_t>());
 }
 
-void Miner::_doTasks(const uint16_t id) { // Worker Threads run here until the miner is stopped
+void Instance::_doTasks(const uint16_t id) { // Worker Threads run here until the miner is stopped
 	// Thread initialization.
 	threadId = id;
-	factorsCache = new uint64_t*[_parameters.sieveWorkers];
-	factorsCacheCounts = new uint64_t*[_parameters.sieveWorkers];
-	for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
+	factorsCache = new uint64_t*[_sieveWorkers];
+	factorsCacheCounts = new uint64_t*[_sieveWorkers];
+	for (int i(0) ; i < _sieveWorkers ; i++) {
 		factorsCache[i] = new uint64_t[factorsCacheSize];
-		factorsCacheCounts[i] = new uint64_t[_parameters.sieveIterations];
-		for (uint64_t j(0) ; j < _parameters.sieveIterations ; j++)
+		factorsCacheCounts[i] = new uint64_t[_sieveIterations];
+		for (uint64_t j(0) ; j < _sieveIterations ; j++)
 			factorsCacheCounts[i][j] = 0;
 	}
 	// Threads are fetching tasks from the queues. The first part of the constellation search is sieving to generate candidates, which is done by the Presieve and Sieve tasks.
@@ -1152,7 +1131,7 @@ void Miner::_doTasks(const uint16_t id) { // Worker Threads run here until the m
 		}
 	}
 	// Thread clean up.
-	for (int i(0) ; i < _parameters.sieveWorkers ; i++) {
+	for (int i(0) ; i < _sieveWorkers ; i++) {
 		delete[] factorsCacheCounts[i];
 		delete[] factorsCache[i];
 	}
@@ -1160,57 +1139,49 @@ void Miner::_doTasks(const uint16_t id) { // Worker Threads run here until the m
 	delete[] factorsCache;
 }
 
-void Miner::_manageTasks() {
-	Job job; // Block's data (target, blockheader if applicable, ...) from the Client
+void Instance::invalidateWork() {
+	for (auto &work : _works)
+		work.current = false;
+}
+
+void Instance::_manageTasks() {
+	Stella::Job job;
 	_currentWorkIndex = 0;
-	uint32_t oldHeight(0);
 	while (_running) {
-		job = _client->getJob();
-		if (job.height == 0)
-			return;
-		if (job.difficulty < _difficultyAtInit/_parameters.restartDifficultyFactor || job.difficulty > _difficultyAtInit*_parameters.restartDifficultyFactor) { // Restart to retune parameters.
-			_keepStats = true;
-			_shouldRestart = true;
+		// Pop next Job, wait if there is none.
+		if (!_availableJobs.try_pop_front(job)) {
+			std::this_thread::sleep_for(2ms);
+			continue;
 		}
-		if (std::dynamic_pointer_cast<NetworkedClient>(_client) != nullptr) {
-			if (!hasAcceptedPatterns(job.acceptedPatterns)) { // Restart if the pattern changed and is no longer compatible with the current one
-				_keepStats = false;
-				_shouldRestart = true;
-			}
-		}
+		
+		_works[_currentWorkIndex].job = job;
+		if (job.clearPreviousJobs)
+			invalidateWork();
+		_works[_currentWorkIndex].current = true;
+		_works[_currentWorkIndex].primorialMultipleStart = _works[_currentWorkIndex].job.target + _primorial - (_works[_currentWorkIndex].job.target % _primorial);
+		
+		// Reset Stats and Sieve State.
 		_presieveTime = _presieveTime.zero();
 		_sieveTime = _sieveTime.zero();
 		_verifyTime = _verifyTime.zero();
-		
-		_works[_currentWorkIndex].job = job;
-		const bool isNewHeight(oldHeight != _works[_currentWorkIndex].job.height);
-		// Notify when the network found a block
-		if (isNewHeight && oldHeight != 0) {
-			statManager.newBlock();
-			if (_mode == "Benchmark" || _mode == "Search")
-				logger.log(Stats::formattedTime(statManager.timeSinceStart()));
-			else
-				logger.log(Stats::formattedClockTimeNow());
-			logger.log(" Block "s + std::to_string(job.height) + ", average "s + doubleToString(statManager.averageBlockTime(), 1) + " s, difficulty "s + doubleToString(job.difficulty, 3) + "\n"s);
-		}
-		_works[_currentWorkIndex].primorialMultipleStart = _works[_currentWorkIndex].job.target + _primorial - (_works[_currentWorkIndex].job.target % _primorial);
-		// Reset Counts and create Presieve Tasks
 		for (auto &sieve : _sieves) {
-			for (uint64_t j(0) ; j < _parameters.sieveIterations ; j++)
+			for (uint64_t j(0) ; j < _sieveIterations ; j++)
 				sieve.additionalFactorsToEliminateCounts[j] = 0;
 		}
-		uint64_t nPresieveTasks(_parameters.threads*8ULL);
+		// Create Presieve Tasks.
+		uint64_t nPresieveTasks(_threads*8ULL);
 		int32_t nRemainingNormalPresieveTasks(0), nRemainingAdditionalPresieveTasks(0);
 		const uint32_t remainingTasks(_tasks.size());
 		const uint64_t primesPerPresieveTask((_nPrimes - _primorialNumber)/nPresieveTasks + 1ULL);
 		for (uint64_t start(_primorialNumber) ; start < _nPrimes ; start += primesPerPresieveTask) {
 			const uint64_t end(std::min(_nPrimes, start + primesPerPresieveTask));
 			_presieveTasks.push_back(Task::PresieveTask(_currentWorkIndex, start, end));
-			_tasks.push_front(Task{Task::Type::Dummy, _currentWorkIndex, {}}); // To ensure a thread wakes up to grab the mod work.
+			_tasks.push_front(Task{Task::Type::Dummy, _currentWorkIndex, {}}); // Ensure a thread wakes up to grab the mod work.
 			if (start < _primesIndexThreshold) nRemainingNormalPresieveTasks++;
 			else nRemainingAdditionalPresieveTasks++;
 		}
 		
+		// Sieve Tasks cannot be started until all Presieve Tasks are finished.
 		while (nRemainingNormalPresieveTasks > 0) {
 			const TaskDoneInfo taskDoneInfo(_tasksDoneInfos.blocking_pop_front());
 			if (!_running) return; // Can happen if stopThreads is called while this Thread is stuck in this blocking_pop_front().
@@ -1219,7 +1190,7 @@ void Miner::_manageTasks() {
 				else nRemainingAdditionalPresieveTasks--;
 			}
 			else if (taskDoneInfo.type == Task::Type::Check) _works[taskDoneInfo.workIndex].nRemainingCheckTasks--;
-			else logger.log("Unexpected Sieve Task done during Presieving!\n"s, MessageType::ERROR);
+			else assert(false); // Unexpected Sieve Task done during Presieving. Should never happen but useful for debugging if trying to improve the Job Management.
 		}
 		assert(_works[_currentWorkIndex].nRemainingCheckTasks == 0);
 		
@@ -1229,7 +1200,7 @@ void Miner::_manageTasks() {
 			_tasks.push_front(Task::SieveTask(_currentWorkIndex, i, 0));
 		}
 		
-		int nRemainingSieves(_parameters.sieveWorkers);
+		int nRemainingSieves(_sieveWorkers);
 		while (nRemainingAdditionalPresieveTasks > 0) {
 			const TaskDoneInfo taskDoneInfo(_tasksDoneInfos.blocking_pop_front());
 			if (!_running) {
@@ -1242,76 +1213,63 @@ void Miner::_manageTasks() {
 		}
 		for (auto &sieve : _sieves) sieve.presieveLock.unlock();
 		
+		// Measure how low the number of pending Tasks have been and later adjust the Remaining Tasks Target in function of this.
 		uint32_t nRemainingTasksMin(std::min(remainingTasks, _tasks.size()));
 		while (nRemainingSieves > 0) {
 			const TaskDoneInfo taskDoneInfo(_tasksDoneInfos.blocking_pop_front());
 			if (!_running) return;
 			if (taskDoneInfo.type == Task::Type::Sieve) nRemainingSieves--;
 			else if (taskDoneInfo.type == Task::Type::Check) _works[taskDoneInfo.workIndex].nRemainingCheckTasks--;
-			else logger.log("Unexpected Presieve Task done during Sieving!\n"s, MessageType::ERROR);
+			else assert(false); // Unexpected Presieve Task done during Sieving. Should never happen but useful for debugging if trying to improve the Job Management.
 			nRemainingTasksMin = std::min(nRemainingTasksMin, _tasks.size());
 		}
 		
-		// Adjust the Remaining Tasks Threshold
-		if (_works[_currentWorkIndex].job.height == _client->currentHeight() && !isNewHeight) {
-			logger.logDebug("Min work outstanding during sieving: "s + std::to_string(nRemainingTasksMin) + "\n"s);
-			if (remainingTasks > _nRemainingCheckTasksThreshold - _parameters.threads*2) {
-				// If we are acheiving our work target, then adjust it towards the amount
-				// required to maintain a healthy minimum work queue length.
+		// Adjust the Remaining Tasks Target.
+		if (_works[_currentWorkIndex].current && !job.clearPreviousJobs) {
+			// std::cout << "Min work outstanding during sieving: "s << nRemainingTasksMin << "\n"s;
+			if (remainingTasks > _nRemainingCheckTasksTarget - _threads*2) {
+				// If we are acheiving our work target, then adjust it towards the amount required to maintain a healthy minimum work queue length.
 				if (nRemainingTasksMin == 0) // Need more, but don't know how much, try adding some.
-					_nRemainingCheckTasksThreshold += 4*_parameters.threads*_parameters.sieveWorkers;
+					_nRemainingCheckTasksTarget += 4*_threads*_sieveWorkers;
 				else { // Adjust towards target of min work = 4*threads.
-					const uint32_t targetMaxWork((_nRemainingCheckTasksThreshold - nRemainingTasksMin) + 8*_parameters.threads);
-					_nRemainingCheckTasksThreshold = (_nRemainingCheckTasksThreshold + targetMaxWork)/2;
+					const uint32_t targetMaxWork((_nRemainingCheckTasksTarget - nRemainingTasksMin) + 8*_threads);
+					_nRemainingCheckTasksTarget = (_nRemainingCheckTasksTarget + targetMaxWork)/2;
 				}
 			}
-			else if (nRemainingTasksMin > 4u*_parameters.threads) { // Didn't make the target, but also didn't run out of work. Can still adjust target.
-				const uint32_t targetMaxWork((remainingTasks - nRemainingTasksMin) + 10*_parameters.threads);
-				_nRemainingCheckTasksThreshold = (_nRemainingCheckTasksThreshold + targetMaxWork)/2;
+			else if (nRemainingTasksMin > 4u*_threads) { // Didn't make the target, but also didn't run out of work. Can still adjust target.
+				const uint32_t targetMaxWork((remainingTasks - nRemainingTasksMin) + 10*_threads);
+				_nRemainingCheckTasksTarget = (_nRemainingCheckTasksTarget + targetMaxWork)/2;
 			}
-			else if (nRemainingTasksMin == 0 && remainingTasks > 0) {
-				static int allowedFails(5);
-				if (--allowedFails == 0) { // Warn possible CPU Underuse
-					allowedFails = 5;
-					logger.logDebug("Unable to generate enough verification work to keep threads busy.\n"s);
-				}
-			}
-			_nRemainingCheckTasksThreshold = std::min(_nRemainingCheckTasksThreshold, _tasksDoneInfos.size() - 9*_parameters.threads);
-			logger.logDebug("Work target before starting next block now: "s + std::to_string(_nRemainingCheckTasksThreshold) + "\n"s);
+			// Else not enough Check Tasks are produced and the CPU is possibly going to be underused. User can alleviate this by increasing the SieveWorkers, but no adjustment of the Target here would help. The Job management needs to be improved as a whole to fix the underlying issue for good.
+			_nRemainingCheckTasksTarget = std::min(_nRemainingCheckTasksTarget, _tasksDoneInfos.size() - 9*_threads);
+			// std::cout << "Work target before starting next block now: "s << _nRemainingCheckTasksTarget << "\n"s;
 		}
 		
-		oldHeight = _works[_currentWorkIndex].job.height;
-		
-		while (_works[_currentWorkIndex].nRemainingCheckTasks > _nRemainingCheckTasksThreshold) {
+		// Remove surplus Check Tasks in accordance with the Target.
+		while (_works[_currentWorkIndex].nRemainingCheckTasks > _nRemainingCheckTasksTarget) {
 			const TaskDoneInfo taskDoneInfo(_tasksDoneInfos.blocking_pop_front());
 			if (!_running) return;
 			if (taskDoneInfo.type == Task::Type::Check) _works[taskDoneInfo.workIndex].nRemainingCheckTasks--;
-			else logger.log("Expected Check Task done!\n"s, MessageType::ERROR);
+			else assert(false); // Only Check Tasks are expected here. Should never happen but useful for debugging if trying to improve the Job Management.
 		}
+		
+		// Before starting next Job, ensure that any Check Tasks left of its work slot are finished.
 		_currentWorkIndex = (_currentWorkIndex + 1) % nWorks;
 		while (_works[_currentWorkIndex].nRemainingCheckTasks > 0) {
 			const TaskDoneInfo taskDoneInfo(_tasksDoneInfos.blocking_pop_front());
 			if (!_running) return;
 			if (taskDoneInfo.type == Task::Type::Check) _works[taskDoneInfo.workIndex].nRemainingCheckTasks--;
-			else logger.log("Expected Check Task done 2!\n"s, MessageType::ERROR);
+			else assert(false); // Only Check Tasks are expected here. Should never happen but useful for debugging if trying to improve the Job Management.
 		}
-		logger.logDebug("Job Timing: "s + std::to_string(_presieveTime.count()) + "/"s + std::to_string(_sieveTime.count()) + "/"s + std::to_string(_verifyTime.count()) + ", tasks: "s + std::to_string(_works[0].nRemainingCheckTasks) + ", "s + std::to_string(_works[1].nRemainingCheckTasks) + "\n"s);
+		// std::cout << "Job Timing: "s << _presieveTime.count() << "/"s << _sieveTime.count() << "/"s << _verifyTime.count() << ", tasks: "s << _works[0].nRemainingCheckTasks << ", "s << _works[1].nRemainingCheckTasks << "\n"s;
 	}
 }
 
-void Miner::_suggestLessMemoryIntensiveOptions(const uint64_t suggestedPrimeTableLimit, const uint16_t suggestedSieveWorkers) const {
-	logger.log("You don't have enough available memory to run rieMiner with the current options.\n"s
-	           "Try to use the following options in the "s + confPath + " configuration file and retry:\n"s
-	           "PrimeTableLimit = "s + std::to_string(suggestedPrimeTableLimit) + "\n"s
-	           "SieveWorkers = "s + std::to_string(suggestedSieveWorkers) + "\n"s, MessageType::WARNING);
-	waitForUser();
-}
-
-bool Miner::hasAcceptedPatterns(const std::vector<std::vector<uint64_t>> &acceptedPatterns) const {
+bool Instance::hasAcceptedPatterns(const std::vector<std::vector<uint64_t>> &acceptedPatterns) const {
 	for (const auto &acceptedPattern : acceptedPatterns) {
 		bool compatible(true);
 		for (uint16_t i(0) ; i < acceptedPattern.size() ; i++) {
-			if (i >= _parameters.pattern.size() ? true : acceptedPattern[i] != _parameters.pattern[i]) {
+			if (i >= _pattern.size() ? true : acceptedPattern[i] != _pattern[i]) {
 				compatible = false;
 				break;
 			}
@@ -1322,51 +1280,52 @@ bool Miner::hasAcceptedPatterns(const std::vector<std::vector<uint64_t>> &accept
 	return false;
 }
 
-void Miner::printStats() const {
-	std::string message;
-	Stats statsRecent(statManager.stats(false)), statsSinceStart(statManager.stats(true));
-	if (_mode == "Benchmark" || _mode == "Search") {
-		statsRecent = statsSinceStart;
-		message = Stats::formattedTime(statManager.timeSinceStart());
-	}
+std::string doubleToString(const double d, const uint16_t precision) {
+	std::ostringstream oss;
+	if (precision == 0)
+		oss << d;
 	else
-		message = Stats::formattedClockTimeNow();
-	message += " "s;
-	if (_mode != "Pool") {
-		if (statsRecent.count(1ULL) >= 10ULL)
-			message += Stats::formattedDuration(statsRecent.estimatedAverageTimeToFindBlock(_works[_currentWorkIndex].job.primeCountTarget));
-		else
-			message += "...";
-		message += " ("s + doubleToString(statsRecent.cps(), 1U) + " c/s, r "s + doubleToString(statsRecent.r(), 2U) + "), (1-"s + std::to_string(_parameters.pattern.size()) + "t) = "s + statsSinceStart.formattedCounts(1ULL);
+		oss << FIXED(precision) << d;
+	return oss.str();
+}
+
+std::string formattedCounts(const std::vector<uint64_t> &counts, const uint64_t m) {
+	std::ostringstream oss;
+	oss << "(";
+	for (uint64_t i(m) ; i < counts.size() ; i++) {
+		oss << counts[i];
+		if (i != counts.size() - 1) oss << " ";
 	}
-	else {
-		const uint64_t shares(statManager.shares()), rejectedShares(statManager.rejectedShares());
-		if (statsRecent.count(1ULL) >= 10ULL)
-			message += doubleToString(86400.*(50./static_cast<double>(1 << _client->currentHeight()/840000))/statsRecent.estimatedAverageTimeToFindBlock(_works[_currentWorkIndex].job.primeCountTarget), 1U);
-		else
-			message += "-.-"s;
-		message += " RIC/d ("s + doubleToString(statsRecent.cps(), 1U) + " c/s, r "s + doubleToString(statsRecent.r(), 2U) + "), Sh: "s + std::to_string(shares - rejectedShares) + "/"s + std::to_string(shares);
-		if (shares > 0ULL)
-			message += " ("s + doubleToString(100.*(static_cast<double>(shares - rejectedShares)/static_cast<double>(shares)), 2U) + "%)"s;
-	}
-	logger.log(message + "\n"s);
+	oss << ")";
+	return oss.str();
 }
-bool Miner::benchmarkFinishedTimeOut(const double benchmarkTimeLimit) const {
-	const Stats stats(statManager.stats(true));
-	return benchmarkTimeLimit > 0. && stats.duration() >= benchmarkTimeLimit;
+
+std::string formattedTime(const double &time) {
+	std::ostringstream oss;
+	const uint32_t timeInt(time*1000.);
+	oss << "[" << timeInt/86400000 << ":" << leading0s(2) << (timeInt/3600000) % 24 << ":" << leading0s(2) << (timeInt/60000) % 60 << ":" << leading0s(2) << (timeInt/1000) % 60 << "." << (timeInt/100) % 10 << "]";
+	return oss.str();
 }
-bool Miner::benchmarkFinishedEnoughPrimes(const uint64_t benchmarkPrimeCountLimit) const {
-	const Stats stats(statManager.stats(true));
-	return benchmarkPrimeCountLimit > 0 && stats.count(1) >= benchmarkPrimeCountLimit;
+std::string formattedClockTimeNow() {
+	const auto now(std::chrono::system_clock::now());
+	const auto seconds(std::chrono::time_point_cast<std::chrono::seconds>(now));
+	const auto milliseconds(std::chrono::duration_cast<std::chrono::milliseconds>(now - seconds));
+	const std::time_t timeT(std::chrono::system_clock::to_time_t(now));
+	const std::tm *timeTm(std::localtime(&timeT));
+	std::ostringstream oss;
+	oss << "[" << std::put_time(timeTm, "%b %d %H:%M:%S") << "." << static_cast<uint32_t>(std::floor(milliseconds.count()))/100 << "]";
+	return oss.str();
 }
-void Miner::printBenchmarkResults() const {
-	Stats stats(statManager.stats(true));
-	logger.log("Benchmark finished after "s + doubleToString(stats.duration(), 6U) + " s.\n"s +
-	           doubleToString(stats.cps(), 6U) + " candidates/s, ratio "s + doubleToString(stats.r(), 6U) + " -> "s + doubleToString(86400./stats.estimatedAverageTimeToFindBlock(_works[_currentWorkIndex].job.primeCountTarget), 6U) + " block(s)/day\n", MessageType::SUCCESS);
+std::string formattedDuration(const double &duration) {
+	std::ostringstream oss;
+	if (duration < 0.001) oss << std::round(1000000.*duration) << " us";
+	else if (duration < 1.) oss << std::round(1000.*duration) << " ms";
+	else if (duration < 60.) oss << FIXED(2 + (duration < 10.)) << duration << " s";
+	else if (duration < 3600.) oss << FIXED(2 + (duration/60. < 10.)) << duration/60. << " min";
+	else if (duration < 86400.) oss << FIXED(2 + (duration/3600. < 10.)) << duration/3600. << " h";
+	else if (duration < 31556952.) oss << FIXED(3) << duration/86400. << " d";
+	else oss << FIXED(3) << duration/31556952. << " y";
+	return oss.str();
 }
-void Miner::printTupleStats() const {
-	Stats stats(statManager.stats(true));
-	logger.log("Tuples found: "s + stats.formattedCounts() + " in "s + doubleToString(stats.duration(), 6U) + " s.\n"s
-	           "Tuple rates : "s + stats.formattedRates() + "\n"s
-	           "Tuple ratios: "s + stats.formattedRatios() + "\n"s);
+
 }

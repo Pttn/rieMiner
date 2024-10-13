@@ -1,4 +1,4 @@
-// (c) 2021-2022 Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2021-present Pttn (https://riecoin.xyz/rieMiner)
 
 #ifdef _WIN32
 	#include <winsock2.h>
@@ -9,17 +9,15 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <thread>
 #include <unistd.h>
 #include <vector>
 
 #include "API.hpp"
-#include "Miner.hpp"
 #include "Client.hpp"
 
 constexpr uint16_t maxMessageSize(64);
 void API::_process() {
-	logger.log("Starting rieMiner's API server, port "s + std::to_string(_port) + "\n"s);
+	logger.log("Starting rieMiner's API server, port "s + std::to_string(_port) + "...\n"s);
 #ifdef _WIN32
 		WORD wVersionRequested(MAKEWORD(2, 2));
 		WSADATA wsaData;
@@ -104,19 +102,22 @@ void API::_process() {
 						uint16_t patternLength(0U);
 						uint32_t shares(0ULL), sharesRejected(0ULL);
 						if (_client != nullptr) {
-							const Stats statsRecent(statManager.stats(false)), stats(statManager.stats(true));
-							const Job job(_client->getJob());
-							if (job.acceptedPatterns.size() > 0)
-								patternLength = job.acceptedPatterns[0].size();
-							running = true;
-							uptime = stats.duration();
-							cps = statsRecent.cps();
-							r = statsRecent.r();
-							bpd = statsRecent.estimatedAverageTimeToFindBlock(patternLength) == 0. ? 0. : (86400./statsRecent.estimatedAverageTimeToFindBlock(patternLength));
-							difficulty = job.difficulty;
-							miningPower = 150.*bpd*std::pow(difficulty/600., static_cast<double>(patternLength) + 2.3)/86400.;
-							shares = statManager.shares();
-							sharesRejected = statManager.rejectedShares();
+							const auto clientInfo(_client->info());
+							if (clientInfo.has_value()) {
+								if (clientInfo->acceptedPatterns.size() > 0)
+									patternLength = clientInfo->acceptedPatterns[0].size();
+								running = true;
+								uptime = _uptime;
+								cps = _cps;
+								r = _r;
+								bpd = _bpd;
+								difficulty = clientInfo->difficulty;
+								miningPower = 150.*bpd*std::pow(difficulty/600., static_cast<double>(patternLength) + 2.3)/86400.;
+								if (std::dynamic_pointer_cast<StratumClient>(_client)) {
+									shares = std::dynamic_pointer_cast<StratumClient>(_client)->shares();
+									sharesRejected = std::dynamic_pointer_cast<StratumClient>(_client)->rejectedShares();
+								}
+							}
 						}
 						if (method == "getstatsjson") {
 							oss << "{\"running\": " << (running ? "true" : "false") << ", ";
@@ -157,5 +158,15 @@ void API::_process() {
 			}
 			close(clientFd);
 		}
+	}
+}
+
+void API::setStats(const double uptime, const double cps, const double r, const double bpd) {
+	const auto clientInfo(_client->info());
+	if (clientInfo.has_value()) {
+		_uptime = uptime;
+		_cps = cps;
+		_r = r;
+		_bpd = bpd;
 	}
 }

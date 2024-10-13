@@ -1,25 +1,22 @@
-// (c) 2021-2022 Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2021-present Pttn (https://riecoin.xyz/rieMiner)
 
 #ifndef HEADER_API_hpp
 #define HEADER_API_hpp
 
 #include <thread>
-#include "main.hpp"
-#include "tools.hpp"
-
-class Miner;
-class Client;
+#include "Client.hpp"
 
 class API {
-	bool _running;
+	bool _running{false};
 	std::thread _thread;
 	uint16_t _port;
-	std::shared_ptr<Miner> _miner;
-	std::shared_ptr<Client> _client;
+	std::shared_ptr<Client> _client{nullptr};
+	
+	double _uptime{0.}, _cps{0.}, _r{0.}, _bpd{0.};
 	
 	void _process();
 public:
-	API(const uint16_t port) : _running(false), _port(port), _miner(nullptr), _client(nullptr) {};
+	API(const uint16_t port) : _port(port) {};
 	
 	bool running() {return _running;}
 	void start() {
@@ -38,8 +35,9 @@ public:
 			_thread.join();
 		}
 	}
-	void setMiner(const std::shared_ptr<Miner> &miner) {_miner = miner;}
 	void setClient(const std::shared_ptr<Client> &client) {_client = client;}
+	
+	void setStats(const double, const double, const double, const double);
 };
 
 #endif

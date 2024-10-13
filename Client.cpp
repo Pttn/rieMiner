@@ -1,6 +1,7 @@
-// (c) 2017-present Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2017-present Pttn (https://riecoin.xyz/rieMiner)
 
 #include "Client.hpp"
+#include "Stella.hpp"
 
 double decodeBits(const uint32_t nBits, const int32_t powVersion) {
 	if (powVersion == 1)
@@ -42,30 +43,14 @@ mpz_class BlockHeader::target(const int32_t powVersion) const {
 	return target;
 }
 
-mpz_class BlockHeader::targetOffsetMax(const int32_t powVersion) const {
-	mpz_class targetOffsetMax(0);
-	if (powVersion == 1) {
-		const uint32_t difficultyIntegerPart(decodeBits(bits, powVersion));
-		targetOffsetMax = 1;
-		targetOffsetMax <<= difficultyIntegerPart - 264U;
-		targetOffsetMax--;
-	}
-	else
-		logger.log("Unexpected PoW Version "s + std::to_string(powVersion) + "\n"s, MessageType::ERROR);
-	return targetOffsetMax;
-}
-
-std::array<uint8_t, 32> Job::encodedOffset() const {
+std::array<uint8_t, 32> encodedOffset(const Stella::Result &result) {
 	std::array<uint8_t, 32> nOffset;
 	for (auto &byte : nOffset) byte = 0;
-	if (powVersion == 1) { // [31-30 Primorial Number|29-14 Primorial Factor|13-2 Primorial Offset|1-0 Reserved/Version]
-		*reinterpret_cast<uint16_t*>(&nOffset.data()[ 0]) = 2;
-		*reinterpret_cast<uint64_t*>(&nOffset.data()[ 2]) = primorialOffset; // Only 64 bits used out of 96
-		*reinterpret_cast<uint64_t*>(&nOffset.data()[14]) = primorialFactor; // Only 64 bits used out of 128
-		*reinterpret_cast<uint16_t*>(&nOffset.data()[30]) = primorialNumber;
-	}
-	else
-		logger.log("Unexpected PoW Version "s + std::to_string(powVersion) + "\n"s, MessageType::ERROR);
+	// [31-30 Primorial Number|29-14 Primorial Factor|13-2 Primorial Offset|1-0 Reserved/Version]
+	*reinterpret_cast<uint16_t*>(&nOffset.data()[ 0]) = 2;
+	*reinterpret_cast<uint64_t*>(&nOffset.data()[ 2]) = result.primorialOffset; // Only 64 bits used out of 96
+	*reinterpret_cast<uint64_t*>(&nOffset.data()[14]) = result.primorialFactor; // Only 64 bits used out of 128
+	*reinterpret_cast<uint16_t*>(&nOffset.data()[30]) = result.primorialNumber;
 	return nOffset;
 }
 
@@ -78,7 +63,7 @@ std::vector<uint64_t> Client::choosePatterns(const std::vector<std::vector<uint6
 	else {
 		bool accepted(false);
 		for (uint16_t i(0) ; i < acceptedPatterns.size() ; i++) {
-			logger.log("\t"s + std::to_string(i) + " - "s + formatContainer(acceptedPatterns[i]));
+			logger.log("\t"s + std::to_string(i) + " - "s + Stella::formatContainer(acceptedPatterns[i]));
 			bool compatible(true);
 			for (uint16_t j(0) ; j < acceptedPatterns[i].size() ; j++) {
 				const auto offset(acceptedPatterns[i][j]);
@@ -103,53 +88,51 @@ std::vector<uint64_t> Client::choosePatterns(const std::vector<std::vector<uint6
 
 void BMClient::process() {
 	std::lock_guard<std::mutex> lock(_jobMutex);
-	if (_height != 0 && _blockInterval > 0. && timeSince(_timer) >= _blockInterval) {
+	if (_height != 0 && _blockInterval > 0. && Stella::timeSince(_timer) >= _blockInterval) {
 		_height++;
 		_requests = 0;
 		_timer = std::chrono::steady_clock::now();
 	}
 }
 
-Job BMClient::getJob(const bool dummy) {
+std::optional<ClientInfo> BMClient::info() const {
+	return ClientInfo{
+		.height = _height,
+		.powVersion = 1,
+		.acceptedPatterns = {_pattern},
+		.patternMin = std::vector<bool>(_pattern.size(), true),
+		.primeCountTarget = static_cast<uint16_t>(_pattern.size()),
+		.primeCountMin = static_cast<uint16_t>(_pattern.size()),
+		.difficulty = _difficulty,
+		.targetOffsetBits = static_cast<uint32_t>(std::round(65536.*_difficulty)/65536ULL - 80ULL)
+	};
+}
+
+std::optional<Stella::Job> BMClient::getJob() {
 	std::lock_guard<std::mutex> lock(_jobMutex);
-	if (_height == 0 && !dummy) {
+	if (_height == 0) {
 		_height = 1;
 		_timer = std::chrono::steady_clock::now();
 	}
-	Job job;
-	job.height = _height;
-	job.powVersion = 1;
-	job.acceptedPatterns = {_pattern};
-	job.primeCountTarget = _pattern.size();
-	job.primeCountMin = job.primeCountTarget;
-	job.difficulty = _difficulty;
+	Stella::Job job;
 	// Target: (in binary) 1 . Leading Digits L (16 bits) . Height (32 bits) . Requests (32 bits) . (Difficulty - 80) zeros = 2^(Difficulty - 80)(2^80 + 2^64*L + 2^32*Height + Requests)
-	const uint64_t difficultyAsInteger(std::round(65536.*job.difficulty)), offsetBits(difficultyAsInteger/65536ULL - 80ULL);
+	const uint64_t difficultyAsInteger(std::round(65536.*_difficulty)), offsetBits(difficultyAsInteger/65536ULL - 80ULL);
 	job.target = 1;
 	job.target <<= 16;
 	job.target += static_cast<uint16_t>(std::round(std::pow(2., 16. + static_cast<double>(difficultyAsInteger % 65536)/65536.)) - 65536.);
 	job.target <<= 32;
-	job.target += job.height;
+	job.target += _height;
 	job.target <<= 32;
 	job.target += _requests;
 	job.target <<= offsetBits;
-	job.targetOffsetMax = 1;
-	job.targetOffsetMax <<= offsetBits;
-	job.targetOffsetMax--;
-	if (!dummy) _requests++;
+	_requests++;
 	return job;
 }
 
-Job SearchClient::getJob(const bool) {
-	Job job;
-	job.height = 1;
-	job.powVersion = 1;
-	job.acceptedPatterns = {_pattern};
-	job.primeCountTarget = _pattern.size();
-	job.primeCountMin = job.primeCountTarget;
-	job.difficulty = _difficulty;
+std::optional<Stella::Job> SearchClient::getJob() {
+	Stella::Job job;
 	// Target: (in binary) 1 . Leading Digits L (16 bits) . 80 Random Bits . (Difficulty - 96) zeros = 2^(Difficulty - 96)*(2^96 + 2^80*L + Random)
-	const uint64_t difficultyAsInteger(std::round(65536.*job.difficulty)), offsetBits(difficultyAsInteger/65536ULL - 96ULL);
+	const uint64_t difficultyAsInteger(std::round(65536.*_difficulty)), offsetBits(difficultyAsInteger/65536ULL - 96ULL);
 	std::array<uint8_t, 10> random;
 	for (auto &byte : random) byte = rand(0x00, 0xFF);
 	job.target = 1;
@@ -160,17 +143,27 @@ Job SearchClient::getJob(const bool) {
 		job.target += reinterpret_cast<uint16_t*>(random.data())[4 - i];
 	}
 	job.target <<= offsetBits;
-	job.targetOffsetMax = 1;
-	job.targetOffsetMax <<= offsetBits;
-	job.targetOffsetMax--;
 	return job;
 }
 
-void SearchClient::handleResult(const Job& job) {
+std::optional<ClientInfo> SearchClient::info() const {
+	return ClientInfo{
+		.height = 1,
+		.powVersion = 1,
+		.acceptedPatterns = {_pattern},
+		.patternMin = std::vector<bool>(_pattern.size(), true),
+		.primeCountTarget = static_cast<uint16_t>(_pattern.size()),
+		.primeCountMin = _primeCountMin,
+		.difficulty = _difficulty,
+		.targetOffsetBits = static_cast<uint32_t>(std::round(65536.*_difficulty)/65536ULL - 80ULL)
+	};
+}
+
+void SearchClient::handleResult(const Stella::Result& job) {
 	std::lock_guard<std::mutex> lock(_tupleFileMutex);
 	std::ofstream file(_tuplesFilename, std::ios::app);
 	if (file)
-		file << job.resultPrimeCount << "-tuple: " << job.result << std::endl;
+		file << job.primeCount << "-tuple: " << job.result << std::endl;
 	else
 		logger.log("Unable to write tuple to file "s + _tuplesFilename + "\n"s, MessageType::ERROR);
 }

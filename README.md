@@ -1,10 +1,10 @@
 # rieMiner
 
-![rieMiner Logo](https://riecoin.dev/files/w/thumb.php?f=rieMiner.svg&width=128)
+![rieMiner Logo](https://riecoin.xyz/Logos/Riecoin128.png)
 
-rieMiner is a Riecoin miner supporting both solo and pooled mining, and can also be run standalone for prime constellation record attempts. Find the latest binaries [here](https://riecoin.dev/resources/Pttn/rieMiner.php) for Linux and Windows.
+rieMiner is a Riecoin miner supporting both solo and pooled mining, and can also be run standalone for prime constellation record attempts. Find the latest binaries [here](https://riecoin.xyz/rieMiner) for Linux and Windows.
 
-This README is intended for advanced users and will mainly only describe the different configuration options and give information for developers like how to compile or contribute. For more practical information on how to use rieMiner like configuration file templates and mining or record attempts guides, visit the [rieMiner's page](https://riecoin.dev/en/rieMiner). **Before asking for any help or reporting an issue, ensure that you followed the instructions correctly, and try first to solve the issues by yourself**.
+This README is intended for advanced users and will mainly only describe the different configuration options and give information for developers like how to compile or contribute. For more practical information on how to use rieMiner like configuration file templates and mining or record attempts guides, visit the [rieMiner's page](https://riecoin.xyz/rieMiner). **Before asking for any help or reporting an issue, ensure that you followed the instructions correctly, and try first to solve the issues by yourself**.
 
 Happy Mining or Good Luck on finding a new record!
 
@@ -25,7 +25,7 @@ Recommended:
 
 rieMiner should be compilable on recent Linuxes. Building on another system is not supported, and Debian 11 Amd64 is our reference OS. It should be used for cross compiling in order to generate binaries for other systems, that can be distributed. If you don't have Debian 11, you can install it in a virtual machine, as Dual Boot, or in a spare machine.
 
-### Native building on Debian/Ubuntu
+### Native building
 
 Here is how to build rieMiner to run it directly on the same computer. Libraries are dynamically linked and G++ optimizes the build for your CPU, though this does actually not affect performance much.
 
@@ -110,7 +110,7 @@ A folder named `rieMiner0.93aDeps` must have appeared. We assume that you are in
 
 
 ```bash
-cd rieMiner0.93aDeps
+cd rieMiner0.94Deps
 ```
 
 If you are going to compile for several systems, doing `make clean`s in the rieMiner's directory will be very useful between builds (it will not delete rieMiner binaries). If you already built the dependencies once, you can usually reuse existing `incs` and `libs` folders and skip several steps, though the dependencies may be updated once a while on Riecoin.dev.
@@ -289,8 +289,8 @@ By contributing to rieMiner, you accept to place your code in the MIT license.
 
 Donations to the Riecoin Project are welcome:
 
-* Riecoin: ric1pv3mxn0d5g59n6w6qkxdmavw767wgwqpg499xssqfkjfu5gjt0wjqkffwja
-* Bitcoin: bc1pv3mxn0d5g59n6w6qkxdmavw767wgwqpg499xssqfkjfu5gjt0wjqej6g08
+* Riecoin: ric1pstellap55ue6keg3ta2qwlxr0h58g66fd7y4ea78hzkj3r4lstrsk4clvn
+* Bitcoin: bc1pstellap55ue6keg3ta2qwlxr0h58g66fd7y4ea78hzkj3r4lstrsewte3f
 
 ### Testing
 
@@ -319,9 +319,9 @@ Then, launch rieMiner using the `Pool` Mode and Port `3004`. Watch whether stran
 
 ## Resources and other links
 
-* [Riecoin website](https://Riecoin.dev/)
-  * [rieMiner's page](https://riecoin.dev/en/rieMiner)
-  * [Explanation of the miner algorithm](https://riecoin.dev/en/Mining_Algorithm), you can also learn the theoretics behind some options
+* [Riecoin website](https://riecoin.xyz/)
+  * [rieMiner's page](https://riecoin.xyz/rieMiner/)
+  * [Explanation of the miner algorithm](https://riecoin.xyz/Guides/MiningAlgorithm/), you can also learn the theoretics behind some options
 * [Stella](https://github.com/Pttn/Stella), possible reimplementation in Rust
 * [Bitcoin Wiki - Getblocktemplate](https://en.bitcoin.it/wiki/Getblocktemplate)
 * [BIP141](https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki) (Segwit)

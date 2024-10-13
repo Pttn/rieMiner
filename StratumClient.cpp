@@ -1,4 +1,4 @@
-// (c) 2018-present Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2018-present Pttn (https://riecoin.xyz/rieMiner)
 
 #include <fcntl.h>
 #ifdef _WIN32
@@ -10,6 +10,7 @@
 #include <nlohmann/json.hpp>
 
 #include "Client.hpp"
+#include "Stella.hpp"
 
 constexpr const char* userAgent("rieMiner/0.93");
 
@@ -99,18 +100,18 @@ void StratumClient::_processMessage(const std::string &message) {
 				return;
 			}
 			JobTemplate newJobTemplate;
-			newJobTemplate.job.clientData.bh.previousblockhash = v8ToA8(hexStrToV8(prevhash));
+			newJobTemplate.job.bh.previousblockhash = v8ToA8(hexStrToV8(prevhash));
 			try {
-				newJobTemplate.job.clientData.bh.version = std::stoll(version, nullptr, 16);
-				newJobTemplate.job.clientData.bh.curtime = std::stoll(ntime, nullptr, 16);
-				newJobTemplate.job.clientData.bh.bits = std::stoll(nbits, nullptr, 16);
+				newJobTemplate.job.bh.version = std::stoll(version, nullptr, 16);
+				newJobTemplate.job.bh.curtime = std::stoll(ntime, nullptr, 16);
+				newJobTemplate.job.bh.bits = std::stoll(nbits, nullptr, 16);
 			}
 			catch (...) {
 				logger.log("Received invalid Block Header hex values!\n"s, MessageType::ERROR);
 				_state = UNSUBSCRIBED;
 				return;
 			}
-			newJobTemplate.job.clientData.jobId = jobId;
+			newJobTemplate.job.jobId = jobId;
 			newJobTemplate.coinbase1 = hexStrToV8(coinbase1);
 			newJobTemplate.coinbase2 = hexStrToV8(coinbase2);
 			for (const auto &merkleBranch : merkleBranches) {
@@ -121,16 +122,23 @@ void StratumClient::_processMessage(const std::string &message) {
 				}
 				newJobTemplate.merkleBranches.push_back(v8ToA8(hexStrToV8(merkleBranch)));
 			}
+			
+			ClientInfo newClientParams;
 			// Extract BlockHeight from Coinbase
 			const uint8_t heightLength(newJobTemplate.coinbase1[42]);
-			if (heightLength == 1) newJobTemplate.job.height = newJobTemplate.coinbase1[43];
-			else if (heightLength == 2) newJobTemplate.job.height = newJobTemplate.coinbase1[43] + 256*newJobTemplate.coinbase1[44];
-			else newJobTemplate.job.height = newJobTemplate.coinbase1[43] + 256*newJobTemplate.coinbase1[44] + 65536*newJobTemplate.coinbase1[45];
-			newJobTemplate.job.powVersion = powVersion;
-			newJobTemplate.job.acceptedPatterns = acceptedPatterns;
-			newJobTemplate.job.primeCountTarget = newJobTemplate.job.acceptedPatterns[0].size();
-			newJobTemplate.job.primeCountMin = std::max(static_cast<int>(newJobTemplate.job.acceptedPatterns[0].size()) - 2, 4);
-			newJobTemplate.job.difficulty = decodeBits(newJobTemplate.job.clientData.bh.bits, newJobTemplate.job.powVersion);
+			if (heightLength == 1) newClientParams.height = newJobTemplate.coinbase1[43];
+			else if (heightLength == 2) newClientParams.height = newJobTemplate.coinbase1[43] + 256*newJobTemplate.coinbase1[44];
+			else newClientParams.height = newJobTemplate.coinbase1[43] + 256*newJobTemplate.coinbase1[44] + 65536*newJobTemplate.coinbase1[45];
+			newClientParams.powVersion = powVersion;
+			newClientParams.acceptedPatterns = acceptedPatterns;
+			newClientParams.patternMin = std::vector<bool>(acceptedPatterns[0].size(), false);
+			if (newClientParams.patternMin.size() > 0) newClientParams.patternMin[0] = true;
+			if (newClientParams.patternMin.size() > 1) newClientParams.patternMin[1] = true;
+			newClientParams.primeCountTarget = newClientParams.acceptedPatterns[0].size();
+			newClientParams.primeCountMin = std::max(static_cast<int>(newClientParams.acceptedPatterns[0].size()) - 2, 4);
+			newClientParams.difficulty = decodeBits(newJobTemplate.job.bh.bits, newClientParams.powVersion);
+			newClientParams.targetOffsetBits = static_cast<uint32_t>(newClientParams.difficulty) - 264U;
+			newJobTemplate.clientInfo = newClientParams;
 			std::lock_guard<std::mutex> lock(_jobMutex);
 			_currentJobTemplate = newJobTemplate;
 		}
@@ -159,7 +167,9 @@ void StratumClient::_processMessage(const std::string &message) {
 				_sids = jsonResult[0].get<decltype(_sids)>();
 				const std::string extraNonce1Str(jsonResult[1]);
 				if (!isHexStr(extraNonce1Str) || extraNonce1Str.size() % 2 != 0) {
-					std::cout << __func__ << ": Invalid Extra Nonce 1" << std::endl;
+					logger.log("Received invalid Extra Nonce 1!\n"s
+					           "Please check whether the pool or rieMiner is outdated.\n"s
+					           "Pool message was: "s + message + "\n"s, MessageType::ERROR);
 					return;
 				}
 				_extraNonce1 = hexStrToV8(extraNonce1Str);
@@ -221,27 +231,15 @@ void StratumClient::_processMessage(const std::string &message) {
 			}
 			if (jsonResult != true) {
 				logger.log("Rejected share: "s + message + "\n", MessageType::WARNING);
-				statManager.incrementRejectedShares();
+				_rejectedShares++;
 			}
 		}
 	}
 }
 
-void StratumClient::_submit(const Job& share) {
-	std::ostringstream oss;
-	oss << "{\"id\": " << std::to_string(_jsonId++) << ", \"method\": \"mining.submit\", \"params\": [\""
-	    << _username << "\", \""
-	    << share.clientData.jobId << "\", \""
-	    << v8ToHexStr(share.clientData.extraNonce2) << "\", \""
-	    << std::setfill('0') << std::setw(16) << std::hex << share.clientData.bh.curtime << "\", \""
-	    << v8ToHexStr(reverse(a8ToV8(share.encodedOffset()))) << "\"]}\n";
-	send(_socket, oss.str().c_str(), oss.str().size(), 0);
-	logger.logDebug("Sent to pool: "s + oss.str());
-}
-
 void StratumClient::connect() {
 	if (!_connected) {
-		_pendingSubmissions = {};
+		_pendingShares = {};
 		_sids = {};
 		_extraNonce1 = {};
 		_extraNonce2Len = 0;
@@ -309,12 +307,12 @@ void StratumClient::connect() {
 		logger.logDebug("Sent to pool: "s + miningSubscribeMessage);
 	}
 	const std::chrono::time_point<std::chrono::steady_clock> timeOutTimer(std::chrono::steady_clock::now());
-	while (getJob().height == 0 || _state != AUTHORIZED) {
+	while (!getJob().has_value() || _state != AUTHORIZED) {
 		process();
-		if (timeSince(timeOutTimer) > 1.) {
+		if (Stella::timeSince(timeOutTimer) > 1.) {
 			logger.log("Could not get a first job from the pool!\n"s, MessageType::ERROR);
 			std::lock_guard<std::mutex> lock(_jobMutex);
-			_currentJobTemplate.job.height = 0;
+			_currentJobTemplate.clientInfo = {};
 			return;
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -328,12 +326,27 @@ void StratumClient::process() {
 		return;
 	// Process pending submissions
 	_submitMutex.lock();
-	if (_pendingSubmissions.size() > 0) {
-		for (const auto &submission : _pendingSubmissions) {
-			_submit(submission);
-			statManager.incrementShares();
+	if (_pendingShares.size() > 0) {
+		for (const auto &share : _pendingShares) {
+			std::lock_guard<std::mutex> lock(_jobMutex);
+			for (const auto &job : _currentJobs) {
+				if (job.id == share.jobId) {
+					logger.logDebug(Stella::formattedClockTimeNow() + " "s + std::to_string(share.primeCount) + "-share found by worker thread "s + std::to_string(share.threadId) + "\n"s);
+					std::ostringstream oss;
+					oss << "{\"id\": " << std::to_string(_jsonId++) << ", \"method\": \"mining.submit\", \"params\": [\""
+						<< _username << "\", \""
+						<< job.jobId << "\", \""
+						<< v8ToHexStr(job.extraNonce2) << "\", \""
+						<< std::setfill('0') << std::setw(16) << std::hex << job.bh.curtime << "\", \""
+						<< v8ToHexStr(reverse(a8ToV8(encodedOffset(share)))) << "\"]}\n";
+					send(_socket, oss.str().c_str(), oss.str().size(), 0);
+					logger.logDebug("Sent to pool: "s + oss.str());
+					_shares++;
+					break;
+				} // If not found then Job was obsoleted due to a new Block, do not submit.
+			}
 		}
-		_pendingSubmissions.clear();
+		_pendingShares.clear();
 	}
 	_submitMutex.unlock();
 	// Get server data
@@ -344,7 +357,7 @@ void StratumClient::process() {
 	if (messageLength <= 0) { // No data received.
 		if (messageLength == 0)
 			logger.log("Connection closed by the pool.\n"s, MessageType::WARNING);
-		else if (timeSince(_lastPoolMessageTp) > stratumTimeOut)
+		else if (Stella::timeSince(_lastPoolMessageTp) > stratumTimeOut)
 			logger.log("Received nothing from the pool since a long time, disconnection assumed.\n"s, MessageType::WARNING);
 #ifdef _WIN32
 		else if (WSAGetLastError() != WSAEWOULDBLOCK)
@@ -359,7 +372,7 @@ void StratumClient::process() {
 		_state = UNSUBSCRIBED;
 		_connected = false;
 		std::lock_guard<std::mutex> lock(_jobMutex);
-		_currentJobTemplate.job.height = 0;
+		_currentJobTemplate.clientInfo = {};
 		return;
 	}
 	_lastPoolMessageTp = std::chrono::steady_clock::now();
@@ -373,7 +386,7 @@ void StratumClient::process() {
 			_socket = -1;
 			_connected = false;
 			std::lock_guard<std::mutex> lock(_jobMutex);
-			_currentJobTemplate.job.height = 0;
+			_currentJobTemplate.clientInfo = {};
 			return;
 		}
 	}
@@ -383,20 +396,34 @@ static uint32_t toBEnd32(uint32_t n) { // Converts a uint32_t to Big Endian (ABC
 	const uint8_t *tmp((uint8_t*) &n);
 	return (uint32_t) tmp[3] | ((uint32_t) tmp[2]) << 8 | ((uint32_t) tmp[1]) << 16 | ((uint32_t) tmp[0]) << 24;
 }
-Job StratumClient::getJob(const bool) {
+std::optional<Stella::Job> StratumClient::getJob() {
 	std::lock_guard<std::mutex> lock(_jobMutex);
 	Job job(_currentJobTemplate.job);
-	if (job.height == 0) // Invalid Job
-		return job;
-	job.clientData.extraNonce2 = {};
+	if (!_currentJobTemplate.clientInfo.has_value())
+		return {};
+	Stella::Job stellaJob;
+	job.id = _currentJobId;
+	job.height = _currentJobTemplate.clientInfo->height;
+	job.extraNonce2 = {};
 	for (uint16_t i(0) ; i < _extraNonce2Len ; i++)
-		job.clientData.extraNonce2.push_back(rand(0x00, 0xFF));
-	job.clientData.bh.merkleRoot = merkleRootGen(_currentJobTemplate.merkleBranches, _currentJobTemplate.coinbase1, _currentJobTemplate.coinbase2, _extraNonce1, job.clientData.extraNonce2);
+		job.extraNonce2.push_back(rand(0x00, 0xFF));
+	job.bh.merkleRoot = merkleRootGen(_currentJobTemplate.merkleBranches, _currentJobTemplate.coinbase1, _currentJobTemplate.coinbase2, _extraNonce1, job.extraNonce2);
 	_jobMutex.unlock();
 	// Change endianness for correct target computation
 	for (uint8_t i(0) ; i < 8 ; i++)
-		reinterpret_cast<uint32_t*>(job.clientData.bh.previousblockhash.data())[i] = toBEnd32(reinterpret_cast<uint32_t*>(job.clientData.bh.previousblockhash.data())[i]);
-	job.target = job.clientData.bh.target(job.powVersion);
-	job.targetOffsetMax = job.clientData.bh.targetOffsetMax(job.powVersion);
-	return job;
+		reinterpret_cast<uint32_t*>(job.bh.previousblockhash.data())[i] = toBEnd32(reinterpret_cast<uint32_t*>(job.bh.previousblockhash.data())[i]);
+	if (_currentJobs.size() == 0)
+		_currentJobs = {job};
+	else if (_currentJobTemplate.clientInfo->height != _currentJobs.back().height)
+		_currentJobs = {job};
+	else
+		_currentJobs.push_back(job);
+	stellaJob.id = _currentJobId;
+	stellaJob.target = job.bh.target(_currentJobTemplate.clientInfo->powVersion);
+	_currentJobId++;
+	return stellaJob;
+}
+
+std::optional<ClientInfo> StratumClient::info() const {
+	return _currentJobTemplate.clientInfo;
 }

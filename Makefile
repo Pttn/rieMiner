@@ -1,4 +1,4 @@
-VER    = 0.93a3
+VER    = 0.94ES
 CXX    = g++
 M4     = m4
 AS     = as
@@ -55,13 +55,13 @@ Win64 Win64AVX2: CXX = x86_64-w64-mingw32-g++-posix
 Win64 Win64AVX2: AS = x86_64-w64-mingw32-as
 Win64: CFLAGS += -march=x86-64 -s -D CURL_STATICLIB -I incsWin64/
 Win64AVX2: CFLAGS += -march=x86-64 -mavx2 -s -D CURL_STATICLIB -I incsWin64/
-Win64 Win64AVX2: LIBS := -Wl,-Bstatic -static-libgcc -static-libstdc++ -Wl,-Bstatic,--whole-archive -lpthread -Wl,--no-whole-archive -L libsWin64/ $(LIBS) -lws2_32 -Wl,-Bdynamic -Wl,--image-base -Wl,0x10000000
+Win64 Win64AVX2: LIBS := -Wl,-Bstatic -static-libgcc -static-libstdc++ -Wl,-Bstatic,--whole-archive -lpthread -Wl,--no-whole-archive -L libsWin64/ $(LIBS) -lws2_32 -lbcrypt -Wl,-Bdynamic -Wl,--image-base -Wl,0x10000000
 Win64 Win64AVX2: rieMinerWin64
 	mv rieMiner.exe rieMiner$(VER)$@.exe
 
 Win32: CXX = i686-w64-mingw32-g++-posix
 Win32: AS = i686-w64-mingw32-as
-Win32: LIBS := -Wl,-Bstatic -static-libgcc -static-libstdc++ -Wl,-Bstatic,--whole-archive -lpthread -Wl,--no-whole-archive -L libsWin32/ $(LIBS) -lws2_32 -Wl,-Bdynamic -Wl,--image-base -Wl,0x10000000
+Win32: LIBS := -Wl,-Bstatic -static-libgcc -static-libstdc++ -Wl,-Bstatic,--whole-archive -lpthread -Wl,--no-whole-archive -L libsWin32/ $(LIBS) -lws2_32 -lbcrypt -Wl,-Bdynamic -Wl,--image-base -Wl,0x10000000
 Win32: CFLAGS += -march=i686 -s -D CURL_STATICLIB -I incsWin32/
 Win32: rieMiner
 	mv rieMiner.exe rieMiner$(VER)$@.exe
@@ -81,20 +81,20 @@ testServer: rieMinerTestServer
 rieMinerTestServer: TestServer.cpp
 	$(CXX) -Wall -Wextra -std=c++20 $^ -o $@
 
-rieMiner: main.o Miner.o StratumClient.o GBTClient.o Client.o API.o Stats.o tools.o
+rieMiner: main.o Stella.o StratumClient.o GBTClient.o Client.o API.o tools.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
-rieMinerx64: main.o Miner.o StratumClient.o GBTClient.o Client.o API.o Stats.o tools.o mod_1_4.o mod_1_2_avx.o mod_1_2_avx2.o fermat.o primetest.o primetest512.o
+rieMinerx64: main.o Stella.o StratumClient.o GBTClient.o Client.o API.o tools.o mod_1_4.o mod_1_2_avx.o mod_1_2_avx2.o fermat.o primetest.o primetest512.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
-rieMinerWin64: main.o Miner.o StratumClient.o GBTClient.o Client.o API.o Stats.o tools.o mod_1_4_win.o mod_1_2_avx_win.o mod_1_2_avx2_win.o fermat.o primetest_win.o primetest512_win.o
+rieMinerWin64: main.o Stella.o StratumClient.o GBTClient.o Client.o API.o tools.o mod_1_4_win.o mod_1_2_avx_win.o mod_1_2_avx2_win.o fermat.o primetest_win.o primetest512_win.o
 	$(CXX) $(CFLAGS) -o rieMiner $^ $(LIBS)
 
-main.o: main.cpp main.hpp Miner.hpp Client.hpp Stats.hpp tools.hpp
+main.o: main.cpp main.hpp Stella.hpp Client.hpp tools.hpp
 	$(CXX) $(CFLAGS) -c -o $@ -DversionShort=\"$(VER)\" -DversionString=\"rieMiner$(VER)\" main.cpp
 
-Miner.o: Miner.cpp Miner.hpp
-	$(CXX) $(CFLAGS) -c -o $@ Miner.cpp
+Stella.o: Stella.cpp Stella.hpp
+	$(CXX) $(CFLAGS) -c -o $@ Stella.cpp
 
 StratumClient.o: StratumClient.cpp
 	$(CXX) $(CFLAGS) -c -o $@ StratumClient.cpp
@@ -107,9 +107,6 @@ Client.o: Client.cpp
 
 API.o: API.cpp
 	$(CXX) $(CFLAGS) -c -o $@ API.cpp
-
-Stats.o: Stats.cpp
-	$(CXX) $(CFLAGS) -c -o $@ Stats.cpp
 
 tools.o: tools.cpp
 	$(CXX) $(CFLAGS) -c -o $@ tools.cpp

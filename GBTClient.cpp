@@ -1,9 +1,10 @@
-// (c) 2018-present Pttn (https://riecoin.dev/en/rieMiner)
+// (c) 2018-present Pttn (https://riecoin.xyz/rieMiner)
 
 #include "Client.hpp"
+#include "Stella.hpp"
 #include "main.hpp"
 
-const std::string cbMsg("/rM0.93/");
+const std::string cbMsg("/rM0.94/");
 static std::vector<uint8_t> coinbaseGen(const std::vector<uint8_t> &scriptPubKey, const uint32_t height, const uint64_t coinbasevalue, const std::vector<uint8_t> &dwc) {
 	std::vector<uint8_t> coinbase;
 	// Version (01000000)
@@ -154,36 +155,39 @@ bool GBTClient::_fetchJob() {
 		return false;
 	}
 	JobTemplate newJobTemplate;
-	std::vector<std::vector<uint64_t>> acceptedPatterns;
 	try { // Extract and build GetBlockTemplate data
-		newJobTemplate.job.clientData.bh.version = getblocktemplateResult["version"];
-		newJobTemplate.job.clientData.bh.previousblockhash = v8ToA8(reverse(hexStrToV8(getblocktemplateResult["previousblockhash"])));
-		newJobTemplate.job.clientData.bh.curtime = getblocktemplateResult["curtime"];
-		newJobTemplate.job.clientData.bh.bits = std::stoll(std::string(getblocktemplateResult["bits"]), nullptr, 16);
+		newJobTemplate.job.bh.version = getblocktemplateResult["version"];
+		newJobTemplate.job.bh.previousblockhash = v8ToA8(reverse(hexStrToV8(getblocktemplateResult["previousblockhash"])));
+		newJobTemplate.job.bh.curtime = getblocktemplateResult["curtime"];
+		newJobTemplate.job.bh.bits = std::stoll(std::string(getblocktemplateResult["bits"]), nullptr, 16);
 		newJobTemplate.coinbasevalue = getblocktemplateResult["coinbasevalue"];
 		std::vector<std::array<uint8_t, 32>> wTxIds{std::array<uint8_t, 32>{}};
 		for (const auto &transaction : getblocktemplateResult["transactions"]) {
 			const std::vector<uint8_t> txId(reverse(hexStrToV8(transaction["txid"])));
-			newJobTemplate.job.clientData.transactionsHex += transaction["data"];
+			newJobTemplate.job.transactionsHex += transaction["data"];
 			newJobTemplate.txHashes.push_back(v8ToA8(txId));
 			wTxIds.push_back(v8ToA8(reverse(hexStrToV8(transaction["hash"]))));
 		}
 		newJobTemplate.default_witness_commitment = "6a24aa21a9ed" + v8ToHexStr(a8ToV8(calculateMerkleRoot({calculateMerkleRoot(wTxIds), std::array<uint8_t, 32>{}})));
-		newJobTemplate.job.clientData.txCount = newJobTemplate.txHashes.size() + 1; // Include Coinbase
-		newJobTemplate.job.height = getblocktemplateResult["height"];
-		newJobTemplate.job.powVersion = getblocktemplateResult["powversion"];
-		if (newJobTemplate.job.powVersion != 1) {
-			logger.log("Unsupported PoW Version "s + std::to_string(newJobTemplate.job.powVersion) + ", your rieMiner version is likely outdated!\n"s, MessageType::ERROR);
+		newJobTemplate.job.txCount = newJobTemplate.txHashes.size() + 1; // Include Coinbase
+		ClientInfo newClientParams;
+		newClientParams.height = getblocktemplateResult["height"];
+		newClientParams.powVersion = getblocktemplateResult["powversion"];
+		if (newClientParams.powVersion != 1) {
+			logger.log("Unsupported PoW Version "s + std::to_string(newClientParams.powVersion) + ", your rieMiner version is likely outdated!\n"s, MessageType::ERROR);
 			return false;
 		}
-		newJobTemplate.job.acceptedPatterns = getblocktemplateResult["patterns"].get<decltype(newJobTemplate.job.acceptedPatterns)>();
-		if (newJobTemplate.job.acceptedPatterns.size() == 0) {
+		newClientParams.acceptedPatterns = getblocktemplateResult["patterns"].get<decltype(newClientParams.acceptedPatterns)>();
+		if (newClientParams.acceptedPatterns.size() == 0) {
 			logger.log("Empty or invalid accepted patterns list!\n"s, MessageType::ERROR);
 			return false;
 		}
-		newJobTemplate.job.primeCountTarget = newJobTemplate.job.acceptedPatterns[0].size();
-		newJobTemplate.job.primeCountMin = newJobTemplate.job.primeCountTarget;
-		newJobTemplate.job.difficulty = decodeBits(newJobTemplate.job.clientData.bh.bits, newJobTemplate.job.powVersion);
+		newClientParams.patternMin = std::vector<bool>(newClientParams.acceptedPatterns[0].size(), true);
+		newClientParams.primeCountTarget = newClientParams.acceptedPatterns[0].size();
+		newClientParams.primeCountMin = newClientParams.primeCountTarget;
+		newClientParams.difficulty = decodeBits(newJobTemplate.job.bh.bits, newClientParams.powVersion);
+		newClientParams.targetOffsetBits = static_cast<uint32_t>(newClientParams.difficulty) - 264U;
+		newJobTemplate.clientInfo = newClientParams;
 	}
 	catch (...) {
 		logger.log("Received GetBlockTemplate Data with invalid parameters!\n"s
@@ -195,37 +199,12 @@ bool GBTClient::_fetchJob() {
 	return true;
 }
 
-void GBTClient::_submit(const Job& job) {
-	logger.log("Submitting block with "s + std::to_string(job.clientData.txCount) + " transaction(s) (including coinbase)...\n"s, MessageType::BOLD);
-	BlockHeader bh(job.clientData.bh);
-	bh.nOffset = job.encodedOffset();
-	std::ostringstream oss;
-	oss << v8ToHexStr(bh.toV8());
-	// Using the Variable Length Integer format; having more than 65535 transactions is currently impossible
-	if (job.clientData.txCount < 0xFD)
-		oss << std::setfill('0') << std::setw(2) << std::hex << job.clientData.txCount;
-	else
-		oss << "fd" << std::setfill('0') << std::setw(2) << std::hex << job.clientData.txCount % 256 << std::setw(2) << job.clientData.txCount/256;
-	oss << job.clientData.transactionsHex;
-	try {
-		nlohmann::json submitblockResponse(_sendRequestToWallet("submitblock", {oss.str()}));
-		if (submitblockResponse["result"] == nullptr && submitblockResponse["error"] == nullptr)
-			logger.log("Submission accepted :D !\n"s, MessageType::SUCCESS);
-		else
-			logger.log("Submission rejected :| ! Received: " + submitblockResponse.dump() + "\n"s, MessageType::WARNING);
-	}
-	catch (std::exception &e) {
-		logger.log("Failure submitting block :| !\n"s, MessageType::ERROR);
-		return;
-	}
-}
-
 void GBTClient::connect() {
 	if (!_connected) {
 		_currentJobTemplate = JobTemplate();
-		_pendingSubmissions = {};
+		_pendingBlocks = {};
 		process();
-		if (_currentJobTemplate.job.height == 0) {
+		if (!_currentJobTemplate.clientInfo.has_value()) {
 			logger.log("Could not get a first job from the server!\n"s, MessageType::ERROR);
 			return;
 		}
@@ -236,31 +215,76 @@ void GBTClient::connect() {
 void GBTClient::process() {
 	// Process pending submissions
 	_submitMutex.lock();
-	if (_pendingSubmissions.size() > 0) {
-		for (const auto &submission : _pendingSubmissions) _submit(submission);
-		_pendingSubmissions.clear();
+	if (_pendingBlocks.size() > 0) {
+		for (const auto &block : _pendingBlocks) {
+			std::lock_guard<std::mutex> lock(_jobMutex);
+			for (const auto &job : _currentJobs) {
+				logger.log(Stella::formattedClockTimeNow() + " "s + std::to_string(block.primeCount) + "-tuple found by worker thread "s + std::to_string(block.threadId) + "\n"s, MessageType::BOLD);
+				logger.log("Base prime: "s + block.result.get_str() + "\n"s);
+				if (job.id == block.jobId) { // Sends a pending result via submitblock
+					logger.log("Submitting block with "s + std::to_string(job.txCount) + " transaction(s) (including coinbase)...\n"s, MessageType::BOLD);
+					BlockHeader bh(job.bh);
+					bh.nOffset = encodedOffset(block);
+					std::ostringstream oss;
+					oss << v8ToHexStr(bh.toV8());
+					// Variable Length Integer Format
+					if (job.txCount < 0xFD)
+						oss << std::setfill('0') << std::setw(2) << std::hex << job.txCount;
+					else
+						oss << "fd" << std::setfill('0') << std::setw(2) << std::hex << job.txCount % 256 << std::setw(2) << job.txCount/256;
+					oss << job.transactionsHex;
+					try {
+						nlohmann::json submitblockResponse(_sendRequestToWallet("submitblock", {oss.str()}));
+						if (submitblockResponse["result"] == nullptr && submitblockResponse["error"] == nullptr)
+							logger.log("Submission accepted :D !\n"s, MessageType::SUCCESS);
+						else
+							logger.log("Submission rejected :| ! Received: " + submitblockResponse.dump() + "\n"s, MessageType::WARNING);
+					}
+					catch (std::exception &e) {
+						logger.log("Failure submitting block :| !\n"s, MessageType::ERROR);
+						return;
+					}
+					break;
+				} // If not found then Job was obsoleted due to a new Block, do not submit as it would be orphaned (but still show the Tuple).
+			}
+		}
+		_pendingBlocks.clear();
 	}
 	_submitMutex.unlock();
 	// Update work
 	if (!_fetchJob()) {
 		_connected = false; // If _fetchJob() failed, this means that the client is disconnected
 		std::lock_guard<std::mutex> lock(_jobMutex);
-		_currentJobTemplate.job.height = 0;
+		_currentJobTemplate.clientInfo = {};
 	}
 }
 
-Job GBTClient::getJob(const bool) {
+std::optional<Stella::Job> GBTClient::getJob() {
 	std::lock_guard<std::mutex> lock(_jobMutex);
 	Job job(_currentJobTemplate.job);
-	if (job.height == 0) // Invalid Job
-		return job;
-	const std::vector<uint8_t> coinbase(coinbaseGen(_scriptPubKey, job.height, _currentJobTemplate.coinbasevalue, hexStrToV8(_currentJobTemplate.default_witness_commitment)));
-	job.clientData.transactionsHex = v8ToHexStr(coinbase) + job.clientData.transactionsHex;
+	if (!_currentJobTemplate.clientInfo.has_value())
+		return {};
+	Stella::Job stellaJob;
+	job.id = _currentJobId;
+	job.height = _currentJobTemplate.clientInfo->height;
+	const std::vector<uint8_t> coinbase(coinbaseGen(_scriptPubKey, _currentJobTemplate.clientInfo->height, _currentJobTemplate.coinbasevalue, hexStrToV8(_currentJobTemplate.default_witness_commitment)));
+	job.transactionsHex = v8ToHexStr(coinbase) + job.transactionsHex;
 	std::vector<std::array<uint8_t, 32>> txHashesWithCoinbase{coinbaseTxId(coinbase)};
 	txHashesWithCoinbase.insert(txHashesWithCoinbase.end(), _currentJobTemplate.txHashes.begin(), _currentJobTemplate.txHashes.end());
 	_jobMutex.unlock();
-	job.clientData.bh.merkleRoot = calculateMerkleRoot(txHashesWithCoinbase);
-	job.target = job.clientData.bh.target(job.powVersion);
-	job.targetOffsetMax = job.clientData.bh.targetOffsetMax(job.powVersion);
-	return job;
+	job.bh.merkleRoot = calculateMerkleRoot(txHashesWithCoinbase);
+	if (_currentJobs.size() == 0)
+		_currentJobs = {job};
+	else if (_currentJobTemplate.clientInfo->height != _currentJobs.back().height)
+		_currentJobs = {job};
+	else
+		_currentJobs.push_back(job);
+	stellaJob.id = _currentJobId;
+	stellaJob.target = job.bh.target(_currentJobTemplate.clientInfo->powVersion);
+	_currentJobId++;
+	return stellaJob;
+}
+
+std::optional<ClientInfo> GBTClient::info() const {
+	return _currentJobTemplate.clientInfo;
 }
