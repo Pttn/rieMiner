@@ -228,8 +228,12 @@ bool Configuration::parse(const int argc, char** argv, std::string &parsingMessa
 BOOL WINAPI signalHandler(DWORD signum) {
 #else
 void signalHandler(int signum) {
+	if (signum == SIGPIPE) {
+		logger.logDebug("\nIgnoring SigPipe Signal.\n"s);
+		return;
+	}
 #endif
-	logger.log("\nSignal "s + std::to_string(signum) + " received, stopping rieMiner.\n", MessageType::WARNING);
+	logger.log("\nSignal "s + std::to_string(signum) + " received, stopping rieMiner.\n"s, MessageType::WARNING);
 	if (miner == nullptr || api == nullptr) exit(0);
 	if (api->running()) api->stop();
 	if (!miner->inited()) exit(0);
@@ -246,11 +250,12 @@ int main(int argc, char** argv) {
 	if (!SetConsoleCtrlHandler((PHANDLER_ROUTINE) signalHandler, TRUE))
 		logger.log("Could not set the Console Ctrl Handler\n", MessageType::ERROR);
 #else
-	struct sigaction SIGINTHandler;
-	SIGINTHandler.sa_handler = signalHandler;
-	sigemptyset(&SIGINTHandler.sa_mask);
-	SIGINTHandler.sa_flags = 0;
-	sigaction(SIGINT, &SIGINTHandler, NULL);
+	struct sigaction sigAction;
+	sigAction.sa_handler = signalHandler;
+	sigemptyset(&sigAction.sa_mask);
+	sigAction.sa_flags = 0;
+	sigaction(SIGINT, &sigAction, NULL);
+	sigaction(SIGPIPE, &sigAction, NULL);
 #endif
 	Configuration configuration;
 	logger.log(std::string(versionString) + ", Riecoin miner by Pttn and contributors\n"s

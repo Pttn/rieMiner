@@ -28,7 +28,7 @@ std::string receiveMessage() {
 
 void sendMessage(const std::string &message) {
 	// std::cout << "Sending " << message.size() << " bytes: " << message << std::endl;
-	send(clientFd , message.c_str(), message.size(), 0);
+	send(clientFd , message.c_str(), message.size(), MSG_NOSIGNAL);
 }
 
 void acceptMiner() {
